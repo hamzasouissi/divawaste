@@ -2,6 +2,7 @@
 
 namespace App\Modules\Common\Http;
 
+use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -43,6 +44,7 @@ final class ProblemDetails
     private static function describe(Throwable $e): array
     {
         return match (true) {
+            $e instanceof BusinessRuleViolation => [409, $e->errorCode, $e->getMessage(), null],
             $e instanceof ValidationException => [422, 'VALIDATION_FAILED', 'The given data was invalid.', $e->errors()],
             $e instanceof AuthenticationException => [401, 'UNAUTHENTICATED', null, null],
             $e instanceof AuthorizationException => [403, 'FORBIDDEN', null, null],
