@@ -16,6 +16,10 @@ final class TableClassification
         'user_role_assignments', 'user_invitations', 'company_subscriptions', 'invoices',
         'invoice_items', 'payments', 'waste_types', 'stock_thresholds', 'devices', 'sync_operations', 'waste_lots',
         'waste_lot_compositions', 'lot_tags', 'waste_lot_operations', 'waste_lot_lineage', 'waste_lot_events',
+        // Provider-owned, read by industrials through the directory.
+        'provider_profiles', 'provider_accepted_wastes', 'provider_accreditations', 'provider_partnerships',
+        // Party-shared: owner company_id + provider/transporter columns.
+        'pickups', 'pickup_lots',
     ];
 
     /** company_id NULL = platform row */
