@@ -14,7 +14,7 @@ final class TableClassification
     public const TENANT = [
         'company_textile_activities', 'company_users', 'number_sequences', 'sites', 'zones',
         'user_role_assignments', 'user_invitations', 'company_subscriptions', 'invoices',
-        'invoice_items', 'payments', 'waste_types', 'stock_thresholds',
+        'invoice_items', 'payments', 'waste_types', 'stock_thresholds', 'devices', 'sync_operations',
     ];
 
     /** company_id NULL = platform row */

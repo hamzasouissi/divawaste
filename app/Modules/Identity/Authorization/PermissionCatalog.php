@@ -28,8 +28,8 @@ final class PermissionCatalog
         $plt = Audience::Platform;
 
         return [
-            'app.web.access' => [self::C, $any],
-            'app.mobile.access' => [self::C, $any],
+            'app.web.access' => [self::S, $any],
+            'app.mobile.access' => [self::S, $any],
             'company.view' => [self::C, $any],
             'company.update' => [self::C, $any],
             'users.view' => [self::C, $any],
