@@ -20,6 +20,11 @@ final class TableClassification
         'provider_profiles', 'provider_accepted_wastes', 'provider_accreditations', 'provider_partnerships',
         // Party-shared: owner company_id + provider/transporter columns.
         'pickups', 'pickup_lots',
+        'documents',
+        'document_waste_lots',
+        'document_signatures',
+        'hazardous_waste_manifests',
+        'annual_declarations',
     ];
 
     /** company_id NULL = platform row */
