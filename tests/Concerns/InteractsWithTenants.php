@@ -66,6 +66,9 @@ trait InteractsWithTenants
         $token = $user->createToken('test');
         $token->accessToken->forceFill(['company_id' => $company->id])->save();
 
+        // The auth guard caches the user between requests of one test: switching tokens must reset it.
+        app('auth')->forgetGuards();
+
         return $token->plainTextToken;
     }
 }
