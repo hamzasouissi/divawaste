@@ -2,6 +2,7 @@
 
 use App\Modules\Common\Http\Middleware\AssignRequestId;
 use App\Modules\Common\Http\ProblemDetails;
+use App\Modules\Tenancy\Http\Middleware\EstablishTenantContext;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(AssignRequestId::class);
+        $middleware->alias(['tenant' => EstablishTenantContext::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (Throwable $e, Request $request) {

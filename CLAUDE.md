@@ -26,3 +26,9 @@ All API errors are RFC 9457 problem+json (`App\Modules\Common\Http\ProblemDetail
 
 ## Tests
 `php artisan test` runs on MariaDB database `divawaste_test` (never SQLite). `vendor/bin/pint` before committing.
+
+## Tenancy
+- Tenant models use `App\Modules\Tenancy\Models\Concerns\BelongsToCompany` (fail-closed `TenantScope`, company_id stamped, never changes).
+- Tenant routes: `->middleware(['auth:sanctum', 'tenant'])`. Company comes from the token binding (`personal_access_tokens.company_id`) or the session, never a header.
+- `TenantContext::runAs($company, fn)` for scoped work; `runAsSystem($reason, fn)` only in allowlisted platform code (logged).
+- Every new table must be added to `App\Modules\Tenancy\TableClassification` (SchemaClassificationTest fails otherwise).

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -14,7 +15,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        // Reset for every request and every queued job.
+        $this->app->scoped(TenantContext::class);
     }
 
     public function boot(): void

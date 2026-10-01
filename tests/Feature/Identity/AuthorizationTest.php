@@ -7,7 +7,9 @@ use App\Modules\Identity\Enums\Audience;
 use App\Modules\Identity\Models\Permission;
 use App\Modules\Identity\Models\Role;
 use App\Modules\Identity\Models\User;
+use App\Modules\Tenancy\Models\Company;
 use Database\Seeders\AuthorizationSeeder;
+use Database\Seeders\ReferenceDataSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -74,13 +76,15 @@ class AuthorizationTest extends TestCase
 
     public function test_role_names_are_unique_per_company_scope(): void
     {
+        $this->seed(ReferenceDataSeeder::class);
+        [$a, $b] = Company::factory()->count(2)->create()->modelKeys();
         $base = ['guard_name' => 'web', 'label' => '{}', 'audience' => 'industrial', 'created_at' => now(), 'updated_at' => now()];
 
-        DB::table('roles')->insert(['name' => 'quality', 'company_id' => 1] + $base);
-        DB::table('roles')->insert(['name' => 'quality', 'company_id' => 2] + $base);
+        DB::table('roles')->insert(['name' => 'quality', 'company_id' => $a] + $base);
+        DB::table('roles')->insert(['name' => 'quality', 'company_id' => $b] + $base);
 
         $this->expectException(QueryException::class);
-        DB::table('roles')->insert(['name' => 'quality', 'company_id' => 1] + $base);
+        DB::table('roles')->insert(['name' => 'quality', 'company_id' => $a] + $base);
     }
 
     public function test_two_system_roles_cannot_share_a_name(): void
