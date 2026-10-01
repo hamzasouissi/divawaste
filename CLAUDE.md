@@ -32,3 +32,7 @@ All API errors are RFC 9457 problem+json (`App\Modules\Common\Http\ProblemDetail
 - Tenant routes: `->middleware(['auth:sanctum', 'tenant'])`. Company comes from the token binding (`personal_access_tokens.company_id`) or the session, never a header.
 - `TenantContext::runAs($company, fn)` for scoped work; `runAsSystem($reason, fn)` only in allowlisted platform code (logged).
 - Every new table must be added to `App\Modules\Tenancy\TableClassification` (SchemaClassificationTest fails otherwise).
+
+## Authorization
+- Tenant permissions (`PermissionCatalog`) are site-aware via `AccessResolver` hooked in `Gate::before`: `$user->can('lots.create', $site)`; list filtering with `AccessResolver::siteIdsFor()` (null = all sites). Check permissions, never role names.
+- Tests: `Tests\Concerns\InteractsWithTenants` (makeCompany, makeSite, makeMember with roles per site, tokenFor).

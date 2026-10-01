@@ -12,7 +12,8 @@ final class TableClassification
 
     /** company_id NOT NULL + BelongsToCompany */
     public const TENANT = [
-        'company_textile_activities', 'company_users', 'number_sequences',
+        'company_textile_activities', 'company_users', 'number_sequences', 'sites', 'zones',
+        'user_role_assignments', 'user_invitations',
     ];
 
     /** company_id NULL = platform row */
