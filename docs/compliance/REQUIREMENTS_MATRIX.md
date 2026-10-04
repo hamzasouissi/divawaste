@@ -2,141 +2,139 @@
 
 Source of truth: *Cahier des charges — DivaWaste Textile* (28 Sep 2026). Requirement IDs are the cahier's.
 
-Legend: ✅ complete · 🟡 partial · 🔴 missing · ⚠️ incorrect · 🧪 implemented but unverified · V2 = out of MVP scope.
+**State recorded here: 4 Oct 2026, end of the takeover** — backend branch `takeover/mvp-alignment`, frontend repository
+`DIVA-WASTE-FRONTEND-LAB` branch `main`. The state found at the start is kept in
+[BASELINE_AUDIT_2026-10-04.md](BASELINE_AUDIT_2026-10-04.md).
 
-A requirement is ✅ only when the whole business flow works database → API → frontend and is covered by a test.
+## How to read it
 
-**State recorded here: audit baseline of 4 Oct 2026** (backend commit `67c234d`, frontend prototype in
-`DIVA-WASTE-FRONTEND-LAB/frontend`). The "Action" column is the work plan; statuses are updated as work lands.
+Status: ✅ done and verified · 🟡 done with a stated limit · 🔴 not done · V2 out of MVP scope (cahier).
 
-## Summary of the baseline
+"Verified by" says what was actually run, nothing more:
 
-| Area | Finding |
-|---|---|
-| Schema | Sound. 71 tables, composite tenant FKs, explicit names, soft deletes where required. Already models most of M0–M7. |
-| Tenancy | Sound. Fail-closed `TenantScope`, `company_id` stamped and immutable, company taken from token/session only. |
-| Authorization | Sound core (site-aware `AccessResolver`, editable matrix in DB). Two endpoints check permission names that do not exist (`audit_logs.view`, `reports.create`) and are therefore unreachable. |
-| API surface | 42 routes. No registration, verification, onboarding, invitations, user management, logout, password reset, 2FA, zones, lot list, stock, pickup list, labels, exports, dashboards, platform administration. |
-| Cross-cutting | `Auditable` trait is attached to no model; `DispatchNotification` is never called; no mail is ever sent; no scheduled task; no queued job. |
-| Documents | No PDF, Excel or QR library installed. Register, manifest, declaration and label are records without generated files. |
-| Frontend | Prototype: 10 list/detail pages over the existing routes, no UI library, no PWA, no offline storage, no QR scanning, no charts, no role-based navigation. |
+- **T** — automated backend feature test (the file is named; suite: 158 tests, 1 390 assertions, all passing).
+- **B** — driven through the real browser against the real API (headless Chrome, demo database), by clicks.
+- **S** — screen built on the real API and loaded in the browser without error; the action itself was exercised through the API, not by clicks.
+
+Nothing in the product uses mock data.
 
 ## M0 — Inscription et onboarding
 
-| Req | Expected behaviour | Backend | Frontend | Integration | Tests | Action |
-|---|---|---|---|---|---|---|
-| M0-01 | Company self-registration: legal name, tax ID, country, textile activity, main contact | 🔴 tables exist (`companies`, `company_textile_activities`), no endpoint | 🔴 | 🔴 | 🔴 | Registration action + public endpoint + form |
-| M0-02 | Email verified by link valid 24 h (SMS/WhatsApp = V2) | 🔴 `email_verified_at` column only | 🔴 | 🔴 | 🔴 | Signed verification link, resend, mail |
-| M0-03 | Plan choice: 30-day trial, per site, per volume | 🟡 `StartTrial` action and plan tables; only `trial` plan seeded; no endpoint | 🔴 | 🔴 | 🟡 | Plans endpoint, plan selection at registration, seed per-site/per-volume plans |
-| M0-04 | Bank-transfer billing request validated by super-admin (card = V2) | 🟡 declare payment endpoint + `ReviewPayment` action; no platform route to validate | 🔴 | 🔴 | 🟡 | Platform payment review endpoints + screens |
-| M0-05 | Provider registration form with accreditation PDFs, subject to validation | 🔴 tables exist, no endpoint | 🔴 | 🔴 | 🔴 | Provider registration + accreditation upload |
-| M0-06 | Super-admin approves / rejects (with reason) / suspends; applicant emailed | 🔴 columns exist, no endpoint, no mail | 🔴 | 🔴 | 🔴 | Platform review endpoints, mails, back-office screens |
-| M0-07 | 4-step onboarding wizard (sites, waste types, users, providers), skippable and resumable | 🔴 `onboarding_state` column only | 🔴 | 🔴 | 🔴 | Onboarding state endpoints + wizard |
-| M0-08 | Admin invites users by email with role and sites; link expires after 7 days | 🔴 table and model only | 🔴 | 🔴 | 🟡 schema only | Invite, resend, revoke, accept endpoints + screens |
-| M0-09 | Password ≥ 12 chars, forgotten password, optional TOTP, lockout after 5 failures | ⚠️ login only. Lock state is read but `failed_login_attempts` is never incremented, so lockout cannot happen. No reset, no TOTP, no logout | 🟡 sign-in form | 🟡 | 🟡 | Lockout, reset, TOTP (Fortify), logout |
-| M0-10 | Timestamped acceptance of CGU and data policy with version | 🔴 tables exist, `legal_documents` unseeded | 🔴 | 🔴 | 🔴 | Legal documents seed + acceptance at registration/invitation |
-| M0-11 | "Mon abonnement": invoice PDFs, plan change, add sites, cancellation | 🔴 no read endpoint for subscription or invoices; no invoice PDF | 🔴 | 🔴 | 🔴 | Subscription/invoice endpoints, PDF, screens |
-| M0-12 | SSO SAML / Microsoft / Google | V2 | V2 | — | — | None |
+| ID | Requirement | Status | Where | Verified by | Limit / note |
+|---|---|---|---|---|---|
+| M0-01 | Company self-registration | ✅ | `POST auth/register`, screen `/register` | T `RegistrationAndReviewTest` · S | |
+| M0-02 | Email link valid 24 h | ✅ | signed link → `/verify-email`, resend | T `RegistrationAndReviewTest` · S | Mail goes to the configured mailer (`log` locally). SMS/WhatsApp = V2 |
+| M0-03 | Plan choice (trial, per site, per volume) | 🟡 | plans seeded, chosen at registration | T `SubscriptionTest` · S | **Price grid not decided**: plans carry no price; the platform enters the agreed unit price at activation. Every plan starts with the 30-day trial |
+| M0-04 | Bank transfer validated by super-admin | ✅ | declare → `/platform/payments` | T `SubscriptionTest`, `BillingTest` · **B** | Card payment = V2 |
+| M0-05 | Provider registration with accreditation PDFs | ✅ | `/register` (provider), `/provider/accreditations` | T `RegistrationAndReviewTest` · S | |
+| M0-06 | Approve / reject with reason / suspend, applicant emailed | ✅ | `/platform/companies/:id` | T `RegistrationAndReviewTest` · S | |
+| M0-07 | 4-step wizard, skippable, resumable | ✅ | `/onboarding` + banner on the dashboard | T `RegistrationAndReviewTest` · S | Each step opens the real screen; the wizard tracks progress, it does not duplicate forms |
+| M0-08 | Invitation by email with role and sites, 7 days | ✅ | `/admin/users`, `/invitation` | T `UsersAndRolesTest` · S | |
+| M0-09 | Password ≥ 12, reset, optional TOTP, lockout 5 | ✅ | `/login`, `/forgot-password`, `/account/security` | T `AccountSecurityTest` · B (login) · S (2FA) | Lockout: 5 failures → 15 minutes, email sent |
+| M0-10 | Timestamped acceptance of terms, versioned | 🟡 | recorded at registration and invitation | T `RegistrationAndReviewTest` | **Legal texts are placeholders** (`0.1-provisoire`): Diva must supply the real documents |
+| M0-11 | "Mon abonnement" | ✅ | `/admin/subscription` | T `SubscriptionTest` · **B** | Plan change is a request, activated by the platform at the agreed price |
+| M0-12 | SSO | V2 | | | |
 
 ## M1 — Référentiel et classification
 
-| Req | Expected behaviour | Backend | Frontend | Integration | Tests | Action |
-|---|---|---|---|---|---|---|
-| M1-01 | Sites and their zones | 🟡 site list/create; no site read/update/deactivate; **no zone endpoint at all** | 🟡 site list + create form | 🟡 | 🟡 | Site show/update, zone CRUD, screens |
-| M1-02 | Reference catalogue maintained by super-admin; client activates types and creates its own | 🟡 create from catalogue or custom; no catalogue listing, no update/deactivate, no platform catalogue management | 🟡 read-only list | 🟡 | ✅ for create | Catalogue endpoint, update/activate, platform management |
-| M1-03 | 14 default types delivered | ✅ seeded in `waste_catalog_items` | — | 🧪 | ✅ | Verify through UI |
-| M1-04 | Composition with percentages, colour, grammage, hazardous flag, regulatory code | 🟡 model and validation complete; `regulatory_waste_codes` unseeded so no code can be chosen | 🔴 | 🔴 | 🟡 | Seed codes, reference-data endpoint, form |
-| M1-05 | kg by default, conversion to t, m³, piece | 🟡 units seeded, density / unit weight on type; no conversion exposed | 🔴 | 🔴 | 🔴 | Conversion in resources and reports |
+| ID | Requirement | Status | Where | Verified by | Limit / note |
+|---|---|---|---|---|---|
+| M1-01 | Sites and zones | ✅ | `/sites`, `/sites/:id` | T `SiteApiTest`, `CatalogAndAlertsTest` · S | A site or zone holding stock cannot be closed |
+| M1-02 | Reference catalogue by super-admin; client activates / creates | ✅ | `/platform/catalog`, `/waste-types` | T `CatalogAndAlertsTest` · S | |
+| M1-03 | 14 default types | 🟡 | seeded (15 items) | T | **Provisional list and waste codes** — to be validated by Diva |
+| M1-04 | Composition %, colour, grammage, hazard, regulatory code | ✅ | waste type form, lot detail | T `CatalogAndAlertsTest`, `LotOperationsTest` · S | Code, family and hazard are frozen after creation |
+| M1-05 | kg by default, conversion t / m³ / piece | ✅ | `UnitConversion`, density and unit weight on the type | T `CatalogAndAlertsTest` | Display in tonnes is automatic from 1 t |
 
 ## M2 — Collecte et traçabilité
 
-| Req | Expected behaviour | Backend | Frontend | Integration | Tests | Action |
-|---|---|---|---|---|---|---|
-| M2-01 | Operator creates a lot from mobile: site, zone, type, weight | 🟡 `POST /lots` correct and authorised; resource runs 4 queries per lot | 🔴 no creation screen | 🔴 | ✅ | Mobile creation flow, resource eager loading |
-| M2-02 | Label with unique QR, thermal 100 × 50 mm | 🔴 QR value stored (lot ULID); no label, no QR image, no scan lookup endpoint | 🔴 | 🔴 | 🔴 | Label PDF (dompdf + simple-qrcode), `GET /lots/scan/{tag}` |
-| M2-03 | RFID UHF tags | V2 (schema ready: `lot_tags.tag_type`) | V2 | — | — | None |
-| M2-04 | Manual weight (connected scale = V2) | ✅ | 🔴 | 🔴 | ✅ | Frontend |
-| M2-05 | Status lifecycle, each change timestamped with user | 🟡 `TransitionLot` enforces transitions and records events; no route to mark treated / closed | 🟡 read-only timeline | 🟡 | ✅ | Treated/closed endpoints, timeline with actor |
-| M2-06 | Group lots into a shipment lot; split a lot | ✅ lineage, weight conservation, new QR per output | 🔴 | 🔴 | ✅ | Frontend |
-| M2-07 | Real-time stock by site, zone, type; alert on threshold | 🔴 thresholds are stored but **no stock query exists and nothing evaluates a threshold** | 🟡 threshold list | 🔴 | 🟡 | Stock endpoint computed from lots, threshold evaluation + alert |
-| M2-08 | Mobile offline with sync, no loss, no duplicate | 🟡 device registration and `sync_operations` table; no push/pull endpoint | 🔴 no PWA, no IndexedDB | 🔴 | 🟡 | Idempotent sync endpoint, Dexie outbox, service worker |
+| ID | Requirement | Status | Where | Verified by | Limit / note |
+|---|---|---|---|---|---|
+| M2-01 | Operator creates a lot on mobile | ✅ | workshop app `/m/lots/new` | T `LotOperationsTest`, `OfflineSyncTest` · **B** (phone viewport) | One decision per screen, on-screen keypad, 64 px targets |
+| M2-02 | QR label 100 × 50 mm | ✅ | `GET lots/:id/label` (PDF), `/m/scan` | T `LotOperationsTest` (single page asserted) · S | Not printed on a physical thermal printer. Camera scanning could not be exercised headless: the typed-code fallback was |
+| M2-03 | RFID | V2 | | | |
+| M2-04 | Manual weight | ✅ | lot form, weigh action | T `LotOperationsTest` · B | Connected scale = V2 |
+| M2-05 | Lifecycle with timestamp and author | ✅ | lot detail timeline | T `PickupScenarioTest`, `LotOperationsTest` · S | |
+| M2-06 | Group / split | ✅ | lot dialogs | T `LotOperationsTest` · S | 2 % weight tolerance, comment required beyond |
+| M2-07 | Real-time stock, threshold alert | ✅ | `/stock` | T `CatalogAndAlertsTest` · S | Stock is computed from lots, never stored |
+| M2-08 | Offline with sync, no loss, no duplicate | ✅ | IndexedDB outbox → `POST sync/push` | T `OfflineSyncTest` · **B** (network cut, lot created, network restored, lot numbered) | Offline covers lot creation and storing. Loading a pickup needs the network (it commits both parties) |
 
-## M3 — Lien avec la production
-
-| Req | Expected behaviour | Status | Action |
-|---|---|---|---|
-| M3-01 | Import of manufacturing / cutting orders | V2 | None |
-| M3-02 | Lot linked to cutting order, model, customer | V2 | None |
-| M3-03 | Theoretical vs real scrap rate | V2 | None |
-| M3-04 | Waste cost per piece and per customer | V2 | None |
+## M3 — Lien avec la production — V2 (M3-01 … M3-04)
 
 ## M4 — Prestataires et valorisation
 
-| Req | Expected behaviour | Backend | Frontend | Integration | Tests | Action |
-|---|---|---|---|---|---|---|
-| M4-01 | Provider directory: contacts, accepted waste, channel, accreditations and expiry | 🟡 directory returns names and roles only; no accepted waste, channel, accreditation or contact; provider cannot manage its profile | 🟡 bare list | 🟡 | 🟡 | Rich directory, provider profile and accreditation endpoints, screens |
-| M4-02 | Alert 30 days before accreditation expiry; expired provider not selectable | 🟡 eligibility enforced at submit/confirm; **no alert, no scheduler**; directory does not flag expiry | 🔴 | 🔴 | ✅ eligibility | Scheduled alert, eligibility flag in directory |
-| M4-03 | Pickup request sent to provider (email + provider space); confirm date or refuse | 🟡 workflow correct; no pickup list (provider cannot find its requests); no email | 🟡 detail by URL only | 🔴 | ✅ workflow | Lists, notifications, provider space |
-| M4-04 | Scan lots at pickup, provider enters received weight, variance > 5 % flagged | ✅ | 🔴 | 🔴 | ✅ | Frontend |
-| M4-05 | Sale price or disposal cost per lot; net economic balance per period | 🔴 columns exist on pickup, no endpoint, no balance | 🔴 | 🔴 | 🔴 | Pricing endpoint + balance report |
-| M4-06 | Marketplace | V2 | V2 | — | — | None |
+| ID | Requirement | Status | Where | Verified by | Limit / note |
+|---|---|---|---|---|---|
+| M4-01 | Provider directory | ✅ | `/providers` | T `PickupScenarioTest` · S | |
+| M4-02 | Alert 30 days before expiry; expired not selectable | ✅ | daily `accreditations:alert`; refused at submit and confirm | T `PickupScenarioTest`, `CatalogAndAlertsTest` | Needs the scheduler running |
+| M4-03 | Request to provider, confirm or refuse | ✅ | `/pickups/new`, `/provider/pickups` | T `PickupScenarioTest` · B (provider list) · S | |
+| M4-04 | Scan at pickup, received weight, variance > 5 % | ✅ | `/m/loading`, pickup dialogs | T `PickupScenarioTest` · **B** | Fixed during verification: a gap on one lot now flags the pickup even when the total is within tolerance |
+| M4-05 | Price or cost per lot, net balance | ✅ | pricing dialog, dashboard, `economic_balance` report | T `PickupScenarioTest`, `ReportingTest` | |
+| M4-06 | Marketplace | V2 | | | |
 
 ## M5 — Conformité réglementaire
 
-| Req | Expected behaviour | Backend | Frontend | Integration | Tests | Action |
-|---|---|---|---|---|---|---|
-| M5-01 | Chronological waste register, automatic, PDF and Excel | 🔴 | 🔴 | 🔴 | 🔴 | Register query + PDF/Excel export |
-| M5-02 | Hazardous waste tracking slip, pre-filled, e-signed by each party | ⚠️ manifest record can be created but takes raw database IDs from the client, is not pre-filled from the pickup, produces no PDF and has no signing endpoint | 🔴 | 🔴 | 🟡 | Pre-fill from pickup, PDF, signature endpoints |
-| M5-03 | ANGed annual declaration (Tunisia) | 🟡 declaration record; data is whatever the client posts, nothing is computed | 🔴 | 🔴 | 🟡 | Compute from lots/pickups, PDF/Excel, validation step |
-| M5-04 | Certificates archived, linked to lots, kept 10 years | 🟡 upload correct with retention; no download endpoint | 🔴 | 🔴 | ✅ upload | Authorised download endpoint, screens |
-
-Also incorrect in this module: list filters use `->when($request->filled(...), fn ($query, $value) => …)`, so `$value`
-is the boolean `true`, not the filter value. Every document / manifest / declaration / report filter is broken.
+| ID | Requirement | Status | Where | Verified by | Limit / note |
+|---|---|---|---|---|---|
+| M5-01 | Chronological register, PDF and Excel | ✅ | `/compliance/register` | T `ReportingTest`, `ComplianceApiTest` · S | |
+| M5-02 | Hazardous slip, pre-filled, signed by each party | 🟡 | `/compliance/manifests`, `/provider/manifests` | T `ComplianceApiTest` · **B** (three signatures by clicks) | Signature = authenticated user + password re-entry + timestamp + IP, recorded in sequence. **Not a qualified electronic signature**; legal value to be confirmed by Diva. Layout is ours, not the official form |
+| M5-03 | ANGed annual declaration | 🟡 | `/compliance/declarations` | T `ComplianceApiTest` · **B** | Figures are computed and frozen at validation. **The layout is a structured declaration, not the official ANGed form** — to align once Diva supplies it |
+| M5-04 | Certificates archived 10 years, linked to lots | ✅ | `/compliance/documents`, upload from the pickup | T `ComplianceApiTest` · B (list) | No deletion endpoint exists for a regulated document |
 
 ## M6 — Reporting RSE
 
-| Req | Expected behaviour | Backend | Frontend | Integration | Tests | Action |
-|---|---|---|---|---|---|---|
-| M6-01 | Dashboard: tonnage by type, channel, site, month; recovery rate; landfill share | 🔴 `waste_daily_stats` table is never written; no dashboard endpoint | 🔴 | 🔴 | 🔴 | Aggregation + dashboard endpoint + ECharts |
-| M6-02 | kg of waste per piece produced (manual piece count) | 🔴 `production_volumes` table only | 🔴 | 🔴 | 🔴 | Production volume endpoints + indicator |
-| M6-03 | CO₂ avoided | V2 | V2 | — | — | None |
-| M6-04 | RSE report export PDF and Excel with client logo | ⚠️ `POST /reports` stores a row with status `queued` forever (no job), and requires a permission that does not exist | 🟡 list of rows | 🔴 | 🔴 | Queued generation job, files, download, logo upload |
-| M6-05 | Brand portal | V2 | V2 | — | — | None |
+| ID | Requirement | Status | Where | Verified by | Limit / note |
+|---|---|---|---|---|---|
+| M6-01 | Dashboard | 🟡 | `/dashboard` | T `ReportingTest` · S | Computed live with a 60 s cache. **Not measured at 5 M lots**: the pre-aggregated `waste_daily_stats` table exists but is not used |
+| M6-02 | kg per piece produced | ✅ | pieces entered in `/reports` | T `ReportingTest` · S | |
+| M6-03 | CO₂ avoided | V2 | | | |
+| M6-04 | RSE export PDF / Excel with logo | ✅ | `/reports`, logo in `/admin/company` | T `ReportingTest` · **B** | Generated by a queued job; needs a queue worker in production |
+| M6-05 | Brand portal | V2 | | | |
 
 ## M7 — Transverse
 
-| Req | Expected behaviour | Backend | Frontend | Integration | Tests | Action |
-|---|---|---|---|---|---|---|
-| M7-01 | Email and in-app notifications (WhatsApp = V2) | 🔴 read endpoints exist but nothing ever creates a notification or sends a mail | 🟡 notification list | 🔴 | 🔴 | Real notifications on business events, mail channel, preferences honoured |
-| M7-02 | Audit log of every create / update / delete, readable by client admin | ⚠️ logger exists but is attached to no model; endpoint guarded by non-existent permission; filter takes a raw user id | 🔴 | 🔴 | 🟡 logger only | Attach to models, fix permission, actor and filters, screen |
-| M7-03 | Documented REST API with per-client keys | V2 | — | — | — | None (OpenAPI generation kept in mind for route structure) |
-| M7-04 | Automatic subscription invoicing with tax ID and VAT by country | 🟡 `IssueInvoice` computes lines and totals; nothing triggers it; `tax_rates` unseeded; no PDF | 🔴 | 🔴 | 🟡 | Scheduled invoicing, tax seed, PDF |
+| ID | Requirement | Status | Where | Verified by | Limit / note |
+|---|---|---|---|---|---|
+| M7-01 | Email and in-app notifications | ✅ | bell, `/account/notifications`, preferences per event | T several · S | WhatsApp = V2. The inbox polls every 60 s (no push) |
+| M7-02 | Audit log readable by client admin | ✅ | `/admin/audit` | T `PickupScenarioTest` · **B** | 20 models audited, actor company and source recorded |
+| M7-03 | Public API with keys | V2 | | | |
+| M7-04 | Automatic invoicing, tax ID, VAT by country | 🟡 | daily `subscriptions:run`, invoice PDF | T `SubscriptionTest` · **B** (300 + 57 VAT + 1 stamp = 358 TND) | **Tunisian VAT 19 % and 1 TND stamp duty are provisional values.** Seller tax identifiers must be set in `.env` |
 
 ## Non-functional requirements
 
-| Domain | Requirement | Baseline | Action |
+| Domain | Status | Evidence | Limit |
 |---|---|---|---|
-| Multi-tenant | Single DB, company id on every table, filter at data-access layer, tested | ✅ scope and stamping; 🟡 tests cover the scope, not each endpoint | Cross-tenant test per resource endpoint |
-| Security | HTTPS, hashed passwords, CSRF/XSS/SQLi, OWASP Top 10, rate limit per IP | 🟡 Argon2id; throttle on login only; no global API limiter; local disk `serve: true` registers a framework `PUT /storage/{path}` route | Global limiter, disable framework storage routes, upload hardening |
-| Personal data | Export and erasure on request | 🔴 columns only | Company export / erasure request endpoints (platform-processed) |
-| Performance | Pages < 2 s, scan < 1 s, 3-year dashboards < 5 s | 🧪 | Indexed scan lookup, aggregated stats table |
-| Volume | 200 companies, 500 sites, 5 M lots | 🧪 indexes present on lots | Review query plans for list/stock/dashboard |
-| Availability / backup | 99.5 %, daily encrypted backup, monthly restore test | Infrastructure — not in application code | Document in deployment guide |
-| Mobile | Installable PWA, glove-friendly, camera QR | 🔴 | Operator PWA |
-| Ergonomics | Responsive, usable after a 10-minute demo | 🔴 | Rebuild |
-| i18n | All strings in language files, per-country formats, RTL-ready | ⚠️ frontend strings in a hand-written 17 KB TypeScript map, not Transloco | Transloco, logical CSS properties |
-| Traceability | No physical deletion of lots and regulatory documents | ✅ force delete blocked on lots; soft deletes on documents | Extend check to all regulated models |
+| Multi-tenant isolation | ✅ | fail-closed `TenantScope`; `TenantScopeTest`, `TenantContextMiddlewareTest`, cross-company assertions in every scenario test | |
+| Security | 🟡 | Argon2id, cookie session + CSRF for the web, device tokens for sync, global rate limiter, upload MIME checks, framework storage routes disabled | No external penetration test. HTTPS, headers and WAF are deployment concerns ([OPERATIONS.md](../OPERATIONS.md)) |
+| Authorization | ✅ | every route checks a permission server-side; the frontend only hides what the API would refuse | |
+| **Personal data export / erasure** | 🔴 | — | **Not implemented.** Must be handled manually by Diva until an endpoint exists |
+| Performance | 🟡 | scan lookup is an indexed read; lists are paginated server-side | Not load-tested. No measurement at 200 companies / 5 M lots |
+| Availability / backup | — | documented in [OPERATIONS.md](../OPERATIONS.md) | Infrastructure, outside the code |
+| Mobile PWA | 🟡 | installable manifest, service worker in production build, Dexie outbox, ZXing | iOS home-screen icon needs PNG files (only SVG provided). Not tried on a real device or with gloves |
+| Ergonomics | 🟡 | responsive tables and forms checked at 1440 and 390 px | No session with real users yet |
+| Accessibility | 🟡 | labels, focus order, status never by colour alone, keyboard-activable rows | No audit with a screen reader |
+| i18n | ✅ | Transloco, one file per language, 1 144 key references checked by `npm run i18n`, logical CSS properties, `dir` switch | Only French ships. English and Arabic files are not written |
+| Traceability | ✅ | no force delete on lots; regulated documents have no delete route | |
 
 ## Stack conformance (cahier §5)
 
-| Layer | Required | Baseline |
+| Layer | Required | State |
 |---|---|---|
-| Auth | Sanctum SPA session for web, tokens for mobile/API; Fortify for 2FA | ⚠️ bearer token only, stored by the web client; Fortify not installed |
-| Documents | laravel-dompdf, simple-qrcode, Laravel Excel | 🔴 none installed |
-| Background | Redis, queues with Horizon, scheduler | 🔴 no job, no schedule; Horizon not installed |
-| API docs | Scribe or L5-Swagger | 🔴 (V2 deliverable) |
-| Quality (API) | Pest/PHPUnit, Larastan, Pint | 🟡 PHPUnit + Pint; no Larastan |
-| Front-end | Angular latest, standalone, Material or PrimeNG, ECharts | 🟡 Angular 20 standalone; no UI library, no charts |
-| Mobile | Angular PWA, Dexie, ZXing | 🔴 |
-| i18n | Transloco | 🔴 |
-| Quality (front) | Vitest, ESLint | ⚠️ Karma/Jasmine, no ESLint |
+| Framework | Laravel API-only, MariaDB | ✅ Laravel 13, MariaDB |
+| Auth | Sanctum SPA session (web), tokens (mobile), Fortify 2FA, spatie/laravel-permission | ✅ |
+| Documents | laravel-dompdf, **simple-qrcode**, Laravel Excel | 🟡 dompdf ✅, Excel ✅. **simple-qrcode cannot be installed next to Fortify** (it pins bacon-qr-code v2, Fortify needs v3): QR codes are generated with bacon/bacon-qr-code directly. Needs Diva's written agreement |
+| Background | Redis, queues with **Horizon**, scheduler | 🟡 jobs and schedule ✅. Horizon not installed (no Windows support on the development machine); Redis not run locally — tests use the sync queue |
+| API docs | Scribe / L5-Swagger | 🔴 not installed; [API.md](../API.md) lists the routes |
+| Quality (API) | Pest/PHPUnit, Larastan, Pint | 🟡 PHPUnit ✅ Pint ✅ · **Larastan not installed** |
+| Front-end | Angular latest, standalone, Material or PrimeNG, ECharts | 🟡 Angular **20.3** (kept, not upgraded to the latest major), standalone, zoneless, Material 20, ECharts |
+| Mobile | Angular PWA, Dexie, ZXing | ✅ |
+| i18n | Transloco | ✅ |
+| Quality (front) | Vitest, ESLint | ✅ 20 unit tests, lint clean |
+
+## Open points that need Diva's decision
+
+1. Price grid of the plans (M0-03).
+2. Real legal documents: terms, privacy policy, provider terms (M0-10).
+3. Reference data: accreditation types, waste codes, 14 default waste types, VAT rate and stamp duty (M1-03, M7-04).
+4. Official layouts of the tracking slip and of the ANGed declaration; legal standing of the in-app signature (M5-02, M5-03).
+5. simple-qrcode replaced by bacon/bacon-qr-code (stack §5).
+6. Personal data export and erasure: procedure until the endpoint exists.
