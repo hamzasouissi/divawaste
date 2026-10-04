@@ -4,11 +4,14 @@ namespace App\Modules\Identity\Models;
 
 use App\Modules\Common\Models\Concerns\HasPublicUlid;
 use App\Modules\Identity\Enums\UserStatus;
+use App\Modules\Identity\Notifications\ResetPasswordNotification;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -16,7 +19,7 @@ use Spatie\Permission\Traits\HasRoles;
  * Global identity. Tenant roles come from user_role_assignments; HasRoles only carries platform staff roles.
  */
 #[UseFactory(UserFactory::class)]
-class User extends Authenticatable
+class User extends Authenticatable implements HasLocalePreference
 {
     use HasApiTokens;
 
@@ -26,6 +29,7 @@ class User extends Authenticatable
     use HasPublicUlid;
     use HasRoles;
     use Notifiable;
+    use TwoFactorAuthenticatable;
 
     /**
      * Mirrors the column defaults so new instances are complete under strict mode.
@@ -72,6 +76,21 @@ class User extends Authenticatable
     public function isActive(): bool
     {
         return $this->status === UserStatus::Active && ! $this->isLocked();
+    }
+
+    public function preferredLocale(): string
+    {
+        return $this->locale ?: (string) config('app.locale');
+    }
+
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
+    }
+
+    public function fullName(): string
+    {
+        return trim("{$this->first_name} {$this->last_name}");
     }
 
     public function setEmailAttribute(string $value): void

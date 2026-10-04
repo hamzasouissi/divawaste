@@ -11,7 +11,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Fortify\Fortify;
 
@@ -49,6 +52,10 @@ class AppServiceProvider extends ServiceProvider
 
             return $access->can($user, $ability, $site instanceof Site || is_int($site) ? $site : null);
         });
+
+        // Cahier §4: request limit per client. Authenticated calls are counted per user, the rest per IP.
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute((int) config('app.api_rate_limit', 240))
+            ->by($request->user()?->id ? 'u:'.$request->user()->id : 'ip:'.$request->ip()));
 
         DB::prohibitDestructiveCommands($this->app->isProduction());
     }

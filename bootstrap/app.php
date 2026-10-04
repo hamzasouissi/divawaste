@@ -17,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(AssignRequestId::class);
+        // Web SPA: cookie session + CSRF for requests coming from the configured front-end origins (cahier §5).
+        $middleware->statefulApi();
+        $middleware->throttleApi('api');
         $middleware->alias(['tenant' => EstablishTenantContext::class]);
         // Tenant context must exist before route-model binding queries scoped models.
         $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: EstablishTenantContext::class);
