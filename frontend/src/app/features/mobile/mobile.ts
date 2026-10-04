@@ -1,9 +1,8 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, input, signal, untracked } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
 
 import { Api, ApiError, openBlob } from '../../core/api/api';
 import { Lot, Pickup, Site, WasteType, Zone } from '../../core/api/models';
@@ -15,6 +14,7 @@ import { Confirm } from '../../ui/confirm';
 import { StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
 import { QrScannerComponent } from './qr-scanner';
+import { IconComponent } from '../../ui/icon';
 
 /** Shared look of the workshop screens: one column, very large targets (gloves), no dense tables. */
 const MOBILE_STYLES = `
@@ -26,24 +26,27 @@ const MOBILE_STYLES = `
   .tile:focus-visible { outline: 3px solid var(--dw-primary); outline-offset: 2px; }
   .tile.primary { background: var(--dw-primary); border-color: var(--dw-primary); color: #fff; min-height: 88px; font-size: 20px; }
   .tile.primary:active { background: var(--dw-primary-strong); }
-  .tile mat-icon { flex: none; font-size: 30px; width: 30px; height: 30px; }
+  .tile dw-icon { flex: none; font-size: 30px; }
   .tile small { display: block; font-size: 13px; font-weight: 400; color: var(--dw-ink-2); }
   .tile.primary small { color: #cfe8e3; }
   .grid { display: grid; gap: var(--dw-3); }
-  .big { min-height: var(--dw-touch); font-size: 17px; }
+  .big { min-height: var(--dw-touch); font-size: 17px; line-height: 22px; border-radius: 12px; gap: 10px; }
+  .big dw-icon { font-size: 24px; }
   .muted { color: var(--dw-ink-2); font-size: 15px; }
 `;
 
 /** Frame of the workshop application: connection and synchronisation state are always in view. */
 @Component({
-  imports: [RouterOutlet, RouterLink, MatButtonModule, MatIconModule, TranslocoDirective],
+  imports: [RouterOutlet, RouterLink, TranslocoDirective, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // Same components as the desktop, at the size of a gloved thumb.
+  host: { class: 'dw-touch-scale' },
   template: `
     <ng-container *transloco="let t">
       <header>
         <a routerLink="/m" class="home" [attr.aria-label]="t('mobile.home')"><img src="icons/icon.svg" alt="" width="32" height="32" /></a>
         <a routerLink="/m/sync" class="sync" [class]="state()" role="status">
-          <mat-icon aria-hidden="true">{{ icon() }}</mat-icon>
+          <dw-icon aria-hidden="true">{{ icon() }}</dw-icon>
           <span>
             <strong>{{ offline.online() ? t('mobile.online') : t('mobile.offline') }}</strong>
             <small>
@@ -90,14 +93,14 @@ export class MobileShellComponent {
 }
 
 @Component({
-  imports: [RouterLink, MatIconModule, TranslocoDirective, StatusComponent, DatePipe],
+  imports: [RouterLink, TranslocoDirective, StatusComponent, DatePipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <div class="grid">
-        <a class="tile primary" routerLink="/m/lots/new"><mat-icon aria-hidden="true">add_box</mat-icon><span>{{ t('mobile.newLot') }}</span></a>
-        <a class="tile" routerLink="/m/scan"><mat-icon aria-hidden="true">qr_code_scanner</mat-icon><span>{{ t('mobile.scan') }}</span></a>
-        @if (canLoad) { <a class="tile" routerLink="/m/loading"><mat-icon aria-hidden="true">local_shipping</mat-icon><span>{{ t('mobile.loadPickup') }}</span></a> }
+        <a class="tile primary" routerLink="/m/lots/new"><dw-icon aria-hidden="true">add_box</dw-icon><span>{{ t('mobile.newLot') }}</span></a>
+        <a class="tile" routerLink="/m/scan"><dw-icon aria-hidden="true">qr_code_scanner</dw-icon><span>{{ t('mobile.scan') }}</span></a>
+        @if (canLoad) { <a class="tile" routerLink="/m/loading"><dw-icon aria-hidden="true">local_shipping</dw-icon><span>{{ t('mobile.loadPickup') }}</span></a> }
       </div>
 
       @if (!offline.online()) { <p class="muted">{{ t('mobile.offlineHint') }}</p> }
@@ -134,7 +137,7 @@ type Step = 'site' | 'zone' | 'type' | 'weight' | 'done';
  * a large on-screen keypad). Works identically offline: the lot is stored on the device and sent later.
  */
 @Component({
-  imports: [RouterLink, MatButtonModule, MatIconModule, TranslocoDirective, StatusComponent],
+  imports: [RouterLink, TranslocoDirective, StatusComponent, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -175,12 +178,12 @@ type Step = 'site' | 'zone' | 'type' | 'weight' | 'done';
             <div class="keypad">
               @for (key of keys; track key) { <button type="button" class="key" (click)="press(key)" [attr.aria-label]="key === '⌫' ? t('common.remove') : key">{{ key }}</button> }
             </div>
-            <button mat-flat-button type="button" class="big" [disabled]="!valid() || busy()" (click)="create()"><mat-icon>check</mat-icon>{{ t('mobile.createLot') }}</button>
+            <button pButton type="button" class="big" [disabled]="!valid() || busy()" (click)="create()"><dw-icon>check</dw-icon>{{ t('mobile.createLot') }}</button>
           }
           @case ('done') {
             @if (operation(); as op) {
               <div class="result" role="status">
-                <mat-icon [class.ok]="op.status === 'synced'" aria-hidden="true">{{ op.status === 'synced' ? 'check_circle' : op.status === 'pending' ? 'schedule' : 'error' }}</mat-icon>
+                <dw-icon [class.ok]="op.status === 'synced'" aria-hidden="true">{{ op.status === 'synced' ? 'check_circle' : op.status === 'pending' ? 'schedule' : 'error' }}</dw-icon>
                 @if (op.status === 'synced') {
                   <h1 class="title">{{ t('mobile.lotCreated') }}</h1>
                   <p class="number">{{ op.lot_number }}</p>
@@ -195,10 +198,10 @@ type Step = 'site' | 'zone' | 'type' | 'weight' | 'done';
               </div>
               <div class="grid">
                 @if (op.status === 'synced' && op.entity) {
-                  <button mat-flat-button type="button" class="big" (click)="print(op.entity)"><mat-icon>print</mat-icon>{{ t('mobile.printLabel') }}</button>
+                  <button pButton type="button" class="big" (click)="print(op.entity)"><dw-icon>print</dw-icon>{{ t('mobile.printLabel') }}</button>
                 }
-                <button mat-stroked-button type="button" class="big" (click)="again()"><mat-icon>add</mat-icon>{{ t('mobile.another') }}</button>
-                <a mat-button routerLink="/m" class="big">{{ t('mobile.home') }}</a>
+                <button pButton severity="secondary" outlined type="button" class="big" (click)="again()"><dw-icon>add</dw-icon>{{ t('mobile.another') }}</button>
+                <a pButton text routerLink="/m" class="big">{{ t('mobile.home') }}</a>
               </div>
             }
           }
@@ -217,7 +220,7 @@ type Step = 'site' | 'zone' | 'type' | 'weight' | 'done';
     .key { all: unset; cursor: pointer; display: grid; place-items: center; min-height: 68px; background: var(--dw-surface); border: 2px solid var(--dw-line); border-radius: 14px; font-size: 26px; font-weight: 600; }
     .key:active { background: var(--dw-primary-soft); border-color: var(--dw-primary); } .key:focus-visible { outline: 3px solid var(--dw-primary); outline-offset: 2px; }
     .result { display: grid; justify-items: center; gap: 6px; text-align: center; padding-block: var(--dw-4); }
-    .result mat-icon { font-size: 64px; width: 64px; height: 64px; color: var(--dw-warning); } .result mat-icon.ok { color: var(--dw-success); }
+    .result dw-icon { font-size: 64px; color: var(--dw-warning); } .result dw-icon.ok { color: var(--dw-success); }
     .number { font: 700 30px var(--dw-mono); }
   `,
 })
@@ -348,14 +351,14 @@ export class MobileScanPage {
 }
 
 @Component({
-  imports: [RouterLink, MatButtonModule, MatIconModule, TranslocoDirective, StatusComponent, StateComponent, DatePipe, KgPipe],
+  imports: [RouterLink, TranslocoDirective, StatusComponent, StateComponent, DatePipe, KgPipe, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-state [loading]="loading()" [error]="notFound() ? null : error()" (retry)="load()">
         @if (notFound()) {
           <p class="title">{{ t('mobile.scanNotFound') }}</p>
-          <a mat-flat-button routerLink="/m/scan" class="big"><mat-icon>qr_code_scanner</mat-icon>{{ t('mobile.scan') }}</a>
+          <a pButton routerLink="/m/scan" class="big"><dw-icon>qr_code_scanner</dw-icon>{{ t('mobile.scan') }}</a>
         }
         @if (lot(); as l) {
           <div class="grid">
@@ -367,12 +370,12 @@ export class MobileScanPage {
               <p class="muted">{{ l.site?.name }} · {{ l.zone?.name }}<br />{{ l.generated_at | dwDate: 'datetime' }}</p>
             </div>
             @if ((l.status === 'created') && canMove(l)) {
-              <button mat-flat-button type="button" class="big" [disabled]="busy()" (click)="store(l)"><mat-icon>move_down</mat-icon>{{ t('mobile.storeLot') }}</button>
+              <button pButton type="button" class="big" [disabled]="busy()" (click)="store(l)"><dw-icon>move_down</dw-icon>{{ t('mobile.storeLot') }}</button>
             }
             @if (canPrint(l)) {
-              <button mat-stroked-button type="button" class="big" (click)="print(l)"><mat-icon>print</mat-icon>{{ t('mobile.printLabel') }}</button>
+              <button pButton severity="secondary" outlined type="button" class="big" (click)="print(l)"><dw-icon>print</dw-icon>{{ t('mobile.printLabel') }}</button>
             }
-            <a mat-stroked-button routerLink="/m/scan" class="big"><mat-icon>qr_code_scanner</mat-icon>{{ t('mobile.scan') }}</a>
+            <a pButton severity="secondary" outlined routerLink="/m/scan" class="big"><dw-icon>qr_code_scanner</dw-icon>{{ t('mobile.scan') }}</a>
           </div>
         }
       </dw-state>
@@ -447,7 +450,7 @@ export class MobileLotPage implements OnInit {
 
 /** M4-04: loading a confirmed pickup by scanning each lot put on the truck. Needs the network (it commits the pickup). */
 @Component({
-  imports: [MatButtonModule, MatIconModule, TranslocoDirective, StateComponent, QrScannerComponent, DatePipe, KgPipe],
+  imports: [TranslocoDirective, StateComponent, QrScannerComponent, DatePipe, KgPipe, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -460,21 +463,21 @@ export class MobileLotPage implements OnInit {
           <ul class="lines">
             @for (line of lines(); track line.lot_number_snapshot) {
               <li [class.done]="scanned().includes(line.lot_number_snapshot)">
-                <mat-icon aria-hidden="true">{{ scanned().includes(line.lot_number_snapshot) ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+                <dw-icon aria-hidden="true">{{ scanned().includes(line.lot_number_snapshot) ? 'check_circle' : 'radio_button_unchecked' }}</dw-icon>
                 <span class="dw-mono">{{ line.lot_number_snapshot }}</span><span class="dw-spacer">{{ line.waste_type_label_snapshot }}</span><span>{{ line.declared_weight_kg | dwKg }}</span>
               </li>
             }
           </ul>
           @if (scanned().length < lines().length) { <p class="muted">{{ t('mobile.loading.missing', { count: lines().length - scanned().length }) }}</p> }
-          <button mat-flat-button type="button" class="big" [disabled]="scanned().length === 0 || busy()" (click)="confirm(p)"><mat-icon>check</mat-icon>{{ t('mobile.loading.confirm') }}</button>
-          <button mat-button type="button" class="big" (click)="pickup.set(null)">{{ t('common.back') }}</button>
+          <button pButton type="button" class="big" [disabled]="scanned().length === 0 || busy()" (click)="confirm(p)"><dw-icon>check</dw-icon>{{ t('mobile.loading.confirm') }}</button>
+          <button pButton text type="button" class="big" (click)="pickup.set(null)">{{ t('common.back') }}</button>
         } @else {
           <h1 class="title">{{ t('mobile.loadPickup') }}</h1>
           <div class="grid">
             @for (item of pickups(); track item.ulid) {
               <button type="button" class="tile" (click)="choose(item)">
                 <span class="dw-spacer">{{ item.pickup_number }}<small>{{ item.provider?.legal_name }} · {{ item.confirmed_date | dwDate }} · {{ item.lots_count }} lots</small></span>
-                <mat-icon aria-hidden="true">chevron_right</mat-icon>
+                <dw-icon aria-hidden="true">chevron_right</dw-icon>
               </button>
             } @empty {
               <p class="muted">{{ t('mobile.loading.none') }}</p>
@@ -488,7 +491,7 @@ export class MobileLotPage implements OnInit {
     .progress { font-size: 18px; font-weight: 600; } .notice { padding: 10px 14px; border-radius: 12px; background: var(--dw-warning-soft); color: var(--dw-warning); font-weight: 600; }
     .lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
     .lines li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--dw-surface); border: 1px solid var(--dw-line); border-radius: 10px; font-size: 14px; }
-    .lines li.done { border-color: var(--dw-success); background: var(--dw-success-soft); } .lines li.done mat-icon { color: var(--dw-success); }
+    .lines li.done { border-color: var(--dw-success); background: var(--dw-success-soft); } .lines li.done dw-icon { color: var(--dw-success); }
   `,
 })
 export class MobileLoadingPage {
@@ -571,14 +574,14 @@ export class MobileLoadingPage {
 
 /** What is waiting on the device and what the server refused: nothing recorded offline ever disappears silently. */
 @Component({
-  imports: [MatButtonModule, MatIconModule, TranslocoDirective, StatusComponent, DatePipe],
+  imports: [TranslocoDirective, StatusComponent, DatePipe, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <h1 class="title">{{ t('mobile.queue') }}</h1>
       <p class="muted">{{ t('mobile.lastSync', { date: offline.lastSync() ? (offline.lastSync() | dwDate: 'datetime') : t('mobile.never') }) }}</p>
-      <button mat-flat-button type="button" class="big" [disabled]="!offline.online() || offline.syncing() || offline.pending() === 0" (click)="offline.flush()">
-        <mat-icon>sync</mat-icon>{{ offline.syncing() ? t('mobile.syncing') : t('mobile.syncNow') }}
+      <button pButton type="button" class="big" [disabled]="!offline.online() || offline.syncing() || offline.pending() === 0" (click)="offline.flush()">
+        <dw-icon>sync</dw-icon>{{ offline.syncing() ? t('mobile.syncing') : t('mobile.syncNow') }}
       </button>
       <ul>
         @for (operation of offline.operations(); track operation.id) {
@@ -588,8 +591,8 @@ export class MobileLoadingPage {
             @if (operation.error) { <p class="error">{{ operation.error }}</p> }
             @if (operation.status === 'failed' || operation.status === 'conflict') {
               <div class="row">
-                @if (operation.status === 'failed') { <button mat-stroked-button type="button" (click)="offline.retry(operation.id)">{{ t('mobile.retry') }}</button> }
-                <button mat-button type="button" (click)="discard(operation.id)">{{ t('mobile.discard') }}</button>
+                @if (operation.status === 'failed') { <button pButton severity="secondary" outlined type="button" (click)="offline.retry(operation.id)">{{ t('mobile.retry') }}</button> }
+                <button pButton text type="button" (click)="discard(operation.id)">{{ t('mobile.discard') }}</button>
               </div>
             }
           </li>

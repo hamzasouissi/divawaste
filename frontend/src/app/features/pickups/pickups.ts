@@ -1,11 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { ButtonDirective } from 'primeng/button';
 
 import { Api } from '../../core/api/api';
 import { Pickup, PickupStatus } from '../../core/api/models';
@@ -15,6 +11,10 @@ import { Column, TABLE } from '../../ui/data-table';
 import { ListStore } from '../../ui/list-store';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { SearchComponent } from '../../ui/search';
+import { CheckboxComponent } from '../../ui/checkbox';
+import { IconComponent } from '../../ui/icon';
+import { SELECT } from '../../ui/select';
+import { FilterBarComponent } from '../../ui/filter-bar';
 
 interface PickupFilter {
   status?: PickupStatus[];
@@ -28,36 +28,30 @@ interface PickupFilter {
  * requests addressed to it by client. Same list, same statuses: both parties talk about the same object.
  */
 @Component({
-  imports: [RouterLink, MatButtonModule, MatCheckboxModule, MatFormFieldModule, MatIconModule, MatSelectModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent,
-    DatePipe, KgPipe],
+  imports: [
+    RouterLink, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, DatePipe, KgPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t(provider ? 'provider.pickups.title' : 'pickups.title')" [subtitle]="t(provider ? 'provider.pickups.subtitle' : 'pickups.subtitle')">
-        @if (!provider && canRequest) { <a mat-flat-button routerLink="/pickups/new"><mat-icon>add</mat-icon>{{ t('pickups.new') }}</a> }
+        @if (!provider && canRequest) { <a pButton routerLink="/pickups/new"><dw-icon>add</dw-icon>{{ t('pickups.new') }}</a> }
       </dw-page-header>
 
       <div class="dw-panel">
-        <div class="filters">
-          <dw-search [placeholder]="t('pickups.number')" (queryChange)="list.setFilter({ search: $event })" />
-          <mat-form-field class="f-status">
-            <mat-label>{{ t('fields.status') }}</mat-label>
-            <mat-select multiple [value]="list.filter().status ?? []" (selectionChange)="list.setFilter({ status: $event.value })">
-              @for (status of statuses; track status) { <mat-option [value]="status">{{ t('status.pickup.' + status) }}</mat-option> }
-            </mat-select>
-          </mat-form-field>
+        <dw-filter-bar [active]="list.activeCount()" (cleared)="list.resetFilter()">
+          <dw-search [placeholder]="t('pickups.number')" [query]="list.filter().search ?? ''" (queryChange)="list.setFilter({ search: $event })" />
+          <dw-select [placeholder]="t('fields.status')" multiple [value]="list.filter().status ?? []" (valueChange)="list.setFilter({ status: $event })">
+            @for (status of statuses; track status) { <dw-option [value]="status" [label]="t('status.pickup.' + status)" /> }
+          </dw-select>
           @if (!provider && sites.length > 1) {
-            <mat-form-field class="f-site">
-              <mat-label>{{ t('fields.site') }}</mat-label>
-              <mat-select [value]="list.filter().site ?? ''" (selectionChange)="list.setFilter({ site: $event.value || null })">
-                <mat-option value="">{{ t('common.allSites') }}</mat-option>
-                @for (site of sites; track site.ulid) { <mat-option [value]="site.ulid">{{ site.name }}</mat-option> }
-              </mat-select>
-            </mat-form-field>
+            <dw-select [placeholder]="t('fields.site')" [value]="list.filter().site ?? ''" (valueChange)="list.setFilter({ site: $event || null })">
+              <dw-option value="" [label]="t('common.allSites')" />
+              @for (site of sites; track site.ulid) { <dw-option [value]="site.ulid" [label]="site.name" /> }
+            </dw-select>
           }
-          <mat-checkbox [checked]="list.filter().variance_flagged === true" (change)="list.setFilter({ variance_flagged: $event.checked ? true : null })">{{ t('pickups.varianceOnly') }}</mat-checkbox>
-          @if (list.filtered()) { <button mat-button type="button" (click)="list.resetFilter()">{{ t('common.resetFilters') }}</button> }
-        </div>
+          <dw-checkbox [checked]="list.filter().variance_flagged === true" (checkedChange)="list.setFilter({ variance_flagged: $event ? true : null })">{{ t('pickups.varianceOnly') }}</dw-checkbox>
+        </dw-filter-bar>
 
         <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1"
           [pageSize]="list.perPage()" [sort]="list.sort()" [clickable]="true" emptyIcon="local_shipping"
@@ -72,15 +66,13 @@ interface PickupFilter {
           <ng-template dwCell="weight" let-pickup>{{ pickup.received_weight_kg ?? pickup.departure_weight_kg ?? pickup.declared_weight_kg | dwKg }}</ng-template>
           <ng-template dwCell="status" let-pickup>
             <dw-status kind="pickup" [value]="pickup.status" />
-            @if (pickup.variance_flagged && !pickup.variance_acknowledged) { <mat-icon class="flag" [title]="t('pickups.varianceFlagged')" [attr.aria-label]="t('pickups.varianceFlagged')">scale</mat-icon> }
+            @if (pickup.variance_flagged && !pickup.variance_acknowledged) { <dw-icon class="flag" [title]="t('pickups.varianceFlagged')" [attr.aria-label]="t('pickups.varianceFlagged')">scale</dw-icon> }
           </ng-template>
         </dw-data-table>
       </div>
     </ng-container>
   `,
   styles: `
-    .filters { display: flex; align-items: center; gap: var(--dw-2) var(--dw-3); flex-wrap: wrap; padding: var(--dw-3) var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); }
-    .f-status { width: 210px; } .f-site { width: 200px; }
     .flag { font-size: 16px; width: 16px; height: 16px; color: var(--dw-danger); vertical-align: -3px; margin-inline-start: 6px; }
   `,
 })

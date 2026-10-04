@@ -1,16 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatTabsModule } from '@angular/material/tabs';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
+import { Tab, TabList, TabPanel, TabPanels, Tabs } from 'primeng/tabs';
 
 import { Api } from '../../core/api/api';
 import { Localized, WasteType } from '../../core/api/models';
@@ -23,6 +18,12 @@ import { ListStore } from '../../ui/list-store';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { SearchComponent } from '../../ui/search';
 import { StateComponent } from '../../ui/state';
+import { CheckboxComponent } from '../../ui/checkbox';
+import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
+import { FIELD } from '../../ui/field';
+import { IconComponent } from '../../ui/icon';
+import { SELECT } from '../../ui/select';
+import { FilterBarComponent } from '../../ui/filter-bar';
 
 interface CatalogItem {
   code: string;
@@ -39,114 +40,105 @@ const num = (value: string | null): string | null => (!value || value.trim() ===
 
 /** M1-02 / M1-04: a company's own type, or the editable attributes of an existing one. */
 @Component({
-  imports: [ReactiveFormsModule, MatButtonModule, MatCheckboxModule, MatDialogModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, TranslocoDirective, LocalizedPipe],
+  imports: [ReactiveFormsModule, TranslocoDirective, LocalizedPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT, CheckboxComponent, ...DIALOG_PARTS],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <h2 mat-dialog-title>{{ t(data ? 'wasteTypes.edit' : 'wasteTypes.new') }}</h2>
+      <dw-dialog-title>{{ t(data ? 'wasteTypes.edit' : 'wasteTypes.new') }}</dw-dialog-title>
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <mat-dialog-content>
+        <div class="dw-dialog-body">
           @if (data) { <p class="dw-muted note">{{ t('wasteTypes.frozen') }}</p> }
           <div class="dw-form">
             @if (!data) {
-              <mat-form-field>
-                <mat-label>{{ t('fields.code') }}</mat-label>
-                <input matInput formControlName="code" maxlength="40" required />
-                @if (form.controls.code.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-              </mat-form-field>
-              <mat-form-field>
-                <mat-label>{{ t('wasteTypes.family') }}</mat-label>
-                <mat-select formControlName="waste_family" required>
-                  @for (family of vocabulary()?.waste_families ?? []; track family.code) { <mat-option [value]="family.code">{{ family.name | dwLocalized }}</mat-option> }
-                </mat-select>
-              </mat-form-field>
+              <dw-field [label]="t('fields.code')">
+                <input pInputText formControlName="code" maxlength="40" required />
+              </dw-field>
+              <dw-field [label]="t('wasteTypes.family')">
+                <dw-select formControlName="waste_family" required>
+                  @for (family of vocabulary()?.waste_families ?? []; track family.code) { <dw-option [value]="family.code" [label]="family.name | dwLocalized" /> }
+                </dw-select>
+              </dw-field>
             }
-            <mat-form-field class="dw-span-2"><mat-label>{{ t('fields.name') }}</mat-label><input matInput formControlName="name" maxlength="150" required /></mat-form-field>
+            <dw-field class="dw-span-2" [label]="t('fields.name')"><input pInputText formControlName="name" maxlength="150" required /></dw-field>
             @if (!data) {
-              <mat-form-field>
-                <mat-label>{{ t('lots.regulatoryCode') }}</mat-label>
-                <mat-select formControlName="regulatory_code">
-                  <mat-option [value]="null">—</mat-option>
+              <dw-field [label]="t('lots.regulatoryCode')">
+                <dw-select formControlName="regulatory_code">
+                  <dw-option [value]="null" label="—" />
                   @for (code of vocabulary()?.regulatory_waste_codes ?? []; track code.code) {
-                    <mat-option [value]="code.code">{{ code.code }} — {{ code.label | dwLocalized }}@if (code.is_hazardous) { * }</mat-option>
+                    <dw-option [value]="code.code" [label]="code.code + ' — ' + (code.label | dwLocalized) + (code.is_hazardous ? ' *' : '')" />
                   }
-                </mat-select>
-              </mat-form-field>
-              <mat-checkbox formControlName="is_hazardous">{{ t('common.hazardous') }}</mat-checkbox>
+                </dw-select>
+              </dw-field>
+              <dw-checkbox formControlName="is_hazardous">{{ t('common.hazardous') }}</dw-checkbox>
             }
-            <mat-form-field>
-              <mat-label>{{ t('wasteTypes.unit') }}</mat-label>
-              <mat-select formControlName="unit" required>
-                @for (unit of vocabulary()?.units ?? []; track unit.code) { <mat-option [value]="unit.code">{{ unit.name | dwLocalized }} ({{ unit.symbol }})</mat-option> }
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>{{ t('wasteTypes.channel') }}</mat-label>
-              <mat-select formControlName="treatment_channel">
-                <mat-option [value]="null">—</mat-option>
-                @for (channel of vocabulary()?.treatment_channels ?? []; track channel.code) { <mat-option [value]="channel.code">{{ channel.name | dwLocalized }}</mat-option> }
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>{{ t('lots.packaging') }}</mat-label>
-              <mat-select formControlName="packaging_type">
-                <mat-option [value]="null">—</mat-option>
-                @for (packaging of vocabulary()?.packaging_types ?? []; track packaging.code) { <mat-option [value]="packaging.code">{{ packaging.name | dwLocalized }}</mat-option> }
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>{{ t('lots.color') }}</mat-label>
-              <mat-select formControlName="color_family">
-                <mat-option [value]="null">—</mat-option>
-                @for (color of vocabulary()?.color_families ?? []; track color.code) { <mat-option [value]="color.code">{{ color.name | dwLocalized }}</mat-option> }
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field><mat-label>{{ t('lots.grammage') }}</mat-label><input matInput formControlName="default_grammage_gsm" inputmode="decimal" /></mat-form-field>
-            <mat-form-field><mat-label>{{ t('wasteTypes.density') }}</mat-label><input matInput formControlName="density_kg_m3" inputmode="decimal" /></mat-form-field>
-            <mat-form-field><mat-label>{{ t('wasteTypes.unitWeight') }}</mat-label><input matInput formControlName="unit_weight_kg" inputmode="decimal" /></mat-form-field>
+            <dw-field [label]="t('wasteTypes.unit')">
+              <dw-select formControlName="unit" required>
+                @for (unit of vocabulary()?.units ?? []; track unit.code) { <dw-option [value]="unit.code" [label]="(unit.name | dwLocalized) + ' (' + unit.symbol + ')'" /> }
+              </dw-select>
+            </dw-field>
+            <dw-field [label]="t('wasteTypes.channel')">
+              <dw-select formControlName="treatment_channel">
+                <dw-option [value]="null" label="—" />
+                @for (channel of vocabulary()?.treatment_channels ?? []; track channel.code) { <dw-option [value]="channel.code" [label]="channel.name | dwLocalized" /> }
+              </dw-select>
+            </dw-field>
+            <dw-field [label]="t('lots.packaging')">
+              <dw-select formControlName="packaging_type">
+                <dw-option [value]="null" label="—" />
+                @for (packaging of vocabulary()?.packaging_types ?? []; track packaging.code) { <dw-option [value]="packaging.code" [label]="packaging.name | dwLocalized" /> }
+              </dw-select>
+            </dw-field>
+            <dw-field [label]="t('lots.color')">
+              <dw-select formControlName="color_family">
+                <dw-option [value]="null" label="—" />
+                @for (color of vocabulary()?.color_families ?? []; track color.code) { <dw-option [value]="color.code" [label]="color.name | dwLocalized" /> }
+              </dw-select>
+            </dw-field>
+            <dw-field [label]="t('lots.grammage')"><input pInputText formControlName="default_grammage_gsm" inputmode="decimal" /></dw-field>
+            <dw-field [label]="t('wasteTypes.density')"><input pInputText formControlName="density_kg_m3" inputmode="decimal" /></dw-field>
+            <dw-field [label]="t('wasteTypes.unitWeight')"><input pInputText formControlName="unit_weight_kg" inputmode="decimal" /></dw-field>
 
             <h3 class="dw-h3 dw-form-section">{{ t('wasteTypes.defaultComposition') }}</h3>
             <div class="dw-span-2 composition" formArrayName="composition">
               @for (group of composition.controls; track group; let index = $index) {
                 <div class="line" [formGroupName]="index">
-                  <mat-form-field>
-                    <mat-label>{{ t('wasteTypes.material') }}</mat-label>
-                    <mat-select formControlName="material" required>
-                      @for (material of vocabulary()?.materials ?? []; track material.code) { <mat-option [value]="material.code">{{ material.name | dwLocalized }}</mat-option> }
-                    </mat-select>
-                  </mat-form-field>
-                  <mat-form-field class="pct"><mat-label>{{ t('wasteTypes.pct') }}</mat-label><input matInput formControlName="pct" inputmode="decimal" required /></mat-form-field>
-                  <button mat-icon-button type="button" (click)="composition.removeAt(index)" [attr.aria-label]="t('common.remove')"><mat-icon>close</mat-icon></button>
+                  <dw-field [label]="t('wasteTypes.material')">
+                    <dw-select formControlName="material" required>
+                      @for (material of vocabulary()?.materials ?? []; track material.code) { <dw-option [value]="material.code" [label]="material.name | dwLocalized" /> }
+                    </dw-select>
+                  </dw-field>
+                  <dw-field class="pct" [label]="t('wasteTypes.pct')"><input pInputText formControlName="pct" inputmode="decimal" required /></dw-field>
+                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="composition.removeAt(index)" [attr.aria-label]="t('common.remove')"><dw-icon>close</dw-icon></button>
                 </div>
               }
               <div class="dw-row">
-                <button mat-stroked-button type="button" (click)="addMaterial()"><mat-icon>add</mat-icon>{{ t('wasteTypes.addMaterial') }}</button>
+                <button pButton severity="secondary" outlined type="button" (click)="addMaterial()"><dw-icon>add</dw-icon>{{ t('wasteTypes.addMaterial') }}</button>
                 @if (composition.length > 0) { <span [class.bad]="total() !== 100" role="status">{{ t('wasteTypes.compositionTotal', { total: total() }) }}</span> }
               </div>
               @if (form.controls.composition.errors?.['server']; as message) { <p class="bad" role="alert">{{ message }}</p> }
             </div>
           </div>
-        </mat-dialog-content>
-        <mat-dialog-actions align="end">
-          <button mat-button type="button" mat-dialog-close>{{ t('common.cancel') }}</button>
-          <button mat-flat-button type="submit" [disabled]="busy() || (composition.length > 0 && total() !== 100)">{{ t('common.save') }}</button>
-        </mat-dialog-actions>
+        </div>
+        <div class="dw-dialog-foot">
+          <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+          <button pButton type="submit" [disabled]="busy() || (composition.length > 0 && total() !== 100)">{{ t('common.save') }}</button>
+        </div>
       </form>
     </ng-container>
   `,
   styles: `
-    mat-dialog-content { min-width: min(640px, 84vw); } .note { margin-block-end: var(--dw-3); font-size: 13px; }
+    .dw-dialog-body { min-width: min(640px, 84vw); } .note { margin-block-end: var(--dw-3); font-size: 13px; }
     .composition { display: grid; gap: var(--dw-1); } .line { display: flex; gap: var(--dw-2); align-items: center; } .pct { max-width: 110px; }
     .bad { color: var(--dw-danger); font-weight: 600; }
   `,
 })
 export class WasteTypeDialog {
-  protected readonly data = inject<WasteType | null>(MAT_DIALOG_DATA);
+  protected readonly data = dialogData<WasteType | null>();
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
   private readonly reference = inject(ReferenceData);
   private readonly fb = inject(FormBuilder).nonNullable;
-  private readonly ref = inject<MatDialogRef<WasteTypeDialog, WasteType>>(MatDialogRef);
+  private readonly ref = inject(DialogRef);
 
   protected readonly vocabulary = toSignal(this.reference.vocabulary());
   protected readonly busy = signal(false);
@@ -217,68 +209,75 @@ export class WasteTypeDialog {
 
 /** M1-02 / M1-03: the company's waste types and the reference catalogue they come from. */
 @Component({
-  imports: [MatButtonModule, MatCheckboxModule, MatIconModule, MatTabsModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, LocalizedPipe],
+  imports: [
+    TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, LocalizedPipe, IconComponent, ButtonDirective, CheckboxComponent, FilterBarComponent, Tabs, TabList, Tab, TabPanels, TabPanel,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('wasteTypes.title')" [subtitle]="t('wasteTypes.subtitle')">
-        @if (canManage) { <button mat-flat-button type="button" (click)="edit(null)"><mat-icon>add</mat-icon>{{ t('wasteTypes.new') }}</button> }
+        @if (canManage) { <button pButton type="button" (click)="edit(null)"><dw-icon>add</dw-icon>{{ t('wasteTypes.new') }}</button> }
       </dw-page-header>
 
       <div class="dw-panel">
-        <mat-tab-group animationDuration="0" (selectedIndexChange)="$event === 1 && loadCatalog()">
-          <mat-tab [label]="t('wasteTypes.mine')">
-            <div class="filters">
-              <dw-search [placeholder]="t('common.search')" (queryChange)="search.set($event); list.reload()" />
-              <mat-checkbox [checked]="inactive()" (change)="inactive.set($event.checked); list.reload()">{{ t('wasteTypes.showInactive') }}</mat-checkbox>
-            </div>
-            <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1" [pageSize]="list.perPage()"
-              [clickable]="canManage" [emptyTitle]="t('wasteTypes.emptyTitle')" [emptyHint]="t('wasteTypes.emptyHint')" emptyIcon="category"
-              (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="edit($event)" (retry)="list.reload()">
-              <ng-template dwCell="code" let-type><span class="dw-mono">{{ type.code }}</span></ng-template>
-              <ng-template dwCell="name" let-type>{{ type.name }} @if (type.is_hazardous) { <dw-status kind="alert" value="warning" [label]="t('common.hazardous')" /> }</ng-template>
-              <ng-template dwCell="regulatory" let-type><span class="dw-mono">{{ type.regulatory_code ?? '—' }}</span></ng-template>
-              <ng-template dwCell="channel" let-type>{{ type.treatment_channel ? t('channels.' + type.treatment_channel) : '—' }}</ng-template>
-              <ng-template dwCell="composition" let-type>
-                @for (line of type.default_composition ?? []; track line.material) { <span class="chip">{{ line.material }} {{ +line.pct }} %</span> } @empty { — }
-              </ng-template>
-              <ng-template dwCell="status" let-type>
-                <dw-status kind="member" [value]="type.is_active ? 'active' : 'suspended'" [label]="t(type.is_active ? 'common.active' : 'common.inactive')" />
-              </ng-template>
-              <ng-template dwCell="actions" let-type>
-                @if (canManage) {
-                  <button mat-button type="button" (click)="toggle(type); $event.stopPropagation()">{{ t(type.is_active ? 'common.deactivate' : 'common.activate') }}</button>
-                }
-              </ng-template>
-            </dw-data-table>
-          </mat-tab>
-          <mat-tab [label]="t('wasteTypes.catalog')">
-            <dw-state [loading]="catalogLoading()" [error]="catalogError()" (retry)="loadCatalog(true)">
-              <ul class="catalog">
-                @for (item of catalog(); track item.code) {
-                  <li>
-                    <div class="what">
-                      <strong>{{ item.name | dwLocalized }}</strong>
-                      @if (item.is_hazardous) { <dw-status kind="alert" value="warning" [label]="t('common.hazardous')" /> }
-                      <span class="dw-faint dw-mono">{{ item.regulatory_code }}</span>
-                      @if (item.treatment_channel) { <span class="dw-faint">· {{ t('channels.' + item.treatment_channel) }}</span> }
-                    </div>
-                    @if (item.waste_type) {
-                      <dw-status kind="member" value="active" [label]="t('wasteTypes.activated')" />
-                    } @else if (canManage) {
-                      <button mat-stroked-button type="button" [disabled]="activating() === item.code" (click)="activate(item)">{{ t('wasteTypes.activate') }}</button>
-                    }
-                  </li>
-                }
-              </ul>
-            </dw-state>
-          </mat-tab>
-        </mat-tab-group>
+        <p-tabs [value]="0" (valueChange)="$event === 1 && loadCatalog()">
+          <p-tablist>
+            <p-tab [value]="0">{{ t('wasteTypes.mine') }}</p-tab>
+            <p-tab [value]="1">{{ t('wasteTypes.catalog') }}</p-tab>
+          </p-tablist>
+          <p-tabpanels>
+            <p-tabpanel [value]="0">
+              <dw-filter-bar [active]="(search() ? 1 : 0) + (inactive() ? 1 : 0)" (cleared)="search.set(''); inactive.set(false); list.reload()">
+                <dw-search [placeholder]="t('common.search')" [query]="search()" (queryChange)="search.set($event); list.reload()" />
+                <dw-checkbox [checked]="inactive()" (checkedChange)="inactive.set($event); list.reload()">{{ t('wasteTypes.showInactive') }}</dw-checkbox>
+              </dw-filter-bar>
+              <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1" [pageSize]="list.perPage()"
+                [clickable]="canManage" [emptyTitle]="t('wasteTypes.emptyTitle')" [emptyHint]="t('wasteTypes.emptyHint')" emptyIcon="category"
+                (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="edit($event)" (retry)="list.reload()">
+                <ng-template dwCell="code" let-type><span class="dw-mono">{{ type.code }}</span></ng-template>
+                <ng-template dwCell="name" let-type>{{ type.name }} @if (type.is_hazardous) { <dw-status kind="alert" value="warning" [label]="t('common.hazardous')" /> }</ng-template>
+                <ng-template dwCell="regulatory" let-type><span class="dw-mono">{{ type.regulatory_code ?? '—' }}</span></ng-template>
+                <ng-template dwCell="channel" let-type>{{ type.treatment_channel ? t('channels.' + type.treatment_channel) : '—' }}</ng-template>
+                <ng-template dwCell="composition" let-type>
+                  @for (line of type.default_composition ?? []; track line.material) { <span class="chip">{{ line.material }} {{ +line.pct }} %</span> } @empty { — }
+                </ng-template>
+                <ng-template dwCell="status" let-type>
+                  <dw-status kind="member" [value]="type.is_active ? 'active' : 'suspended'" [label]="t(type.is_active ? 'common.active' : 'common.inactive')" />
+                </ng-template>
+                <ng-template dwCell="actions" let-type>
+                  @if (canManage) {
+                    <button pButton text type="button" (click)="toggle(type); $event.stopPropagation()">{{ t(type.is_active ? 'common.deactivate' : 'common.activate') }}</button>
+                  }
+                </ng-template>
+              </dw-data-table>
+            </p-tabpanel>
+            <p-tabpanel [value]="1">
+              <dw-state [loading]="catalogLoading()" [error]="catalogError()" (retry)="loadCatalog(true)">
+                <ul class="catalog">
+                  @for (item of catalog(); track item.code) {
+                    <li>
+                      <div class="what">
+                        <strong>{{ item.name | dwLocalized }}</strong>
+                        @if (item.is_hazardous) { <dw-status kind="alert" value="warning" [label]="t('common.hazardous')" /> }
+                        <span class="dw-faint dw-mono">{{ item.regulatory_code }}</span>
+                        @if (item.treatment_channel) { <span class="dw-faint">· {{ t('channels.' + item.treatment_channel) }}</span> }
+                      </div>
+                      @if (item.waste_type) {
+                        <dw-status kind="member" value="active" [label]="t('wasteTypes.activated')" />
+                      } @else if (canManage) {
+                        <button pButton severity="secondary" outlined type="button" [disabled]="activating() === item.code" (click)="activate(item)">{{ t('wasteTypes.activate') }}</button>
+                      }
+                    </li>
+                  }
+                </ul>
+              </dw-state>
+            </p-tabpanel>
+          </p-tabpanels>
+        </p-tabs>
       </div>
     </ng-container>
   `,
   styles: `
-    .filters { display: flex; align-items: center; gap: var(--dw-4); flex-wrap: wrap; padding: var(--dw-3) var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); }
     .chip { display: inline-block; padding: 1px 8px; margin-inline-end: 4px; border-radius: 999px; background: var(--dw-neutral-soft); font-size: 12px; }
     .catalog { list-style: none; margin: 0; padding: 0; }
     .catalog li { display: flex; align-items: center; gap: var(--dw-3); padding: 10px var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); min-height: 52px; }
@@ -288,7 +287,7 @@ export class WasteTypeDialog {
 })
 export class WasteTypesPage {
   private readonly api = inject(Api);
-  private readonly dialog = inject(MatDialog);
+  private readonly dialog = inject(Dialogs);
   private readonly toast = inject(Toast);
   private readonly reference = inject(ReferenceData);
 

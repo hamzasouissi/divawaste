@@ -9,7 +9,7 @@ import { FieldComponent } from './field';
 @Component({ selector: 'dw-option', changeDetection: ChangeDetectionStrategy.OnPush, template: '', host: { hidden: '' } })
 export class OptionComponent {
   readonly value = input<unknown>(null);
-  readonly label = input.required<string>();
+  readonly label = input.required<string, string | number>({ transform: (value) => String(value) });
   readonly disabled = input(false, { transform: booleanAttribute });
 }
 
@@ -43,8 +43,8 @@ const isEmpty = (value: unknown): boolean => value === null || value === undefin
   styles: ':host { display: block; min-width: 0; }',
   host: { class: 'dw-select', '[class.has-value]': 'filled()' },
 })
-export class SelectComponent implements ControlValueAccessor {
-  readonly value = model<unknown>(null);
+export class SelectComponent<T = unknown> implements ControlValueAccessor {
+  readonly value = model<T>(null as T);
   readonly multiple = input(false, { transform: booleanAttribute });
   readonly placeholder = input('');
   readonly disabled = input(false, { transform: booleanAttribute });
@@ -72,12 +72,12 @@ export class SelectComponent implements ControlValueAccessor {
   protected set(next: unknown): void {
     // Clearing gives back the value of the "no choice" option, so a form keeps the type it started with.
     const value = this.multiple() ? (next ?? []) : isEmpty(next) ? (this.blank()?.value() ?? null) : next;
-    this.value.set(value);
+    this.value.set(value as T);
     this.onChange(value);
   }
 
   writeValue(value: unknown): void {
-    this.value.set(value);
+    this.value.set(value as T);
   }
 
   registerOnChange(fn: (value: unknown) => void): void {

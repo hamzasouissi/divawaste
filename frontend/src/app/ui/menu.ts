@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, signal, viewChild } from '@angular/core';
 import { MenuItem } from 'primeng/api';
 import { Menu } from 'primeng/menu';
 
@@ -15,7 +15,7 @@ export interface MenuAction {
 
 /**
  * Popup menu (PrimeNG Menu) for the secondary actions of a row or of the account. One instance per screen is
- * enough: give it the actions of the row that was clicked, then `toggle($event)`.
+ * enough: `<dw-menu #menu />`, then `(click)="menu.open($event, actionsOf(row))"` on the trigger.
  */
 @Component({
   selector: 'dw-menu',
@@ -33,7 +33,7 @@ export interface MenuAction {
   `,
 })
 export class MenuComponent {
-  readonly actions = input<MenuAction[]>([]);
+  private readonly actions = signal<MenuAction[]>([]);
 
   private readonly menu = viewChild.required<Menu>('menu');
 
@@ -41,7 +41,8 @@ export class MenuComponent {
     this.actions().map((action) => (action.separator ? { separator: true } : { label: action.label, disabled: action.disabled, state: { icon: action.icon, danger: action.danger }, command: () => action.run?.() })),
   );
 
-  toggle(event: Event): void {
+  open(event: Event, actions: MenuAction[]): void {
+    this.actions.set(actions);
     this.menu().toggle(event);
   }
 

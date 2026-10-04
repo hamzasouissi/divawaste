@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, ElementRef, OnDestroy, afterNextRender, output, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective } from '@jsverse/transloco';
 import type { IScannerControls } from '@zxing/browser';
+import { ButtonDirective } from 'primeng/button';
+import { IconComponent } from '../../ui/icon';
 
 /**
  * QR reader on the device camera (ZXing, cahier §5). The rear camera is requested; when the camera is refused or
@@ -12,7 +12,7 @@ import type { IScannerControls } from '@zxing/browser';
  */
 @Component({
   selector: 'dw-qr-scanner',
-  imports: [FormsModule, MatButtonModule, MatIconModule, TranslocoDirective],
+  imports: [FormsModule, TranslocoDirective, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -26,13 +26,13 @@ import type { IScannerControls } from '@zxing/browser';
         } @else {
           <p class="hint">{{ t('mobile.scanHint') }}</p>
         }
-        <button mat-stroked-button type="button" class="big" (click)="manual.set(true)"><mat-icon>keyboard</mat-icon>{{ t('mobile.scanManual') }}</button>
+        <button pButton severity="secondary" outlined type="button" class="big" (click)="manual.set(true)"><dw-icon>keyboard</dw-icon>{{ t('mobile.scanManual') }}</button>
       } @else {
         <label class="manual">
           <span>{{ t('mobile.scanCode') }}</span>
           <input [ngModel]="typed()" (ngModelChange)="typed.set($event)" (keydown.enter)="submitTyped()" autocapitalize="characters" autocomplete="off" spellcheck="false" />
         </label>
-        <button mat-flat-button type="button" class="big" [disabled]="typed().trim() === ''" (click)="submitTyped()">{{ t('common.confirm') }}</button>
+        <button pButton type="button" class="big" [disabled]="typed().trim() === ''" (click)="submitTyped()">{{ t('common.confirm') }}</button>
       }
     </ng-container>
   `,
@@ -43,7 +43,8 @@ import type { IScannerControls } from '@zxing/browser';
     .frame { position: absolute; inset: 18%; border: 3px solid #7fd6c2; border-radius: 12px; box-shadow: 0 0 0 100vmax rgb(0 0 0 / 35%); }
     .hint, .problem { text-align: center; font-size: 15px; }
     .problem { color: var(--dw-danger); }
-    .big { min-height: var(--dw-touch); font-size: 16px; }
+    .big { min-height: var(--dw-touch); font-size: 17px; line-height: 22px; border-radius: 12px; gap: 10px; }
+    .big dw-icon { font-size: 24px; }
     .manual { display: grid; gap: 6px; font-size: 15px; }
     .manual input { height: var(--dw-touch); padding-inline: 14px; font: 600 18px var(--dw-mono); border: 2px solid var(--dw-line); border-radius: var(--dw-radius-lg); }
     .manual input:focus { outline: none; border-color: var(--dw-primary); }

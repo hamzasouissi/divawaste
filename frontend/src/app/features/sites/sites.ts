@@ -1,16 +1,11 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, input, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom, map } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
 
 import { Api } from '../../core/api/api';
 import { Localized, Site, Zone } from '../../core/api/models';
@@ -24,54 +19,57 @@ import { ListStore } from '../../ui/list-store';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { SearchComponent } from '../../ui/search';
 import { StateComponent } from '../../ui/state';
+import { CheckboxComponent } from '../../ui/checkbox';
+import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
+import { FIELD } from '../../ui/field';
+import { IconComponent } from '../../ui/icon';
+import { SELECT } from '../../ui/select';
+import { FilterBarComponent } from '../../ui/filter-bar';
 
-const DIALOG = [ReactiveFormsModule, MatButtonModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatSelectModule, TranslocoDirective] as const;
+const DIALOG = [ReactiveFormsModule, TranslocoDirective] as const;
 const DECIMAL = Validators.pattern(/^\d+([.,]\d{1,3})?$/);
 const num = (value: string): string | null => (value.trim() === '' ? null : value.replace(',', '.'));
 
 @Component({
-  imports: [...DIALOG],
+  imports: [...DIALOG, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <h2 mat-dialog-title>{{ t(data ? 'sites.edit' : 'sites.new') }}</h2>
+      <dw-dialog-title>{{ t(data ? 'sites.edit' : 'sites.new') }}</dw-dialog-title>
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <mat-dialog-content>
+        <div class="dw-dialog-body">
           <div class="dw-form">
-            <mat-form-field>
-              <mat-label>{{ t('fields.code') }}</mat-label>
-              <input matInput formControlName="code" maxlength="20" required />
-              @if (form.controls.code.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>{{ t('sites.kind') }}</mat-label>
-              <mat-select formControlName="site_kind">
-                @for (kind of kinds; track kind) { <mat-option [value]="kind">{{ t('sites.kinds.' + kind) }}</mat-option> }
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field class="dw-span-2"><mat-label>{{ t('fields.name') }}</mat-label><input matInput formControlName="name" maxlength="150" required /></mat-form-field>
-            <mat-form-field class="dw-span-2"><mat-label>{{ t('fields.address') }}</mat-label><input matInput formControlName="address_line1" /></mat-form-field>
-            <mat-form-field><mat-label>{{ t('fields.city') }}</mat-label><input matInput formControlName="city" /></mat-form-field>
-            <mat-form-field><mat-label>{{ t('fields.postalCode') }}</mat-label><input matInput formControlName="postal_code" /></mat-form-field>
-            <mat-form-field><mat-label>{{ t('sites.regulatoryId') }}</mat-label><input matInput formControlName="regulatory_identifier" /></mat-form-field>
-            <mat-form-field><mat-label>{{ t('fields.capacityKg') }}</mat-label><input matInput formControlName="capacity_kg" inputmode="decimal" /></mat-form-field>
+            <dw-field [label]="t('fields.code')">
+              <input pInputText formControlName="code" maxlength="20" required />
+            </dw-field>
+            <dw-field [label]="t('sites.kind')">
+              <dw-select formControlName="site_kind">
+                @for (kind of kinds; track kind) { <dw-option [value]="kind" [label]="t('sites.kinds.' + kind)" /> }
+              </dw-select>
+            </dw-field>
+            <dw-field class="dw-span-2" [label]="t('fields.name')"><input pInputText formControlName="name" maxlength="150" required /></dw-field>
+            <dw-field class="dw-span-2" [label]="t('fields.address')"><input pInputText formControlName="address_line1" /></dw-field>
+            <dw-field [label]="t('fields.city')"><input pInputText formControlName="city" /></dw-field>
+            <dw-field [label]="t('fields.postalCode')"><input pInputText formControlName="postal_code" /></dw-field>
+            <dw-field [label]="t('sites.regulatoryId')"><input pInputText formControlName="regulatory_identifier" /></dw-field>
+            <dw-field [label]="t('fields.capacityKg')"><input pInputText formControlName="capacity_kg" inputmode="decimal" /></dw-field>
           </div>
-        </mat-dialog-content>
-        <mat-dialog-actions align="end">
-          <button mat-button type="button" mat-dialog-close>{{ t('common.cancel') }}</button>
-          <button mat-flat-button type="submit" [disabled]="busy()">{{ t('common.save') }}</button>
-        </mat-dialog-actions>
+        </div>
+        <div class="dw-dialog-foot">
+          <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+          <button pButton type="submit" [disabled]="busy()">{{ t('common.save') }}</button>
+        </div>
       </form>
     </ng-container>
   `,
-  styles: 'mat-dialog-content { min-width: min(600px, 82vw); }',
+  styles: '.dw-dialog-body { min-width: min(600px, 82vw); }',
 })
 export class SiteDialog {
-  protected readonly data = inject<Site | null>(MAT_DIALOG_DATA);
+  protected readonly data = dialogData<Site | null>();
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
   private readonly session = inject(Session);
-  private readonly ref = inject<MatDialogRef<SiteDialog, Site>>(MatDialogRef);
+  private readonly ref = inject(DialogRef);
 
   protected readonly kinds = ['production', 'warehouse', 'mixed'] as const;
   protected readonly busy = signal(false);
@@ -117,45 +115,42 @@ interface ZoneDialogData {
 }
 
 @Component({
-  imports: [...DIALOG, LocalizedPipe],
+  imports: [...DIALOG, LocalizedPipe, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <h2 mat-dialog-title>{{ t(data.zone ? 'sites.editZone' : 'sites.addZone') }} — {{ data.site.name }}</h2>
+      <dw-dialog-title>{{ t(data.zone ? 'sites.editZone' : 'sites.addZone') }} — {{ data.site.name }}</dw-dialog-title>
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <mat-dialog-content>
+        <div class="dw-dialog-body">
           <div class="dw-form">
-            <mat-form-field>
-              <mat-label>{{ t('fields.code') }}</mat-label>
-              <input matInput formControlName="code" maxlength="20" required />
-              @if (form.controls.code.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>{{ t('sites.zoneType') }}</mat-label>
-              <mat-select formControlName="zone_type" required>
-                @for (type of vocabulary()?.zone_types ?? []; track type.code) { <mat-option [value]="type.code">{{ type.name | dwLocalized }}</mat-option> }
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field class="dw-span-2"><mat-label>{{ t('fields.name') }}</mat-label><input matInput formControlName="name" maxlength="150" required /></mat-form-field>
-            <mat-form-field><mat-label>{{ t('fields.capacityKg') }}</mat-label><input matInput formControlName="capacity_kg" inputmode="decimal" /></mat-form-field>
-            <mat-form-field><mat-label>{{ t('sites.alertPct') }}</mat-label><input matInput type="number" formControlName="capacity_alert_pct" min="1" max="100" /></mat-form-field>
+            <dw-field [label]="t('fields.code')">
+              <input pInputText formControlName="code" maxlength="20" required />
+            </dw-field>
+            <dw-field [label]="t('sites.zoneType')">
+              <dw-select formControlName="zone_type" required>
+                @for (type of vocabulary()?.zone_types ?? []; track type.code) { <dw-option [value]="type.code" [label]="type.name | dwLocalized" /> }
+              </dw-select>
+            </dw-field>
+            <dw-field class="dw-span-2" [label]="t('fields.name')"><input pInputText formControlName="name" maxlength="150" required /></dw-field>
+            <dw-field [label]="t('fields.capacityKg')"><input pInputText formControlName="capacity_kg" inputmode="decimal" /></dw-field>
+            <dw-field [label]="t('sites.alertPct')"><input pInputText type="number" formControlName="capacity_alert_pct" min="1" max="100" /></dw-field>
           </div>
-        </mat-dialog-content>
-        <mat-dialog-actions align="end">
-          <button mat-button type="button" mat-dialog-close>{{ t('common.cancel') }}</button>
-          <button mat-flat-button type="submit" [disabled]="busy()">{{ t('common.save') }}</button>
-        </mat-dialog-actions>
+        </div>
+        <div class="dw-dialog-foot">
+          <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+          <button pButton type="submit" [disabled]="busy()">{{ t('common.save') }}</button>
+        </div>
       </form>
     </ng-container>
   `,
-  styles: 'mat-dialog-content { min-width: min(520px, 82vw); }',
+  styles: '.dw-dialog-body { min-width: min(520px, 82vw); }',
 })
 export class ZoneDialog {
-  protected readonly data = inject<ZoneDialogData>(MAT_DIALOG_DATA);
+  protected readonly data = dialogData<ZoneDialogData>();
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
   private readonly reference = inject(ReferenceData);
-  private readonly ref = inject<MatDialogRef<ZoneDialog, Zone>>(MatDialogRef);
+  private readonly ref = inject(DialogRef);
 
   protected readonly vocabulary = toSignal(this.reference.vocabulary());
   protected readonly busy = signal(false);
@@ -193,18 +188,18 @@ export class ZoneDialog {
 
 /** M1-01: the company's sites. */
 @Component({
-  imports: [MatButtonModule, MatCheckboxModule, MatIconModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, KgPipe],
+  imports: [TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, KgPipe, IconComponent, ButtonDirective, CheckboxComponent, FilterBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('sites.title')" [subtitle]="t('sites.subtitle')">
-        @if (canManage) { <button mat-flat-button type="button" (click)="create()"><mat-icon>add</mat-icon>{{ t('sites.new') }}</button> }
+        @if (canManage) { <button pButton type="button" (click)="create()"><dw-icon>add</dw-icon>{{ t('sites.new') }}</button> }
       </dw-page-header>
       <div class="dw-panel">
-        <div class="filters">
-          <dw-search [placeholder]="t('common.search')" (queryChange)="search.set($event); list.reload()" />
-          <mat-checkbox [checked]="inactive()" (change)="inactive.set($event.checked); list.reload()">{{ t('sites.showInactive') }}</mat-checkbox>
-        </div>
+        <dw-filter-bar [active]="(search() ? 1 : 0) + (inactive() ? 1 : 0)" (cleared)="search.set(''); inactive.set(false); list.reload()">
+          <dw-search [placeholder]="t('common.search')" [query]="search()" (queryChange)="search.set($event); list.reload()" />
+          <dw-checkbox [checked]="inactive()" (checkedChange)="inactive.set($event); list.reload()">{{ t('sites.showInactive') }}</dw-checkbox>
+        </dw-filter-bar>
         <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1" [pageSize]="list.perPage()"
           [clickable]="true" [emptyTitle]="t('sites.emptyTitle')" [emptyHint]="t('sites.emptyHint')" emptyIcon="factory"
           (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="open($event)" (retry)="list.reload()">
@@ -213,7 +208,7 @@ export class ZoneDialog {
           <ng-template dwCell="zones" let-site>{{ t('sites.zonesCount', { count: site.zones_count }) }}</ng-template>
           <ng-template dwCell="capacity" let-site>{{ site.capacity_kg | dwKg: 'auto' }}</ng-template>
           <ng-template dwCell="status" let-site><dw-status kind="member" [value]="site.is_active ? 'active' : 'suspended'" [label]="t(site.is_active ? 'common.active' : 'common.inactive')" /></ng-template>
-          @if (canManage) { <button dwEmptyAction mat-flat-button type="button" (click)="create()"><mat-icon>add</mat-icon>{{ t('sites.new') }}</button> }
+          @if (canManage) { <button dwEmptyAction pButton type="button" (click)="create()"><dw-icon>add</dw-icon>{{ t('sites.new') }}</button> }
         </dw-data-table>
       </div>
     </ng-container>
@@ -222,7 +217,7 @@ export class ZoneDialog {
 })
 export class SitesPage {
   private readonly api = inject(Api);
-  private readonly dialog = inject(MatDialog);
+  private readonly dialog = inject(Dialogs);
   private readonly router = inject(Router);
 
   protected readonly canManage = inject(Session).can('sites.manage');
@@ -250,7 +245,7 @@ export class SitesPage {
 
 /** A site and its zones. Zones holding waste cannot be closed; nothing is ever deleted (traceability). */
 @Component({
-  imports: [MatButtonModule, MatIconModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KgPipe, LocalizedPipe],
+  imports: [TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KgPipe, LocalizedPipe, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -259,8 +254,8 @@ export class SitesPage {
           <dw-page-header [title]="s.name" [subtitle]="s.code" back="/sites" [backLabel]="t('sites.title')">
             <dw-status dwTitleBadge kind="member" [value]="s.is_active ? 'active' : 'suspended'" [label]="t(s.is_active ? 'common.active' : 'common.inactive')" />
             @if (canManage) {
-              <button mat-stroked-button type="button" (click)="toggleSite()">{{ t(s.is_active ? 'common.deactivate' : 'common.activate') }}</button>
-              <button mat-stroked-button type="button" (click)="edit()"><mat-icon>edit</mat-icon>{{ t('common.edit') }}</button>
+              <button pButton severity="secondary" outlined type="button" (click)="toggleSite()">{{ t(s.is_active ? 'common.deactivate' : 'common.activate') }}</button>
+              <button pButton severity="secondary" outlined type="button" (click)="edit()"><dw-icon>edit</dw-icon>{{ t('common.edit') }}</button>
             }
           </dw-page-header>
 
@@ -277,9 +272,9 @@ export class SitesPage {
             <section class="dw-panel">
               <div class="dw-panel-head">
                 <h2 class="dw-h2">{{ t('sites.zones') }}</h2><span class="dw-spacer"></span>
-                @if (canManageZones()) { <button mat-stroked-button type="button" (click)="editZone(null)"><mat-icon>add</mat-icon>{{ t('sites.addZone') }}</button> }
+                @if (canManageZones()) { <button pButton severity="secondary" outlined type="button" (click)="editZone(null)"><dw-icon>add</dw-icon>{{ t('sites.addZone') }}</button> }
               </div>
-              <table>
+              <table class="dw-table">
                 <thead><tr><th>{{ t('fields.code') }}</th><th>{{ t('fields.name') }}</th><th>{{ t('sites.zoneType') }}</th><th class="dw-num">{{ t('fields.capacityKg') }}</th><th>{{ t('fields.status') }}</th><th></th></tr></thead>
                 <tbody>
                   @for (zone of s.zones ?? []; track zone.ulid) {
@@ -291,8 +286,8 @@ export class SitesPage {
                       <td><dw-status kind="member" [value]="zone.is_active ? 'active' : 'suspended'" [label]="t(zone.is_active ? 'common.active' : 'common.inactive')" /></td>
                       <td class="dw-num">
                         @if (canManageZones()) {
-                          <button mat-button type="button" (click)="editZone(zone)">{{ t('common.edit') }}</button>
-                          <button mat-button type="button" (click)="toggleZone(zone)">{{ t(zone.is_active ? 'common.deactivate' : 'common.activate') }}</button>
+                          <button pButton text type="button" (click)="editZone(zone)">{{ t('common.edit') }}</button>
+                          <button pButton text type="button" (click)="toggleZone(zone)">{{ t(zone.is_active ? 'common.deactivate' : 'common.activate') }}</button>
                         }
                       </td>
                     </tr>
@@ -306,16 +301,13 @@ export class SitesPage {
     </ng-container>
   `,
   styles: `
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { text-align: start; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dw-ink-3); padding: 8px 12px; border-block-end: 1px solid var(--dw-line); }
-    td { padding: 6px 12px; border-block-end: 1px solid var(--dw-line-soft); }
-    tr:last-child td { border-block-end: 0; } tr.off td { color: var(--dw-ink-3); }
+    tr.off td { color: var(--dw-ink-3); }
   `,
 })
 export class SiteDetailPage implements OnInit {
   private readonly api = inject(Api);
   private readonly session = inject(Session);
-  private readonly dialog = inject(MatDialog);
+  private readonly dialog = inject(Dialogs);
   private readonly confirm = inject(Confirm);
   private readonly toast = inject(Toast);
   private readonly reference = inject(ReferenceData);

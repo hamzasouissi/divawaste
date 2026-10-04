@@ -21,6 +21,8 @@ export interface Column<T> {
   value?: (row: T) => string | number | null | undefined;
   /** Hidden below this viewport width (px) so the essential columns stay readable on small screens. */
   hideBelow?: number;
+  /** Lets a long text wrap; by default a cell stays on one line so rows keep the same height. */
+  wrap?: boolean;
 }
 
 export interface PageChange {
@@ -55,7 +57,7 @@ const WIDTHS = ['62%', '78%', '48%', '70%', '56%', '84%', '40%'];
       @if (error()) {
         <dw-state [error]="error()" (retry)="retry.emit()" />
       } @else {
-        <p-table [value]="$any(first() ? placeholders : rows())" [dataKey]="dataKey()" [rowHover]="clickable()" [selection]="selection()" (selectionChange)="selection.set($event)"
+        <p-table [value]="$any(first() ? placeholders : rows())" [dataKey]="dataKey()" [rowTrackBy]="track" [rowHover]="clickable()" [selection]="selection()" (selectionChange)="selection.set($event)"
           [rowSelectable]="rowSelectable" [class.busy]="loading() && !first()" [attr.aria-busy]="loading()">
           <ng-template #header>
             <tr>
@@ -94,7 +96,7 @@ const WIDTHS = ['62%', '78%', '48%', '70%', '56%', '84%', '40%'];
                   </td>
                 }
                 @for (column of columns(); track column.key) {
-                  <td [class]="'a-' + (column.align ?? 'start')" [attr.data-hide]="column.hideBelow">
+                  <td [class]="'a-' + (column.align ?? 'start')" [class.wrap]="column.wrap" [attr.data-hide]="column.hideBelow">
                     @if (templates()[column.key]; as template) {
                       <ng-container [ngTemplateOutlet]="template" [ngTemplateOutletContext]="{ $implicit: row }" />
                     } @else {
@@ -141,7 +143,9 @@ const WIDTHS = ['62%', '78%', '48%', '70%', '56%', '84%', '40%'];
     p-table { display: block; transition: opacity 120ms; }
     p-table.busy { opacity: 0.6; }
     th.check, td.check { width: 40px; padding-inline-end: 0; }
-    .a-end { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    td { white-space: nowrap; }
+    td.wrap { white-space: normal; min-width: 220px; }
+    .a-end { text-align: end; font-variant-numeric: tabular-nums; }
     .a-center { text-align: center; }
     th.a-end .sort { flex-direction: row-reverse; }
     tr.clickable { cursor: pointer; }
@@ -173,6 +177,8 @@ export class DataTableComponent<T> {
   readonly sort = input<string | null>(null);
   /** Property that identifies a row (selection, rendering). */
   readonly dataKey = input('ulid');
+  /** Identity of a row for rendering, for rows that have no `ulid`. */
+  readonly trackBy = input<(row: T) => unknown>((row) => (row as { ulid?: unknown }).ulid ?? row);
   readonly clickable = input(false);
   /** Adds a tick column; the function says which rows may be ticked. */
   readonly selectable = input<((row: T) => boolean) | null>(null);
@@ -194,6 +200,8 @@ export class DataTableComponent<T> {
   protected readonly first = computed(() => this.loading() && this.rows().length === 0);
   protected readonly paged = computed(() => this.total() > this.pageSize() || this.pageIndex() > 0);
   protected readonly rowSelectable = (event: { data: T }): boolean => this.selectable()?.(event.data) ?? false;
+
+  protected readonly track = (_: number, row: T): unknown => this.trackBy()(row);
 
   protected width(index: number): string {
     return WIDTHS[index % WIDTHS.length];

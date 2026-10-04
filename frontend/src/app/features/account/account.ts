@@ -1,15 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
 
 import { Api } from '../../core/api/api';
 import { AppNotification, OnboardingState } from '../../core/api/models';
@@ -19,9 +15,13 @@ import { DatePipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
+import { CheckboxComponent } from '../../ui/checkbox';
+import { FIELD } from '../../ui/field';
+import { IconComponent } from '../../ui/icon';
+import { SELECT } from '../../ui/select';
 
 @Component({
-  imports: [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, TranslocoDirective, PageHeaderComponent],
+  imports: [ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, ButtonDirective, InputText, ...FIELD, ...SELECT],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -29,15 +29,14 @@ import { StateComponent } from '../../ui/state';
       <form class="dw-panel narrow" [formGroup]="form" (ngSubmit)="save()">
         <div class="dw-panel-body">
           <div class="dw-form">
-            <mat-form-field><mat-label>{{ t('fields.firstName') }}</mat-label><input matInput formControlName="first_name" autocomplete="given-name" /></mat-form-field>
-            <mat-form-field><mat-label>{{ t('fields.lastName') }}</mat-label><input matInput formControlName="last_name" autocomplete="family-name" /></mat-form-field>
-            <mat-form-field><mat-label>{{ t('fields.phone') }}</mat-label><input matInput type="tel" formControlName="phone" autocomplete="tel" /></mat-form-field>
-            <mat-form-field>
-              <mat-label>{{ t('fields.language') }}</mat-label>
-              <mat-select formControlName="locale"><mat-option value="fr">Français</mat-option></mat-select>
-            </mat-form-field>
+            <dw-field [label]="t('fields.firstName')"><input pInputText formControlName="first_name" autocomplete="given-name" /></dw-field>
+            <dw-field [label]="t('fields.lastName')"><input pInputText formControlName="last_name" autocomplete="family-name" /></dw-field>
+            <dw-field [label]="t('fields.phone')"><input pInputText type="tel" formControlName="phone" autocomplete="tel" /></dw-field>
+            <dw-field [label]="t('fields.language')">
+              <dw-select formControlName="locale"><dw-option value="fr" label="Français" /></dw-select>
+            </dw-field>
           </div>
-          <div class="dw-form-actions"><button mat-flat-button type="submit" [disabled]="busy()">{{ t('common.save') }}</button></div>
+          <div class="dw-form-actions"><button pButton type="submit" [disabled]="busy()">{{ t('common.save') }}</button></div>
         </div>
       </form>
     </ng-container>
@@ -88,7 +87,7 @@ interface TwoFactorSetup {
 
 /** M0-09: password change and optional TOTP. Recovery codes are shown once, at activation. */
 @Component({
-  imports: [FormsModule, ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, TranslocoDirective, PageHeaderComponent, StatusComponent],
+  imports: [FormsModule, ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, StatusComponent, ButtonDirective, InputText, ...FIELD],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -97,19 +96,14 @@ interface TwoFactorSetup {
         <form class="dw-panel" [formGroup]="form" (ngSubmit)="changePassword()">
           <header class="dw-panel-head"><h2 class="dw-h2">{{ t('account.changePassword') }}</h2></header>
           <div class="dw-panel-body fields">
-            <mat-form-field>
-              <mat-label>{{ t('account.currentPassword') }}</mat-label>
-              <input matInput type="password" formControlName="current_password" autocomplete="current-password" />
-              @if (form.controls.current_password.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>{{ t('auth.newPassword') }}</mat-label>
-              <input matInput type="password" formControlName="password" autocomplete="new-password" />
-              <mat-hint>{{ t('auth.passwordRule') }}</mat-hint>
-              @if (form.controls.password.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-              @else if (form.controls.password.invalid) { <mat-error>{{ t('auth.passwordRule') }}</mat-error> }
-            </mat-form-field>
-            <div class="dw-form-actions"><button mat-flat-button type="submit" [disabled]="busy()">{{ t('account.changePassword') }}</button></div>
+            <dw-field [label]="t('account.currentPassword')">
+              <input pInputText type="password" formControlName="current_password" autocomplete="current-password" />
+            </dw-field>
+            <dw-field [label]="t('auth.newPassword')">
+              <input pInputText type="password" formControlName="password" autocomplete="new-password" />
+              <small dwHint>{{ t('auth.passwordRule') }}</small>
+            </dw-field>
+            <div class="dw-form-actions"><button pButton type="submit" [disabled]="busy()">{{ t('account.changePassword') }}</button></div>
           </div>
         </form>
 
@@ -122,25 +116,24 @@ interface TwoFactorSetup {
             @if (recovery().length > 0) {
               <h3 class="dw-h3">{{ t('account.twoFactor.recovery') }}</h3>
               <p class="dw-muted">{{ t('account.twoFactor.recoveryHint') }}</p>
-              <ul class="codes">@for (code of recovery(); track code) { <li class="dw-mono">{{ code }}</li> }</ul>
-              <div><button mat-stroked-button type="button" (click)="recovery.set([])">{{ t('common.close') }}</button></div>
+              <ul class="codes">@for (code of recovery(); track code) { <li class="dw-code">{{ code }}</li> }</ul>
+              <div><button pButton severity="secondary" outlined type="button" (click)="recovery.set([])">{{ t('common.close') }}</button></div>
             } @else if (enabled()) {
               <p>{{ t('account.twoFactor.on') }}</p>
-              <div><button mat-stroked-button type="button" [disabled]="busy()" (click)="disable()">{{ t('account.twoFactor.disable') }}</button></div>
+              <div><button pButton severity="secondary" outlined type="button" [disabled]="busy()" (click)="disable()">{{ t('account.twoFactor.disable') }}</button></div>
             } @else if (setup(); as s) {
               <p>{{ t('account.twoFactor.scan') }}</p>
               <div class="qr" [innerHTML]="qr()"></div>
-              <p class="dw-mono secret">{{ s.secret }}</p>
+              <p class="dw-code secret">{{ s.secret }}</p>
               <div class="dw-row">
-                <mat-form-field class="code">
-                  <mat-label>{{ t('account.twoFactor.code') }}</mat-label>
-                  <input matInput inputmode="numeric" autocomplete="one-time-code" maxlength="6" [ngModel]="code()" (ngModelChange)="code.set($event)" (keydown.enter)="confirmSetup()" />
-                </mat-form-field>
-                <button mat-flat-button type="button" [disabled]="busy() || code().length < 6" (click)="confirmSetup()">{{ t('account.twoFactor.confirm') }}</button>
+                <dw-field class="code" [label]="t('account.twoFactor.code')">
+                  <input pInputText inputmode="numeric" autocomplete="one-time-code" maxlength="6" [ngModel]="code()" (ngModelChange)="code.set($event)" (keydown.enter)="confirmSetup()" />
+                </dw-field>
+                <button pButton type="button" [disabled]="busy() || code().length < 6" (click)="confirmSetup()">{{ t('account.twoFactor.confirm') }}</button>
               </div>
             } @else {
               <p>{{ t('account.twoFactor.off') }}</p>
-              <div><button mat-flat-button type="button" [disabled]="busy()" (click)="start()">{{ t('account.twoFactor.enable') }}</button></div>
+              <div><button pButton type="button" [disabled]="busy()" (click)="start()">{{ t('account.twoFactor.enable') }}</button></div>
             }
           </div>
         </section>
@@ -245,12 +238,12 @@ interface NotificationPage {
 
 /** M7-03: the inbox and, per kind of event, whether it is shown in the application and sent by email. */
 @Component({
-  imports: [MatButtonModule, MatCheckboxModule, MatIconModule, TranslocoDirective, PageHeaderComponent, StateComponent, DatePipe],
+  imports: [TranslocoDirective, PageHeaderComponent, StateComponent, DatePipe, IconComponent, ButtonDirective, CheckboxComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('notifications.title')">
-        @if (unread() > 0) { <button mat-stroked-button type="button" (click)="readAll()"><mat-icon>done_all</mat-icon>{{ t('notifications.readAll') }}</button> }
+        @if (unread() > 0) { <button pButton severity="secondary" outlined type="button" (click)="readAll()"><dw-icon>done_all</dw-icon>{{ t('notifications.readAll') }}</button> }
       </dw-page-header>
       <div class="dw-split">
         <section class="dw-panel">
@@ -266,20 +259,20 @@ interface NotificationPage {
                 </li>
               }
             </ul>
-            @if (cursor()) { <div class="more"><button mat-button type="button" (click)="load(false)">{{ t('common.seeAll') }}</button></div> }
+            @if (cursor()) { <div class="more"><button pButton text type="button" (click)="load(false)">{{ t('common.seeAll') }}</button></div> }
           </dw-state>
         </section>
 
         <section class="dw-panel">
           <header class="dw-panel-head"><h2 class="dw-h2">{{ t('notifications.preferences') }}</h2></header>
-          <table class="prefs">
+          <table class="dw-table prefs">
             <thead><tr><th scope="col"></th><th scope="col">{{ t('notifications.inApp') }}</th><th scope="col">{{ t('notifications.byMail') }}</th></tr></thead>
             <tbody>
               @for (preference of preferences(); track preference.notification_type) {
                 <tr>
                   <th scope="row">{{ t('notifications.labels.' + preference.notification_type) }}</th>
-                  <td><mat-checkbox [checked]="preference.database" (change)="set(preference, 'database', $event.checked)" [attr.aria-label]="t('notifications.inApp')" /></td>
-                  <td>@if (preference.mail_available) { <mat-checkbox [checked]="preference.mail" (change)="set(preference, 'mail', $event.checked)" [attr.aria-label]="t('notifications.byMail')" /> } @else { — }</td>
+                  <td><dw-checkbox [checked]="preference.database" (checkedChange)="set(preference, 'database', $event)" [ariaLabel]="t('notifications.inApp')" /></td>
+                  <td>@if (preference.mail_available) { <dw-checkbox [checked]="preference.mail" (checkedChange)="set(preference, 'mail', $event)" [ariaLabel]="t('notifications.byMail')" /> } @else { — }</td>
                 </tr>
               }
             </tbody>
@@ -295,9 +288,9 @@ interface NotificationPage {
     .inbox button { all: unset; box-sizing: border-box; cursor: pointer; display: grid; gap: 2px; width: 100%; padding: 10px var(--dw-4); font-size: 13px; }
     .inbox button:focus-visible { outline: 2px solid var(--dw-primary); outline-offset: -2px; }
     .inbox span { color: var(--dw-ink-2); } .more { padding: var(--dw-2); text-align: center; }
-    .prefs { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .prefs th, .prefs td { padding: 2px var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); text-align: center; }
-    .prefs th[scope='row'] { text-align: start; font-weight: 400; } .prefs thead th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dw-ink-2); padding-block: 8px; }
+    .prefs th, .prefs td { text-align: center; }
+    .prefs tbody th[scope='row'] { text-align: start; font-weight: 400; padding: 7px var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); }
+    .prefs thead th:first-child { text-align: start; }
   `,
 })
 export class NotificationsPage {
@@ -378,7 +371,7 @@ const STEP_LINKS: Record<string, { path: string; icon: string }> = {
 
 /** M0-07: four steps, each done on its real screen. A step can be skipped and resumed; nothing here is a copy of a form. */
 @Component({
-  imports: [RouterLink, MatButtonModule, MatIconModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent],
+  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -388,7 +381,7 @@ const STEP_LINKS: Record<string, { path: string; icon: string }> = {
           <ol class="steps">
             @for (step of s.steps; track step.key; let index = $index) {
               <li class="dw-panel" [class.done]="step.done">
-                <span class="index" aria-hidden="true">@if (step.done) { <mat-icon>check</mat-icon> } @else { {{ index + 1 }} }</span>
+                <span class="index" aria-hidden="true">@if (step.done) { <dw-icon>check</dw-icon> } @else { {{ index + 1 }} }</span>
                 <div class="dw-spacer">
                   <h2 class="dw-h2">{{ t('onboarding.steps.' + step.key + '.title') }}</h2>
                   <p class="dw-muted">{{ t('onboarding.steps.' + step.key + '.body') }}</p>
@@ -398,14 +391,14 @@ const STEP_LINKS: Record<string, { path: string; icon: string }> = {
                   [label]="t(step.done ? 'onboarding.done' : step.skipped ? 'onboarding.skipped' : 'onboarding.todo')" />
                 <div class="dw-row-tight">
                   @if (!step.done && canEdit) {
-                    <button mat-button type="button" [disabled]="busy()" (click)="skip(step.key, !step.skipped)">{{ t(step.skipped ? 'onboarding.resumeStep' : 'onboarding.skip') }}</button>
+                    <button pButton text type="button" [disabled]="busy()" (click)="skip(step.key, !step.skipped)">{{ t(step.skipped ? 'onboarding.resumeStep' : 'onboarding.skip') }}</button>
                   }
-                  <a mat-stroked-button [routerLink]="links[step.key].path"><mat-icon>{{ links[step.key].icon }}</mat-icon>{{ t('onboarding.open') }}</a>
+                  <a pButton severity="secondary" outlined [routerLink]="links[step.key].path"><dw-icon>{{ links[step.key].icon }}</dw-icon>{{ t('onboarding.open') }}</a>
                 </div>
               </li>
             }
           </ol>
-          <div class="dw-form-actions"><button mat-flat-button type="button" [disabled]="busy()" (click)="finish()">{{ t('onboarding.finish') }}</button></div>
+          <div class="dw-form-actions"><button pButton type="button" [disabled]="busy()" (click)="finish()">{{ t('onboarding.finish') }}</button></div>
         }
       </dw-state>
     </ng-container>

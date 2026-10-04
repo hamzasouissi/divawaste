@@ -1,13 +1,10 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
 
 import { Api } from '../../core/api/api';
 import { Localized } from '../../core/api/models';
@@ -15,11 +12,14 @@ import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
 import { DatePipe, LocalizedPipe } from '../../core/format/pipes';
 import { StatusComponent } from '../../ui/page';
+import { CheckboxComponent } from '../../ui/checkbox';
+import { FIELD } from '../../ui/field';
+import { IconComponent } from '../../ui/icon';
 
-const FORM = [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, TranslocoDirective] as const;
+const FORM = [ReactiveFormsModule, TranslocoDirective] as const;
 const RESULT_STYLES = `
   .result { display: grid; gap: var(--dw-3); justify-items: start; }
-  .result mat-icon { font-size: 40px; width: 40px; height: 40px; }
+  .result dw-icon { font-size: 40px; }
   .ok { color: var(--dw-success); } .ko { color: var(--dw-danger); }
   .lead { margin-block: 4px var(--dw-5); }
   button[type=submit] { height: 44px; }
@@ -27,23 +27,23 @@ const RESULT_STYLES = `
 
 /** M0-02: landing page of the confirmation link sent by email. */
 @Component({
-  imports: [RouterLink, MatButtonModule, MatIconModule, TranslocoDirective],
+  imports: [RouterLink, TranslocoDirective, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="result" *transloco="let t" aria-live="polite">
       @switch (state()) {
         @case ('pending') { <p class="dw-muted">{{ t('auth.verify.pending') }}</p> }
         @case ('done') {
-          <mat-icon class="ok" aria-hidden="true">check_circle</mat-icon>
+          <dw-icon class="ok" aria-hidden="true">check_circle</dw-icon>
           <h1 class="dw-h1">{{ t('auth.verify.doneTitle') }}</h1>
           <p class="dw-muted">{{ t('auth.verify.doneBody') }}</p>
-          <a mat-flat-button routerLink="/login">{{ t('auth.login.submit') }}</a>
+          <a pButton routerLink="/login">{{ t('auth.login.submit') }}</a>
         }
         @default {
-          <mat-icon class="ko" aria-hidden="true">error</mat-icon>
+          <dw-icon class="ko" aria-hidden="true">error</dw-icon>
           <h1 class="dw-h1">{{ t('auth.verify.failedTitle') }}</h1>
           <p class="dw-muted">{{ t('auth.verify.failedBody') }}</p>
-          <a mat-stroked-button routerLink="/login">{{ t('auth.login.submit') }}</a>
+          <a pButton severity="secondary" outlined routerLink="/login">{{ t('auth.login.submit') }}</a>
         }
       }
     </div>
@@ -69,22 +69,21 @@ export class VerifyEmailPage implements OnInit {
 }
 
 @Component({
-  imports: [...FORM, RouterLink],
+  imports: [...FORM, RouterLink, ButtonDirective, InputText, ...FIELD],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <h1 class="dw-h1">{{ t('auth.forgot.title') }}</h1>
       @if (sent()) {
         <p class="dw-muted lead" role="status">{{ t('auth.forgot.sent') }}</p>
-        <a mat-stroked-button routerLink="/login">{{ t('auth.backToLogin') }}</a>
+        <a pButton severity="secondary" outlined routerLink="/login">{{ t('auth.backToLogin') }}</a>
       } @else {
         <p class="dw-muted lead">{{ t('auth.forgot.lead') }}</p>
         <form [formGroup]="form" (ngSubmit)="submit()" class="dw-stack-sm" novalidate>
-          <mat-form-field>
-            <mat-label>{{ t('auth.email') }}</mat-label>
-            <input matInput type="email" formControlName="email" autocomplete="username" required />
-          </mat-form-field>
-          <button mat-flat-button type="submit" [disabled]="busy()">{{ t('auth.forgot.submit') }}</button>
+          <dw-field [label]="t('auth.email')">
+            <input pInputText type="email" formControlName="email" autocomplete="username" required />
+          </dw-field>
+          <button pButton type="submit" [disabled]="busy()">{{ t('auth.forgot.submit') }}</button>
           <a routerLink="/login">{{ t('auth.backToLogin') }}</a>
         </form>
       }
@@ -120,24 +119,23 @@ export class ForgotPasswordPage {
 }
 
 @Component({
-  imports: [...FORM, RouterLink],
+  imports: [...FORM, RouterLink, ButtonDirective, InputText, ...FIELD],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <h1 class="dw-h1">{{ t('auth.reset.title') }}</h1>
       <p class="dw-muted lead">{{ t('auth.passwordRule') }}</p>
       <form [formGroup]="form" (ngSubmit)="submit()" class="dw-stack-sm" novalidate>
-        <mat-form-field>
-          <mat-label>{{ t('auth.newPassword') }}</mat-label>
-          <input matInput type="password" formControlName="password" autocomplete="new-password" required />
+        <dw-field [label]="t('auth.newPassword')">
+          <input pInputText type="password" formControlName="password" autocomplete="new-password" required />
           @if (form.controls.password.errors; as errors) {
-            <mat-error>{{ errors['server'] || t('auth.passwordRule') }}</mat-error>
+            <small dwError>{{ errors['server'] || t('auth.passwordRule') }}</small>
           }
-        </mat-form-field>
+        </dw-field>
         @if (form.controls.token.errors?.['server']; as message) {
           <p class="ko" role="alert">{{ message }}</p>
         }
-        <button mat-flat-button type="submit" [disabled]="busy()">{{ t('auth.reset.submit') }}</button>
+        <button pButton type="submit" [disabled]="busy()">{{ t('auth.reset.submit') }}</button>
         <a routerLink="/login">{{ t('auth.backToLogin') }}</a>
       </form>
     </ng-container>
@@ -196,7 +194,7 @@ interface InvitationPreview {
 
 /** M0-08: the invited person joins the company, creating an account if they have none. */
 @Component({
-  imports: [...FORM, RouterLink, MatCheckboxModule, MatIconModule, DatePipe, LocalizedPipe],
+  imports: [...FORM, RouterLink, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, InputText, ...FIELD, CheckboxComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -208,25 +206,23 @@ interface InvitationPreview {
             <p class="dw-muted">{{ t('auth.invitation.existing') }}</p>
           } @else {
             <div class="dw-form">
-              <mat-form-field><mat-label>{{ t('fields.firstName') }}</mat-label><input matInput formControlName="first_name" autocomplete="given-name" required /></mat-form-field>
-              <mat-form-field><mat-label>{{ t('fields.lastName') }}</mat-label><input matInput formControlName="last_name" autocomplete="family-name" required /></mat-form-field>
-              <mat-form-field class="dw-span-2">
-                <mat-label>{{ t('auth.newPassword') }}</mat-label>
-                <input matInput type="password" formControlName="password" autocomplete="new-password" required />
-                <mat-hint>{{ t('auth.passwordRule') }}</mat-hint>
-                @if (form.controls.password.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-              </mat-form-field>
+              <dw-field [label]="t('fields.firstName')"><input pInputText formControlName="first_name" autocomplete="given-name" required /></dw-field>
+              <dw-field [label]="t('fields.lastName')"><input pInputText formControlName="last_name" autocomplete="family-name" required /></dw-field>
+              <dw-field class="dw-span-2" [label]="t('auth.newPassword')">
+                <input pInputText type="password" formControlName="password" autocomplete="new-password" required />
+                <small dwHint>{{ t('auth.passwordRule') }}</small>
+              </dw-field>
             </div>
           }
-          <mat-checkbox formControlName="accept">{{ t('auth.acceptLegal', { documents: legalTitles() }) }}</mat-checkbox>
-          <button mat-flat-button type="submit" [disabled]="busy() || !form.controls.accept.value">{{ t('auth.invitation.submit') }}</button>
+          <dw-checkbox formControlName="accept">{{ t('auth.acceptLegal', { documents: legalTitles() }) }}</dw-checkbox>
+          <button pButton type="submit" [disabled]="busy() || !form.controls.accept.value">{{ t('auth.invitation.submit') }}</button>
         </form>
       } @else if (invalid()) {
         <div class="result">
-          <mat-icon class="ko" aria-hidden="true">error</mat-icon>
+          <dw-icon class="ko" aria-hidden="true">error</dw-icon>
           <h1 class="dw-h1">{{ t('auth.invitation.invalidTitle') }}</h1>
           <p class="dw-muted">{{ t('auth.invitation.invalidBody') }}</p>
-          <a mat-stroked-button routerLink="/login">{{ t('auth.login.submit') }}</a>
+          <a pButton severity="secondary" outlined routerLink="/login">{{ t('auth.login.submit') }}</a>
         </div>
       }
     </ng-container>
@@ -274,7 +270,7 @@ export class InvitationPage implements OnInit {
 
 /** Signed in, but no usable company yet: explains why (email to confirm, review pending, rejected, suspended). */
 @Component({
-  imports: [MatButtonModule, MatIconModule, TranslocoDirective, StatusComponent],
+  imports: [TranslocoDirective, StatusComponent, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="wrap" *transloco="let t">
@@ -292,12 +288,12 @@ export class InvitationPage implements OnInit {
         @if (session.me() && !session.me()!.email_verified) {
           <div class="dw-row">
             <span class="dw-muted">{{ t('auth.status.emailUnverified', { email: session.me()!.email }) }}</span>
-            <button mat-stroked-button type="button" (click)="resend()" [disabled]="resent()">{{ resent() ? t('auth.status.resent') : t('auth.status.resend') }}</button>
+            <button pButton severity="secondary" outlined type="button" (click)="resend()" [disabled]="resent()">{{ resent() ? t('auth.status.resent') : t('auth.status.resend') }}</button>
           </div>
         }
         <div class="dw-row">
-          <button mat-stroked-button type="button" (click)="refresh()"><mat-icon>refresh</mat-icon>{{ t('auth.status.refresh') }}</button>
-          <button mat-button type="button" (click)="logout()">{{ t('shell.logout') }}</button>
+          <button pButton severity="secondary" outlined type="button" (click)="refresh()"><dw-icon>refresh</dw-icon>{{ t('auth.status.refresh') }}</button>
+          <button pButton text type="button" (click)="logout()">{{ t('shell.logout') }}</button>
         </div>
       </div>
     </div>

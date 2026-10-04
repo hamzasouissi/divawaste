@@ -1,22 +1,23 @@
 import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
+import { SelectButton } from 'primeng/selectbutton';
 
 import { Api, ApiError } from '../../core/api/api';
 import { Localized } from '../../core/api/models';
 import { Toast } from '../../core/feedback/toast';
 import { LocalizedPipe } from '../../core/format/pipes';
 import { StateComponent } from '../../ui/state';
+import { CheckboxComponent } from '../../ui/checkbox';
+import { DateComponent } from '../../ui/date';
+import { FIELD } from '../../ui/field';
+import { IconComponent } from '../../ui/icon';
+import { SELECT } from '../../ui/select';
 
 interface RegistrationOptions {
   countries: { iso2: string; name: Localized; tax_id_label: Localized; phone_prefix: string }[];
@@ -34,17 +35,18 @@ const PROVIDER_ROLES = ['collector', 'transporter', 'recycler', 'eliminator'] as
  * email is confirmed and the platform has approved it.
  */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, MatButtonModule, MatButtonToggleModule, MatCheckboxModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule,
-    TranslocoDirective, LocalizedPipe, StateComponent],
+  imports: [
+    ReactiveFormsModule, RouterLink, TranslocoDirective, LocalizedPipe, StateComponent, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT, CheckboxComponent, DateComponent, SelectButton,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       @if (done()) {
         <div class="dw-stack" role="status">
-          <mat-icon class="ok" aria-hidden="true">mark_email_read</mat-icon>
+          <dw-icon class="ok" aria-hidden="true">mark_email_read</dw-icon>
           <h1 class="dw-h1">{{ t('auth.register.doneTitle') }}</h1>
           <p class="dw-muted">{{ t('auth.register.doneBody', { email: form.controls.contact.controls.email.value }) }}</p>
-          <a mat-flat-button routerLink="/login">{{ t('auth.login.submit') }}</a>
+          <a pButton routerLink="/login">{{ t('auth.login.submit') }}</a>
         </div>
       } @else {
         <h1 class="dw-h1">{{ t('auth.register.title') }}</h1>
@@ -53,120 +55,108 @@ const PROVIDER_ROLES = ['collector', 'transporter', 'recycler', 'eliminator'] as
         <dw-state [loading]="options() === null && !loadError()" [error]="loadError()" (retry)="load()">
           @if (options(); as opts) {
             <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-              <mat-button-toggle-group formControlName="company_type" [attr.aria-label]="t('auth.register.accountType')" class="type">
-                <mat-button-toggle value="industrial">{{ t('auth.register.industrial') }}</mat-button-toggle>
-                <mat-button-toggle value="provider">{{ t('auth.register.provider') }}</mat-button-toggle>
-              </mat-button-toggle-group>
+              <p-selectbutton formControlName="company_type" class="type" [allowEmpty]="false" optionLabel="label" optionValue="value" [ariaLabelledBy]="'account-type'"
+                [options]="[{ value: 'industrial', label: t('auth.register.industrial') }, { value: 'provider', label: t('auth.register.provider') }]" />
               <p class="dw-muted hint">{{ t(provider() ? 'auth.register.providerHint' : 'auth.register.industrialHint') }}</p>
 
               <div class="dw-form" formGroupName="company">
                 <h2 class="dw-h2 dw-form-section">{{ t('auth.register.company') }}</h2>
-                <mat-form-field class="dw-span-2">
-                  <mat-label>{{ t('fields.legalName') }}</mat-label>
-                  <input matInput formControlName="legal_name" autocomplete="organization" required />
-                  @if (error('company.legal_name'); as message) { <mat-error>{{ message }}</mat-error> }
-                </mat-form-field>
-                <mat-form-field>
-                  <mat-label>{{ t('fields.country') }}</mat-label>
-                  <mat-select formControlName="country" required>
-                    @for (country of opts.countries; track country.iso2) { <mat-option [value]="country.iso2">{{ country.name | dwLocalized }}</mat-option> }
-                  </mat-select>
-                </mat-form-field>
-                <mat-form-field>
-                  <mat-label>{{ taxLabel() | dwLocalized: t('fields.taxId') }}</mat-label>
-                  <input matInput formControlName="tax_id" required />
-                  @if (error('company.tax_id'); as message) { <mat-error>{{ message }}</mat-error> }
-                </mat-form-field>
-                <mat-form-field><mat-label>{{ t('fields.city') }}</mat-label><input matInput formControlName="city" autocomplete="address-level2" /></mat-form-field>
-                <mat-form-field><mat-label>{{ t('fields.phone') }}</mat-label><input matInput type="tel" formControlName="phone" autocomplete="tel" /></mat-form-field>
+                <dw-field class="dw-span-2" [label]="t('fields.legalName')">
+                  <input pInputText formControlName="legal_name" autocomplete="organization" required />
+                  @if (error('company.legal_name'); as message) { <small dwError>{{ message }}</small> }
+                </dw-field>
+                <dw-field [label]="t('fields.country')">
+                  <dw-select formControlName="country" required>
+                    @for (country of opts.countries; track country.iso2) { <dw-option [value]="country.iso2" [label]="country.name | dwLocalized" /> }
+                  </dw-select>
+                </dw-field>
+                <dw-field [label]="taxLabel() | dwLocalized: t('fields.taxId')">
+                  <input pInputText formControlName="tax_id" required />
+                  @if (error('company.tax_id'); as message) { <small dwError>{{ message }}</small> }
+                </dw-field>
+                <dw-field [label]="t('fields.city')"><input pInputText formControlName="city" autocomplete="address-level2" /></dw-field>
+                <dw-field [label]="t('fields.phone')"><input pInputText type="tel" formControlName="phone" autocomplete="tel" /></dw-field>
                 @if (!provider()) {
-                  <mat-form-field class="dw-span-2">
-                    <mat-label>{{ t('auth.register.activities') }}</mat-label>
-                    <mat-select formControlName="activities" multiple required>
-                      @for (activity of opts.activities; track activity.code) { <mat-option [value]="activity.code">{{ activity.name | dwLocalized }}</mat-option> }
-                    </mat-select>
-                    @if (error('company.activities'); as message) { <mat-error>{{ message }}</mat-error> }
-                  </mat-form-field>
+                  <dw-field class="dw-span-2" [label]="t('auth.register.activities')">
+                    <dw-select formControlName="activities" multiple required>
+                      @for (activity of opts.activities; track activity.code) { <dw-option [value]="activity.code" [label]="activity.name | dwLocalized" /> }
+                    </dw-select>
+                    @if (error('company.activities'); as message) { <small dwError>{{ message }}</small> }
+                  </dw-field>
                 }
               </div>
 
               <div class="dw-form" formGroupName="contact">
                 <h2 class="dw-h2 dw-form-section">{{ t('auth.register.contact') }}</h2>
-                <mat-form-field><mat-label>{{ t('fields.firstName') }}</mat-label><input matInput formControlName="first_name" autocomplete="given-name" required /></mat-form-field>
-                <mat-form-field><mat-label>{{ t('fields.lastName') }}</mat-label><input matInput formControlName="last_name" autocomplete="family-name" required /></mat-form-field>
-                <mat-form-field>
-                  <mat-label>{{ t('auth.email') }}</mat-label>
-                  <input matInput type="email" formControlName="email" autocomplete="email" required />
-                  @if (error('contact.email'); as message) { <mat-error>{{ message }}</mat-error> }
-                </mat-form-field>
-                <mat-form-field><mat-label>{{ t('fields.phone') }}</mat-label><input matInput type="tel" formControlName="phone" autocomplete="tel" required /></mat-form-field>
-                <mat-form-field class="dw-span-2">
-                  <mat-label>{{ t('auth.password') }}</mat-label>
-                  <input matInput type="password" formControlName="password" autocomplete="new-password" required />
-                  <mat-hint>{{ t('auth.passwordRule') }}</mat-hint>
-                  @if (error('contact.password'); as message) { <mat-error>{{ message }}</mat-error> }
-                </mat-form-field>
+                <dw-field [label]="t('fields.firstName')"><input pInputText formControlName="first_name" autocomplete="given-name" required /></dw-field>
+                <dw-field [label]="t('fields.lastName')"><input pInputText formControlName="last_name" autocomplete="family-name" required /></dw-field>
+                <dw-field [label]="t('auth.email')">
+                  <input pInputText type="email" formControlName="email" autocomplete="email" required />
+                  @if (error('contact.email'); as message) { <small dwError>{{ message }}</small> }
+                </dw-field>
+                <dw-field [label]="t('fields.phone')"><input pInputText type="tel" formControlName="phone" autocomplete="tel" required /></dw-field>
+                <dw-field class="dw-span-2" [label]="t('auth.password')">
+                  <input pInputText type="password" formControlName="password" autocomplete="new-password" required />
+                  <small dwHint>{{ t('auth.passwordRule') }}</small>
+                  @if (error('contact.password'); as message) { <small dwError>{{ message }}</small> }
+                </dw-field>
               </div>
 
               @if (provider()) {
                 <div class="dw-form" formGroupName="provider">
                   <h2 class="dw-h2 dw-form-section">{{ t('auth.register.providerActivity') }}</h2>
-                  <mat-form-field>
-                    <mat-label>{{ t('providers.roles') }}</mat-label>
-                    <mat-select formControlName="roles" multiple required>
-                      @for (role of roles; track role) { <mat-option [value]="role">{{ t('providers.role.' + role) }}</mat-option> }
-                    </mat-select>
-                  </mat-form-field>
-                  <mat-form-field><mat-label>{{ t('providers.serviceArea') }}</mat-label><input matInput formControlName="service_area" /></mat-form-field>
+                  <dw-field [label]="t('providers.roles')">
+                    <dw-select formControlName="roles" multiple required>
+                      @for (role of roles; track role) { <dw-option [value]="role" [label]="t('providers.role.' + role)" /> }
+                    </dw-select>
+                  </dw-field>
+                  <dw-field [label]="t('providers.serviceArea')"><input pInputText formControlName="service_area" /></dw-field>
 
                   <h2 class="dw-h2 dw-form-section">{{ t('auth.register.accreditations') }}</h2>
                   <div class="dw-span-2 dw-stack-sm" formArrayName="accreditations">
                     @for (group of accreditations.controls; track group; let index = $index) {
                       <div class="accreditation" [formGroupName]="index">
-                        <mat-form-field>
-                          <mat-label>{{ t('providers.accreditationType') }}</mat-label>
-                          <mat-select formControlName="type" required>
-                            @for (type of accreditationTypes(); track type.code) { <mat-option [value]="type.code">{{ type.name | dwLocalized }}</mat-option> }
-                          </mat-select>
-                        </mat-form-field>
-                        <mat-form-field><mat-label>{{ t('providers.reference') }}</mat-label><input matInput formControlName="reference_number" required /></mat-form-field>
-                        <mat-form-field><mat-label>{{ t('providers.validFrom') }}</mat-label><input matInput type="date" formControlName="valid_from" required /></mat-form-field>
-                        <mat-form-field>
-                          <mat-label>{{ t('providers.expiresOn') }}</mat-label>
-                          <input matInput type="date" formControlName="expires_on" required />
-                          @if (error('provider.accreditations.' + index + '.expires_on'); as message) { <mat-error>{{ message }}</mat-error> }
-                        </mat-form-field>
+                        <dw-field [label]="t('providers.accreditationType')">
+                          <dw-select formControlName="type" required>
+                            @for (type of accreditationTypes(); track type.code) { <dw-option [value]="type.code" [label]="type.name | dwLocalized" /> }
+                          </dw-select>
+                        </dw-field>
+                        <dw-field [label]="t('providers.reference')"><input pInputText formControlName="reference_number" required /></dw-field>
+                        <dw-field [label]="t('providers.validFrom')"><dw-date formControlName="valid_from" required /></dw-field>
+                        <dw-field [label]="t('providers.expiresOn')">
+                          <dw-date formControlName="expires_on" required />
+                          @if (error('provider.accreditations.' + index + '.expires_on'); as message) { <small dwError>{{ message }}</small> }
+                        </dw-field>
                         <div class="file">
                           <label class="file-pick">
                             <input type="file" accept="application/pdf" (change)="pick(index, $event)" [attr.aria-label]="t('providers.accreditationFile')" />
-                            <mat-icon aria-hidden="true">upload_file</mat-icon>
+                            <dw-icon aria-hidden="true">upload_file</dw-icon>
                             <span>{{ files()[index]?.name || t('providers.accreditationFile') }}</span>
                           </label>
                           @if (accreditations.length > 1) {
-                            <button mat-icon-button type="button" (click)="removeAccreditation(index)" [attr.aria-label]="t('common.remove')"><mat-icon>delete</mat-icon></button>
+                            <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="removeAccreditation(index)" [attr.aria-label]="t('common.remove')"><dw-icon>delete</dw-icon></button>
                           }
                         </div>
                         @if (fileErrors()[index]; as message) { <p class="field-error" role="alert">{{ message }}</p> }
                       </div>
                     }
-                    <button mat-stroked-button type="button" (click)="addAccreditation()" class="add"><mat-icon>add</mat-icon>{{ t('auth.register.addAccreditation') }}</button>
+                    <button pButton severity="secondary" outlined type="button" (click)="addAccreditation()" class="add"><dw-icon>add</dw-icon>{{ t('auth.register.addAccreditation') }}</button>
                   </div>
                 </div>
               } @else {
                 <div class="dw-form">
                   <h2 class="dw-h2 dw-form-section">{{ t('auth.register.plan') }}</h2>
-                  <mat-form-field class="dw-span-2">
-                    <mat-label>{{ t('auth.register.plan') }}</mat-label>
-                    <mat-select formControlName="plan" required>
-                      @for (plan of opts.plans; track plan.code) { <mat-option [value]="plan.code">{{ plan.name | dwLocalized }}</mat-option> }
-                    </mat-select>
-                    <mat-hint>{{ t('auth.register.planHint') }}</mat-hint>
-                  </mat-form-field>
+                  <dw-field class="dw-span-2" [label]="t('auth.register.plan')">
+                    <dw-select formControlName="plan" required>
+                      @for (plan of opts.plans; track plan.code) { <dw-option [value]="plan.code" [label]="plan.name | dwLocalized" /> }
+                    </dw-select>
+                    <small dwHint>{{ t('auth.register.planHint') }}</small>
+                  </dw-field>
                 </div>
               }
 
               <div class="legal">
-                <mat-checkbox formControlName="accept">{{ t('auth.acceptLegal', { documents: legalTitles() }) }}</mat-checkbox>
+                <dw-checkbox formControlName="accept">{{ t('auth.acceptLegal', { documents: legalTitles() }) }}</dw-checkbox>
                 <details>
                   <summary>{{ t('auth.register.readLegal') }}</summary>
                   @for (doc of legalDocuments(); track doc.type) {
@@ -176,7 +166,7 @@ const PROVIDER_ROLES = ['collector', 'transporter', 'recycler', 'eliminator'] as
               </div>
 
               <div class="dw-form-actions">
-                <button mat-flat-button type="submit" class="submit" [disabled]="busy() || !form.controls.accept.value">{{ busy() ? t('common.wait') : t('auth.register.submit') }}</button>
+                <button pButton type="submit" class="submit" [disabled]="busy() || !form.controls.accept.value">{{ busy() ? t('common.wait') : t('auth.register.submit') }}</button>
               </div>
             </form>
           }

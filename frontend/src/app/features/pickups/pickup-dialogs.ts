@@ -2,21 +2,21 @@ import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
 
 import { Api } from '../../core/api/api';
 import { Pickup, PickupLine } from '../../core/api/models';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
 import { KgPipe, LocalizedPipe, MoneyPipe } from '../../core/format/pipes';
+import { CheckboxComponent } from '../../ui/checkbox';
+import { DIALOG_PARTS, DialogRef, dialogData } from '../../ui/dialog';
+import { FIELD } from '../../ui/field';
+import { IconComponent } from '../../ui/icon';
+import { SELECT } from '../../ui/select';
 
 export type LinesMode = 'collect' | 'receive' | 'treat' | 'price';
 
@@ -43,15 +43,15 @@ const valid = (value: string): boolean => /^\d+([.,]\d{1,3})?$/.test(value);
  * pricing (industrial). Each shows only its own column and sends only its own data.
  */
 @Component({
-  imports: [FormsModule, MatButtonModule, MatCheckboxModule, MatDialogModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, TranslocoDirective, KgPipe, LocalizedPipe, MoneyPipe],
+  imports: [FormsModule, TranslocoDirective, KgPipe, LocalizedPipe, MoneyPipe, IconComponent, ButtonDirective, InputText, ...SELECT, CheckboxComponent, ...DIALOG_PARTS],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <h2 mat-dialog-title>{{ t('pickups.actions.' + data.mode) }} — {{ data.pickup.pickup_number }}</h2>
-      <mat-dialog-content>
+      <dw-dialog-title>{{ t('pickups.actions.' + data.mode) }} — {{ data.pickup.pickup_number }}</dw-dialog-title>
+      <div class="dw-dialog-body">
         <p class="dw-muted hint">{{ t('pickups.' + data.mode + 'Hint') }}</p>
         <div class="scroll">
-          <table>
+          <table class="dw-table">
             <thead>
               <tr>
                 @if (data.mode === 'collect') { <th>{{ t('pickups.loaded') }}</th> }
@@ -69,38 +69,38 @@ const valid = (value: string): boolean => /^\d+([.,]\d{1,3})?$/.test(value);
               @for (row of rows(); track row.line.lot_number_snapshot; let index = $index) {
                 <tr [class.off]="data.mode === 'collect' && !row.checked">
                   @if (data.mode === 'collect') {
-                    <td><mat-checkbox [checked]="row.checked" (change)="patch(index, { checked: $event.checked })" [attr.aria-label]="row.line.lot_number_snapshot" /></td>
+                    <td><dw-checkbox [checked]="row.checked" (checkedChange)="patch(index, { checked: $event })" [ariaLabel]="row.line.lot_number_snapshot" /></td>
                   }
-                  <td class="dw-mono">{{ row.line.lot_number_snapshot }} @if (row.line.is_hazardous) { <mat-icon class="hazard" [title]="t('common.hazardous')">warning</mat-icon> }</td>
+                  <td class="dw-mono">{{ row.line.lot_number_snapshot }} @if (row.line.is_hazardous) { <dw-icon class="hazard" [title]="t('common.hazardous')">warning</dw-icon> }</td>
                   <td>{{ row.line.waste_type_label_snapshot }}</td>
                   <td class="dw-num">{{ reference(row.line) | dwKg }}</td>
                   @switch (data.mode) {
                     @case ('collect') {
-                      <td><input class="cell" inputmode="decimal" [disabled]="!row.checked" [ngModel]="row.weight" (ngModelChange)="patch(index, { weight: $event })" [attr.aria-label]="t('pickups.departure')" /></td>
+                      <td><input pInputText class="cell" inputmode="decimal" [disabled]="!row.checked" [ngModel]="row.weight" (ngModelChange)="patch(index, { weight: $event })" [attr.aria-label]="t('pickups.departure')" /></td>
                     }
                     @case ('receive') {
-                      <td><input class="cell" inputmode="decimal" [ngModel]="row.weight" (ngModelChange)="patch(index, { weight: $event })" [attr.aria-label]="t('pickups.received')" /></td>
+                      <td><input pInputText class="cell" inputmode="decimal" [ngModel]="row.weight" (ngModelChange)="patch(index, { weight: $event })" [attr.aria-label]="t('pickups.received')" /></td>
                     }
                     @case ('treat') {
                       <td>
-                        <select class="cell wide" [ngModel]="row.channel" (ngModelChange)="patch(index, { channel: $event })" [attr.aria-label]="t('pickups.channel')">
-                          <option value="">—</option>
-                          @for (channel of vocabulary()?.treatment_channels ?? []; track channel.code) { <option [value]="channel.code">{{ channel.name | dwLocalized }}</option> }
-                        </select>
+                        <dw-select class="cell wide" [ngModel]="row.channel" (ngModelChange)="patch(index, { channel: $event })" [ariaLabel]="t('pickups.channel')">
+                          <dw-option value="" label="—" />
+                          @for (channel of vocabulary()?.treatment_channels ?? []; track channel.code) { <dw-option [value]="channel.code" [label]="channel.name | dwLocalized" /> }
+                        </dw-select>
                       </td>
                     }
                     @case ('price') {
                       <td>
-                        <select class="cell" [ngModel]="row.direction" (ngModelChange)="patch(index, { direction: $event })" [attr.aria-label]="t('pickups.direction.label')">
-                          <option value="sale">{{ t('pickups.direction.sale') }}</option><option value="cost">{{ t('pickups.direction.cost') }}</option>
-                        </select>
+                        <dw-select class="cell" [ngModel]="row.direction" (ngModelChange)="patch(index, { direction: $event })" [ariaLabel]="t('pickups.direction.label')">
+                          <dw-option value="sale" [label]="t('pickups.direction.sale')" /><dw-option value="cost" [label]="t('pickups.direction.cost')" />
+                        </dw-select>
                       </td>
                       <td>
-                        <select class="cell" [ngModel]="row.mode" (ngModelChange)="patch(index, { mode: $event })" [attr.aria-label]="t('pickups.pricingMode.label')">
-                          <option value="per_kg">{{ t('pickups.pricingMode.per_kg') }}</option><option value="per_tonne">{{ t('pickups.pricingMode.per_tonne') }}</option><option value="flat">{{ t('pickups.pricingMode.flat') }}</option>
-                        </select>
+                        <dw-select class="cell" [ngModel]="row.mode" (ngModelChange)="patch(index, { mode: $event })" [ariaLabel]="t('pickups.pricingMode.label')">
+                          <dw-option value="per_kg" [label]="t('pickups.pricingMode.per_kg')" /><dw-option value="per_tonne" [label]="t('pickups.pricingMode.per_tonne')" /><dw-option value="flat" [label]="t('pickups.pricingMode.flat')" />
+                        </dw-select>
                       </td>
-                      <td><input class="cell" inputmode="decimal" [ngModel]="row.price" (ngModelChange)="patch(index, { price: $event })" [attr.aria-label]="t('pickups.unitPrice')" /></td>
+                      <td><input pInputText class="cell" inputmode="decimal" [ngModel]="row.price" (ngModelChange)="patch(index, { price: $event })" [attr.aria-label]="t('pickups.unitPrice')" /></td>
                       <td class="dw-num" [class.neg]="amount(row) < 0">{{ row.price ? (amount(row) | dwMoney: data.pickup.currency_code) : '—' }}</td>
                     }
                   }
@@ -110,29 +110,28 @@ const valid = (value: string): boolean => /^\d+([.,]\d{1,3})?$/.test(value);
           </table>
         </div>
         @if (data.mode === 'price') { <p class="total">{{ t('pickups.netAmount') }} : <strong [class.neg]="net() < 0">{{ net() | dwMoney: data.pickup.currency_code }}</strong></p> }
-      </mat-dialog-content>
-      <mat-dialog-actions align="end">
-        <button mat-button type="button" mat-dialog-close>{{ t('common.cancel') }}</button>
-        <button mat-flat-button type="button" [disabled]="busy() || !ready()" (click)="submit()">{{ t('common.save') }}</button>
-      </mat-dialog-actions>
+      </div>
+      <div class="dw-dialog-foot">
+        <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+        <button pButton type="button" [disabled]="busy() || !ready()" (click)="submit()">{{ t('common.save') }}</button>
+      </div>
     </ng-container>
   `,
   styles: `
-    mat-dialog-content { min-width: min(820px, 88vw); } .hint { margin-block-end: var(--dw-3); font-size: 13px; }
-    .scroll { overflow-x: auto; } table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { text-align: start; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dw-ink-3); padding: 6px 8px; border-block-end: 1px solid var(--dw-line); white-space: nowrap; }
-    td { padding: 4px 8px; border-block-end: 1px solid var(--dw-line-soft); } tr.off td { color: var(--dw-ink-3); }
-    .cell { width: 110px; height: 32px; padding-inline: 8px; border: 1px solid var(--dw-line); border-radius: var(--dw-radius); font: inherit; background: var(--dw-surface); }
-    .cell.wide { width: 220px; } .cell:focus { outline: 2px solid var(--dw-primary); outline-offset: 0; border-color: var(--dw-primary); } .cell:disabled { background: var(--dw-surface-2); }
+    .dw-dialog-body { min-width: min(820px, 88vw); } .hint { margin-block-end: var(--dw-3); font-size: 13px; }
+    .scroll { overflow-x: auto; margin-inline: -20px; }
+    td { padding-block: 4px; } tr.off td { color: var(--dw-ink-3); }
+    th:first-child, td:first-child { padding-inline-start: 20px; } th:last-child, td:last-child { padding-inline-end: 20px; }
+    .cell { width: 124px; } input.cell { text-align: end; font-variant-numeric: tabular-nums; } .cell.wide { width: 240px; }
     .hazard { font-size: 15px; width: 15px; height: 15px; color: var(--dw-warning); vertical-align: -2px; }
     .neg { color: var(--dw-danger); } .total { text-align: end; margin-block-start: var(--dw-3); }
   `,
 })
 export class PickupLinesDialog {
-  protected readonly data = inject<LinesDialogData>(MAT_DIALOG_DATA);
+  protected readonly data = dialogData<LinesDialogData>();
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
-  private readonly ref = inject<MatDialogRef<PickupLinesDialog, Pickup>>(MatDialogRef);
+  private readonly ref = inject(DialogRef);
 
   protected readonly vocabulary = toSignal(inject(ReferenceData).vocabulary());
   protected readonly busy = signal(false);
@@ -217,49 +216,48 @@ export class PickupLinesDialog {
 
 /** M5-04: recycling or destruction certificate, attached to lots of the pickup. */
 @Component({
-  imports: [FormsModule, MatButtonModule, MatCheckboxModule, MatDialogModule, MatFormFieldModule, MatIconModule, MatSelectModule, TranslocoDirective],
+  imports: [FormsModule, TranslocoDirective, IconComponent, ButtonDirective, ...FIELD, ...SELECT, CheckboxComponent, ...DIALOG_PARTS],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <h2 mat-dialog-title>{{ t('pickups.actions.certificate') }} — {{ pickup.pickup_number }}</h2>
-      <mat-dialog-content class="dw-stack-sm">
-        <mat-form-field>
-          <mat-label>{{ t('pickups.certificateType.label') }}</mat-label>
-          <mat-select [ngModel]="type()" (ngModelChange)="type.set($event)">
-            <mat-option value="recycling">{{ t('pickups.certificateType.recycling') }}</mat-option>
-            <mat-option value="destruction">{{ t('pickups.certificateType.destruction') }}</mat-option>
-          </mat-select>
-        </mat-form-field>
+      <dw-dialog-title>{{ t('pickups.actions.certificate') }} — {{ pickup.pickup_number }}</dw-dialog-title>
+      <div class="dw-dialog-body dw-stack-sm">
+        <dw-field [label]="t('pickups.certificateType.label')">
+          <dw-select [ngModel]="type()" (ngModelChange)="type.set($event)">
+            <dw-option value="recycling" [label]="t('pickups.certificateType.recycling')" />
+            <dw-option value="destruction" [label]="t('pickups.certificateType.destruction')" />
+          </dw-select>
+        </dw-field>
         <fieldset>
           <legend class="dw-label">{{ t('pickups.lots') }}</legend>
           @for (line of lines; track line.lot_number_snapshot) {
-            <mat-checkbox [checked]="selected().includes(line.lot_number_snapshot)" (change)="toggle(line.lot_number_snapshot)">
+            <dw-checkbox [checked]="selected().includes(line.lot_number_snapshot)" (checkedChange)="toggle(line.lot_number_snapshot)">
               <span class="dw-mono">{{ line.lot_number_snapshot }}</span> — {{ line.waste_type_label_snapshot }}
-            </mat-checkbox>
+            </dw-checkbox>
           }
         </fieldset>
         <label class="file">
           <input type="file" accept="application/pdf,image/jpeg,image/png" (change)="pick($event)" />
-          <mat-icon aria-hidden="true">upload_file</mat-icon><span>{{ file()?.name || t('pickups.certificateFile') }}</span>
+          <dw-icon aria-hidden="true">upload_file</dw-icon><span>{{ file()?.name || t('pickups.certificateFile') }}</span>
         </label>
-      </mat-dialog-content>
-      <mat-dialog-actions align="end">
-        <button mat-button type="button" mat-dialog-close>{{ t('common.cancel') }}</button>
-        <button mat-flat-button type="button" [disabled]="busy() || !file() || selected().length === 0" (click)="submit()">{{ t('common.save') }}</button>
-      </mat-dialog-actions>
+      </div>
+      <div class="dw-dialog-foot">
+        <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+        <button pButton type="button" [disabled]="busy() || !file() || selected().length === 0" (click)="submit()">{{ t('common.save') }}</button>
+      </div>
     </ng-container>
   `,
   styles: `
-    mat-dialog-content { min-width: min(480px, 84vw); } fieldset { border: 0; padding: 0; margin: 0; display: grid; }
+    .dw-dialog-body { min-width: min(480px, 84vw); } fieldset { border: 0; padding: 0; margin: 0; display: grid; }
     .file { display: flex; align-items: center; gap: 8px; padding: 12px; border: 1px dashed var(--dw-line); border-radius: var(--dw-radius); cursor: pointer; font-size: 13px; }
     .file:focus-within { outline: 2px solid var(--dw-primary); outline-offset: 2px; } .file input { position: absolute; opacity: 0; width: 1px; height: 1px; }
   `,
 })
 export class CertificateDialog {
-  protected readonly pickup = inject<Pickup>(MAT_DIALOG_DATA);
+  protected readonly pickup = dialogData<Pickup>();
   private readonly http = inject(HttpClient);
   private readonly toast = inject(Toast);
-  private readonly ref = inject<MatDialogRef<CertificateDialog, boolean>>(MatDialogRef);
+  private readonly ref = inject(DialogRef);
 
   protected readonly lines = (this.pickup.lots ?? []).filter((line) => ['loaded', 'received', 'treated'].includes(line.line_status));
   protected readonly type = signal<'recycling' | 'destruction'>('recycling');

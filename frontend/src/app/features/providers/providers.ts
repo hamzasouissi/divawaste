@@ -1,12 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
 
 import { Api, openBlob } from '../../core/api/api';
 import { DirectoryProvider, ProviderAccreditation } from '../../core/api/models';
@@ -18,6 +14,10 @@ import { Confirm } from '../../ui/confirm';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { SearchComponent } from '../../ui/search';
 import { StateComponent } from '../../ui/state';
+import { CheckboxComponent } from '../../ui/checkbox';
+import { IconComponent } from '../../ui/icon';
+import { SELECT } from '../../ui/select';
+import { FilterBarComponent } from '../../ui/filter-bar';
 
 interface DirectoryFilter {
   search: string;
@@ -31,25 +31,23 @@ interface DirectoryFilter {
  * expiry date; a provider that cannot be chosen for a pickup says why, here as in the pickup form.
  */
 @Component({
-  imports: [MatButtonModule, MatCheckboxModule, MatFormFieldModule, MatIconModule, MatSelectModule, TranslocoDirective, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent,
-    DatePipe, LocalizedPipe],
+  imports: [
+    TranslocoDirective, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('providers.title')" [subtitle]="t('providers.subtitle')" />
 
-      <div class="dw-panel filters">
-        <dw-search [placeholder]="t('common.search')" (queryChange)="patch({ search: $event })" />
-        <mat-form-field>
-          <mat-label>{{ t('providers.channels') }}</mat-label>
-          <mat-select [value]="filter().channel" (selectionChange)="patch({ channel: $event.value })">
-            <mat-option value="">{{ t('common.all') }}</mat-option>
-            @for (channel of vocabulary()?.treatment_channels ?? []; track channel.code) { <mat-option [value]="channel.code">{{ channel.name | dwLocalized }}</mat-option> }
-          </mat-select>
-        </mat-form-field>
-        <mat-checkbox [checked]="filter().partners_only" (change)="patch({ partners_only: $event.checked })">{{ t('providers.partnersOnly') }}</mat-checkbox>
-        <mat-checkbox [checked]="filter().hazardous" (change)="patch({ hazardous: $event.checked })">{{ t('providers.hazardousOnly') }}</mat-checkbox>
-      </div>
+      <dw-filter-bar class="dw-panel standalone" [active]="activeFilters()" (cleared)="resetFilter()">
+        <dw-search [placeholder]="t('common.search')" [query]="filter().search" (queryChange)="patch({ search: $event })" />
+        <dw-select [placeholder]="t('providers.channels')" [value]="filter().channel" (valueChange)="patch({ channel: $event })">
+          <dw-option value="" [label]="t('common.all')" />
+          @for (channel of vocabulary()?.treatment_channels ?? []; track channel.code) { <dw-option [value]="channel.code" [label]="channel.name | dwLocalized" /> }
+        </dw-select>
+        <dw-checkbox [checked]="filter().partners_only" (checkedChange)="patch({ partners_only: $event })">{{ t('providers.partnersOnly') }}</dw-checkbox>
+        <dw-checkbox [checked]="filter().hazardous" (checkedChange)="patch({ hazardous: $event })">{{ t('providers.hazardousOnly') }}</dw-checkbox>
+      </dw-filter-bar>
 
       <dw-state [loading]="loading()" [error]="error()" [empty]="rows().length === 0" [keepContent]="rows().length > 0" icon="handshake"
         [emptyTitle]="t('providers.emptyTitle')" [emptyHint]="t('providers.emptyHint')" (retry)="load()">
@@ -68,7 +66,7 @@ interface DirectoryFilter {
               </header>
 
               @if (provider.blocked_reason === 'no_valid_accreditation') {
-                <p class="blocked" role="note"><mat-icon aria-hidden="true">block</mat-icon>{{ t('providers.notSelectable') }} — {{ t('pickups.create.notSelectable.no_valid_accreditation') }}</p>
+                <p class="blocked" role="note"><dw-icon aria-hidden="true">block</dw-icon>{{ t('providers.notSelectable') }} — {{ t('pickups.create.notSelectable.no_valid_accreditation') }}</p>
               }
               @if (provider.description) { <p>{{ provider.description }}</p> }
 
@@ -94,7 +92,7 @@ interface DirectoryFilter {
                         <span class="dw-faint"> — {{ t('providers.expiresOn') }} {{ accreditation.expires_on | dwDate }}</span>
                       </span>
                       <dw-status kind="accreditation" [value]="accreditation.state ?? 'valid'" />
-                      <button mat-icon-button type="button" (click)="file(accreditation)" [attr.aria-label]="t('providers.viewFile')" [title]="t('providers.viewFile')"><mat-icon>description</mat-icon></button>
+                      <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="file(accreditation)" [attr.aria-label]="t('providers.viewFile')" [title]="t('providers.viewFile')"><dw-icon>description</dw-icon></button>
                     </li>
                   } @empty {
                     <li class="dw-faint">{{ t('common.none') }}</li>
@@ -105,9 +103,9 @@ interface DirectoryFilter {
               @if (canManage) {
                 <footer>
                   @if (provider.partnership?.status === 'active') {
-                    <button mat-button type="button" [disabled]="busy()" (click)="end(provider)">{{ t('providers.endPartner') }}</button>
+                    <button pButton text type="button" [disabled]="busy()" (click)="end(provider)">{{ t('providers.endPartner') }}</button>
                   } @else {
-                    <button mat-flat-button type="button" [disabled]="busy()" (click)="add(provider)"><mat-icon>add</mat-icon>{{ t('providers.addPartner') }}</button>
+                    <button pButton type="button" [disabled]="busy()" (click)="add(provider)"><dw-icon>add</dw-icon>{{ t('providers.addPartner') }}</button>
                   }
                 </footer>
               }
@@ -118,13 +116,11 @@ interface DirectoryFilter {
     </ng-container>
   `,
   styles: `
-    .filters { display: flex; align-items: center; gap: var(--dw-2) var(--dw-3); flex-wrap: wrap; padding: var(--dw-3) var(--dw-4); margin-block-end: var(--dw-4); }
-    .filters mat-form-field { width: 220px; }
     .cards { display: grid; gap: var(--dw-4); grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); align-items: start; }
     .card { display: grid; gap: var(--dw-3); padding: var(--dw-4); }
     .card header { display: flex; align-items: flex-start; gap: var(--dw-3); }
     .blocked { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: var(--dw-radius); background: var(--dw-danger-soft); color: var(--dw-danger); font-size: 12.5px; font-weight: 600; }
-    .blocked mat-icon { font-size: 16px; width: 16px; height: 16px; }
+    .blocked dw-icon { font-size: 16px; }
     .accreditations { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; font-size: 13px; }
     .accreditations li { display: flex; align-items: center; gap: var(--dw-2); }
     footer { display: flex; justify-content: flex-end; border-block-start: 1px solid var(--dw-line-soft); padding-block-start: var(--dw-3); }
@@ -152,6 +148,13 @@ export class ProvidersPage {
 
   protected channels(provider: DirectoryProvider): string {
     return provider.channels.map((channel) => this.toast.text(`channels.${channel}`)).join(', ') || '—';
+  }
+
+  protected readonly activeFilters = computed(() => Object.values(this.filter()).filter(Boolean).length);
+
+  protected resetFilter(): void {
+    this.filter.set({ search: '', channel: '', partners_only: false, hazardous: false });
+    this.load();
   }
 
   protected patch(change: Partial<DirectoryFilter>): void {

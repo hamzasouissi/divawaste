@@ -2,14 +2,11 @@ import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
+import { Textarea } from 'primeng/textarea';
 
 import { Api, ApiError, openBlob } from '../../core/api/api';
 import { Localized, ProviderAccreditation } from '../../core/api/models';
@@ -20,6 +17,11 @@ import { DatePipe, LocalizedPipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
+import { CheckboxComponent } from '../../ui/checkbox';
+import { DateComponent } from '../../ui/date';
+import { FIELD } from '../../ui/field';
+import { IconComponent } from '../../ui/icon';
+import { SELECT } from '../../ui/select';
 
 interface AcceptedWaste {
   channel: string;
@@ -41,8 +43,9 @@ interface Profile {
 
 /** What industrials read in the directory: activities, contact, and which waste goes to which channel. */
 @Component({
-  imports: [FormsModule, ReactiveFormsModule, MatButtonModule, MatCheckboxModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, TranslocoDirective, PageHeaderComponent,
-    StatusComponent, StateComponent, LocalizedPipe],
+  imports: [
+    FormsModule, ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, LocalizedPipe, IconComponent, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, CheckboxComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -59,18 +62,17 @@ interface Profile {
                 <h2 class="dw-h2">{{ t('providers.roles') }}</h2>
                 <div class="dw-row roles">
                   @for (role of roleOptions; track role) {
-                    <mat-checkbox [checked]="roles().includes(role)" (change)="toggleRole(role, $event.checked)">{{ t('providers.role.' + role) }}</mat-checkbox>
+                    <dw-checkbox [checked]="roles().includes(role)" (checkedChange)="toggleRole(role, $event)">{{ t('providers.role.' + role) }}</dw-checkbox>
                   }
                 </div>
                 <div class="dw-form">
-                  <mat-form-field class="dw-span-2"><mat-label>{{ t('fields.description') }}</mat-label><textarea matInput rows="3" maxlength="2000" formControlName="description"></textarea></mat-form-field>
-                  <mat-form-field class="dw-span-2"><mat-label>{{ t('providers.serviceArea') }}</mat-label><input matInput maxlength="500" formControlName="service_area" /></mat-form-field>
-                  <mat-form-field><mat-label>{{ t('providers.contact') }}</mat-label><input matInput formControlName="public_contact_name" /></mat-form-field>
-                  <mat-form-field><mat-label>{{ t('fields.phone') }}</mat-label><input matInput type="tel" formControlName="public_contact_phone" /></mat-form-field>
-                  <mat-form-field>
-                    <mat-label>{{ t('fields.email') }}</mat-label><input matInput type="email" formControlName="public_contact_email" />
-                    @if (form.controls.public_contact_email.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-                  </mat-form-field>
+                  <dw-field class="dw-span-2" [label]="t('fields.description')"><textarea pTextarea rows="3" maxlength="2000" formControlName="description"></textarea></dw-field>
+                  <dw-field class="dw-span-2" [label]="t('providers.serviceArea')"><input pInputText maxlength="500" formControlName="service_area" /></dw-field>
+                  <dw-field [label]="t('providers.contact')"><input pInputText formControlName="public_contact_name" /></dw-field>
+                  <dw-field [label]="t('fields.phone')"><input pInputText type="tel" formControlName="public_contact_phone" /></dw-field>
+                  <dw-field [label]="t('fields.email')">
+                    <input pInputText type="email" formControlName="public_contact_email" />
+                  </dw-field>
                 </div>
               </div>
             </section>
@@ -78,39 +80,35 @@ interface Profile {
             <section class="dw-panel">
               <header class="dw-panel-head">
                 <h2 class="dw-h2 dw-spacer">{{ t('providers.accepted') }}</h2>
-                <button mat-stroked-button type="button" (click)="addWaste()"><mat-icon>add</mat-icon>{{ t('provider.profile.addWaste') }}</button>
+                <button pButton severity="secondary" outlined type="button" (click)="addWaste()"><dw-icon>add</dw-icon>{{ t('provider.profile.addWaste') }}</button>
               </header>
-              <div class="dw-panel-body wastes">
+              <div class="dw-panel-body wastes dw-rows">
                 @for (waste of wastes(); track $index; let index = $index) {
                   <div class="waste">
-                    <mat-form-field>
-                      <mat-label>{{ t('providers.family') }}</mat-label>
-                      <mat-select [ngModel]="waste.family" (ngModelChange)="patchWaste(index, { family: $event })" [ngModelOptions]="{ standalone: true }">
-                        @for (family of vocabulary()?.waste_families ?? []; track family.code) { <mat-option [value]="family.code">{{ family.name | dwLocalized }}</mat-option> }
-                      </mat-select>
-                    </mat-form-field>
-                    <mat-form-field>
-                      <mat-label>{{ t('pickups.channel') }}</mat-label>
-                      <mat-select [ngModel]="waste.channel" (ngModelChange)="patchWaste(index, { channel: $event })" [ngModelOptions]="{ standalone: true }">
-                        @for (channel of vocabulary()?.treatment_channels ?? []; track channel.code) { <mat-option [value]="channel.code">{{ channel.name | dwLocalized }}</mat-option> }
-                      </mat-select>
-                    </mat-form-field>
-                    <mat-form-field class="min">
-                      <mat-label>{{ t('providers.minQuantity') }}</mat-label>
-                      <input matInput inputmode="decimal" [ngModel]="waste.min_quantity_kg" (ngModelChange)="patchWaste(index, { min_quantity_kg: $event })" [ngModelOptions]="{ standalone: true }" />
-                    </mat-form-field>
-                    <mat-form-field>
-                      <mat-label>{{ t('fields.notes') }}</mat-label>
-                      <input matInput maxlength="500" [ngModel]="waste.notes" (ngModelChange)="patchWaste(index, { notes: $event })" [ngModelOptions]="{ standalone: true }" />
-                    </mat-form-field>
-                    <button mat-icon-button type="button" (click)="removeWaste(index)" [attr.aria-label]="t('common.remove')"><mat-icon>delete</mat-icon></button>
+                    <dw-field [label]="t('providers.family')">
+                      <dw-select [ngModel]="waste.family" (ngModelChange)="patchWaste(index, { family: $event })" [ngModelOptions]="{ standalone: true }">
+                        @for (family of vocabulary()?.waste_families ?? []; track family.code) { <dw-option [value]="family.code" [label]="family.name | dwLocalized" /> }
+                      </dw-select>
+                    </dw-field>
+                    <dw-field [label]="t('pickups.channel')">
+                      <dw-select [ngModel]="waste.channel" (ngModelChange)="patchWaste(index, { channel: $event })" [ngModelOptions]="{ standalone: true }">
+                        @for (channel of vocabulary()?.treatment_channels ?? []; track channel.code) { <dw-option [value]="channel.code" [label]="channel.name | dwLocalized" /> }
+                      </dw-select>
+                    </dw-field>
+                    <dw-field class="min" [label]="t('providers.minQuantity')">
+                      <input pInputText inputmode="decimal" [ngModel]="waste.min_quantity_kg" (ngModelChange)="patchWaste(index, { min_quantity_kg: $event })" [ngModelOptions]="{ standalone: true }" />
+                    </dw-field>
+                    <dw-field [label]="t('fields.notes')">
+                      <input pInputText maxlength="500" [ngModel]="waste.notes" (ngModelChange)="patchWaste(index, { notes: $event })" [ngModelOptions]="{ standalone: true }" />
+                    </dw-field>
+                    <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="removeWaste(index)" [attr.aria-label]="t('common.remove')"><dw-icon>delete</dw-icon></button>
                   </div>
                 } @empty {
                   <p class="dw-faint">{{ t('common.none') }}</p>
                 }
               </div>
             </section>
-            <div class="dw-form-actions"><button mat-flat-button type="submit" [disabled]="busy() || !valid()">{{ t('common.save') }}</button></div>
+            <div class="dw-form-actions"><button pButton type="submit" [disabled]="busy() || !valid()">{{ t('common.save') }}</button></div>
           </form>
         }
       </dw-state>
@@ -119,7 +117,7 @@ interface Profile {
   styles: `
     .roles { margin-block: var(--dw-2) var(--dw-4); }
     .wastes { display: grid; gap: var(--dw-1); }
-    .waste { display: grid; grid-template-columns: 1.2fr 1.2fr 0.8fr 1.6fr auto; gap: var(--dw-2); align-items: start; }
+    .waste { display: grid; grid-template-columns: 1.2fr 1.2fr 0.8fr 1.6fr auto; gap: var(--dw-2); align-items: end; }
     @media (max-width: 900px) { .waste { grid-template-columns: 1fr 1fr; padding-block-end: var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); } }
   `,
 })
@@ -210,13 +208,14 @@ interface AccreditationType {
 
 /** M0-05: accreditations, each with its document, verified by the platform. A renewal is a new entry; the old one stays. */
 @Component({
-  imports: [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent,
-    DatePipe, LocalizedPipe],
+  imports: [
+    ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT, DateComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('provider.accreditations.title')" [subtitle]="t('provider.accreditations.subtitle')">
-        @if (!adding()) { <button mat-flat-button type="button" (click)="adding.set(true)"><mat-icon>add</mat-icon>{{ t('provider.accreditations.add') }}</button> }
+        @if (!adding()) { <button pButton type="button" (click)="adding.set(true)"><dw-icon>add</dw-icon>{{ t('provider.accreditations.add') }}</button> }
       </dw-page-header>
 
       <div class="dw-stack">
@@ -224,34 +223,30 @@ interface AccreditationType {
           <form class="dw-panel" [formGroup]="form" (ngSubmit)="add(file)">
             <div class="dw-panel-body">
               <div class="dw-form">
-                <mat-form-field>
-                  <mat-label>{{ t('providers.accreditationType') }}</mat-label>
-                  <mat-select formControlName="type">
-                    @for (type of types(); track type.code) { <mat-option [value]="type.code">{{ type.name | dwLocalized }}</mat-option> }
-                  </mat-select>
-                </mat-form-field>
-                <mat-form-field>
-                  <mat-label>{{ t('providers.reference') }}</mat-label><input matInput formControlName="reference_number" maxlength="100" />
-                  @if (form.controls.reference_number.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-                </mat-form-field>
-                <mat-form-field><mat-label>{{ t('providers.authority') }}</mat-label><input matInput formControlName="issuing_authority" maxlength="191" /></mat-form-field>
+                <dw-field [label]="t('providers.accreditationType')">
+                  <dw-select formControlName="type">
+                    @for (type of types(); track type.code) { <dw-option [value]="type.code" [label]="type.name | dwLocalized" /> }
+                  </dw-select>
+                </dw-field>
+                <dw-field [label]="t('providers.reference')">
+                  <input pInputText formControlName="reference_number" maxlength="100" />
+                </dw-field>
+                <dw-field [label]="t('providers.authority')"><input pInputText formControlName="issuing_authority" maxlength="191" /></dw-field>
                 <span></span>
-                <mat-form-field>
-                  <mat-label>{{ t('providers.validFrom') }}</mat-label><input matInput type="date" formControlName="valid_from" />
-                  @if (form.controls.valid_from.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-                </mat-form-field>
-                <mat-form-field>
-                  <mat-label>{{ t('providers.expiresOn') }}</mat-label><input matInput type="date" formControlName="expires_on" />
-                  @if (form.controls.expires_on.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-                </mat-form-field>
+                <dw-field [label]="t('providers.validFrom')">
+                  <dw-date formControlName="valid_from" />
+                </dw-field>
+                <dw-field [label]="t('providers.expiresOn')">
+                  <dw-date formControlName="expires_on" />
+                </dw-field>
                 <label class="dw-span-2 file">
                   <span class="dw-label">{{ t('providers.accreditationFile') }}</span>
                   <input #file type="file" accept="application/pdf" (change)="hasFile.set(!!file.files?.length)" />
                 </label>
               </div>
               <div class="dw-form-actions">
-                <button mat-button type="button" (click)="adding.set(false)">{{ t('common.cancel') }}</button>
-                <button mat-flat-button type="submit" [disabled]="busy() || !hasFile()">{{ t('provider.accreditations.add') }}</button>
+                <button pButton text type="button" (click)="adding.set(false)">{{ t('common.cancel') }}</button>
+                <button pButton type="submit" [disabled]="busy() || !hasFile()">{{ t('provider.accreditations.add') }}</button>
               </div>
             </div>
           </form>
@@ -269,8 +264,8 @@ interface AccreditationType {
                     @if (row.rejection_reason) { <div class="reason">{{ row.rejection_reason }}</div> }
                   </div>
                   @if (row.expired) { <dw-status kind="accreditation" value="expired" /> } @else { <dw-status kind="accreditation" [value]="row.review_status ?? 'pending'" /> }
-                  <button mat-icon-button type="button" (click)="open(row)" [attr.aria-label]="t('providers.viewFile')" [title]="t('providers.viewFile')"><mat-icon>description</mat-icon></button>
-                  <button mat-button type="button" [disabled]="busy()" (click)="withdraw(row)">{{ t('provider.accreditations.withdraw') }}</button>
+                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="open(row)" [attr.aria-label]="t('providers.viewFile')" [title]="t('providers.viewFile')"><dw-icon>description</dw-icon></button>
+                  <button pButton text type="button" [disabled]="busy()" (click)="withdraw(row)">{{ t('provider.accreditations.withdraw') }}</button>
                 </li>
               }
             </ul>

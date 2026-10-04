@@ -1,14 +1,11 @@
 import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom, of } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
+import { Drawer } from 'primeng/drawer';
 
 import { Api, openBlob } from '../../core/api/api';
 import { AuditEntry, Company, Invoice, Subscription } from '../../core/api/models';
@@ -20,6 +17,12 @@ import { Column, TABLE } from '../../ui/data-table';
 import { ListStore } from '../../ui/list-store';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
+import { DateComponent } from '../../ui/date';
+import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
+import { FIELD } from '../../ui/field';
+import { IconComponent } from '../../ui/icon';
+import { SELECT } from '../../ui/select';
+import { FilterBarComponent } from '../../ui/filter-bar';
 
 interface AuditFilter {
   entity?: string | null;
@@ -28,62 +31,67 @@ interface AuditFilter {
   to?: string | null;
 }
 
-/** M7-02: who did what, when, from where. Read-only by nature; the row opens to show the values before and after. */
+/** M7-02: who did what, when, from where. Read-only by nature; a row opens a side panel with the values before and after. */
 @Component({
-  imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, TranslocoDirective, ...TABLE, PageHeaderComponent, DatePipe],
+  imports: [FormsModule, TranslocoDirective, ...TABLE, PageHeaderComponent, DatePipe, ...SELECT, DateComponent, FilterBarComponent, Drawer],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('admin.audit.title')" [subtitle]="t('admin.audit.subtitle')" />
       <div class="dw-panel">
-        <div class="filters">
-          <mat-form-field>
-            <mat-label>{{ t('admin.audit.event') }}</mat-label>
-            <mat-select [value]="list.filter().event ?? ''" (selectionChange)="list.setFilter({ event: $event.value || null })">
-              <mat-option value="">{{ t('common.all') }}</mat-option>
-              @for (event of events; track event) { <mat-option [value]="event">{{ t('admin.audit.events.' + event) }}</mat-option> }
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>{{ t('admin.audit.entity') }}</mat-label>
-            <mat-select [value]="list.filter().entity ?? ''" (selectionChange)="list.setFilter({ entity: $event.value || null })">
-              <mat-option value="">{{ t('common.all') }}</mat-option>
-              @for (entity of entities; track entity) { <mat-option [value]="entity">{{ entity }}</mat-option> }
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field class="date"><mat-label>{{ t('period.from') }}</mat-label><input matInput type="date" [ngModel]="list.filter().from ?? ''" (ngModelChange)="list.setFilter({ from: $event || null })" /></mat-form-field>
-          <mat-form-field class="date"><mat-label>{{ t('period.to') }}</mat-label><input matInput type="date" [ngModel]="list.filter().to ?? ''" (ngModelChange)="list.setFilter({ to: $event || null })" /></mat-form-field>
-          @if (list.filtered()) { <button mat-button type="button" (click)="list.resetFilter()">{{ t('common.resetFilters') }}</button> }
-        </div>
+        <dw-filter-bar [active]="list.activeCount()" (cleared)="list.resetFilter()">
+          <dw-select [placeholder]="t('admin.audit.event')" [value]="list.filter().event ?? ''" (valueChange)="list.setFilter({ event: $event || null })">
+            <dw-option value="" [label]="t('common.all')" />
+            @for (event of events; track event) { <dw-option [value]="event" [label]="t('admin.audit.events.' + event)" /> }
+          </dw-select>
+          <dw-select [placeholder]="t('admin.audit.entity')" [value]="list.filter().entity ?? ''" (valueChange)="list.setFilter({ entity: $event || null })">
+            <dw-option value="" [label]="t('common.all')" />
+            @for (entity of entities; track entity) { <dw-option [value]="entity" [label]="entity" /> }
+          </dw-select>
+          <dw-date class="date" [placeholder]="t('period.from')" [ngModel]="list.filter().from ?? ''" (ngModelChange)="list.setFilter({ from: $event || null })" />
+          <dw-date class="date" [placeholder]="t('period.to')" [ngModel]="list.filter().to ?? ''" (ngModelChange)="list.setFilter({ to: $event || null })" />
+        </dw-filter-bar>
         <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1"
-          [pageSize]="list.perPage()" [trackBy]="track" emptyIcon="history" [emptyTitle]="t('admin.audit.emptyTitle')"
-          (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (retry)="list.reload()">
+          [pageSize]="list.perPage()" [trackBy]="track" [clickable]="true" emptyIcon="history" [emptyTitle]="t('admin.audit.emptyTitle')"
+          (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="selected.set($event)" (retry)="list.reload()">
           <ng-template dwCell="when" let-e><span class="dw-nowrap">{{ e.occurred_at | dwDate: 'datetime' }}</span></ng-template>
           <ng-template dwCell="actor" let-e>{{ e.actor?.name ?? t('admin.audit.system') }}<div class="dw-faint">{{ e.source }}@if (e.ip_address) { · {{ e.ip_address }} }</div></ng-template>
           <ng-template dwCell="event" let-e>{{ eventLabel(e.event, t) }}</ng-template>
-          <ng-template dwCell="entity" let-e>{{ e.entity }}<div class="dw-faint dw-mono">{{ e.object }}</div></ng-template>
+          <ng-template dwCell="entity" let-e>{{ e.entity }}<div class="dw-faint dw-code">{{ e.object }}</div></ng-template>
           <ng-template dwCell="changes" let-e>
-            @if (changes(e).length > 0) {
-              <details>
-                <summary>{{ changes(e).length }} — {{ summary(e) }}</summary>
-                <table class="diff">
-                  <thead><tr><th></th><th>{{ t('admin.audit.before') }}</th><th>{{ t('admin.audit.after') }}</th></tr></thead>
-                  <tbody>@for (change of changes(e); track change.key) { <tr><th scope="row">{{ change.key }}</th><td>{{ change.before }}</td><td>{{ change.after }}</td></tr> }</tbody>
-                </table>
-              </details>
-            } @else { — }
+            @if (changes(e).length > 0) { <span class="keys"><strong>{{ changes(e).length }}</strong> · {{ summary(e) }}</span> } @else { — }
           </ng-template>
         </dw-data-table>
       </div>
+
+      <p-drawer [visible]="selected() !== null" (visibleChange)="$event || selected.set(null)" position="right" styleClass="dw-drawer" [header]="t('common.details')">
+        @if (selected(); as e) {
+          <dl class="dw-facts">
+            <dt>{{ t('admin.audit.when') }}</dt><dd>{{ e.occurred_at | dwDate: 'datetime' }}</dd>
+            <dt>{{ t('admin.audit.actor') }}</dt><dd>{{ e.actor?.name ?? t('admin.audit.system') }}</dd>
+            <dt>{{ t('admin.audit.event') }}</dt><dd>{{ eventLabel(e.event, t) }}</dd>
+            <dt>{{ t('admin.audit.entity') }}</dt><dd>{{ e.entity }}<div class="dw-faint dw-code">{{ e.object }}</div></dd>
+            <dt>{{ t('admin.audit.source') }}</dt><dd>{{ e.source }}@if (e.ip_address) { · {{ e.ip_address }} }</dd>
+          </dl>
+          <h3 class="dw-label">{{ t('admin.audit.changes') }}</h3>
+          @if (changes(e).length > 0) {
+            <table class="dw-table diff">
+              <thead><tr><th></th><th>{{ t('admin.audit.before') }}</th><th>{{ t('admin.audit.after') }}</th></tr></thead>
+              <tbody>@for (change of changes(e); track change.key) { <tr><th scope="row">{{ change.key }}</th><td>{{ change.before }}</td><td>{{ change.after }}</td></tr> }</tbody>
+            </table>
+          } @else { <p class="dw-faint">—</p> }
+        }
+      </p-drawer>
     </ng-container>
   `,
   styles: `
-    .filters { display: flex; align-items: center; gap: var(--dw-2) var(--dw-3); flex-wrap: wrap; padding: var(--dw-3) var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); }
-    .filters mat-form-field { width: 200px; } .filters .date { width: 160px; }
-    summary { cursor: pointer; color: var(--dw-ink-2); max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .diff { margin-block: 6px; font-size: 12px; border-collapse: collapse; }
-    .diff th, .diff td { padding: 3px 8px; border: 1px solid var(--dw-line-soft); text-align: start; vertical-align: top; max-width: 280px; overflow-wrap: anywhere; }
-    .diff th { background: var(--dw-surface-2); font-weight: 600; }
+    .keys { display: inline-block; max-width: 420px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; color: var(--dw-ink-2); }
+    .keys strong { color: var(--dw-ink); }
+    h3 { margin-block: var(--dw-5) var(--dw-2); }
+    .diff { border: 1px solid var(--dw-line); border-radius: var(--dw-radius); border-collapse: separate; border-spacing: 0; overflow: hidden; font-size: 12.5px; }
+    .diff th[scope='row'] { text-align: start; font-weight: 550; padding: 6px var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); background: var(--dw-surface-2); white-space: nowrap; }
+    .diff td { overflow-wrap: anywhere; vertical-align: top; }
+    .diff tr:last-child th { border-block-end: 0; }
   `,
 })
 export class AuditPage {
@@ -93,6 +101,7 @@ export class AuditPage {
   protected readonly entities = ['waste_lots', 'pickups', 'sites', 'zones', 'waste_types', 'stock_thresholds', 'documents', 'hazardous_waste_manifests', 'annual_declarations', 'users', 'companies',
     'provider_accreditations', 'provider_partnerships', 'company_subscriptions', 'invoices', 'payments'];
   protected readonly list = new ListStore<AuditEntry, AuditFilter>((query) => this.api.list<AuditEntry>('audit-logs', query));
+  protected readonly selected = signal<AuditEntry | null>(null);
   protected readonly track = (entry: AuditEntry): string => `${entry.occurred_at}${entry.entity}${entry.object}${entry.event}`;
 
   protected readonly columns: Column<AuditEntry>[] = [
@@ -126,41 +135,36 @@ interface DeclareData {
 
 /** M0-04: the client declares its bank transfer; the platform validates it against the bank statement. */
 @Component({
-  imports: [ReactiveFormsModule, MatButtonModule, MatDialogModule, MatFormFieldModule, MatInputModule, TranslocoDirective],
+  imports: [ReactiveFormsModule, TranslocoDirective, ButtonDirective, InputText, ...FIELD, DateComponent, ...DIALOG_PARTS],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <h2 mat-dialog-title>{{ t('admin.subscription.declareTitle', { number: data.invoice.invoice_number }) }}</h2>
+      <dw-dialog-title>{{ t('admin.subscription.declareTitle', { number: data.invoice.invoice_number }) }}</dw-dialog-title>
       <form [formGroup]="form" (ngSubmit)="save()">
-        <mat-dialog-content>
-          <mat-form-field>
-            <mat-label>{{ t('admin.subscription.amount') }} ({{ data.invoice.currency_code }})</mat-label>
-            <input matInput inputmode="decimal" formControlName="amount" />
-            @if (form.controls.amount.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>{{ t('admin.subscription.bankReference') }}</mat-label>
-            <input matInput formControlName="bank_reference" maxlength="100" />
-            @if (form.controls.bank_reference.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>{{ t('admin.subscription.paidOn') }}</mat-label>
-            <input matInput type="date" formControlName="declared_paid_on" [max]="today" />
-            @if (form.controls.declared_paid_on.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-          </mat-form-field>
-        </mat-dialog-content>
-        <mat-dialog-actions align="end">
-          <button mat-button type="button" mat-dialog-close>{{ t('common.cancel') }}</button>
-          <button mat-flat-button type="submit" [disabled]="busy()">{{ t('admin.subscription.declare') }}</button>
-        </mat-dialog-actions>
+        <div class="dw-dialog-body">
+          <dw-field>
+            <span dwLabel>{{ t('admin.subscription.amount') }} ({{ data.invoice.currency_code }})</span>
+            <input pInputText inputmode="decimal" formControlName="amount" />
+          </dw-field>
+          <dw-field [label]="t('admin.subscription.bankReference')">
+            <input pInputText formControlName="bank_reference" maxlength="100" />
+          </dw-field>
+          <dw-field [label]="t('admin.subscription.paidOn')">
+            <dw-date formControlName="declared_paid_on" [max]="today" />
+          </dw-field>
+        </div>
+        <div class="dw-dialog-foot">
+          <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+          <button pButton type="submit" [disabled]="busy()">{{ t('admin.subscription.declare') }}</button>
+        </div>
       </form>
     </ng-container>
   `,
-  styles: 'mat-dialog-content { display: grid; min-width: min(420px, 80vw); }',
+  styles: '.dw-dialog-body { display: grid; min-width: min(420px, 80vw); }',
 })
 export class DeclarePaymentDialog {
-  protected readonly data = inject<DeclareData>(MAT_DIALOG_DATA);
-  private readonly ref = inject(MatDialogRef<DeclarePaymentDialog, boolean>);
+  protected readonly data = dialogData<DeclareData>();
+  private readonly ref = inject(DialogRef);
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
 
@@ -196,8 +200,9 @@ export class DeclarePaymentDialog {
 
 /** M0-11: the plan, its invoices and the payments. Prices are agreed with Diva Software: a change is a request. */
 @Component({
-  imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, StateComponent,
-    DatePipe, LocalizedPipe, MoneyPipe],
+  imports: [
+    FormsModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, LocalizedPipe, MoneyPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -232,22 +237,20 @@ export class DeclarePaymentDialog {
                   <div class="change">
                     <h3 class="dw-h3">{{ t('admin.subscription.change') }}</h3>
                     <div class="dw-row">
-                      <mat-form-field>
-                        <mat-label>{{ t('auth.register.plan') }}</mat-label>
-                        <mat-select [ngModel]="plan()" (ngModelChange)="plan.set($event)">
-                          @for (item of paidPlans(); track item.code) { <mat-option [value]="item.code">{{ item.name | dwLocalized }}</mat-option> }
-                        </mat-select>
-                      </mat-form-field>
-                      <mat-form-field class="sites">
-                        <mat-label>{{ t('admin.subscription.sitesWanted') }}</mat-label>
-                        <input matInput type="number" min="1" max="500" [ngModel]="sites()" (ngModelChange)="sites.set($event)" />
-                      </mat-form-field>
-                      <button mat-flat-button type="button" [disabled]="busy() || !plan() || !(sites() >= 1)" (click)="request()">{{ t('admin.subscription.changeTitle') }}</button>
+                      <dw-field [label]="t('auth.register.plan')">
+                        <dw-select [ngModel]="plan()" (ngModelChange)="plan.set($event)">
+                          @for (item of paidPlans(); track item.code) { <dw-option [value]="item.code" [label]="item.name | dwLocalized" /> }
+                        </dw-select>
+                      </dw-field>
+                      <dw-field class="sites" [label]="t('admin.subscription.sitesWanted')">
+                        <input pInputText type="number" min="1" max="500" [ngModel]="sites()" (ngModelChange)="sites.set($event)" />
+                      </dw-field>
+                      <button pButton type="button" [disabled]="busy() || !plan() || !(sites() >= 1)" (click)="request()">{{ t('admin.subscription.changeTitle') }}</button>
                       <span class="dw-spacer"></span>
                       @if (s.current?.cancel_at_period_end) {
-                        <button mat-stroked-button type="button" [disabled]="busy()" (click)="resume()">{{ t('admin.subscription.resume') }}</button>
+                        <button pButton severity="secondary" outlined type="button" [disabled]="busy()" (click)="resume()">{{ t('admin.subscription.resume') }}</button>
                       } @else if (s.current && s.current.status === 'active') {
-                        <button mat-button type="button" [disabled]="busy()" (click)="cancel()">{{ t('admin.subscription.cancel') }}</button>
+                        <button pButton text type="button" [disabled]="busy()" (click)="cancel()">{{ t('admin.subscription.cancel') }}</button>
                       }
                     </div>
                   </div>
@@ -274,9 +277,9 @@ export class DeclarePaymentDialog {
               </ng-template>
               <ng-template dwCell="actions" let-i>
                 <div class="dw-row-tight">
-                  <button mat-stroked-button type="button" (click)="pdf(i)"><mat-icon>picture_as_pdf</mat-icon>PDF</button>
+                  <button pButton severity="secondary" outlined type="button" (click)="pdf(i)"><dw-icon>picture_as_pdf</dw-icon>PDF</button>
                   @if (canManage && !i.pending_payment && (i.status === 'issued' || i.status === 'partially_paid' || i.status === 'overdue')) {
-                    <button mat-flat-button type="button" (click)="declare(i)">{{ t('admin.subscription.declare') }}</button>
+                    <button pButton type="button" (click)="declare(i)">{{ t('admin.subscription.declare') }}</button>
                   }
                 </div>
               </ng-template>
@@ -291,7 +294,7 @@ export class DeclarePaymentDialog {
     .lapsed { padding: 8px 12px; border-radius: var(--dw-radius); background: var(--dw-danger-soft); color: var(--dw-danger); font-weight: 600; }
     .requested { padding: 8px 12px; border-radius: var(--dw-radius); background: var(--dw-info-soft); color: var(--dw-info); }
     .change { border-block-start: 1px solid var(--dw-line-soft); margin-block-start: var(--dw-3); padding-block-start: var(--dw-3); display: grid; gap: var(--dw-2); }
-    .change mat-form-field { width: 260px; } .change .sites { width: 150px; }
+    .change dw-field { width: 260px; } .change dw-field.sites { width: 150px; }
   `,
 })
 export class SubscriptionPage {
@@ -299,7 +302,7 @@ export class SubscriptionPage {
   private readonly session = inject(Session);
   private readonly toast = inject(Toast);
   private readonly confirm = inject(Confirm);
-  private readonly dialog = inject(MatDialog);
+  private readonly dialog = inject(Dialogs);
 
   protected readonly canManage = this.session.can('subscription.manage');
   protected readonly canInvoices = this.session.can('invoices.view');
@@ -392,7 +395,7 @@ export class SubscriptionPage {
 
 /** Company details. What identifies the contracting party (legal name, tax ID, country) is shown but not editable. */
 @Component({
-  imports: [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, TranslocoDirective, PageHeaderComponent, StateComponent],
+  imports: [ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, StateComponent, IconComponent, ButtonDirective, InputText, ...FIELD],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -411,41 +414,37 @@ export class SubscriptionPage {
                 <p class="dw-faint">{{ t('admin.company.identityHint') }}</p>
 
                 <div class="dw-form">
-                  <mat-form-field><mat-label>{{ t('fields.tradeName') }}</mat-label><input matInput formControlName="trade_name" /></mat-form-field>
-                  <mat-form-field><mat-label>{{ t('fields.vatNumber') }}</mat-label><input matInput formControlName="vat_number" /></mat-form-field>
-                  <mat-form-field class="dw-span-2"><mat-label>{{ t('fields.address') }}</mat-label><input matInput formControlName="address_line1" /></mat-form-field>
-                  <mat-form-field><mat-label>{{ t('fields.postalCode') }}</mat-label><input matInput formControlName="postal_code" /></mat-form-field>
-                  <mat-form-field><mat-label>{{ t('fields.city') }}</mat-label><input matInput formControlName="city" /></mat-form-field>
-                  <mat-form-field><mat-label>{{ t('fields.region') }}</mat-label><input matInput formControlName="region" /></mat-form-field>
-                  <mat-form-field><mat-label>{{ t('fields.phone') }}</mat-label><input matInput type="tel" formControlName="phone" /></mat-form-field>
-                  <mat-form-field>
-                    <mat-label>{{ t('fields.email') }}</mat-label><input matInput type="email" formControlName="email" />
-                    @if (form.controls.email.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-                  </mat-form-field>
-                  <mat-form-field>
-                    <mat-label>{{ t('admin.company.billingEmail') }}</mat-label><input matInput type="email" formControlName="billing_email" />
-                    @if (form.controls.billing_email.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-                  </mat-form-field>
+                  <dw-field [label]="t('fields.tradeName')"><input pInputText formControlName="trade_name" /></dw-field>
+                  <dw-field [label]="t('fields.vatNumber')"><input pInputText formControlName="vat_number" /></dw-field>
+                  <dw-field class="dw-span-2" [label]="t('fields.address')"><input pInputText formControlName="address_line1" /></dw-field>
+                  <dw-field [label]="t('fields.postalCode')"><input pInputText formControlName="postal_code" /></dw-field>
+                  <dw-field [label]="t('fields.city')"><input pInputText formControlName="city" /></dw-field>
+                  <dw-field [label]="t('fields.region')"><input pInputText formControlName="region" /></dw-field>
+                  <dw-field [label]="t('fields.phone')"><input pInputText type="tel" formControlName="phone" /></dw-field>
+                  <dw-field [label]="t('fields.email')">
+                    <input pInputText type="email" formControlName="email" />
+                  </dw-field>
+                  <dw-field [label]="t('admin.company.billingEmail')">
+                    <input pInputText type="email" formControlName="billing_email" />
+                  </dw-field>
                   @if (industrial) {
-                    <mat-form-field class="dw-span-2">
-                      <mat-label>{{ t('admin.company.varianceThreshold') }}</mat-label>
-                      <input matInput inputmode="decimal" formControlName="weight_variance_threshold_pct" />
-                      <mat-hint>{{ t('admin.company.varianceHint') }}</mat-hint>
-                      @if (form.controls.weight_variance_threshold_pct.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-                    </mat-form-field>
+                    <dw-field class="dw-span-2" [label]="t('admin.company.varianceThreshold')">
+                      <input pInputText inputmode="decimal" formControlName="weight_variance_threshold_pct" />
+                      <small dwHint>{{ t('admin.company.varianceHint') }}</small>
+                    </dw-field>
                   }
                 </div>
-                <div class="dw-form-actions"><button mat-flat-button type="submit" [disabled]="busy()">{{ t('common.save') }}</button></div>
+                <div class="dw-form-actions"><button pButton type="submit" [disabled]="busy()">{{ t('common.save') }}</button></div>
               </div>
             </form>
 
             <section class="dw-panel">
               <div class="dw-panel-body dw-stack-sm">
                 <h2 class="dw-h2">{{ t('admin.company.logo') }}</h2>
-                @if (logo(); as url) { <img [src]="url" alt="" class="logo" /> } @else { <div class="logo empty" aria-hidden="true"><mat-icon>image</mat-icon></div> }
+                @if (logo(); as url) { <img [src]="url" alt="" class="logo" /> } @else { <div class="logo empty" aria-hidden="true"><dw-icon>image</dw-icon></div> }
                 <p class="dw-faint">{{ t('admin.company.logoHint') }}</p>
                 <input #file type="file" accept="image/png,image/jpeg" hidden (change)="upload(file)" />
-                <button mat-stroked-button type="button" [disabled]="busy()" (click)="file.click()"><mat-icon>upload</mat-icon>{{ t('admin.company.uploadLogo') }}</button>
+                <button pButton severity="secondary" outlined type="button" [disabled]="busy()" (click)="file.click()"><dw-icon>upload</dw-icon>{{ t('admin.company.uploadLogo') }}</button>
               </div>
             </section>
           </div>

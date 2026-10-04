@@ -9,7 +9,7 @@ import { IconComponent } from './icon';
  * the way to clear it. Controls placed inside take the compact filter look (no label above; the placeholder
  * names the filter and a set filter is tinted). On a phone the controls fold behind a "Filters" button.
  *
- *   <dw-filter-bar [active]="list.activeCount()" (reset)="list.resetFilter()">
+ *   <dw-filter-bar [active]="list.activeCount()" (cleared)="list.resetFilter()">
  *     <dw-search … /> <dw-select … /> <dw-checkbox … />
  *     <button dwFilterEnd …>Export</button>
  *   </dw-filter-bar>
@@ -28,7 +28,7 @@ import { IconComponent } from './icon';
       <div class="controls" [class.open]="open()" role="search">
         <ng-content />
         @if (active() > 0) {
-          <button pButton type="button" text size="small" class="reset" (click)="reset.emit()">
+          <button pButton type="button" text size="small" class="reset" (click)="cleared.emit()">
             <dw-icon>filter_alt_off</dw-icon>
             {{ t('common.resetFilters') }}
             <span class="count">{{ active() }}</span>
@@ -60,7 +60,7 @@ import { IconComponent } from './icon';
 export class FilterBarComponent {
   /** Number of filters currently set. */
   readonly active = input(0);
-  readonly reset = output<void>();
+  readonly cleared = output<void>();
 
   protected readonly open = signal(false);
 }

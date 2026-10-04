@@ -1,15 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { ulid } from 'ulid';
+import { ButtonDirective } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
+import { Textarea } from 'primeng/textarea';
+import { AutoFocus } from 'primeng/autofocus';
 
 import { Api } from '../../core/api/api';
 import { Lot, Zone } from '../../core/api/models';
@@ -17,8 +15,12 @@ import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
 import { LocalizedPipe, NumberPipe } from '../../core/format/pipes';
+import { DIALOG_PARTS, DialogRef, dialogData } from '../../ui/dialog';
+import { FIELD } from '../../ui/field';
+import { IconComponent } from '../../ui/icon';
+import { SELECT } from '../../ui/select';
 
-const DIALOG = [ReactiveFormsModule, MatButtonModule, MatDialogModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, TranslocoDirective] as const;
+const DIALOG = [ReactiveFormsModule, TranslocoDirective] as const;
 const WEIGHT = [Validators.required, Validators.min(0), Validators.max(999999), Validators.pattern(/^\d+([.,]\d{1,3})?$/)];
 const decimal = (value: string | number): string => String(value).replace(',', '.');
 
@@ -27,72 +29,64 @@ const decimal = (value: string | number): string => String(value).replace(',', '
  * defaults of the waste type. The lot ULID is generated here so a double submission cannot create two lots.
  */
 @Component({
-  imports: [...DIALOG, LocalizedPipe],
+  imports: [...DIALOG, LocalizedPipe, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, ...DIALOG_PARTS, AutoFocus],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <h2 mat-dialog-title>{{ t('lots.createTitle') }}</h2>
+      <dw-dialog-title>{{ t('lots.createTitle') }}</dw-dialog-title>
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <mat-dialog-content>
+        <div class="dw-dialog-body">
           <div class="dw-form">
-            <mat-form-field>
-              <mat-label>{{ t('fields.site') }}</mat-label>
-              <mat-select formControlName="site" required (selectionChange)="loadZones($event.value)">
-                @for (site of sites; track site.ulid) { <mat-option [value]="site.ulid">{{ site.name }}</mat-option> }
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>{{ t('fields.zone') }}</mat-label>
-              <mat-select formControlName="zone" required>
-                @for (zone of zones(); track zone.ulid) { <mat-option [value]="zone.ulid">{{ zone.name }}</mat-option> }
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field class="dw-span-2">
-              <mat-label>{{ t('fields.wasteType') }}</mat-label>
-              <mat-select formControlName="waste_type" required>
+            <dw-field [label]="t('fields.site')">
+              <dw-select formControlName="site" required (valueChange)="loadZones($any($event))">
+                @for (site of sites; track site.ulid) { <dw-option [value]="site.ulid" [label]="site.name" /> }
+              </dw-select>
+            </dw-field>
+            <dw-field [label]="t('fields.zone')">
+              <dw-select formControlName="zone" required>
+                @for (zone of zones(); track zone.ulid) { <dw-option [value]="zone.ulid" [label]="zone.name" /> }
+              </dw-select>
+            </dw-field>
+            <dw-field class="dw-span-2" [label]="t('fields.wasteType')">
+              <dw-select formControlName="waste_type" required>
                 @for (type of types(); track type.ulid) {
-                  <mat-option [value]="type.ulid">{{ type.name }}@if (type.is_hazardous) { — {{ t('common.hazardous') }} }</mat-option>
+                  <dw-option [value]="type.ulid" [label]="type.name + (type.is_hazardous ? ' — ' + t('common.hazardous') : '')" />
                 }
-              </mat-select>
-              @if (form.controls.waste_type.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>{{ t('fields.netWeight') }}</mat-label>
-              <input matInput formControlName="net_weight_kg" inputmode="decimal" required cdkFocusInitial />
-              @if (form.controls.net_weight_kg.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>{{ t('lots.packaging') }}</mat-label>
-              <mat-select formControlName="packaging_type">
-                <mat-option [value]="null">—</mat-option>
-                @for (packaging of vocabulary()?.packaging_types ?? []; track packaging.code) { <mat-option [value]="packaging.code">{{ packaging.name | dwLocalized }}</mat-option> }
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>{{ t('lots.color') }}</mat-label>
-              <mat-select formControlName="color_family">
-                <mat-option [value]="null">—</mat-option>
-                @for (color of vocabulary()?.color_families ?? []; track color.code) { <mat-option [value]="color.code">{{ color.name | dwLocalized }}</mat-option> }
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field><mat-label>{{ t('lots.grammage') }}</mat-label><input matInput formControlName="grammage_gsm" inputmode="decimal" /></mat-form-field>
-            <mat-form-field class="dw-span-2"><mat-label>{{ t('fields.notes') }}</mat-label><textarea matInput formControlName="notes" rows="2" maxlength="1000"></textarea></mat-form-field>
+              </dw-select>
+            </dw-field>
+            <dw-field [label]="t('fields.netWeight')">
+              <input pInputText formControlName="net_weight_kg" inputmode="decimal" required [pAutoFocus]="true" />
+            </dw-field>
+            <dw-field [label]="t('lots.packaging')">
+              <dw-select formControlName="packaging_type">
+                <dw-option [value]="null" label="—" />
+                @for (packaging of vocabulary()?.packaging_types ?? []; track packaging.code) { <dw-option [value]="packaging.code" [label]="packaging.name | dwLocalized" /> }
+              </dw-select>
+            </dw-field>
+            <dw-field [label]="t('lots.color')">
+              <dw-select formControlName="color_family">
+                <dw-option [value]="null" label="—" />
+                @for (color of vocabulary()?.color_families ?? []; track color.code) { <dw-option [value]="color.code" [label]="color.name | dwLocalized" /> }
+              </dw-select>
+            </dw-field>
+            <dw-field [label]="t('lots.grammage')"><input pInputText formControlName="grammage_gsm" inputmode="decimal" /></dw-field>
+            <dw-field class="dw-span-2" [label]="t('fields.notes')"><textarea pTextarea formControlName="notes" rows="2" maxlength="1000"></textarea></dw-field>
           </div>
-        </mat-dialog-content>
-        <mat-dialog-actions align="end">
-          <button mat-button type="button" mat-dialog-close>{{ t('common.cancel') }}</button>
-          <button mat-flat-button type="submit" [disabled]="busy()">{{ t('common.create') }}</button>
-        </mat-dialog-actions>
+        </div>
+        <div class="dw-dialog-foot">
+          <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+          <button pButton type="submit" [disabled]="busy()">{{ t('common.create') }}</button>
+        </div>
       </form>
     </ng-container>
   `,
-  styles: 'mat-dialog-content { min-width: min(620px, 82vw); }',
+  styles: '.dw-dialog-body { min-width: min(620px, 82vw); }',
 })
 export class CreateLotDialog {
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
   private readonly reference = inject(ReferenceData);
-  private readonly ref = inject<MatDialogRef<CreateLotDialog, Lot>>(MatDialogRef);
+  private readonly ref = inject(DialogRef);
 
   protected readonly sites = inject(Session).sitesFor('lots.create');
   protected readonly types = toSignal(this.reference.wasteTypes(), { initialValue: [] });
@@ -157,32 +151,31 @@ export interface LotActionData {
 
 /** Move a lot to a zone of its site (storing it if it was only created). */
 @Component({
-  imports: [...DIALOG],
+  imports: [...DIALOG, ButtonDirective, ...FIELD, ...SELECT, ...DIALOG_PARTS],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <h2 mat-dialog-title>{{ t(data.lot.status === 'stored' ? 'lots.move' : 'lots.store') }} — {{ data.lot.lot_number }}</h2>
-      <mat-dialog-content>
-        <mat-form-field>
-          <mat-label>{{ t('lots.targetZone') }}</mat-label>
-          <mat-select [formControl]="zone" required>
-            @for (item of zones(); track item.ulid) { <mat-option [value]="item.ulid">{{ item.name }}</mat-option> }
-          </mat-select>
-        </mat-form-field>
-      </mat-dialog-content>
-      <mat-dialog-actions align="end">
-        <button mat-button type="button" mat-dialog-close>{{ t('common.cancel') }}</button>
-        <button mat-flat-button type="button" [disabled]="busy() || zone.invalid" (click)="submit()">{{ t('common.confirm') }}</button>
-      </mat-dialog-actions>
+      <dw-dialog-title>{{ t(data.lot.status === 'stored' ? 'lots.move' : 'lots.store') }} — {{ data.lot.lot_number }}</dw-dialog-title>
+      <div class="dw-dialog-body">
+        <dw-field [label]="t('lots.targetZone')">
+          <dw-select [formControl]="zone" required>
+            @for (item of zones(); track item.ulid) { <dw-option [value]="item.ulid" [label]="item.name" /> }
+          </dw-select>
+        </dw-field>
+      </div>
+      <div class="dw-dialog-foot">
+        <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+        <button pButton type="button" [disabled]="busy() || zone.invalid" (click)="submit()">{{ t('common.confirm') }}</button>
+      </div>
     </ng-container>
   `,
-  styles: 'mat-dialog-content { min-width: min(420px, 80vw); }',
+  styles: '.dw-dialog-body { min-width: min(420px, 80vw); }',
 })
 export class StoreLotDialog {
-  protected readonly data = inject<LotActionData>(MAT_DIALOG_DATA);
+  protected readonly data = dialogData<LotActionData>();
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
-  private readonly ref = inject<MatDialogRef<StoreLotDialog, Lot>>(MatDialogRef);
+  private readonly ref = inject(DialogRef);
 
   protected readonly zones = toSignal(inject(ReferenceData).zones(this.data.lot.site?.ulid ?? ''), { initialValue: [] });
   protected readonly zone = inject(FormBuilder).nonNullable.control(this.data.lot.zone?.ulid ?? '', Validators.required);
@@ -203,30 +196,29 @@ export class StoreLotDialog {
 
 /** M2-04: corrected weighing. The version is sent so two people cannot overwrite each other silently. */
 @Component({
-  imports: [...DIALOG],
+  imports: [...DIALOG, ButtonDirective, InputText, ...FIELD, ...DIALOG_PARTS, AutoFocus],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <h2 mat-dialog-title>{{ t('lots.weigh') }} — {{ data.lot.lot_number }}</h2>
-      <mat-dialog-content>
-        <mat-form-field>
-          <mat-label>{{ t('lots.newWeight') }}</mat-label>
-          <input matInput [formControl]="weight" inputmode="decimal" required cdkFocusInitial (keydown.enter)="submit()" />
-        </mat-form-field>
-      </mat-dialog-content>
-      <mat-dialog-actions align="end">
-        <button mat-button type="button" mat-dialog-close>{{ t('common.cancel') }}</button>
-        <button mat-flat-button type="button" [disabled]="busy() || weight.invalid" (click)="submit()">{{ t('common.save') }}</button>
-      </mat-dialog-actions>
+      <dw-dialog-title>{{ t('lots.weigh') }} — {{ data.lot.lot_number }}</dw-dialog-title>
+      <div class="dw-dialog-body">
+        <dw-field [label]="t('lots.newWeight')">
+          <input pInputText [formControl]="weight" inputmode="decimal" required [pAutoFocus]="true" (keydown.enter)="submit()" />
+        </dw-field>
+      </div>
+      <div class="dw-dialog-foot">
+        <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+        <button pButton type="button" [disabled]="busy() || weight.invalid" (click)="submit()">{{ t('common.save') }}</button>
+      </div>
     </ng-container>
   `,
-  styles: 'mat-dialog-content { min-width: min(360px, 80vw); }',
+  styles: '.dw-dialog-body { min-width: min(360px, 80vw); }',
 })
 export class WeighLotDialog {
-  protected readonly data = inject<LotActionData>(MAT_DIALOG_DATA);
+  protected readonly data = dialogData<LotActionData>();
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
-  private readonly ref = inject<MatDialogRef<WeighLotDialog, Lot>>(MatDialogRef);
+  private readonly ref = inject(DialogRef);
 
   protected readonly weight = inject(FormBuilder).nonNullable.control(this.data.lot.net_weight_kg, WEIGHT);
   protected readonly busy = signal(false);
@@ -249,54 +241,54 @@ export class WeighLotDialog {
 
 /** M2-06: split. The running total shows at once whether the weights still add up to the original lot. */
 @Component({
-  imports: [...DIALOG, NumberPipe],
+  imports: [...DIALOG, NumberPipe, IconComponent, ButtonDirective, InputText, Textarea, ...FIELD, ...DIALOG_PARTS],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <h2 mat-dialog-title>{{ t('lots.split') }} — {{ data.lot.lot_number }}</h2>
+      <dw-dialog-title>{{ t('lots.split') }} — {{ data.lot.lot_number }}</dw-dialog-title>
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <mat-dialog-content class="dw-stack-sm">
+        <div class="dw-dialog-body dw-stack-sm">
           <p class="dw-muted">{{ t('lots.splitHint') }}</p>
           <div formArrayName="outputs" class="outputs">
             @for (control of outputs.controls; track control; let index = $index) {
               <div class="output">
-                <mat-form-field>
-                  <mat-label>{{ t('lots.splitOutput', { index: index + 1 }) }}</mat-label>
-                  <input matInput [formControlName]="index" inputmode="decimal" required />
-                </mat-form-field>
+                <dw-field>
+                  <span dwLabel>{{ t('lots.splitOutput', { index: index + 1 }) }}</span>
+                  <input pInputText [formControlName]="index" inputmode="decimal" required />
+                </dw-field>
                 @if (outputs.length > 2) {
-                  <button mat-icon-button type="button" (click)="outputs.removeAt(index); recompute()" [attr.aria-label]="t('common.remove')"><mat-icon>close</mat-icon></button>
+                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="outputs.removeAt(index); recompute()" [attr.aria-label]="t('common.remove')"><dw-icon>close</dw-icon></button>
                 }
               </div>
             }
           </div>
-          <button mat-stroked-button type="button" (click)="add()" class="add"><mat-icon>add</mat-icon>{{ t('lots.addOutput') }}</button>
+          <button pButton severity="secondary" outlined type="button" (click)="add()" class="add"><dw-icon>add</dw-icon>{{ t('lots.addOutput') }}</button>
           <p [class.gap]="gap()" role="status">{{ t('lots.splitTotal', { total: (total() | dwNumber: 3), source: (data.lot.net_weight_kg | dwNumber: 3) }) }}</p>
-          <mat-form-field>
-            <mat-label>{{ t('fields.comment') }}@if (!gap()) { ({{ t('common.optional') }}) }</mat-label>
-            <textarea matInput formControlName="notes" rows="2" maxlength="1000" [required]="gap()"></textarea>
-            @if (gap()) { <mat-hint>{{ t('errors.SPLIT_WEIGHT_GAP') }}</mat-hint> }
-          </mat-form-field>
-        </mat-dialog-content>
-        <mat-dialog-actions align="end">
-          <button mat-button type="button" mat-dialog-close>{{ t('common.cancel') }}</button>
-          <button mat-flat-button type="submit" [disabled]="busy() || (gap() && !form.controls.notes.value.trim())">{{ t('lots.split') }}</button>
-        </mat-dialog-actions>
+          <dw-field>
+            <span dwLabel>{{ t('fields.comment') }}@if (!gap()) { ({{ t('common.optional') }}) }</span>
+            <textarea pTextarea formControlName="notes" rows="2" maxlength="1000" [required]="gap()"></textarea>
+            @if (gap()) { <small dwHint>{{ t('errors.SPLIT_WEIGHT_GAP') }}</small> }
+          </dw-field>
+        </div>
+        <div class="dw-dialog-foot">
+          <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+          <button pButton type="submit" [disabled]="busy() || (gap() && !form.controls.notes.value.trim())">{{ t('lots.split') }}</button>
+        </div>
       </form>
     </ng-container>
   `,
   styles: `
-    mat-dialog-content { min-width: min(460px, 82vw); }
+    .dw-dialog-body { min-width: min(460px, 82vw); }
     .outputs { display: grid; gap: var(--dw-1); } .output { display: flex; align-items: center; gap: var(--dw-2); }
     .add { justify-self: start; } .gap { color: var(--dw-warning); font-weight: 600; }
   `,
 })
 export class SplitLotDialog {
-  protected readonly data = inject<LotActionData>(MAT_DIALOG_DATA);
+  protected readonly data = dialogData<LotActionData>();
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
   private readonly fb = inject(FormBuilder).nonNullable;
-  private readonly ref = inject<MatDialogRef<SplitLotDialog, Lot[]>>(MatDialogRef);
+  private readonly ref = inject(DialogRef);
 
   protected readonly form = this.fb.group({ outputs: this.fb.array([this.fb.control('', WEIGHT), this.fb.control('', WEIGHT)]), notes: [''] });
   protected readonly busy = signal(false);
@@ -351,34 +343,33 @@ export interface GroupLotsData {
 }
 
 @Component({
-  imports: [...DIALOG, NumberPipe],
+  imports: [...DIALOG, NumberPipe, ButtonDirective, ...FIELD, ...SELECT, ...DIALOG_PARTS],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <h2 mat-dialog-title>{{ t('lots.group') }}</h2>
-      <mat-dialog-content class="dw-stack-sm">
+      <dw-dialog-title>{{ t('lots.group') }}</dw-dialog-title>
+      <div class="dw-dialog-body dw-stack-sm">
         <p class="dw-muted">{{ t('lots.groupHint') }}</p>
         <p><strong>{{ data.lots.length }}</strong> × {{ data.lots[0].waste_type?.name }} — <strong>{{ total | dwNumber: 3 }} kg</strong></p>
-        <mat-form-field>
-          <mat-label>{{ t('lots.targetZone') }}</mat-label>
-          <mat-select [formControl]="zone" required>
-            @for (item of zones(); track item.ulid) { <mat-option [value]="item.ulid">{{ item.name }}</mat-option> }
-          </mat-select>
-        </mat-form-field>
-      </mat-dialog-content>
-      <mat-dialog-actions align="end">
-        <button mat-button type="button" mat-dialog-close>{{ t('common.cancel') }}</button>
-        <button mat-flat-button type="button" [disabled]="busy() || zone.invalid" (click)="submit()">{{ t('lots.group') }}</button>
-      </mat-dialog-actions>
+        <dw-field [label]="t('lots.targetZone')">
+          <dw-select [formControl]="zone" required>
+            @for (item of zones(); track item.ulid) { <dw-option [value]="item.ulid" [label]="item.name" /> }
+          </dw-select>
+        </dw-field>
+      </div>
+      <div class="dw-dialog-foot">
+        <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+        <button pButton type="button" [disabled]="busy() || zone.invalid" (click)="submit()">{{ t('lots.group') }}</button>
+      </div>
     </ng-container>
   `,
-  styles: 'mat-dialog-content { min-width: min(440px, 82vw); }',
+  styles: '.dw-dialog-body { min-width: min(440px, 82vw); }',
 })
 export class GroupLotsDialog {
-  protected readonly data = inject<GroupLotsData>(MAT_DIALOG_DATA);
+  protected readonly data = dialogData<GroupLotsData>();
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
-  private readonly ref = inject<MatDialogRef<GroupLotsDialog, Lot>>(MatDialogRef);
+  private readonly ref = inject(DialogRef);
 
   protected readonly total = this.data.lots.reduce((sum, lot) => sum + Number(lot.net_weight_kg), 0);
   protected readonly zones = toSignal(inject(ReferenceData).zones(this.data.lots[0].site?.ulid ?? ''), { initialValue: [] });

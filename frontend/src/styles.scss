@@ -1,39 +1,50 @@
 /*
  * DivaWaste design system — foundation.
  *
- * One source for colour, type, spacing and density. Feature screens use the tokens and the components of
- * `app/ui`; they do not define their own colours or spacings. Every horizontal property is logical
+ * One source for colour, type, spacing and density. PrimeNG provides the components (themed by
+ * `app/ui/theme.ts`, in the `primeng` cascade layer); this file gives them the DivaWaste look and defines the
+ * few layout primitives the screens share. Feature screens use the tokens and the components of `app/ui`;
+ * they do not define their own colours, radii or control sizes. Every horizontal property is logical
  * (inline-start / inline-end) so the Arabic right-to-left layout planned for V2 needs no rewrite.
  */
-@use '@angular/material' as mat;
+@layer primeng;
+
+@import '@fontsource-variable/inter/wght.css';
 
 :root {
   /* Brand and semantic colours */
   --dw-primary: #0f5c56;
-  --dw-primary-strong: #0b4541;
-  --dw-primary-soft: #e2f1ee;
+  --dw-primary-strong: #0c4a45;
+  --dw-primary-soft: #eef7f5;
+  --dw-primary-line: #b0d9d1;
   --dw-on-primary: #ffffff;
+  --dw-focus: #176b64;
+  --dw-focus-soft: rgb(23 107 100 / 18%);
 
   --dw-ink: #17212b;
-  --dw-ink-2: #4a5763;
-  --dw-ink-3: #7a8691;
-  --dw-line: #d9dfe4;
-  --dw-line-soft: #e9edf0;
+  --dw-ink-2: #4b5864;
+  --dw-ink-3: #7b8792;
+  --dw-line: #e4e9ed;
+  --dw-line-strong: #d0d7dd;
+  --dw-line-soft: #eef1f4;
   --dw-surface: #ffffff;
-  --dw-surface-2: #f7f9fa;
-  --dw-canvas: #f1f4f6;
-  --dw-nav: #10201f;
-  --dw-nav-ink: #c9d6d4;
+  --dw-surface-2: #f8fafb;
+  --dw-surface-3: #f1f4f6;
+  --dw-canvas: #f4f6f8;
+  --dw-nav: #0e1a1b;
+  --dw-nav-2: #162627;
+  --dw-nav-ink: #b9c7c6;
+  --dw-nav-faint: #6f8583;
 
-  --dw-success: #18794e;
-  --dw-success-soft: #e3f4ea;
-  --dw-warning: #9a5b00;
-  --dw-warning-soft: #fdf0d5;
+  --dw-success: #156f47;
+  --dw-success-soft: #e4f4ea;
+  --dw-warning: #8f5300;
+  --dw-warning-soft: #fcf0d8;
   --dw-danger: #b3261e;
-  --dw-danger-soft: #fbe6e4;
-  --dw-info: #1c5fa8;
-  --dw-info-soft: #e3eefb;
-  --dw-neutral-soft: #eceff2;
+  --dw-danger-soft: #fbe9e7;
+  --dw-info: #1b5b9e;
+  --dw-info-soft: #e6f0fb;
+  --dw-neutral-soft: #eef1f4;
 
   /* Spacing: 4 px grid */
   --dw-1: 4px;
@@ -44,49 +55,36 @@
   --dw-6: 32px;
   --dw-7: 48px;
 
+  /* Shape and elevation: hairlines carry the structure, shadows are kept for what floats */
+  --dw-radius-sm: 4px;
   --dw-radius: 6px;
-  --dw-radius-lg: 10px;
-  --dw-shadow: 0 1px 2px rgb(16 32 31 / 6%), 0 1px 3px rgb(16 32 31 / 8%);
-  --dw-shadow-pop: 0 8px 28px rgb(16 32 31 / 16%);
+  --dw-radius-lg: 8px;
+  --dw-shadow: 0 1px 2px rgb(13 20 27 / 5%);
+  --dw-shadow-pop: 0 0 0 1px rgb(13 20 27 / 4%), 0 4px 10px -2px rgb(13 20 27 / 8%), 0 12px 28px -6px rgb(13 20 27 / 14%);
+  --dw-shadow-modal: 0 0 0 1px rgb(13 20 27 / 5%), 0 24px 56px -12px rgb(13 20 27 / 28%);
 
-  --dw-font: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, 'Noto Sans', 'Noto Sans Arabic', sans-serif;
+  /* Type */
+  --dw-font: 'Inter Variable', 'Inter', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, 'Noto Sans', 'Noto Sans Arabic', sans-serif;
   --dw-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, monospace;
+  --dw-text: 13px;
+  --dw-text-sm: 12px;
+  --dw-text-lg: 14px;
 
-  --dw-shell-nav: 232px;
-  --dw-shell-bar: 52px;
+  /* Controls: one height for inputs, selectors and buttons */
+  --dw-control: 32px;
+  --dw-control-sm: 28px;
+  --dw-control-lg: 40px;
+
+  --dw-shell-nav: 228px;
+  --dw-shell-rail: 56px;
+  --dw-shell-bar: 48px;
   /* Touch target used by the workshop (gloves) screens. */
   --dw-touch: 64px;
 }
 
 html {
   color-scheme: light;
-  @include mat.theme((
-    color: (theme-type: light, primary: mat.$cyan-palette, tertiary: mat.$orange-palette),
-    typography: (plain-family: var(--dw-font), brand-family: var(--dw-font), bold-weight: 600, medium-weight: 500, regular-weight: 400),
-    density: -2,
-  ));
-  @include mat.theme-overrides((
-    primary: #0f5c56,
-    on-primary: #ffffff,
-    primary-container: #e2f1ee,
-    on-primary-container: #0b4541,
-    surface: #ffffff,
-    surface-container: #f7f9fa,
-    surface-container-low: #ffffff,
-    surface-container-high: #f1f4f6,
-    surface-container-highest: #e9edf0,
-    on-surface: #17212b,
-    on-surface-variant: #4a5763,
-    outline: #b7c1c9,
-    outline-variant: #d9dfe4,
-    error: #b3261e,
-    corner-extra-small: 4px,
-    corner-small: 6px,
-    corner-medium: 8px,
-    corner-large: 10px,
-    corner-extra-large: 12px,
-    corner-full: 999px,
-  ));
+  font-size: 14px;
 }
 
 *,
@@ -104,9 +102,11 @@ body {
   margin: 0;
   background: var(--dw-canvas);
   color: var(--dw-ink);
-  font: 400 14px/1.45 var(--dw-font);
+  font: 400 var(--dw-text) / 1.5 var(--dw-font);
   -webkit-font-smoothing: antialiased;
-  font-feature-settings: 'tnum' 1, 'cv11' 1;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'cv11' 1;
 }
 
 h1,
@@ -117,7 +117,8 @@ p {
   margin: 0;
 }
 
-a {
+/* Buttons drawn on links keep the colours of the button. */
+a:where(:not(.p-button)) {
   color: var(--dw-primary);
   text-decoration: none;
 
@@ -126,21 +127,110 @@ a {
   }
 }
 
+a.p-button { text-decoration: none; }
+
 :focus-visible {
-  outline: 2px solid var(--dw-primary);
+  outline: 2px solid var(--dw-focus);
   outline-offset: 2px;
 }
 
-/* Typography scale */
-.dw-h1 { font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em; }
-.dw-h2 { font-size: 15px; line-height: 22px; font-weight: 600; }
+::selection {
+  background: #cfe8e3;
+}
+
+/* ---------------------------------------------------------------------------------------------------------
+ * Scrollbars. Desktop pointers get a narrow, quiet bar that darkens on hover, the same in the page, the
+ * navigation, tables, dialogs and drop-down panels. Touch devices keep their native overlay scrolling.
+ * ------------------------------------------------------------------------------------------------------- */
+@media (hover: hover) and (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    min-height: 36px;
+    min-width: 36px;
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background-color: rgb(23 33 43 / 20%);
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    border-width: 2px;
+    background-color: rgb(23 33 43 / 42%);
+  }
+
+  ::-webkit-scrollbar-thumb:active {
+    background-color: rgb(23 33 43 / 55%);
+  }
+
+  .dw-scroll-dark::-webkit-scrollbar-thumb {
+    background-color: rgb(255 255 255 / 16%);
+  }
+
+  .dw-scroll-dark::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(255 255 255 / 32%);
+  }
+
+  /* Firefox has no scrollbar pseudo-elements: the standard properties give the closest result. */
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgb(23 33 43 / 26%) transparent;
+    }
+
+    .dw-scroll-dark {
+      scrollbar-color: rgb(255 255 255 / 22%) transparent;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------------------------------------------
+ * Typography and small utilities
+ * ------------------------------------------------------------------------------------------------------- */
+.dw-h1 { font-size: 19px; line-height: 26px; font-weight: 650; letter-spacing: -0.015em; }
+.dw-h2 { font-size: 14px; line-height: 20px; font-weight: 600; letter-spacing: -0.005em; }
 .dw-h3 { font-size: 13px; line-height: 18px; font-weight: 600; }
-.dw-label { font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--dw-ink-3); }
+.dw-label { font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--dw-ink-3); }
 .dw-muted { color: var(--dw-ink-2); }
 .dw-faint { color: var(--dw-ink-3); }
-.dw-mono { font-family: var(--dw-mono); font-size: 12.5px; }
+/* Identifiers (lot, pickup, slip numbers): same typeface, fixed-width digits, slightly stronger — not a code font. */
+.dw-mono { font-weight: 550; white-space: nowrap; }
+.dw-code { font-family: var(--dw-mono); font-size: 12px; font-weight: 400; letter-spacing: -0.01em; }
 .dw-num { font-variant-numeric: tabular-nums; text-align: end; white-space: nowrap; }
+.p-datatable-tbody > tr > td,
+table.dw-table tbody td { font-variant-numeric: tabular-nums; }
 .dw-nowrap { white-space: nowrap; }
+
+.dw-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  overflow: hidden;
+  font-family: 'Material Icons Outlined';
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
 
 /* Layout primitives */
 .dw-stack { display: flex; flex-direction: column; gap: var(--dw-4); }
@@ -166,55 +256,530 @@ a {
   .dw-grid-4 { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* Surfaces */
+/* ---------------------------------------------------------------------------------------------------------
+ * Surfaces. A panel is a bordered region of the page, not a floating card: hairline, small radius, no shadow.
+ * ------------------------------------------------------------------------------------------------------- */
 .dw-panel {
   background: var(--dw-surface);
   border: 1px solid var(--dw-line);
   border-radius: var(--dw-radius-lg);
+  box-shadow: var(--dw-shadow);
+  min-width: 0;
+
+  /* The first and last child follow the rounded corners without clipping pop-ups. */
+  > :first-child { border-start-start-radius: inherit; border-start-end-radius: inherit; }
+  > :last-child { border-end-start-radius: inherit; border-end-end-radius: inherit; }
 }
 
 .dw-panel-head {
   display: flex;
   align-items: center;
   gap: var(--dw-3);
-  padding: var(--dw-3) var(--dw-4);
-  border-block-end: 1px solid var(--dw-line-soft);
-  min-height: 46px;
+  min-height: 42px;
+  padding: 6px var(--dw-3) 6px var(--dw-4);
+  border-block-end: 1px solid var(--dw-line);
+
+  .dw-h2 { flex: 0 1 auto; }
 }
 
 .dw-panel-body { padding: var(--dw-4); }
 
+/* Strip of figures: one panel, cells separated by hairlines. */
+.dw-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  background: var(--dw-line);
+  border: 1px solid var(--dw-line);
+  border-radius: var(--dw-radius-lg);
+  box-shadow: var(--dw-shadow);
+
+  @media (max-width: 1100px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 480px) { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* Definition list used on detail screens */
 .dw-facts {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: var(--dw-4) var(--dw-5);
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--dw-3) var(--dw-5);
   margin: 0;
 
-  dt { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--dw-ink-3); margin-block-end: 2px; }
-  dd { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+  dt { font-size: 12px; line-height: 16px; font-weight: 500; color: var(--dw-ink-3); margin-block-end: 1px; }
+  dd { margin: 0; font-size: 13px; line-height: 20px; color: var(--dw-ink); overflow-wrap: anywhere; }
 }
 
-/* Forms: one grid for every form, fields never define their own width */
-.dw-form { display: grid; gap: var(--dw-1) var(--dw-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* A plain list of dt/dd (no wrapper per pair) reads as a two-column sheet: label, value. */
+.dw-facts:has(> dt) {
+  grid-template-columns: minmax(120px, max-content) minmax(0, 1fr);
+  gap: 6px var(--dw-5);
+  align-items: baseline;
+
+  dt { margin: 0; }
+}
+
+/* Repeated rows of fields (lines of a form): the labels are shown once, on the first row. */
+.dw-rows { display: grid; gap: var(--dw-2); }
+@media (min-width: 901px) {
+  .dw-rows > * + * .dw-field-label { display: none; }
+}
+
+/* Inline notice inside a page (variance, expired accreditation…): same shape for every tone. */
+.dw-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--dw-2);
+  padding: 9px var(--dw-3);
+  border: 1px solid var(--dw-line);
+  border-radius: var(--dw-radius);
+  background: var(--dw-surface-2);
+  color: var(--dw-ink);
+  font-size: 13px;
+
+  > .dw-icon { margin-block-start: 1px; color: var(--dw-ink-3); }
+  &.info { background: var(--dw-info-soft); border-color: transparent; > .dw-icon { color: var(--dw-info); } }
+  &.success { background: var(--dw-success-soft); border-color: transparent; > .dw-icon { color: var(--dw-success); } }
+  &.warning { background: var(--dw-warning-soft); border-color: transparent; > .dw-icon { color: var(--dw-warning); } }
+  &.danger { background: var(--dw-danger-soft); border-color: transparent; > .dw-icon { color: var(--dw-danger); } }
+}
+
+/* ---------------------------------------------------------------------------------------------------------
+ * Forms: one grid for every form; fields never define their own width or height.
+ * ------------------------------------------------------------------------------------------------------- */
+.dw-form { display: grid; gap: var(--dw-3) var(--dw-4); grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 .dw-form > .dw-span-2,
 .dw-form > .dw-form-section { grid-column: 1 / -1; }
-.dw-form-section { margin-block: var(--dw-3) var(--dw-2); padding-block-end: var(--dw-2); border-block-end: 1px solid var(--dw-line-soft); }
-.dw-form-actions { display: flex; gap: var(--dw-2); justify-content: flex-end; padding-block-start: var(--dw-3); }
-mat-form-field { width: 100%; }
+.dw-form-section { margin-block-start: var(--dw-2); padding-block-end: 6px; border-block-end: 1px solid var(--dw-line-soft); }
+.dw-form-actions { display: flex; gap: var(--dw-2); justify-content: flex-end; padding-block-start: var(--dw-2); }
+/* A lone checkbox or switch in a form lines up with the controls of its row, not with their labels. */
+.dw-form > .dw-checkbox,
+.dw-form > .dw-switch { align-self: end; min-height: var(--dw-control); }
+.dw-switch { display: inline-flex; align-items: center; gap: var(--dw-2); font-size: 13px; cursor: pointer; }
 
 @media (max-width: 720px) {
   .dw-form { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* Material adjustments shared by the whole product */
-.mat-mdc-dialog-container { --mdc-dialog-container-shape: 10px; }
-.mat-mdc-dialog-title { font-size: 16px !important; font-weight: 600 !important; padding-block-start: var(--dw-4) !important; }
-.mdc-button { letter-spacing: 0 !important; font-weight: 500 !important; }
-.mat-mdc-snack-bar-container.dw-toast-error { --mdc-snackbar-container-color: #5c1611; }
-.mat-mdc-snack-bar-container.dw-toast-success { --mdc-snackbar-container-color: #0e3f2a; }
-/* Icons are font ligatures: an inherited uppercase transform or letter-spacing would break the icon name. */
-.mat-icon { font-family: 'Material Icons Outlined'; text-transform: none; letter-spacing: normal; }
+.dw-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dw-field-label {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 550;
+  color: var(--dw-ink-2);
+
+  &:empty { display: none; }
+}
+
+.dw-field.is-required > .dw-field-label::after,
+.dw-field:has([required]) > .dw-field-label::after {
+  content: ' *';
+  color: var(--dw-danger);
+  font-weight: 600;
+}
+
+.dw-field-control {
+  display: flex;
+  align-items: center;
+  gap: var(--dw-1);
+  min-width: 0;
+
+  > * { flex: 1 1 auto; min-width: 0; }
+  > button,
+  > a { flex: none; }
+  > input,
+  > textarea { width: 100%; }
+}
+
+.dw-field-hint,
+.dw-field-error {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--dw-ink-3);
+}
+
+.dw-field-error { color: var(--dw-danger); font-weight: 500; }
+
+.dw-field.invalid {
+  > .dw-field-label { color: var(--dw-danger); }
+
+  .p-inputtext,
+  .p-textarea,
+  .p-select,
+  .p-multiselect,
+  .p-inputnumber-input {
+    border-color: var(--dw-danger);
+  }
+
+  .p-inputtext:focus,
+  .p-textarea:focus,
+  .p-select.p-focus,
+  .p-multiselect.p-focus {
+    box-shadow: 0 0 0 3px rgb(179 38 30 / 16%);
+  }
+}
+
+/* ---------------------------------------------------------------------------------------------------------
+ * PrimeNG components, the DivaWaste way. The theme preset sets the tokens; these rules fix what tokens do
+ * not express: exact control height, type size, quiet borders.
+ * ------------------------------------------------------------------------------------------------------- */
+.p-component,
+.p-inputtext,
+.p-button { font-family: var(--dw-font); font-feature-settings: inherit; }
+
+/* Inputs */
+.p-inputtext,
+.p-select,
+.p-multiselect {
+  font-size: var(--dw-text);
+  line-height: 18px;
+}
+
+.p-inputtext:not(.p-textarea),
+.p-select,
+.p-multiselect { min-height: var(--dw-control); }
+
+.p-inputtext:enabled:hover:not(:focus),
+.p-select:not(.p-disabled):not(.p-focus):hover,
+.p-multiselect:not(.p-disabled):not(.p-focus):hover { background: var(--dw-surface); }
+
+.p-inputtext::placeholder { color: #98a4af; opacity: 1; }
+.p-inputtext:disabled,
+.p-select.p-disabled,
+.p-multiselect.p-disabled { opacity: 1; cursor: not-allowed; }
+
+.p-textarea { min-height: 64px; resize: vertical; }
+
+/* The selector draws its own focus (border and ring); the generic outline would double it. */
+.p-select-label:focus-visible,
+.p-multiselect-label-container:focus-visible,
+.p-inputtext:focus-visible { outline: 0; }
+
+.p-select-label,
+.p-multiselect-label { font-size: var(--dw-text); line-height: 18px; }
+.p-select-label.p-placeholder,
+.p-multiselect-label.p-placeholder { color: #98a4af; }
+.p-select-dropdown .p-icon,
+.p-multiselect-dropdown .p-icon,
+.p-select-clear-icon,
+.p-multiselect-clear-icon { width: 12px; height: 12px; }
+
+.p-select-overlay,
+.p-multiselect-overlay,
+.p-datepicker-panel,
+.p-menu.p-menu-overlay,
+.p-popover { border: 0; }
+
+.p-select-option,
+.p-multiselect-option { font-size: var(--dw-text); line-height: 18px; }
+.p-select-option.p-select-option-selected { font-weight: 550; }
+.p-select-header,
+.p-multiselect-header { padding: 6px 6px 2px; }
+.p-select-empty-message,
+.p-multiselect-empty-message { padding: 10px 12px; font-size: var(--dw-text); color: var(--dw-ink-3); }
+
+.p-datepicker-panel { padding: 8px; font-size: var(--dw-text); }
+.p-datepicker-day { width: 28px; height: 28px; font-size: 12.5px; }
+.p-datepicker-day-cell { padding: 1px; }
+.p-datepicker-weekday-cell { padding: 2px; }
+.p-datepicker-weekday { font-size: 11px; font-weight: 600; color: var(--dw-ink-3); }
+.p-datepicker-header { padding: 0 0 6px; }
+.p-datepicker-title { font-size: 13px; }
+.p-datepicker-buttonbar { padding: 6px 0 0; }
+.p-datepicker-today > .p-datepicker-day:not(.p-datepicker-day-selected) { background: transparent; box-shadow: inset 0 0 0 1px var(--dw-primary-line); color: var(--dw-primary); }
+.p-datepicker-input-icon-container { inset-inline-end: 9px; }
+
+.p-checkbox-box { transition: background-color 120ms, border-color 120ms, box-shadow 120ms; }
+.p-checkbox:not(.p-disabled):has(.p-checkbox-input:focus-visible) .p-checkbox-box { outline: 0; box-shadow: 0 0 0 3px var(--dw-focus-soft); border-color: var(--dw-focus); }
+
+/* Buttons: primary = the action of the screen, secondary (outlined) = normal, text = low emphasis, danger = destructive */
+.p-button {
+  min-height: var(--dw-control);
+  font-size: var(--dw-text);
+  line-height: 18px;
+  font-weight: 550;
+  white-space: nowrap;
+  text-decoration: none !important;
+  box-shadow: 0 1px 1px rgb(13 20 27 / 6%);
+
+  .dw-icon { font-size: 16px; }
+  &.p-button-text { box-shadow: none; }
+  &.p-button-sm { min-height: var(--dw-control-sm); line-height: 16px; .dw-icon { font-size: 15px; } }
+  &.p-button-lg { min-height: var(--dw-control-lg); line-height: 20px; .dw-icon { font-size: 18px; } }
+  &:disabled { box-shadow: none; cursor: not-allowed; }
+}
+
+.p-button.p-button-secondary.p-button-outlined { background: var(--dw-surface); border-color: var(--dw-line-strong); color: var(--dw-ink); }
+.p-button.p-button-secondary.p-button-outlined:not(:disabled):hover { background: var(--dw-surface-2); border-color: #b8c2cb; color: var(--dw-ink); }
+.p-button.p-button-secondary.p-button-outlined:not(:disabled):active { background: var(--dw-surface-3); }
+.p-button.p-button-danger.p-button-outlined { background: var(--dw-surface); border-color: #e3b4b0; color: var(--dw-danger); }
+.p-button.p-button-danger.p-button-outlined:not(:disabled):hover { background: var(--dw-danger-soft); border-color: #d99a95; }
+.p-button.p-button-text:not(.p-button-secondary):not(.p-button-danger) { color: var(--dw-primary); }
+
+.p-button.dw-icon-btn {
+  width: var(--dw-control);
+  min-width: var(--dw-control);
+  padding: 0;
+  border-radius: var(--dw-radius);
+  color: var(--dw-ink-2);
+
+  .dw-icon { font-size: 18px; }
+  &.p-button-sm { width: var(--dw-control-sm); min-width: var(--dw-control-sm); .dw-icon { font-size: 16px; } }
+}
+
+/* Tags (statuses): soft background, readable text, a dot that carries the tone */
+.p-tag {
+  min-height: 20px;
+  background: var(--dw-neutral-soft);
+  color: var(--dw-ink-2);
+  line-height: 16px;
+  white-space: nowrap;
+
+  &::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentcolor; opacity: 0.85; }
+  &.p-tag-secondary { background: var(--dw-neutral-soft); color: var(--dw-ink-2); &::before { opacity: 0.5; } }
+  &.p-tag-info { background: var(--dw-info-soft); color: var(--dw-info); }
+  &.p-tag-success { background: var(--dw-success-soft); color: var(--dw-success); }
+  &.p-tag-warn { background: var(--dw-warning-soft); color: var(--dw-warning); }
+  &.p-tag-danger { background: var(--dw-danger-soft); color: var(--dw-danger); }
+}
+
+/* Tables: PrimeNG Table and plain `table.dw-table` share one look */
+.p-datatable-table,
+table.dw-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--dw-text);
+  line-height: 18px;
+}
+
+.p-datatable-thead > tr > th,
+table.dw-table thead th {
+  padding: 7px var(--dw-3);
+  background: var(--dw-surface-2);
+  border-block-end: 1px solid var(--dw-line);
+  color: var(--dw-ink-2);
+  font-size: 11.5px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-align: start;
+  white-space: nowrap;
+}
+
+.p-datatable-tbody > tr > td,
+table.dw-table tbody td {
+  padding: 7px var(--dw-3);
+  border-block-end: 1px solid var(--dw-line-soft);
+  color: var(--dw-ink);
+  vertical-align: middle;
+}
+
+table.dw-table tfoot td { padding: 8px var(--dw-3); border-block-start: 1px solid var(--dw-line); font-weight: 600; background: var(--dw-surface-2); }
+
+.p-datatable-tbody > tr:last-child > td,
+table.dw-table tbody tr:last-child td { border-block-end: 0; }
+
+.p-datatable-tbody > tr { transition: background-color 80ms; }
+.p-datatable-hoverable .p-datatable-tbody > tr:not(.p-datatable-row-selected):hover,
+table.dw-table tbody tr.clickable:hover { background: var(--dw-surface-2); cursor: pointer; }
+.p-datatable-tbody > tr.p-datatable-row-selected { background: var(--dw-primary-soft); color: var(--dw-ink); }
+
+table.dw-table .a-end,
+table.dw-table .dw-num,
+table.dw-table th.num,
+table.dw-table td.num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.p-datatable-table-container { overflow-x: auto; }
+
+/* Actions inside a row are always the small size, so a row with buttons is as tall as a row without. */
+.p-datatable-tbody > tr > td .p-button,
+table.dw-table tbody td .p-button {
+  min-height: 26px;
+  padding: 3px 8px;
+  font-size: 12.5px;
+  line-height: 16px;
+  box-shadow: none;
+
+  .dw-icon { font-size: 15px; }
+  &.dw-icon-btn { width: 26px; min-width: 26px; padding: 0; .dw-icon { font-size: 17px; } }
+}
+
+.p-paginator { font-size: 12px; }
+.p-paginator-page,
+.p-paginator-first,
+.p-paginator-prev,
+.p-paginator-next,
+.p-paginator-last { min-width: 28px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.p-paginator-page.p-paginator-page-selected { background: var(--dw-primary-soft); color: var(--dw-primary-strong); font-weight: 600; }
+.p-paginator .p-select { min-height: 28px; margin-inline-start: 6px; }
+.p-paginator .p-select-label { padding: 4px 4px 4px 8px; font-size: 12px; }
+.p-paginator .p-select-dropdown { width: 24px; }
+
+/* Tabs */
+.p-tablist-tab-list { padding-inline: var(--dw-2); }
+.p-tab { font-size: var(--dw-text); line-height: 18px; }
+
+/* Dialogs */
+.p-dialog { max-width: calc(100vw - 24px); border: 0; }
+
+.dw-dialog .p-dialog-content {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  border-radius: inherit;
+
+  > *,
+  > * > form { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+}
+
+.dw-dialog-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--dw-3);
+  min-height: 48px;
+  padding: 8px 10px 8px 20px;
+  border-block-end: 1px solid var(--dw-line);
+
+  h2 { flex: 1 1 auto; min-width: 0; font-size: 15px; line-height: 22px; font-weight: 600; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+.dw-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-width: 100%;
+  padding: var(--dw-4) 20px 20px;
+  overflow: auto;
+}
+
+.dw-dialog-body > p:not(:last-child) { margin-block-end: var(--dw-3); }
+
+.dw-dialog-foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--dw-2);
+  padding: 10px 20px;
+  border-block-start: 1px solid var(--dw-line);
+  background: var(--dw-surface-2);
+  border-end-start-radius: inherit;
+  border-end-end-radius: inherit;
+}
+
+.dw-confirm.p-dialog {
+  width: min(420px, calc(100vw - 24px));
+
+  .p-dialog-header { padding: 16px 12px 4px 20px; }
+  .p-dialog-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .p-dialog-content { padding: 0 20px 18px; font-size: 13px; color: var(--dw-ink-2); }
+  .p-confirmdialog-message { margin: 0; }
+  .p-dialog-footer { padding: 10px 20px; border-block-start: 1px solid var(--dw-line); background: var(--dw-surface-2); border-end-start-radius: inherit; border-end-end-radius: inherit; }
+}
+
+/* Drawers: contextual details next to the list they come from */
+.p-drawer.dw-drawer {
+  width: min(520px, 100vw);
+  border: 0;
+  box-shadow: var(--dw-shadow-modal);
+
+  .p-drawer-header { min-height: 48px; padding: 8px 10px 8px 20px; border-block-end: 1px solid var(--dw-line); }
+  .p-drawer-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .p-drawer-content { padding: var(--dw-4) 20px 20px; }
+}
+
+/* Menus and pop-overs */
+.p-menu.dw-menu { min-width: 190px; padding: 0; }
+.p-menu .p-menu-item-link { font-size: var(--dw-text); line-height: 18px; color: var(--dw-ink); cursor: pointer; text-decoration: none; }
+.p-menu .p-menu-item-link .dw-icon { font-size: 16px; color: var(--dw-ink-3); }
+.p-menu .p-menu-item-link.danger,
+.p-menu .p-menu-item-link.danger .dw-icon { color: var(--dw-danger); }
+
+.p-tooltip .p-tooltip-text { font-size: 12px; line-height: 16px; font-weight: 500; box-shadow: none; }
+
+/* Toasts: dark, compact, one line when possible */
+.p-toast.dw-toast {
+  max-width: calc(100vw - 24px);
+
+  .p-toast-message { background: #17212b; border: 0; color: #fff; border-radius: var(--dw-radius-lg); box-shadow: var(--dw-shadow-modal); backdrop-filter: none; }
+  .p-toast-message-content { align-items: flex-start; }
+  .dw-toast-icon { margin-block-start: 1px; font-size: 18px; }
+  .dw-toast-text { flex: 1 1 auto; font-size: 13px; line-height: 20px; font-weight: 500; color: #fff; }
+  .p-toast-message-success .dw-toast-icon { color: #6fd3a3; }
+  .p-toast-message-info .dw-toast-icon { color: #8fc2f5; }
+  .p-toast-message-warn .dw-toast-icon { color: #f2c46b; }
+  .p-toast-message-error .dw-toast-icon { color: #ff9b93; }
+  .p-toast-close-button { width: 22px; height: 22px; color: rgb(255 255 255 / 70%); margin: -1px -4px 0 0; }
+  .p-toast-close-button:hover { background: rgb(255 255 255 / 12%); color: #fff; }
+  .p-toast-close-icon { width: 11px; height: 11px; }
+}
+
+.p-progressbar.p-progressbar-indeterminate { background: transparent; }
+
+.p-toggleswitch { vertical-align: middle; }
+
+/* ---------------------------------------------------------------------------------------------------------
+ * Filter bars: controls without a label above, sized by their content, tinted when a filter is set.
+ * ------------------------------------------------------------------------------------------------------- */
+.dw-filter-bar {
+  .dw-select { width: 168px; }
+  .dw-select.wide { width: 216px; }
+  .dw-date { width: 132px; }
+  .dw-search { flex: 0 1 240px; }
+  &.standalone { margin-block-end: var(--dw-4); border-block-end: 1px solid var(--dw-line); }
+
+  /* Only the bar's own controls are tinted: a period selector always has a value and is not a "set filter". */
+  .controls > .dw-select.has-value .p-select,
+  .controls > .dw-select.has-value .p-multiselect,
+  .controls > .dw-date.has-value .p-inputtext,
+  .controls > .dw-search.has-value .p-inputtext { border-color: var(--dw-primary-line); background: var(--dw-primary-soft); }
+  .controls > .dw-select.has-value .p-select-label,
+  .controls > .dw-select.has-value .p-multiselect-label { color: var(--dw-primary-strong); font-weight: 550; }
+
+  @media (max-width: 720px) {
+    .dw-select,
+    .dw-select.wide,
+    .dw-date,
+    .dw-search { width: 100%; flex-basis: auto; }
+  }
+}
+
+/* ---------------------------------------------------------------------------------------------------------
+ * Workshop (gloves) scale: the same components, sized for a thumb in a glove.
+ * ------------------------------------------------------------------------------------------------------- */
+.dw-touch-scale {
+  --dw-control: 56px;
+
+  .p-inputtext,
+  .p-select-label,
+  .p-multiselect-label { font-size: 18px; line-height: 24px; }
+  .p-inputtext,
+  .p-select-label { padding: 14px 14px; }
+  .p-select-dropdown { width: 48px; }
+  .dw-field-label { font-size: 14px; line-height: 20px; }
+  .dw-field-error,
+  .dw-field-hint { font-size: 13px; line-height: 18px; }
+}
+
+.p-select-overlay.dw-touch-list .p-select-option,
+.dw-touch-overlay .p-select-option { padding: 14px 14px; font-size: 17px; line-height: 24px; }
+
+/* Phones and tablets: 16 px text in fields prevents the zoom-on-focus of iOS. */
+@media (pointer: coarse) {
+  .p-inputtext,
+  .p-select-label,
+  .p-multiselect-label { font-size: 16px; line-height: 22px; }
+  :root { --dw-control: 40px; }
+  .p-select-option,
+  .p-multiselect-option { padding-block: 10px; font-size: 15px; }
+}
 
 .dw-sr-only {
   position: absolute;

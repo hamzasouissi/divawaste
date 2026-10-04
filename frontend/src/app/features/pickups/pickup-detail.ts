@@ -1,13 +1,9 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { Observable, firstValueFrom, forkJoin, of } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
 
 import { Api, Page, openBlob } from '../../core/api/api';
 import { DocumentRecord, Manifest, Pickup } from '../../core/api/models';
@@ -18,30 +14,33 @@ import { Confirm } from '../../ui/confirm';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
 import { CertificateDialog, LinesDialogData, LinesMode, PickupLinesDialog } from './pickup-dialogs';
+import { DateComponent } from '../../ui/date';
+import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
+import { FIELD } from '../../ui/field';
+import { IconComponent } from '../../ui/icon';
 
 @Component({
-  imports: [FormsModule, MatButtonModule, MatDialogModule, MatFormFieldModule, MatInputModule, TranslocoDirective],
+  imports: [FormsModule, TranslocoDirective, ButtonDirective, ...FIELD, DateComponent, ...DIALOG_PARTS],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <h2 mat-dialog-title>{{ t('pickups.actions.confirm') }}</h2>
-      <mat-dialog-content>
-        <mat-form-field>
-          <mat-label>{{ t('pickups.confirmedDate') }}</mat-label>
-          <input matInput type="date" [ngModel]="date()" (ngModelChange)="date.set($event)" [min]="min" required cdkFocusInitial />
-        </mat-form-field>
-      </mat-dialog-content>
-      <mat-dialog-actions align="end">
-        <button mat-button type="button" mat-dialog-close>{{ t('common.cancel') }}</button>
-        <button mat-flat-button type="button" [disabled]="date() < min" [mat-dialog-close]="date()">{{ t('common.confirm') }}</button>
-      </mat-dialog-actions>
+      <dw-dialog-title>{{ t('pickups.actions.confirm') }}</dw-dialog-title>
+      <div class="dw-dialog-body">
+        <dw-field [label]="t('pickups.confirmedDate')">
+          <dw-date [ngModel]="date()" (ngModelChange)="date.set($event)" [min]="min" required />
+        </dw-field>
+      </div>
+      <div class="dw-dialog-foot">
+        <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+        <button pButton type="button" [disabled]="date() < min" (click)="ref.close(date())">{{ t('common.confirm') }}</button>
+      </div>
     </ng-container>
   `,
-  styles: 'mat-dialog-content { min-width: min(340px, 80vw); }',
+  styles: '.dw-dialog-body { min-width: min(340px, 80vw); }',
 })
 export class ConfirmDateDialog {
-  protected readonly ref = inject<MatDialogRef<ConfirmDateDialog, string>>(MatDialogRef);
-  private readonly requested = inject<string>(MAT_DIALOG_DATA);
+  protected readonly ref = inject(DialogRef);
+  private readonly requested = dialogData<string>();
   protected readonly min = new Date().toISOString().slice(0, 10);
   protected readonly date = signal(this.requested >= this.min ? this.requested : this.min);
 }
@@ -51,7 +50,7 @@ export class ConfirmDateDialog {
  * current status and the user's permissions allow; everything else about the pickup is on the page.
  */
 @Component({
-  imports: [RouterLink, MatButtonModule, MatIconModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, MoneyPipe, NumberPipe],
+  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, MoneyPipe, NumberPipe, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -61,9 +60,9 @@ export class ConfirmDateDialog {
             <dw-status dwTitleBadge kind="pickup" [value]="p.status" />
             @for (action of actions(); track action.key) {
               @if (action.primary) {
-                <button mat-flat-button type="button" [disabled]="busy()" (click)="run(action.key)"><mat-icon>{{ action.icon }}</mat-icon>{{ t('pickups.actions.' + action.key) }}</button>
+                <button pButton type="button" [disabled]="busy()" (click)="run(action.key)"><dw-icon>{{ action.icon }}</dw-icon>{{ t('pickups.actions.' + action.key) }}</button>
               } @else {
-                <button mat-stroked-button type="button" [disabled]="busy()" [class.danger]="action.danger" (click)="run(action.key)"><mat-icon>{{ action.icon }}</mat-icon>{{ t('pickups.actions.' + action.key) }}</button>
+                <button pButton [severity]="action.danger ? 'danger' : 'secondary'" outlined type="button" [disabled]="busy()" (click)="run(action.key)"><dw-icon>{{ action.icon }}</dw-icon>{{ t('pickups.actions.' + action.key) }}</button>
               }
             }
           </dw-page-header>
@@ -73,7 +72,7 @@ export class ConfirmDateDialog {
             @if (p.status === 'cancelled') { <p class="banner danger" role="status">{{ t('pickups.cancelled', { reason: p.cancellation_reason }) }}</p> }
             @if (p.variance_flagged) {
               <p class="banner" [class.danger]="!p.variance_acknowledged" role="status">
-                <mat-icon aria-hidden="true">scale</mat-icon>
+                <dw-icon aria-hidden="true">scale</dw-icon>
                 <span>{{ t('pickups.varianceBanner', { received: (p.received_weight_kg | dwKg), departure: (p.departure_weight_kg | dwKg), pct: (p.weight_variance_pct | dwNumber: 1) }) }}
                   @if (p.variance_acknowledged) { {{ t('pickups.varianceAck', { comment: p.variance_comment }) }} }</span>
               </p>
@@ -96,7 +95,7 @@ export class ConfirmDateDialog {
             <section class="dw-panel">
               <div class="dw-panel-head"><h2 class="dw-h2">{{ t('pickups.lotsCount', { count: p.lots?.length ?? 0 }) }}</h2></div>
               <div class="scroll">
-                <table>
+                <table class="dw-table">
                   <thead>
                     <tr>
                       <th>{{ t('lots.number') }}</th><th>{{ t('fields.wasteType') }}</th><th>{{ t('lots.regulatoryCode') }}</th><th class="dw-num">{{ t('pickups.declared') }}</th>
@@ -109,7 +108,7 @@ export class ConfirmDateDialog {
                       <tr>
                         <td class="dw-mono">
                           @if (line.lot) { <a [routerLink]="['/lots', line.lot]">{{ line.lot_number_snapshot }}</a> } @else { {{ line.lot_number_snapshot }} }
-                          @if (line.is_hazardous) { <mat-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</mat-icon> }
+                          @if (line.is_hazardous) { <dw-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</dw-icon> }
                         </td>
                         <td>{{ line.waste_type_label_snapshot }}</td><td class="dw-mono">{{ line.regulatory_code_snapshot ?? '—' }}</td>
                         <td class="dw-num">{{ line.declared_weight_kg | dwKg }}</td><td class="dw-num">{{ line.departure_weight_kg | dwKg }}</td><td class="dw-num">{{ line.received_weight_kg | dwKg }}</td>
@@ -130,7 +129,7 @@ export class ConfirmDateDialog {
                 <ul class="docs">
                   @for (manifest of manifests(); track manifest.ulid) {
                     <li>
-                      <mat-icon aria-hidden="true">assignment_late</mat-icon>
+                      <dw-icon aria-hidden="true">assignment_late</dw-icon>
                       <a [routerLink]="[provider ? '/provider/manifests' : '/compliance/manifests', manifest.ulid]">{{ t('compliance.documents.types.hazardous_manifest') }} <span class="dw-mono">{{ manifest.manifest_number }}</span></a>
                       <dw-status kind="manifest" [value]="manifest.status" />
                     </li>
@@ -138,7 +137,7 @@ export class ConfirmDateDialog {
                   @for (document of documents(); track document.ulid) {
                     @if (document.document_type !== 'hazardous_manifest') {
                       <li>
-                        <mat-icon aria-hidden="true">description</mat-icon>
+                        <dw-icon aria-hidden="true">description</dw-icon>
                         <button type="button" class="linkish" (click)="download(document)">{{ t('compliance.documents.types.' + document.document_type) }}</button>
                         <span class="dw-faint">{{ document.uploaded_by?.legal_name }} · {{ document.issued_at | dwDate }}</span>
                       </li>
@@ -153,23 +152,20 @@ export class ConfirmDateDialog {
     </ng-container>
   `,
   styles: `
-    .danger { --mdc-outlined-button-label-text-color: var(--dw-danger); }
     .banner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--dw-radius); background: var(--dw-success-soft); color: var(--dw-success); font-size: 13.5px; }
     .banner.danger { background: var(--dw-danger-soft); color: var(--dw-danger); }
-    .scroll { overflow-x: auto; } table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { text-align: start; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dw-ink-3); padding: 8px 12px; border-block-end: 1px solid var(--dw-line); white-space: nowrap; }
-    td { padding: 7px 12px; border-block-end: 1px solid var(--dw-line-soft); } tr:last-child td { border-block-end: 0; }
+    .scroll { overflow-x: auto; }
     .neg { color: var(--dw-danger); font-weight: 600; }
     .hazard { font-size: 15px; width: 15px; height: 15px; color: var(--dw-warning); vertical-align: -2px; }
     .docs { list-style: none; margin: 0; padding: 0; } .docs li { display: flex; align-items: center; gap: 10px; padding: 10px var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); }
-    .docs li:last-child { border-block-end: 0; } .docs mat-icon { font-size: 18px; width: 18px; height: 18px; color: var(--dw-ink-3); }
+    .docs li:last-child { border-block-end: 0; } .docs dw-icon { font-size: 18px; color: var(--dw-ink-3); }
     .linkish { all: unset; cursor: pointer; color: var(--dw-primary); } .linkish:hover { text-decoration: underline; } .linkish:focus-visible { outline: 2px solid var(--dw-primary); outline-offset: 2px; }
   `,
 })
 export class PickupDetailPage implements OnInit {
   private readonly api = inject(Api);
   private readonly session = inject(Session);
-  private readonly dialog = inject(MatDialog);
+  private readonly dialog = inject(Dialogs);
   private readonly confirm = inject(Confirm);
   private readonly toast = inject(Toast);
 

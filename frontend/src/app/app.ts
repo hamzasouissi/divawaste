@@ -17,7 +17,7 @@ const ICONS: Record<string, string> = { success: 'check_circle', info: 'info', w
     <!-- One toast outlet and one confirmation dialog for the whole product (see Toast and Confirm). -->
     <p-toast position="bottom-right" styleClass="dw-toast">
       <ng-template #message let-message>
-        <dw-icon class="dw-toast-icon">{{ icons[message.severity] ?? 'info' }}</dw-icon>
+        <dw-icon class="dw-toast-icon">{{ icons[message.severity] || 'info' }}</dw-icon>
         <span class="dw-toast-text">{{ message.detail }}</span>
       </ng-template>
     </p-toast>

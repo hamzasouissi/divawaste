@@ -4,6 +4,7 @@ import { TranslocoService } from '@jsverse/transloco';
 import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
 import { ConfirmationService, MessageService } from 'primeng/api';
+import { AutoFocus } from 'primeng/autofocus';
 import { PrimeNG, providePrimeNG } from 'primeng/config';
 import { DialogService } from 'primeng/dynamicdialog';
 
@@ -60,7 +61,7 @@ const DivaWastePreset = definePreset(Aura, {
         },
         primary: { color: '{primary.700}', contrastColor: '#ffffff', hoverColor: '{primary.800}', activeColor: '{primary.900}' },
         highlight: { background: '{primary.50}', focusBackground: '{primary.100}', color: '{primary.800}', focusColor: '{primary.900}' },
-        mask: { background: 'rgb(13 20 27 / 42%)', color: '{surface.200}' },
+        mask: { background: 'rgb(13 20 27 / 38%)', color: '{surface.200}' },
         formField: {
           background: '{surface.0}',
           disabledBackground: '{surface.100}',
@@ -169,7 +170,27 @@ function syncComponentTexts(): void {
   });
 }
 
+/**
+ * PrimeNG 20.4 writes the `autofocus` attribute on every selector whose `autofocus` input is left unset
+ * (it only removes it for an explicit `false`). The browser then focuses the first selector of a page, and a
+ * dialog focuses a selector instead of the field marked `autofocus`. An unset input means "no".
+ */
+function fixAutoFocus(): void {
+  const proto = AutoFocus.prototype as unknown as { autofocus: boolean | undefined; onAfterContentChecked(): void; dwPatched?: boolean };
+  if (proto.dwPatched) {
+    return;
+  }
+  const original = proto.onAfterContentChecked;
+  proto.onAfterContentChecked = function (this: typeof proto): void {
+    this.autofocus ||= false;
+    original.call(this);
+  };
+  proto.dwPatched = true;
+}
+
 export function provideDivaWasteUi(): (Provider | EnvironmentProviders)[] {
+  fixAutoFocus();
+
   return [
     provideAnimationsAsync(),
     providePrimeNG({

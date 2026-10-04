@@ -1,15 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatSelectModule } from '@angular/material/select';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
 
 import { Api, openBlob } from '../../core/api/api';
 import { Declaration, DocumentRecord, Manifest, RegisterRow } from '../../core/api/models';
@@ -21,10 +15,14 @@ import { Column, TABLE } from '../../ui/data-table';
 import { ListStore } from '../../ui/list-store';
 import { KpiComponent, PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { Period, PeriodFilterComponent, presetPeriod } from '../../ui/period';
+import { CheckboxComponent } from '../../ui/checkbox';
+import { IconComponent } from '../../ui/icon';
+import { MenuAction, MenuComponent } from '../../ui/menu';
+import { SELECT } from '../../ui/select';
+import { FilterBarComponent } from '../../ui/filter-bar';
 
 const FILTERS = `
-  .filters { display: flex; align-items: center; gap: var(--dw-2) var(--dw-3); flex-wrap: wrap; padding: var(--dw-3) var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); }
-  .filters mat-form-field { width: 220px; }
+  .filters dw-field { width: 220px; }
 `;
 
 /**
@@ -32,29 +30,31 @@ const FILTERS = `
  * the site. Exports are generated in the background and delivered on the Reports screen.
  */
 @Component({
-  imports: [MatButtonModule, MatCheckboxModule, MatIconModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, PeriodFilterComponent, DatePipe, KgPipe, RouterLink],
+  imports: [
+    TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, PeriodFilterComponent, DatePipe, KgPipe, RouterLink, IconComponent, ButtonDirective, CheckboxComponent, FilterBarComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('compliance.register.title')" [subtitle]="t('compliance.register.subtitle')">
         @if (canExport) {
-          <button mat-stroked-button type="button" [disabled]="exporting()" (click)="export('xlsx')"><mat-icon>table_view</mat-icon>{{ t('compliance.register.exportXlsx') }}</button>
-          <button mat-flat-button type="button" [disabled]="exporting()" (click)="export('pdf')"><mat-icon>picture_as_pdf</mat-icon>{{ t('compliance.register.exportPdf') }}</button>
+          <button pButton severity="secondary" outlined type="button" [disabled]="exporting()" (click)="export('xlsx')"><dw-icon>table_view</dw-icon>{{ t('compliance.register.exportXlsx') }}</button>
+          <button pButton type="button" [disabled]="exporting()" (click)="export('pdf')"><dw-icon>picture_as_pdf</dw-icon>{{ t('compliance.register.exportPdf') }}</button>
         }
       </dw-page-header>
 
       <div class="dw-panel">
-        <div class="filters">
+        <dw-filter-bar>
           <dw-period-filter [value]="period()" permission="documents.view" (changed)="setPeriod($event)" />
-          <mat-checkbox [checked]="hazardous()" (change)="setHazardous($event.checked)">{{ t('lots.hazardousOnly') }}</mat-checkbox>
-        </div>
+          <dw-checkbox [checked]="hazardous()" (checkedChange)="setHazardous($event)">{{ t('lots.hazardousOnly') }}</dw-checkbox>
+        </dw-filter-bar>
         <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1"
           [pageSize]="list.perPage()" [trackBy]="track" emptyIcon="menu_book" [emptyTitle]="t('compliance.register.emptyTitle')"
           (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (retry)="list.reload()">
           <ng-template dwCell="date" let-row>{{ row.generated_at | dwDate: 'datetime' }}</ng-template>
           <ng-template dwCell="lot" let-row><a class="dw-mono" [routerLink]="['/lots', row.lot]">{{ row.lot_number }}</a></ng-template>
           <ng-template dwCell="type" let-row>
-            {{ row.waste_type }} @if (row.is_hazardous) { <mat-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</mat-icon> }
+            {{ row.waste_type }} @if (row.is_hazardous) { <dw-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</dw-icon> }
           </ng-template>
           <ng-template dwCell="weight" let-row>{{ row.net_weight_kg | dwKg }}</ng-template>
           <ng-template dwCell="status" let-row><dw-status kind="lot" [value]="row.status" /></ng-template>
@@ -124,21 +124,18 @@ export class RegisterPage {
  * comes, with its password (the API checks both the turn and the password).
  */
 @Component({
-  imports: [MatButtonModule, MatFormFieldModule, MatIconModule, MatSelectModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, DatePipe, KgPipe],
+  imports: [TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, DatePipe, KgPipe, IconComponent, ButtonDirective, ...SELECT, FilterBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('compliance.manifests.title')" [subtitle]="t('compliance.manifests.subtitle')" />
       <div class="dw-panel">
-        <div class="filters">
-          <mat-form-field>
-            <mat-label>{{ t('fields.status') }}</mat-label>
-            <mat-select [value]="list.filter().status ?? ''" (selectionChange)="list.setFilter({ status: $event.value || null })">
-              <mat-option value="">{{ t('common.all') }}</mat-option>
-              @for (status of statuses; track status) { <mat-option [value]="status">{{ t('status.manifest.' + status) }}</mat-option> }
-            </mat-select>
-          </mat-form-field>
-        </div>
+        <dw-filter-bar [active]="list.activeCount()" (cleared)="list.resetFilter()">
+          <dw-select [placeholder]="t('fields.status')" [value]="list.filter().status ?? ''" (valueChange)="list.setFilter({ status: $event || null })">
+            <dw-option value="" [label]="t('common.all')" />
+            @for (status of statuses; track status) { <dw-option [value]="status" [label]="t('status.manifest.' + status)" /> }
+          </dw-select>
+        </dw-filter-bar>
         <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1"
           [pageSize]="list.perPage()" emptyIcon="assignment_late" [emptyTitle]="list.filtered() ? t('common.noResult') : t('compliance.manifests.emptyTitle')"
           [emptyHint]="list.filtered() ? '' : t('compliance.manifests.emptyHint')" (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (retry)="list.reload()">
@@ -149,7 +146,7 @@ export class RegisterPage {
             <ul class="signatures">
               @for (signature of m.signatures; track signature.party) {
                 <li [class.done]="signature.signed_at">
-                  <mat-icon aria-hidden="true">{{ signature.signed_at ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+                  <dw-icon aria-hidden="true">{{ signature.signed_at ? 'check_circle' : 'radio_button_unchecked' }}</dw-icon>
                   <span><strong>{{ t('compliance.manifests.' + signature.party) }}</strong> — {{ signature.company.legal_name }}
                     <span class="dw-faint">@if (signature.signed_at) { {{ t('compliance.manifests.signedBy', { name: signature.signed_by, date: (signature.signed_at | dwDate: 'datetime') }) }} } @else { {{ t('compliance.manifests.waiting') }} }</span>
                   </span>
@@ -161,9 +158,9 @@ export class RegisterPage {
           <ng-template dwCell="actions" let-m>
             <div class="dw-row-tight">
               @if (canSign && m.awaiting_company === company) {
-                <button mat-flat-button type="button" [disabled]="busy()" (click)="sign(m)"><mat-icon>draw</mat-icon>{{ t('compliance.manifests.sign') }}</button>
+                <button pButton type="button" [disabled]="busy()" (click)="sign(m)"><dw-icon>draw</dw-icon>{{ t('compliance.manifests.sign') }}</button>
               }
-              <button mat-stroked-button type="button" (click)="pdf(m)"><mat-icon>picture_as_pdf</mat-icon>{{ t('compliance.manifests.pdf') }}</button>
+              <button pButton severity="secondary" outlined type="button" (click)="pdf(m)"><dw-icon>picture_as_pdf</dw-icon>{{ t('compliance.manifests.pdf') }}</button>
             </div>
           </ng-template>
         </dw-data-table>
@@ -173,8 +170,8 @@ export class RegisterPage {
   styles: FILTERS + `
     .signatures { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 12.5px; }
     .signatures li { display: flex; gap: 6px; align-items: flex-start; }
-    .signatures mat-icon { font-size: 15px; width: 15px; height: 15px; margin-block-start: 2px; color: var(--dw-ink-3); flex: none; }
-    .signatures li.done mat-icon { color: var(--dw-success); }
+    .signatures dw-icon { font-size: 15px; margin-block-start: 2px; color: var(--dw-ink-3); flex: none; }
+    .signatures li.done dw-icon { color: var(--dw-success); }
   `,
 })
 export class ManifestsPage {
@@ -235,8 +232,9 @@ export class ManifestsPage {
  * often as needed; validating freezes the figures and archives the document.
  */
 @Component({
-  imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatMenuModule, MatSelectModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent,
-    KpiComponent, DatePipe, KgPipe],
+  imports: [
+    FormsModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, KpiComponent, DatePipe, KgPipe, IconComponent, ButtonDirective, ...SELECT, FilterBarComponent, MenuComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -244,21 +242,15 @@ export class ManifestsPage {
 
       <div class="dw-stack">
         <div class="dw-panel">
-          <div class="filters">
-            <mat-form-field>
-              <mat-label>{{ t('fields.site') }}</mat-label>
-              <mat-select [ngModel]="site()" (ngModelChange)="site.set($event)">
-                @for (item of sites; track item.ulid) { <mat-option [value]="item.ulid">{{ item.name }}</mat-option> }
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field class="year">
-              <mat-label>{{ t('compliance.declarations.year') }}</mat-label>
-              <mat-select [ngModel]="year()" (ngModelChange)="year.set($event)">
-                @for (item of years; track item) { <mat-option [value]="item">{{ item }}</mat-option> }
-              </mat-select>
-            </mat-form-field>
-            <button mat-flat-button type="button" [disabled]="!site() || busy()" (click)="prepare(site(), year())"><mat-icon>calculate</mat-icon>{{ t('compliance.declarations.prepare') }}</button>
-          </div>
+          <dw-filter-bar>
+            <dw-select [placeholder]="t('fields.site')" [ngModel]="site()" (ngModelChange)="site.set($event)">
+              @for (item of sites; track item.ulid) { <dw-option [value]="item.ulid" [label]="item.name" /> }
+            </dw-select>
+            <dw-select class="year" [placeholder]="t('compliance.declarations.year')" [ngModel]="year()" (ngModelChange)="year.set($event)">
+              @for (item of years; track item) { <dw-option [value]="item" [label]="item" /> }
+            </dw-select>
+            <button pButton type="button" [disabled]="!site() || busy()" (click)="prepare(site(), year())"><dw-icon>calculate</dw-icon>{{ t('compliance.declarations.prepare') }}</button>
+          </dw-filter-bar>
           <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1"
             [pageSize]="list.perPage()" [clickable]="true" emptyIcon="fact_check" [emptyTitle]="t('compliance.declarations.emptyTitle')" [emptyHint]="t('compliance.declarations.emptyHint')"
             (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="selected.set($event)" (retry)="list.reload()">
@@ -275,20 +267,17 @@ export class ManifestsPage {
               <h2 class="dw-h2 dw-spacer">{{ d.site?.name }} — {{ d.reporting_year }} <span class="dw-faint">({{ d.format_code }})</span></h2>
               <dw-status kind="declaration" [value]="d.status" />
               @if (d.status === 'draft' || d.status === 'in_review') {
-                <button mat-button type="button" [disabled]="busy()" (click)="prepare(d.site?.ulid ?? '', d.reporting_year)"><mat-icon>refresh</mat-icon>{{ t('compliance.declarations.recompute') }}</button>
+                <button pButton text type="button" [disabled]="busy()" (click)="prepare(d.site?.ulid ?? '', d.reporting_year)"><dw-icon>refresh</dw-icon>{{ t('compliance.declarations.recompute') }}</button>
                 @if (canValidate(d)) {
-                  <button mat-flat-button type="button" [disabled]="busy()" (click)="validate(d)"><mat-icon>verified</mat-icon>{{ t('compliance.declarations.validate') }}</button>
+                  <button pButton type="button" [disabled]="busy()" (click)="validate(d)"><dw-icon>verified</dw-icon>{{ t('compliance.declarations.validate') }}</button>
                 }
               }
-              <button mat-stroked-button type="button" [matMenuTriggerFor]="exports"><mat-icon>download</mat-icon>{{ t('common.export') }}</button>
-              <mat-menu #exports="matMenu">
-                <button mat-menu-item type="button" (click)="export(d, 'pdf')">PDF</button>
-                <button mat-menu-item type="button" (click)="export(d, 'xlsx')">Excel</button>
-              </mat-menu>
+              <button pButton severity="secondary" outlined type="button" (click)="exports.open($event, exportActions(d))" aria-haspopup="menu"><dw-icon>download</dw-icon>{{ t('common.export') }}<dw-icon>expand_more</dw-icon></button>
+              <dw-menu #exports />
             </header>
             <div class="dw-panel-body dw-stack">
               <p class="dw-muted">{{ t('compliance.declarations.computedAt', { date: (d.computed_at | dwDate: 'datetime') }) }}</p>
-              <div class="dw-grid-4">
+              <div class="dw-stats">
                 <dw-kpi [label]="t('compliance.declarations.produced')" [value]="d.figures.totals.produced_kg | dwKg: 'auto'" />
                 <dw-kpi [label]="t('compliance.declarations.hazardousProduced')" [value]="d.figures.totals.hazardous_produced_kg | dwKg: 'auto'" />
                 <dw-kpi [label]="t('compliance.declarations.evacuated')" [value]="d.figures.totals.evacuated_kg | dwKg: 'auto'" />
@@ -297,7 +286,7 @@ export class ManifestsPage {
               <div class="dw-grid-2">
                 <div>
                   <h3 class="dw-h3">{{ t('compliance.declarations.produced') }}</h3>
-                  <table class="figures">
+                  <table class="dw-table figures">
                     <thead><tr><th>{{ t('lots.regulatoryCode') }}</th><th>{{ t('fields.wasteType') }}</th><th class="dw-num">{{ t('dashboard.lotsShort') }}</th><th class="dw-num">{{ t('fields.weight') }}</th></tr></thead>
                     <tbody>
                       @for (row of d.figures.produced; track $index) {
@@ -309,7 +298,7 @@ export class ManifestsPage {
                 </div>
                 <div>
                   <h3 class="dw-h3">{{ t('compliance.declarations.evacuated') }}</h3>
-                  <table class="figures">
+                  <table class="dw-table figures">
                     <thead><tr><th>{{ t('fields.wasteType') }}</th><th>{{ t('compliance.declarations.destination') }}</th><th>{{ t('pickups.channel') }}</th><th class="dw-num">{{ t('fields.weight') }}</th></tr></thead>
                     <tbody>
                       @for (row of d.figures.evacuated; track $index) {
@@ -327,10 +316,7 @@ export class ManifestsPage {
   `,
   styles: FILTERS + `
     .filters .year { width: 120px; }
-    .figures { width: 100%; border-collapse: collapse; font-size: 13px; margin-block-start: var(--dw-2); }
-    .figures th { text-align: start; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dw-ink-2); padding: 6px 8px; border-block-end: 1px solid var(--dw-line); }
-    .figures td { padding: 6px 8px; border-block-end: 1px solid var(--dw-line-soft); }
-    .figures th.dw-num { text-align: end; }
+    .figures { margin-block-start: var(--dw-2); }
   `,
 })
 export class DeclarationsPage {
@@ -394,6 +380,13 @@ export class DeclarationsPage {
     }
   }
 
+  protected exportActions(declaration: Declaration): MenuAction[] {
+    return [
+      { label: 'PDF', icon: 'picture_as_pdf', run: () => void this.export(declaration, 'pdf') },
+      { label: 'Excel', icon: 'table_view', run: () => void this.export(declaration, 'xlsx') },
+    ];
+  }
+
   protected async export(declaration: Declaration, format: 'pdf' | 'xlsx'): Promise<void> {
     try {
       const blob = await firstValueFrom(this.api.blob(`declarations/${declaration.ulid}/export`, { format }));
@@ -406,29 +399,22 @@ export class DeclarationsPage {
 
 /** M5-04: the archive. Read-only: a regulated document is never edited or deleted from here. */
 @Component({
-  imports: [MatButtonModule, MatFormFieldModule, MatIconModule, MatSelectModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, DatePipe],
+  imports: [TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, DatePipe, IconComponent, ButtonDirective, ...SELECT, FilterBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t(provider ? 'provider.documents.title' : 'compliance.documents.title')" [subtitle]="t(provider ? 'provider.documents.subtitle' : 'compliance.documents.subtitle')" />
       <div class="dw-panel">
-        <div class="filters">
-          <mat-form-field>
-            <mat-label>{{ t('compliance.documents.type') }}</mat-label>
-            <mat-select [value]="list.filter().type ?? ''" (selectionChange)="list.setFilter({ type: $event.value || null })">
-              <mat-option value="">{{ t('common.all') }}</mat-option>
-              @for (type of types(); track type) { <mat-option [value]="type">{{ t('compliance.documents.types.' + type) }}</mat-option> }
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field class="year">
-            <mat-label>{{ t('compliance.declarations.year') }}</mat-label>
-            <mat-select [value]="list.filter().year ?? ''" (selectionChange)="list.setFilter({ year: $event.value || null })">
-              <mat-option value="">{{ t('common.all') }}</mat-option>
-              @for (year of years; track year) { <mat-option [value]="year">{{ year }}</mat-option> }
-            </mat-select>
-          </mat-form-field>
-          @if (list.filtered()) { <button mat-button type="button" (click)="list.resetFilter()">{{ t('common.resetFilters') }}</button> }
-        </div>
+        <dw-filter-bar [active]="list.activeCount()" (cleared)="list.resetFilter()">
+          <dw-select [placeholder]="t('compliance.documents.type')" [value]="list.filter().type ?? ''" (valueChange)="list.setFilter({ type: $event || null })">
+            <dw-option value="" [label]="t('common.all')" />
+            @for (type of types(); track type) { <dw-option [value]="type" [label]="t('compliance.documents.types.' + type)" /> }
+          </dw-select>
+          <dw-select class="year" [placeholder]="t('compliance.declarations.year')" [value]="list.filter().year ?? ''" (valueChange)="list.setFilter({ year: $any($event) || null })">
+            <dw-option value="" [label]="t('common.all')" />
+            @for (year of years; track year) { <dw-option [value]="year" [label]="year" /> }
+          </dw-select>
+        </dw-filter-bar>
         <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1"
           [pageSize]="list.perPage()" emptyIcon="folder_open" [emptyTitle]="list.filtered() ? t('common.noResult') : t('compliance.documents.emptyTitle')"
           [emptyHint]="list.filtered() ? '' : t('compliance.documents.emptyHint')" (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (retry)="list.reload()">
@@ -439,7 +425,7 @@ export class DeclarationsPage {
           <ng-template dwCell="retention" let-d>{{ d.retention_until | dwDate }}</ng-template>
           <ng-template dwCell="status" let-d><dw-status kind="document" [value]="d.status" /></ng-template>
           <ng-template dwCell="actions" let-d>
-            @if (d.has_file) { <button mat-stroked-button type="button" (click)="open(d)"><mat-icon>open_in_new</mat-icon>{{ t('common.open') }}</button> }
+            @if (d.has_file) { <button pButton severity="secondary" outlined type="button" (click)="open(d)"><dw-icon>open_in_new</dw-icon>{{ t('common.open') }}</button> }
           </ng-template>
         </dw-data-table>
       </div>

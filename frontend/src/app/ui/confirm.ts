@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, Injectable, inject, signal } from '
 import { FormsModule } from '@angular/forms';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { ConfirmationService } from 'primeng/api';
+import { AutoFocus } from 'primeng/autofocus';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Textarea } from 'primeng/textarea';
@@ -23,7 +24,7 @@ export interface ConfirmOptions {
 
 /** Confirmation that needs something typed: a reason or the password. */
 @Component({
-  imports: [FormsModule, ButtonDirective, InputText, Textarea, FieldComponent, ...DIALOG_PARTS, TranslocoDirective],
+  imports: [FormsModule, AutoFocus, ButtonDirective, InputText, Textarea, FieldComponent, ...DIALOG_PARTS, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -34,12 +35,12 @@ export interface ConfirmOptions {
         }
         @if (data.reasonLabel) {
           <dw-field [label]="data.reasonLabel">
-            <textarea pTextarea rows="3" maxlength="1000" required autofocus [ngModel]="text()" (ngModelChange)="text.set($event)"></textarea>
+            <textarea pTextarea rows="3" maxlength="1000" required [pAutoFocus]="true" [ngModel]="text()" (ngModelChange)="text.set($event)"></textarea>
           </dw-field>
         }
         @if (data.password) {
           <dw-field [label]="t('auth.password')">
-            <input pInputText type="password" autocomplete="current-password" required autofocus [ngModel]="text()" (ngModelChange)="text.set($event)" (keydown.enter)="confirm()" />
+            <input pInputText type="password" autocomplete="current-password" required [pAutoFocus]="true" [ngModel]="text()" (ngModelChange)="text.set($event)" (keydown.enter)="confirm()" />
           </dw-field>
         }
       </div>

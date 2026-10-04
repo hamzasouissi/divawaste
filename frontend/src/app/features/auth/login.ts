@@ -1,21 +1,21 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { ButtonDirective } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
+import { Password } from 'primeng/password';
 
 import { ApiError } from '../../core/api/api';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
+import { FIELD } from '../../ui/field';
 
 type Step = 'credentials' | 'two_factor' | 'company';
 
 /** Sign-in: credentials, then the second factor when it is enabled, then the company when the user has several. */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, TranslocoDirective],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, ButtonDirective, InputText, ...FIELD, Password],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -32,32 +32,25 @@ type Step = 'credentials' | 'two_factor' | 'company';
       <form [formGroup]="form" (ngSubmit)="submit()" class="dw-stack-sm" novalidate>
         @switch (step()) {
           @case ('credentials') {
-            <mat-form-field>
-              <mat-label>{{ t('auth.email') }}</mat-label>
-              <input matInput type="email" formControlName="email" autocomplete="username" required />
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>{{ t('auth.password') }}</mat-label>
-              <input matInput [type]="reveal() ? 'text' : 'password'" formControlName="password" autocomplete="current-password" required />
-              <button mat-icon-button matSuffix type="button" (click)="reveal.set(!reveal())" [attr.aria-label]="t('auth.togglePassword')" [attr.aria-pressed]="reveal()">
-                <mat-icon>{{ reveal() ? 'visibility_off' : 'visibility' }}</mat-icon>
-              </button>
-            </mat-form-field>
+            <dw-field [label]="t('auth.email')">
+              <input pInputText type="email" formControlName="email" autocomplete="username" required />
+            </dw-field>
+            <dw-field [label]="t('auth.password')">
+              <p-password formControlName="password" [toggleMask]="true" [feedback]="false" autocomplete="current-password" [fluid]="true" />
+            </dw-field>
           }
           @case ('two_factor') {
             <p class="dw-muted">{{ recovery() ? t('auth.login.recoveryHint') : t('auth.login.codeHint') }}</p>
             @if (recovery()) {
-              <mat-form-field>
-                <mat-label>{{ t('auth.login.recoveryCode') }}</mat-label>
-                <input matInput formControlName="recovery_code" autocomplete="off" />
-              </mat-form-field>
+              <dw-field [label]="t('auth.login.recoveryCode')">
+                <input pInputText formControlName="recovery_code" autocomplete="off" />
+              </dw-field>
             } @else {
-              <mat-form-field>
-                <mat-label>{{ t('auth.login.code') }}</mat-label>
-                <input matInput formControlName="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" />
-              </mat-form-field>
+              <dw-field [label]="t('auth.login.code')">
+                <input pInputText formControlName="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" />
+              </dw-field>
             }
-            <button mat-button type="button" (click)="recovery.set(!recovery())">{{ recovery() ? t('auth.login.useCode') : t('auth.login.useRecovery') }}</button>
+            <button pButton text type="button" (click)="recovery.set(!recovery())">{{ recovery() ? t('auth.login.useCode') : t('auth.login.useRecovery') }}</button>
           }
           @case ('company') {
             <p class="dw-muted">{{ t('auth.login.chooseCompany') }}</p>
@@ -72,7 +65,7 @@ type Step = 'credentials' | 'two_factor' | 'company';
           }
         }
 
-        <button mat-flat-button type="submit" class="submit" [disabled]="busy()">{{ busy() ? t('common.wait') : t('auth.login.submit') }}</button>
+        <button pButton type="submit" class="submit" [disabled]="busy()">{{ busy() ? t('common.wait') : t('auth.login.submit') }}</button>
       </form>
 
       @if (step() === 'credentials') {
@@ -82,7 +75,7 @@ type Step = 'credentials' | 'two_factor' | 'company';
           <a routerLink="/register">{{ t('auth.login.register') }}</a>
         </div>
       } @else {
-        <button mat-button type="button" (click)="restart()">{{ t('auth.login.restart') }}</button>
+        <button pButton text type="button" (click)="restart()">{{ t('auth.login.restart') }}</button>
       }
     </ng-container>
   `,
@@ -116,7 +109,6 @@ export class LoginPage {
   });
   protected readonly step = signal<Step>('credentials');
   protected readonly recovery = signal(false);
-  protected readonly reveal = signal(false);
   protected readonly busy = signal(false);
   protected readonly failure = signal('');
   protected readonly companies = signal<{ ulid: string; legal_name: string }[]>([]);

@@ -1,6 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { EChartsCoreOption } from 'echarts/core';
@@ -15,6 +13,7 @@ import { ChartComponent } from '../../ui/chart';
 import { KpiComponent, PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { Period, PeriodFilterComponent, presetPeriod } from '../../ui/period';
 import { StateComponent } from '../../ui/state';
+import { IconComponent } from '../../ui/icon';
 
 interface Attention {
   icon: string;
@@ -28,8 +27,9 @@ interface Attention {
  * what it costs or earns. Every figure comes from the API, which computes it from the lots and the pickups.
  */
 @Component({
-  imports: [RouterLink, MatButtonModule, MatIconModule, TranslocoDirective, ChartComponent, KpiComponent, PageHeaderComponent, StatusComponent, PeriodFilterComponent, StateComponent,
-    DatePipe, KgPipe, MoneyPipe, NumberPipe],
+  imports: [
+    RouterLink, TranslocoDirective, ChartComponent, KpiComponent, PageHeaderComponent, StatusComponent, PeriodFilterComponent, StateComponent, DatePipe, KgPipe, MoneyPipe, NumberPipe, IconComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -40,7 +40,7 @@ interface Attention {
       @if (onboarding(); as steps) {
         @if (!steps.completed && !steps.dismissed && session.can('company.update')) {
           <a class="onboarding dw-panel" routerLink="/onboarding">
-            <mat-icon aria-hidden="true">rocket_launch</mat-icon>
+            <dw-icon aria-hidden="true">rocket_launch</dw-icon>
             <span><strong>{{ t('onboarding.bannerTitle') }}</strong> {{ t('onboarding.bannerBody', { done: doneSteps(), total: steps.steps.length }) }}</span>
             <span class="dw-spacer"></span>
             <span class="link">{{ t('onboarding.resume') }}</span>
@@ -51,18 +51,8 @@ interface Attention {
       <dw-state [loading]="loading()" [error]="error()" (retry)="load()">
         @if (data(); as d) {
           <div class="dw-stack">
-            @if (attention().length > 0) {
-              <section class="dw-panel" [attr.aria-label]="t('dashboard.attention')">
-                <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.attention') }}</h2></div>
-                <ul class="attention">
-                  @for (item of attention(); track item.text) {
-                    <li><a [routerLink]="item.link" [class]="item.tone"><mat-icon aria-hidden="true">{{ item.icon }}</mat-icon><span>{{ item.text }}</span><mat-icon class="go" aria-hidden="true">chevron_right</mat-icon></a></li>
-                  }
-                </ul>
-              </section>
-            }
-
-            <div class="dw-grid-4">
+            <!-- 1. Figures of the period -->
+            <div class="dw-stats">
               <dw-kpi [label]="t('dashboard.generated')" [value]="d.totals.generated_kg | dwKg: 'auto'" [hint]="t('dashboard.lots', { count: d.totals.generated_lots })" />
               <dw-kpi [label]="t('dashboard.stock')" [value]="stock()?.meta?.total_kg | dwKg: 'auto'" [hint]="t('dashboard.stockHint')" />
               <dw-kpi [label]="t('dashboard.recoveryRate')" [value]="d.totals.recovery_rate_pct | dwNumber: 1 : ' %'" [hint]="t('dashboard.recovered', { kg: (d.totals.recovered_kg | dwKg: 'auto') })" tone="success" />
@@ -77,16 +67,68 @@ interface Attention {
                 [hint]="t('dashboard.balanceHint', { revenue: (d.totals.revenue | dwMoney: currency()), cost: (d.totals.cost | dwMoney: currency()) })" />
             </div>
 
+            <!-- 2. What needs a decision, next to 3. where the waste is -->
+            <div [class.dw-grid-2]="attention().length > 0">
+              @if (attention().length > 0) {
+                <section class="dw-panel" [attr.aria-label]="t('dashboard.attention')">
+                  <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.attention') }}</h2><span class="count">{{ attention().length }}</span></div>
+                  <ul class="attention">
+                    @for (item of attention(); track item.text) {
+                      <li><a [routerLink]="item.link" [class]="item.tone"><span class="mark"><dw-icon>{{ item.icon }}</dw-icon></span><span>{{ item.text }}</span><dw-icon class="go">chevron_right</dw-icon></a></li>
+                    }
+                  </ul>
+                </section>
+              }
+              <section class="dw-panel">
+                <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.bySite') }}</h2></div>
+                <table class="dw-table">
+                  <thead><tr><th>{{ t('fields.site') }}</th><th class="num">{{ t('dashboard.lotsShort') }}</th><th class="num">{{ t('fields.quantity') }}</th><th class="share">{{ t('dashboard.share') }}</th></tr></thead>
+                  <tbody>
+                    @for (site of d.by_site; track site.site) {
+                      <tr>
+                        <td>{{ site.name }}</td><td class="num">{{ site.lots }}</td><td class="num">{{ site.kg | dwKg: 'auto' }}</td>
+                        <td class="share"><span class="track"><span class="bar" [style.inline-size.%]="share(site.kg)" aria-hidden="true"></span></span><span class="dw-sr-only">{{ share(site.kg) | dwNumber: 0 : ' %' }}</span></td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="4" class="dw-muted">{{ t('dashboard.noLots') }}</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </section>
+            </div>
+
+            <!-- 4. Pickups in progress -->
+            @if (pickups().length > 0) {
+              <section class="dw-panel">
+                <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.openPickups') }}</h2><span class="dw-spacer"></span><a class="more" routerLink="/pickups">{{ t('common.seeAll') }}<dw-icon>chevron_right</dw-icon></a></div>
+                <div class="scroll">
+                  <table class="dw-table">
+                    <thead><tr><th>{{ t('pickups.number') }}</th><th>{{ t('pickups.provider') }}</th><th>{{ t('fields.site') }}</th><th>{{ t('pickups.date') }}</th><th class="num">{{ t('fields.weight') }}</th><th>{{ t('fields.status') }}</th></tr></thead>
+                    <tbody>
+                      @for (pickup of pickups(); track pickup.ulid) {
+                        <tr>
+                          <td><a [routerLink]="['/pickups', pickup.ulid]" class="dw-mono">{{ pickup.pickup_number }}</a></td><td>{{ pickup.provider?.legal_name }}</td><td>{{ pickup.site?.name }}</td>
+                          <td>{{ pickup.confirmed_date ?? pickup.requested_date | dwDate }}</td><td class="num">{{ pickup.declared_weight_kg | dwKg }}</td>
+                          <td><dw-status kind="pickup" [value]="pickup.status" /></td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            }
+
+            <!-- 5. Trends -->
             <div class="dw-split">
               <section class="dw-panel">
                 <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.byMonth') }}</h2></div>
-                <div class="dw-panel-body"><dw-chart [option]="monthChart()" [label]="t('dashboard.byMonth')" [height]="280" /></div>
+                <div class="dw-panel-body"><dw-chart [option]="monthChart()" [label]="t('dashboard.byMonth')" [height]="260" /></div>
               </section>
               <section class="dw-panel">
                 <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.byChannel') }}</h2></div>
                 <div class="dw-panel-body">
                   @if (d.by_channel.length > 0) {
-                    <dw-chart [option]="channelChart()" [label]="t('dashboard.byChannel')" [height]="280" />
+                    <dw-chart [option]="channelChart()" [label]="t('dashboard.byChannel')" [height]="260" />
                   } @else {
                     <p class="dw-muted none">{{ t('dashboard.noEvacuation') }}</p>
                   }
@@ -94,79 +136,46 @@ interface Attention {
               </section>
             </div>
 
-            <div class="dw-grid-2">
-              <section class="dw-panel">
-                <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.byType') }}</h2></div>
-                <div class="dw-panel-body">
-                  @if (d.by_waste_type.length > 0) {
-                    <dw-chart [option]="typeChart()" [label]="t('dashboard.byType')" [height]="typeHeight()" />
-                  } @else {
-                    <p class="dw-muted none">{{ t('dashboard.noLots') }}</p>
-                  }
-                </div>
-              </section>
-              <section class="dw-panel">
-                <div class="dw-panel-head">
-                  <h2 class="dw-h2">{{ t('dashboard.bySite') }}</h2>
-                </div>
-                <div class="dw-panel-body">
-                  <table class="mini">
-                    <thead><tr><th>{{ t('fields.site') }}</th><th class="dw-num">{{ t('dashboard.lotsShort') }}</th><th class="dw-num">{{ t('fields.quantity') }}</th><th class="share">{{ t('dashboard.share') }}</th></tr></thead>
-                    <tbody>
-                      @for (site of d.by_site; track site.site) {
-                        <tr>
-                          <td>{{ site.name }}</td><td class="dw-num">{{ site.lots }}</td><td class="dw-num">{{ site.kg | dwKg: 'auto' }}</td>
-                          <td class="share"><span class="bar" [style.inline-size.%]="share(site.kg)" aria-hidden="true"></span><span class="dw-sr-only">{{ share(site.kg) | dwNumber: 0 : ' %' }}</span></td>
-                        </tr>
-                      } @empty {
-                        <tr><td colspan="4" class="dw-muted">{{ t('dashboard.noLots') }}</td></tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            </div>
-
-            @if (pickups().length > 0) {
-              <section class="dw-panel">
-                <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.openPickups') }}</h2><span class="dw-spacer"></span><a routerLink="/pickups">{{ t('common.seeAll') }}</a></div>
-                <table class="mini padded">
-                  <thead><tr><th>{{ t('pickups.number') }}</th><th>{{ t('pickups.provider') }}</th><th>{{ t('fields.site') }}</th><th>{{ t('pickups.date') }}</th><th class="dw-num">{{ t('fields.weight') }}</th><th>{{ t('fields.status') }}</th></tr></thead>
-                  <tbody>
-                    @for (pickup of pickups(); track pickup.ulid) {
-                      <tr>
-                        <td><a [routerLink]="['/pickups', pickup.ulid]" class="dw-mono">{{ pickup.pickup_number }}</a></td><td>{{ pickup.provider?.legal_name }}</td><td>{{ pickup.site?.name }}</td>
-                        <td>{{ pickup.confirmed_date ?? pickup.requested_date | dwDate }}</td><td class="dw-num">{{ pickup.declared_weight_kg | dwKg }}</td>
-                        <td><dw-status kind="pickup" [value]="pickup.status" /></td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </section>
-            }
+            <section class="dw-panel">
+              <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.byType') }}</h2></div>
+              <div class="dw-panel-body">
+                @if (d.by_waste_type.length > 0) {
+                  <dw-chart [option]="typeChart()" [label]="t('dashboard.byType')" [height]="typeHeight()" />
+                } @else {
+                  <p class="dw-muted none">{{ t('dashboard.noLots') }}</p>
+                }
+              </div>
+            </section>
           </div>
         }
       </dw-state>
     </ng-container>
   `,
   styles: `
-    .onboarding { display: flex; align-items: center; gap: var(--dw-3); padding: var(--dw-3) var(--dw-4); margin-block-end: var(--dw-4); color: var(--dw-ink); border-color: var(--dw-primary); background: var(--dw-primary-soft); }
-    .onboarding:hover { text-decoration: none; } .onboarding .link { color: var(--dw-primary); font-weight: 600; }
+    .onboarding { display: flex; align-items: center; gap: var(--dw-3); padding: 10px var(--dw-4); margin-block-end: var(--dw-4); color: var(--dw-ink); border-color: var(--dw-primary-line); background: var(--dw-primary-soft); }
+    .onboarding:hover { text-decoration: none; border-color: var(--dw-primary); }
+    .onboarding dw-icon { color: var(--dw-primary); }
+    .onboarding .link { color: var(--dw-primary); font-weight: 600; }
+    .count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding-inline: 5px; border-radius: 9px; background: var(--dw-warning-soft); color: var(--dw-warning); font-size: 11px; font-weight: 700; }
     .attention { list-style: none; margin: 0; padding: 0; }
-    .attention a { display: flex; align-items: center; gap: var(--dw-3); padding: 10px var(--dw-4); color: var(--dw-ink); border-block-end: 1px solid var(--dw-line-soft); }
-    .attention li:last-child a { border-block-end: 0; }
+    .attention a { display: flex; align-items: center; gap: var(--dw-3); min-height: 40px; padding: 6px var(--dw-3) 6px var(--dw-4); color: var(--dw-ink); border-block-end: 1px solid var(--dw-line-soft); }
+    .attention li:last-child a { border-block-end: 0; border-end-start-radius: var(--dw-radius-lg); border-end-end-radius: var(--dw-radius-lg); }
     .attention a:hover { background: var(--dw-surface-2); text-decoration: none; }
-    .attention a > mat-icon:first-child { font-size: 20px; width: 20px; height: 20px; }
-    .attention .warning > mat-icon:first-child { color: var(--dw-warning); } .attention .danger > mat-icon:first-child { color: var(--dw-danger); } .attention .info > mat-icon:first-child { color: var(--dw-info); }
-    .attention span { flex: 1; } .go { color: var(--dw-ink-3); }
+    .mark { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 6px; background: var(--dw-neutral-soft); color: var(--dw-ink-2); }
+    .mark dw-icon { font-size: 16px; }
+    .warning .mark { background: var(--dw-warning-soft); color: var(--dw-warning); }
+    .danger .mark { background: var(--dw-danger-soft); color: var(--dw-danger); }
+    .info .mark { background: var(--dw-info-soft); color: var(--dw-info); }
+    .attention a > span:not(.mark) { flex: 1; }
+    .go { color: var(--dw-ink-3); font-size: 16px; }
     :host-context([dir='rtl']) .go { transform: scaleX(-1); }
+    .more { display: inline-flex; align-items: center; font-size: 12.5px; font-weight: 550; }
+    .more dw-icon { font-size: 16px; }
+    .scroll { overflow-x: auto; }
     .none { padding-block: var(--dw-6); text-align: center; }
-    .mini { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .mini th { text-align: start; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dw-ink-3); padding: 6px 8px; border-block-end: 1px solid var(--dw-line); }
-    .mini td { padding: 8px; border-block-end: 1px solid var(--dw-line-soft); }
-    .mini.padded th:first-child, .mini.padded td:first-child { padding-inline-start: var(--dw-4); }
-    .mini tr:last-child td { border-block-end: 0; }
-    .share { width: 32%; } .bar { display: block; height: 8px; border-radius: 4px; background: var(--dw-primary); min-inline-size: 2px; }
+    .share { width: 34%; }
+    .track { display: block; height: 6px; border-radius: 3px; background: var(--dw-surface-3); overflow: hidden; }
+    .bar { display: block; height: 100%; border-radius: 3px; background: var(--dw-primary); min-inline-size: 2px; }
   `,
 })
 export class DashboardPage {
@@ -227,24 +236,24 @@ export class DashboardPage {
 
     return {
       tooltip: { trigger: 'axis', valueFormatter: (value: number) => `${new Intl.NumberFormat(this.locale.intl).format(value)} kg` },
-      legend: { bottom: 0, icon: 'roundRect' },
-      grid: { left: 8, right: 12, top: 16, bottom: 36, containLabel: true },
+      legend: { top: 0, right: 0, icon: 'roundRect' },
+      grid: { left: 4, right: 8, top: 36, bottom: 4, containLabel: true },
       xAxis: { type: 'category', data: months.map((month) => label.format(new Date(`${month.month}-01T12:00:00`))), axisTick: { show: false } },
-      yAxis: { type: 'value', axisLabel: { formatter: (value: number) => (value >= 1000 ? `${value / 1000} t` : `${value} kg`) }, splitLine: { lineStyle: { color: '#e9edf0' } } },
+      yAxis: { type: 'value', axisLabel: { formatter: (value: number) => (value >= 1000 ? `${value / 1000} t` : `${value} kg`) } },
       series: [
-        { name: this.transloco.translate('dashboard.generated'), type: 'bar', barMaxWidth: 28, data: months.map((month) => +month.generated_kg) },
-        { name: this.transloco.translate('dashboard.evacuated'), type: 'line', smooth: false, symbolSize: 6, data: months.map((month) => +month.evacuated_kg) },
+        { name: this.transloco.translate('dashboard.generated'), type: 'bar', barMaxWidth: 26, itemStyle: { borderRadius: [3, 3, 0, 0] }, data: months.map((month) => +month.generated_kg) },
+        { name: this.transloco.translate('dashboard.evacuated'), type: 'line', smooth: false, symbol: 'circle', symbolSize: 6, lineStyle: { width: 2 }, data: months.map((month) => +month.evacuated_kg) },
       ],
     };
   });
 
   protected readonly channelChart = computed<EChartsCoreOption>(() => ({
     tooltip: { trigger: 'item', valueFormatter: (value: number) => `${new Intl.NumberFormat(this.locale.intl).format(value)} kg` },
-    legend: { bottom: 0, icon: 'circle', itemGap: 14 },
+    legend: { bottom: 0, icon: 'circle', itemGap: 12 },
     series: [
       {
         // Shares are read in the tooltip and the legend: labels around a donut collide as soon as slices are small.
-        type: 'pie', radius: ['50%', '74%'], center: ['50%', '40%'], label: { show: false }, emphasis: { scale: false },
+        type: 'pie', radius: ['56%', '78%'], center: ['50%', '42%'], label: { show: false }, emphasis: { scale: false }, itemStyle: { borderColor: '#fff', borderWidth: 2 },
         data: (this.data()?.by_channel ?? []).map((row) => ({
           name: row.channel ? this.transloco.translate(`channels.${row.channel}`) : this.transloco.translate('dashboard.channelUndeclared'),
           value: +row.kg,
@@ -261,9 +270,9 @@ export class DashboardPage {
     return {
       tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: number) => `${new Intl.NumberFormat(this.locale.intl).format(value)} kg` },
       grid: { left: 8, right: 24, top: 8, bottom: 8, containLabel: true },
-      xAxis: { type: 'value', splitLine: { lineStyle: { color: '#e9edf0' } } },
+      xAxis: { type: 'value' },
       yAxis: { type: 'category', data: rows.map((row) => row.name), axisTick: { show: false } },
-      series: [{ type: 'bar', barMaxWidth: 16, data: rows.map((row) => ({ value: +row.kg, ...(row.is_hazardous ? { itemStyle: { color: '#c9812a' } } : {}) })) }],
+      series: [{ type: 'bar', barMaxWidth: 14, itemStyle: { borderRadius: [0, 3, 3, 0] }, data: rows.map((row) => ({ value: +row.kg, ...(row.is_hazardous ? { itemStyle: { color: '#c9812a' } } : {}) })) }],
     };
   });
 

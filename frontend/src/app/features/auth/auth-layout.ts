@@ -24,7 +24,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
     </ng-container>
   `,
   styles: `
-    :host { display: grid; grid-template-columns: minmax(320px, 2fr) 3fr; min-height: 100dvh; }
+    :host { display: grid; grid-template-columns: minmax(320px, 2fr) 3fr; min-height: 100dvh; --dw-control: 40px; }
     .brand { display: flex; flex-direction: column; justify-content: space-between; gap: var(--dw-6); padding: var(--dw-6) var(--dw-7); background: var(--dw-nav); color: #d7e3e1; }
     .logo { display: flex; align-items: center; gap: 12px; color: #fff; font-size: 17px; font-weight: 600; }
     .pitch { font-size: 24px; line-height: 32px; font-weight: 600; color: #fff; letter-spacing: -0.01em; max-width: 22ch; margin-block-end: var(--dw-4); }

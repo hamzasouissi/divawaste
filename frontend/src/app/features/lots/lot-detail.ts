@@ -1,10 +1,8 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatDialog } from '@angular/material/dialog';
-import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { forkJoin } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
 
 import { Api, openBlob } from '../../core/api/api';
 import { Lot, LotDetailMeta, LotEvent } from '../../core/api/models';
@@ -14,13 +12,15 @@ import { DatePipe, KgPipe, LocalizedPipe } from '../../core/format/pipes';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
 import { LotActionData, SplitLotDialog, StoreLotDialog, WeighLotDialog } from './lot-dialogs';
+import { Dialogs } from '../../ui/dialog';
+import { IconComponent } from '../../ui/icon';
 
 /**
  * A lot and its whole story: what it is, where it is, every change with its time and author (M2-05),
  * where it came from and what it became (M2-06), and which pickup took it.
  */
 @Component({
-  imports: [RouterLink, MatButtonModule, MatIconModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LocalizedPipe],
+  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LocalizedPipe, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -29,16 +29,16 @@ import { LotActionData, SplitLotDialog, StoreLotDialog, WeighLotDialog } from '.
           <dw-page-header [title]="t('lots.detail', { number: l.lot_number })" back="/lots" [backLabel]="t('lots.title')">
             <dw-status dwTitleBadge kind="lot" [value]="l.status" />
             @if (onSite() && session.can('lots.move', l.site?.ulid)) {
-              <button mat-stroked-button type="button" (click)="act('store')"><mat-icon>move_down</mat-icon>{{ t(l.status === 'stored' ? 'lots.move' : 'lots.store') }}</button>
+              <button pButton severity="secondary" outlined type="button" (click)="act('store')"><dw-icon>move_down</dw-icon>{{ t(l.status === 'stored' ? 'lots.move' : 'lots.store') }}</button>
             }
             @if (transformable() && session.can('lots.weigh', l.site?.ulid)) {
-              <button mat-stroked-button type="button" (click)="act('weigh')"><mat-icon>scale</mat-icon>{{ t('lots.weigh') }}</button>
+              <button pButton severity="secondary" outlined type="button" (click)="act('weigh')"><dw-icon>scale</dw-icon>{{ t('lots.weigh') }}</button>
             }
             @if (transformable() && session.can('lots.split', l.site?.ulid)) {
-              <button mat-stroked-button type="button" (click)="act('split')"><mat-icon>call_split</mat-icon>{{ t('lots.split') }}</button>
+              <button pButton severity="secondary" outlined type="button" (click)="act('split')"><dw-icon>call_split</dw-icon>{{ t('lots.split') }}</button>
             }
             @if (session.can('lots.print_label', l.site?.ulid)) {
-              <button mat-flat-button type="button" (click)="print()" [disabled]="printing()"><mat-icon>print</mat-icon>{{ t('lots.printLabel') }}</button>
+              <button pButton type="button" (click)="print()" [disabled]="printing()"><dw-icon>print</dw-icon>{{ t('lots.printLabel') }}</button>
             }
           </dw-page-header>
 
@@ -117,7 +117,7 @@ import { LotActionData, SplitLotDialog, StoreLotDialog, WeighLotDialog } from '.
               <section class="dw-panel">
                 <div class="dw-panel-head"><h2 class="dw-h2">{{ t('lots.qr') }}</h2></div>
                 <div class="dw-panel-body dw-stack-sm">
-                  <div class="dw-mono tag">{{ l.qr }}</div>
+                  <div class="dw-code tag">{{ l.qr }}</div>
                   <p class="dw-faint">{{ t('lots.printCount', { count: l.label_print_count }) }} · 100 × 50 mm</p>
                 </div>
               </section>
@@ -156,7 +156,7 @@ import { LotActionData, SplitLotDialog, StoreLotDialog, WeighLotDialog } from '.
 export class LotDetailPage implements OnInit {
   protected readonly session = inject(Session);
   private readonly api = inject(Api);
-  private readonly dialog = inject(MatDialog);
+  private readonly dialog = inject(Dialogs);
   private readonly toast = inject(Toast);
 
   /** Route parameter. */

@@ -1,11 +1,9 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
 
 import { Api, openBlob } from '../../core/api/api';
 import { GeneratedReport } from '../../core/api/models';
@@ -17,6 +15,9 @@ import { ListStore } from '../../ui/list-store';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { Period, PeriodFilterComponent, presetPeriod } from '../../ui/period';
 import { StateComponent } from '../../ui/state';
+import { FIELD } from '../../ui/field';
+import { IconComponent } from '../../ui/icon';
+import { SELECT } from '../../ui/select';
 
 interface Volume {
   site: string;
@@ -29,8 +30,9 @@ interface Volume {
  * while one is being generated, and a notification is sent when it is ready.
  */
 @Component({
-  imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatSelectModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, PeriodFilterComponent,
-    StateComponent, DatePipe],
+  imports: [
+    FormsModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, PeriodFilterComponent, StateComponent, DatePipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -41,20 +43,18 @@ interface Volume {
           <section class="dw-panel">
             <header class="dw-panel-head"><h2 class="dw-h2">{{ t('reports.new') }}</h2></header>
             <div class="dw-panel-body generate">
-              <mat-form-field class="type">
-                <mat-label>{{ t('reports.type') }}</mat-label>
-                <mat-select [ngModel]="type()" (ngModelChange)="type.set($event)">
-                  @for (item of types; track item) { <mat-option [value]="item">{{ t('reports.types.' + item) }}</mat-option> }
-                </mat-select>
-              </mat-form-field>
-              <mat-form-field class="format">
-                <mat-label>{{ t('reports.format') }}</mat-label>
-                <mat-select [ngModel]="format()" (ngModelChange)="format.set($event)">
-                  <mat-option value="pdf">PDF</mat-option><mat-option value="xlsx">Excel</mat-option>
-                </mat-select>
-              </mat-form-field>
+              <dw-field class="type" [label]="t('reports.type')">
+                <dw-select [ngModel]="type()" (ngModelChange)="type.set($event)">
+                  @for (item of types; track item) { <dw-option [value]="item" [label]="t('reports.types.' + item)" /> }
+                </dw-select>
+              </dw-field>
+              <dw-field class="format" [label]="t('reports.format')">
+                <dw-select [ngModel]="format()" (ngModelChange)="format.set($event)">
+                  <dw-option value="pdf" label="PDF" /><dw-option value="xlsx" label="Excel" />
+                </dw-select>
+              </dw-field>
               <dw-period-filter [value]="period()" (valueChange)="period.set($event)" permission="reports.export" />
-              <button mat-flat-button type="button" [disabled]="busy()" (click)="generate()"><mat-icon>play_arrow</mat-icon>{{ t('reports.new') }}</button>
+              <button pButton type="button" [disabled]="busy()" (click)="generate()"><dw-icon>play_arrow</dw-icon>{{ t('reports.new') }}</button>
             </div>
           </section>
         }
@@ -64,12 +64,12 @@ interface Volume {
             [pageSize]="list.perPage()" emptyIcon="summarize" [emptyTitle]="t('reports.emptyTitle')" [emptyHint]="t('reports.emptyHint')"
             (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (retry)="list.reload()">
             <ng-template dwCell="type" let-r>{{ t('reports.types.' + r.report_type) }}<div class="dw-faint">{{ r.parameters.from | dwDate }} → {{ r.parameters.to | dwDate }}</div></ng-template>
-            <ng-template dwCell="format" let-r><span class="dw-mono">{{ r.format === 'xlsx' ? 'Excel' : 'PDF' }}</span></ng-template>
+            <ng-template dwCell="format" let-r>{{ r.format === 'xlsx' ? 'Excel' : 'PDF' }}</ng-template>
             <ng-template dwCell="requested" let-r>{{ r.created_at | dwDate: 'datetime' }}</ng-template>
             <ng-template dwCell="expires" let-r>{{ r.expires_at | dwDate }}</ng-template>
             <ng-template dwCell="status" let-r><dw-status kind="report" [value]="r.status" /></ng-template>
             <ng-template dwCell="actions" let-r>
-              @if (r.downloadable) { <button mat-stroked-button type="button" (click)="download(r)"><mat-icon>download</mat-icon>{{ t('common.download') }}</button> }
+              @if (r.downloadable) { <button pButton severity="secondary" outlined type="button" (click)="download(r)"><dw-icon>download</dw-icon>{{ t('common.download') }}</button> }
             </ng-template>
           </dw-data-table>
         </section>
@@ -78,16 +78,13 @@ interface Volume {
           <section class="dw-panel">
             <header class="dw-panel-head">
               <div class="dw-spacer"><h2 class="dw-h2">{{ t('reports.production') }}</h2><p class="dw-muted">{{ t('reports.productionHint') }}</p></div>
-              <mat-form-field class="year">
-                <mat-label>{{ t('compliance.declarations.year') }}</mat-label>
-                <mat-select [ngModel]="year()" (ngModelChange)="year.set($event)">
-                  @for (item of years; track item) { <mat-option [value]="item">{{ item }}</mat-option> }
-                </mat-select>
-              </mat-form-field>
+              <dw-select class="year" [ariaLabel]="t('compliance.declarations.year')" [placeholder]="t('compliance.declarations.year')" [ngModel]="year()" (ngModelChange)="year.set($event)">
+                @for (item of years; track item) { <dw-option [value]="item" [label]="item" /> }
+              </dw-select>
             </header>
             <dw-state [loading]="volumesLoading()" [error]="volumesError()" [keepContent]="true" (retry)="loadVolumes()">
               <div class="scroll">
-                <table class="volumes">
+                <table class="dw-table volumes">
                   <thead><tr><th scope="col">{{ t('fields.site') }}</th>@for (month of months(); track month.key) { <th scope="col">{{ month.label }}</th> }</tr></thead>
                   <tbody>
                     @for (site of productionSites; track site.ulid) {
@@ -95,7 +92,7 @@ interface Volume {
                         <th scope="row">{{ site.name }}</th>
                         @for (month of months(); track month.key) {
                           <td>
-                            <input inputmode="numeric" [disabled]="month.future || !canEnter(site.ulid)" [value]="volumes()[site.ulid + month.key] ?? ''"
+                            <input pInputText inputmode="numeric" [disabled]="month.future || !canEnter(site.ulid)" [value]="volumes()[site.ulid + month.key] ?? ''"
                               (change)="save(site.ulid, month.key, $any($event.target))" [attr.aria-label]="site.name + ' — ' + month.label" />
                           </td>
                         }
@@ -114,13 +111,10 @@ interface Volume {
     .generate { display: flex; align-items: center; gap: var(--dw-2) var(--dw-3); flex-wrap: wrap; }
     .type { width: 300px; } .format { width: 120px; } .year { width: 120px; }
     .scroll { overflow-x: auto; }
-    .volumes { border-collapse: collapse; font-size: 13px; width: 100%; }
-    .volumes th { padding: 8px var(--dw-3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dw-ink-2); text-align: end; white-space: nowrap; }
-    .volumes th[scope='row'], .volumes thead th:first-child { text-align: start; text-transform: none; font-size: 13px; letter-spacing: 0; color: var(--dw-ink); }
-    .volumes td { padding: 4px; border-block-start: 1px solid var(--dw-line-soft); }
-    .volumes input { width: 100%; min-width: 72px; height: 30px; padding-inline: 6px; text-align: end; font: inherit; font-variant-numeric: tabular-nums; border: 1px solid var(--dw-line); border-radius: var(--dw-radius); background: var(--dw-surface); }
-    .volumes input:focus { outline: 2px solid var(--dw-primary); outline-offset: -1px; }
-    .volumes input:disabled { background: var(--dw-surface-2); color: var(--dw-ink-3); }
+    .volumes thead th { text-align: end; } .volumes thead th:first-child { text-align: start; }
+    .volumes tbody th[scope='row'] { text-align: start; font-weight: 500; padding: 4px var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); white-space: nowrap; }
+    .volumes td { padding: 4px; }
+    .volumes input { width: 100%; min-width: 72px; min-height: 28px; padding: 4px 6px; text-align: end; font-variant-numeric: tabular-nums; }
   `,
 })
 export class ReportsPage {

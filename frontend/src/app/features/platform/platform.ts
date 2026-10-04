@@ -1,14 +1,10 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
 
 import { Api, openBlob } from '../../core/api/api';
 import { Company, CompanyStatus, Localized, ProviderAccreditation } from '../../core/api/models';
@@ -21,10 +17,14 @@ import { ListStore } from '../../ui/list-store';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { SearchComponent } from '../../ui/search';
 import { StateComponent } from '../../ui/state';
+import { CheckboxComponent } from '../../ui/checkbox';
+import { FIELD } from '../../ui/field';
+import { IconComponent } from '../../ui/icon';
+import { SELECT } from '../../ui/select';
+import { FilterBarComponent } from '../../ui/filter-bar';
 
 const FILTERS = `
-  .filters { display: flex; align-items: center; gap: var(--dw-2) var(--dw-3); flex-wrap: wrap; padding: var(--dw-3) var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); }
-  .filters mat-form-field { width: 220px; }
+  .filters dw-field { width: 220px; }
 `;
 
 interface CompanyFilter {
@@ -35,31 +35,24 @@ interface CompanyFilter {
 
 /** M0-06: registrations to review first, then every account. */
 @Component({
-  imports: [MatButtonModule, MatFormFieldModule, MatSelectModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, DatePipe],
+  imports: [TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, DatePipe, ...SELECT, FilterBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('platform.companies.title')" [subtitle]="t('platform.companies.subtitle')" />
       <div class="dw-panel">
-        <div class="filters">
-          <dw-search [placeholder]="t('fields.legalName')" (queryChange)="list.setFilter({ search: $event })" />
-          <mat-form-field>
-            <mat-label>{{ t('fields.status') }}</mat-label>
-            <mat-select [value]="list.filter().status ?? ''" (selectionChange)="list.setFilter({ status: $event.value || null })">
-              <mat-option value="">{{ t('common.all') }}</mat-option>
-              @for (status of statuses; track status) { <mat-option [value]="status">{{ t('status.company.' + status) }}</mat-option> }
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>{{ t('platform.companies.type') }}</mat-label>
-            <mat-select [value]="list.filter().type ?? ''" (selectionChange)="list.setFilter({ type: $event.value || null })">
-              <mat-option value="">{{ t('common.all') }}</mat-option>
-              <mat-option value="industrial">{{ t('platform.companies.types.industrial') }}</mat-option>
-              <mat-option value="provider">{{ t('platform.companies.types.provider') }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-          @if (list.filtered()) { <button mat-button type="button" (click)="list.resetFilter()">{{ t('common.resetFilters') }}</button> }
-        </div>
+        <dw-filter-bar [active]="list.activeCount()" (cleared)="list.resetFilter()">
+          <dw-search [placeholder]="t('fields.legalName')" [query]="list.filter().search ?? ''" (queryChange)="list.setFilter({ search: $event })" />
+          <dw-select [placeholder]="t('fields.status')" [value]="list.filter().status ?? ''" (valueChange)="list.setFilter({ status: $any($event) || null })">
+            <dw-option value="" [label]="t('common.all')" />
+            @for (status of statuses; track status) { <dw-option [value]="status" [label]="t('status.company.' + status)" /> }
+          </dw-select>
+          <dw-select [placeholder]="t('platform.companies.type')" [value]="list.filter().type ?? ''" (valueChange)="list.setFilter({ type: $event || null })">
+            <dw-option value="" [label]="t('common.all')" />
+            <dw-option value="industrial" [label]="t('platform.companies.types.industrial')" />
+            <dw-option value="provider" [label]="t('platform.companies.types.provider')" />
+          </dw-select>
+        </dw-filter-bar>
         <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1"
           [pageSize]="list.perPage()" [clickable]="true" emptyIcon="domain" [emptyTitle]="t('platform.companies.emptyTitle')"
           (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="open($event)" (retry)="list.reload()">
@@ -109,8 +102,9 @@ interface Plan {
 
 /** One registration or account: everything needed to decide, and the decision itself. */
 @Component({
-  imports: [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent,
-    DatePipe, LocalizedPipe],
+  imports: [
+    ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -119,11 +113,11 @@ interface Plan {
           <dw-page-header [title]="c.legal_name" [subtitle]="t('platform.companies.types.' + c.company_type)" back="/platform/companies" [backLabel]="t('platform.companies.title')">
             <dw-status dwTitleBadge kind="company" [value]="c.status" />
             @if (canReview && c.status === 'pending_approval') {
-              <button mat-button type="button" [disabled]="busy()" (click)="decide('reject')">{{ t('platform.companies.reject') }}</button>
-              <button mat-flat-button type="button" [disabled]="busy()" (click)="decide('approve')"><mat-icon>check</mat-icon>{{ t('platform.companies.approve') }}</button>
+              <button pButton text type="button" [disabled]="busy()" (click)="decide('reject')">{{ t('platform.companies.reject') }}</button>
+              <button pButton type="button" [disabled]="busy()" (click)="decide('approve')"><dw-icon>check</dw-icon>{{ t('platform.companies.approve') }}</button>
             }
-            @if (canSuspend && c.status === 'active') { <button mat-stroked-button type="button" [disabled]="busy()" (click)="decide('suspend')">{{ t('platform.companies.suspend') }}</button> }
-            @if (canSuspend && c.status === 'suspended') { <button mat-flat-button type="button" [disabled]="busy()" (click)="decide('reactivate')">{{ t('platform.companies.reactivate') }}</button> }
+            @if (canSuspend && c.status === 'active') { <button pButton severity="secondary" outlined type="button" [disabled]="busy()" (click)="decide('suspend')">{{ t('platform.companies.suspend') }}</button> }
+            @if (canSuspend && c.status === 'suspended') { <button pButton type="button" [disabled]="busy()" (click)="decide('reactivate')">{{ t('platform.companies.reactivate') }}</button> }
           </dw-page-header>
 
           <div class="dw-split">
@@ -157,10 +151,10 @@ interface Plan {
                   <ul class="list">
                     @for (row of c.accreditations; track row.ulid) {
                       <li>
-                        <div class="dw-spacer"><strong>{{ row.name | dwLocalized }}</strong> <span class="dw-mono dw-faint">{{ row.reference_number }}</span>
-                          <div class="dw-muted">{{ row.valid_from | dwDate }} → {{ row.expires_on | dwDate }}</div></div>
+                        <div class="dw-spacer"><strong>{{ row.name | dwLocalized }}</strong>
+                          <div class="dw-muted">{{ row.reference_number }} · {{ row.valid_from | dwDate }} → {{ row.expires_on | dwDate }}</div></div>
                         <dw-status kind="accreditation" [value]="row.review_status" />
-                        <button mat-icon-button type="button" (click)="file(row.ulid)" [attr.aria-label]="t('providers.viewFile')" [title]="t('providers.viewFile')"><mat-icon>description</mat-icon></button>
+                        <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="file(row.ulid)" [attr.aria-label]="t('providers.viewFile')" [title]="t('providers.viewFile')"><dw-icon>description</dw-icon></button>
                       </li>
                     } @empty { <li class="dw-faint">{{ t('common.none') }}</li> }
                   </ul>
@@ -172,22 +166,19 @@ interface Plan {
               <form class="dw-panel" [formGroup]="form" (ngSubmit)="activate()">
                 <div class="dw-panel-body plan">
                   <h2 class="dw-h2">{{ t('platform.companies.activatePlan') }}</h2>
-                  <mat-form-field>
-                    <mat-label>{{ t('auth.register.plan') }}</mat-label>
-                    <mat-select formControlName="plan">@for (plan of plans(); track plan.code) { <mat-option [value]="plan.code">{{ plan.name | dwLocalized }}</mat-option> }</mat-select>
-                  </mat-form-field>
-                  <mat-form-field>
-                    <mat-label>{{ t('platform.companies.interval') }}</mat-label>
-                    <mat-select formControlName="billing_interval">
-                      <mat-option value="monthly">{{ t('admin.subscription.intervals.monthly') }}</mat-option><mat-option value="yearly">{{ t('admin.subscription.intervals.yearly') }}</mat-option>
-                    </mat-select>
-                  </mat-form-field>
-                  <mat-form-field><mat-label>{{ t('admin.subscription.sitesWanted') }}</mat-label><input matInput type="number" min="1" max="500" formControlName="sites_quantity" /></mat-form-field>
-                  <mat-form-field>
-                    <mat-label>{{ t('platform.companies.unitAmount') }} ({{ c.currency_code }})</mat-label><input matInput inputmode="decimal" formControlName="unit_amount" />
-                    @if (form.controls.unit_amount.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-                  </mat-form-field>
-                  <div class="dw-form-actions"><button mat-flat-button type="submit" [disabled]="busy()">{{ t('platform.companies.activatePlan') }}</button></div>
+                  <dw-field [label]="t('auth.register.plan')">
+                    <dw-select formControlName="plan">@for (plan of plans(); track plan.code) { <dw-option [value]="plan.code" [label]="plan.name | dwLocalized" /> }</dw-select>
+                  </dw-field>
+                  <dw-field [label]="t('platform.companies.interval')">
+                    <dw-select formControlName="billing_interval">
+                      <dw-option value="monthly" [label]="t('admin.subscription.intervals.monthly')" /><dw-option value="yearly" [label]="t('admin.subscription.intervals.yearly')" />
+                    </dw-select>
+                  </dw-field>
+                  <dw-field [label]="t('admin.subscription.sitesWanted')"><input pInputText type="number" min="1" max="500" formControlName="sites_quantity" /></dw-field>
+                  <dw-field>
+                    <span dwLabel>{{ t('platform.companies.unitAmount') }} ({{ c.currency_code }})</span><input pInputText inputmode="decimal" formControlName="unit_amount" />
+                  </dw-field>
+                  <div class="dw-form-actions"><button pButton type="submit" [disabled]="busy()">{{ t('platform.companies.activatePlan') }}</button></div>
                 </div>
               </form>
             }
@@ -350,30 +341,27 @@ type ReviewAccreditation = ProviderAccreditation & { company: string; legal_name
 
 /** M0-05 / M0-06: the accreditation document is read before any decision. */
 @Component({
-  imports: [MatButtonModule, MatFormFieldModule, MatIconModule, MatSelectModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, DatePipe, LocalizedPipe],
+  imports: [TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, ...SELECT, FilterBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('platform.accreditations.title')" [subtitle]="t('platform.accreditations.subtitle')" />
       <div class="dw-panel">
-        <div class="filters">
-          <mat-form-field>
-            <mat-label>{{ t('fields.status') }}</mat-label>
-            <mat-select [value]="status()" (selectionChange)="setStatus($event.value)">
-              @for (item of statuses; track item) { <mat-option [value]="item">{{ t('status.accreditation.' + item) }}</mat-option> }
-            </mat-select>
-          </mat-form-field>
-        </div>
+        <dw-filter-bar>
+          <dw-select [placeholder]="t('fields.status')" [value]="status()" (valueChange)="setStatus($event)">
+            @for (item of statuses; track item) { <dw-option [value]="item" [label]="t('status.accreditation.' + item)" /> }
+          </dw-select>
+        </dw-filter-bar>
         <dw-data-table [columns]="columns" [rows]="rows()" [loading]="loading()" [error]="error()" emptyIcon="verified" [emptyTitle]="t('platform.accreditations.emptyTitle')" (retry)="load()">
           <ng-template dwCell="provider" let-a><strong>{{ a.legal_name }}</strong></ng-template>
           <ng-template dwCell="type" let-a>{{ a.name | dwLocalized }}<div class="dw-faint dw-mono">{{ a.reference_number }}</div></ng-template>
           <ng-template dwCell="validity" let-a>{{ a.valid_from | dwDate }} → {{ a.expires_on | dwDate }} @if (a.expired) { <dw-status kind="accreditation" value="expired" /> }</ng-template>
           <ng-template dwCell="actions" let-a>
             <div class="dw-row-tight">
-              <button mat-stroked-button type="button" (click)="file(a)"><mat-icon>description</mat-icon>{{ t('providers.viewFile') }}</button>
+              <button pButton severity="secondary" outlined type="button" (click)="file(a)"><dw-icon>description</dw-icon>{{ t('providers.viewFile') }}</button>
               @if (a.review_status === 'pending') {
-                <button mat-button type="button" [disabled]="busy()" (click)="decide(a, 'rejected')">{{ t('platform.accreditations.reject') }}</button>
-                <button mat-flat-button type="button" [disabled]="busy()" (click)="decide(a, 'approved')">{{ t('platform.accreditations.approve') }}</button>
+                <button pButton text type="button" [disabled]="busy()" (click)="decide(a, 'rejected')">{{ t('platform.accreditations.reject') }}</button>
+                <button pButton type="button" [disabled]="busy()" (click)="decide(a, 'approved')">{{ t('platform.accreditations.approve') }}</button>
               }
             </div>
           </ng-template>
@@ -432,22 +420,19 @@ interface DeclaredPayment {
 
 /** M0-04: bank transfers declared by clients, to match against the bank statement. */
 @Component({
-  imports: [MatButtonModule, MatFormFieldModule, MatSelectModule, TranslocoDirective, ...TABLE, PageHeaderComponent, DatePipe, MoneyPipe],
+  imports: [TranslocoDirective, ...TABLE, PageHeaderComponent, DatePipe, MoneyPipe, ButtonDirective, ...SELECT, FilterBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('platform.payments.title')" [subtitle]="t('platform.payments.subtitle')" />
       <div class="dw-panel">
-        <div class="filters">
-          <mat-form-field>
-            <mat-label>{{ t('fields.status') }}</mat-label>
-            <mat-select [value]="status()" (selectionChange)="setStatus($event.value)">
-              <mat-option value="pending">{{ t('status.accreditation.pending') }}</mat-option>
-              <mat-option value="validated">{{ t('status.accreditation.approved') }}</mat-option>
-              <mat-option value="rejected">{{ t('status.accreditation.rejected') }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
+        <dw-filter-bar>
+          <dw-select [placeholder]="t('fields.status')" [value]="status()" (valueChange)="setStatus($event)">
+            <dw-option value="pending" [label]="t('status.accreditation.pending')" />
+            <dw-option value="validated" [label]="t('status.accreditation.approved')" />
+            <dw-option value="rejected" [label]="t('status.accreditation.rejected')" />
+          </dw-select>
+        </dw-filter-bar>
         <dw-data-table [columns]="columns" [rows]="rows()" [loading]="loading()" [error]="error()" emptyIcon="account_balance" [emptyTitle]="t('platform.payments.emptyTitle')" (retry)="load()">
           <ng-template dwCell="company" let-p><strong>{{ p.legal_name }}</strong><div class="dw-faint dw-mono">{{ p.invoice_number }}</div></ng-template>
           <ng-template dwCell="amount" let-p>{{ p.amount | dwMoney: p.currency_code }}<div class="dw-faint">/ {{ p.total_amount | dwMoney: p.currency_code }}</div></ng-template>
@@ -456,8 +441,8 @@ interface DeclaredPayment {
           <ng-template dwCell="actions" let-p>
             @if (p.status === 'pending') {
               <div class="dw-row-tight">
-                <button mat-button type="button" [disabled]="busy()" (click)="decide(p, 'rejected')">{{ t('platform.payments.reject') }}</button>
-                <button mat-flat-button type="button" [disabled]="busy()" (click)="decide(p, 'validated')">{{ t('platform.payments.validate') }}</button>
+                <button pButton text type="button" [disabled]="busy()" (click)="decide(p, 'rejected')">{{ t('platform.payments.reject') }}</button>
+                <button pButton type="button" [disabled]="busy()" (click)="decide(p, 'validated')">{{ t('platform.payments.validate') }}</button>
               </div>
             } @else { {{ p.rejection_reason ?? '' }} }
           </ng-template>
@@ -511,49 +496,46 @@ interface CatalogPayload {
 
 /** M1-02: the reference catalogue every client starts from. An item in use is deactivated, never removed. */
 @Component({
-  imports: [ReactiveFormsModule, MatButtonModule, MatCheckboxModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent,
-    LocalizedPipe],
+  imports: [
+    ReactiveFormsModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, LocalizedPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT, CheckboxComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('platform.catalog.title')" [subtitle]="t('platform.catalog.subtitle')">
-        @if (!editing()) { <button mat-flat-button type="button" (click)="edit(null)"><mat-icon>add</mat-icon>{{ t('platform.catalog.new') }}</button> }
+        @if (!editing()) { <button pButton type="button" (click)="edit(null)"><dw-icon>add</dw-icon>{{ t('platform.catalog.new') }}</button> }
       </dw-page-header>
       <div class="dw-stack">
         @if (editing()) {
           <form class="dw-panel" [formGroup]="form" (ngSubmit)="save()">
             <div class="dw-panel-body">
               <div class="dw-form">
-                <mat-form-field>
-                  <mat-label>{{ t('fields.code') }}</mat-label><input matInput formControlName="code" maxlength="40" />
-                  @if (form.controls.code.errors?.['server']; as message) { <mat-error>{{ message }}</mat-error> }
-                </mat-form-field>
-                <mat-form-field>
-                  <mat-label>{{ t('wasteTypes.family') }}</mat-label>
-                  <mat-select formControlName="waste_family">@for (family of meta()?.waste_families ?? []; track family.code) { <mat-option [value]="family.code">{{ family.name | dwLocalized }}</mat-option> }</mat-select>
-                </mat-form-field>
-                <mat-form-field><mat-label>{{ t('platform.catalog.nameFr') }}</mat-label><input matInput formControlName="name_fr" maxlength="150" /></mat-form-field>
-                <mat-form-field><mat-label>{{ t('platform.catalog.nameEn') }}</mat-label><input matInput formControlName="name_en" maxlength="150" /></mat-form-field>
-                <mat-form-field>
-                  <mat-label>{{ t('lots.regulatoryCode') }}</mat-label>
-                  <mat-select formControlName="regulatory_code">
-                    <mat-option value="">—</mat-option>
-                    @for (code of meta()?.regulatory_waste_codes ?? []; track code.code) { <mat-option [value]="code.code">{{ code.code }} — {{ code.label | dwLocalized }}</mat-option> }
-                  </mat-select>
-                </mat-form-field>
-                <mat-form-field>
-                  <mat-label>{{ t('wasteTypes.channel') }}</mat-label>
-                  <mat-select formControlName="treatment_channel">
-                    <mat-option value="">—</mat-option>
-                    @for (channel of meta()?.treatment_channels ?? []; track channel.code) { <mat-option [value]="channel.code">{{ channel.name | dwLocalized }}</mat-option> }
-                  </mat-select>
-                </mat-form-field>
-                <mat-checkbox formControlName="is_hazardous">{{ t('common.hazardous') }}</mat-checkbox>
-                <mat-checkbox formControlName="is_active">{{ t('common.active') }}</mat-checkbox>
+                <dw-field [label]="t('fields.code')">
+                  <input pInputText formControlName="code" maxlength="40" />
+                </dw-field>
+                <dw-field [label]="t('wasteTypes.family')">
+                  <dw-select formControlName="waste_family">@for (family of meta()?.waste_families ?? []; track family.code) { <dw-option [value]="family.code" [label]="family.name | dwLocalized" /> }</dw-select>
+                </dw-field>
+                <dw-field [label]="t('platform.catalog.nameFr')"><input pInputText formControlName="name_fr" maxlength="150" /></dw-field>
+                <dw-field [label]="t('platform.catalog.nameEn')"><input pInputText formControlName="name_en" maxlength="150" /></dw-field>
+                <dw-field [label]="t('lots.regulatoryCode')">
+                  <dw-select formControlName="regulatory_code">
+                    <dw-option value="" label="—" />
+                    @for (code of meta()?.regulatory_waste_codes ?? []; track code.code) { <dw-option [value]="code.code" [label]="code.code + ' — ' + (code.label | dwLocalized)" /> }
+                  </dw-select>
+                </dw-field>
+                <dw-field [label]="t('wasteTypes.channel')">
+                  <dw-select formControlName="treatment_channel">
+                    <dw-option value="" label="—" />
+                    @for (channel of meta()?.treatment_channels ?? []; track channel.code) { <dw-option [value]="channel.code" [label]="channel.name | dwLocalized" /> }
+                  </dw-select>
+                </dw-field>
+                <dw-checkbox formControlName="is_hazardous">{{ t('common.hazardous') }}</dw-checkbox>
+                <dw-checkbox formControlName="is_active">{{ t('common.active') }}</dw-checkbox>
               </div>
               <div class="dw-form-actions">
-                <button mat-button type="button" (click)="editing.set(false)">{{ t('common.cancel') }}</button>
-                <button mat-flat-button type="submit" [disabled]="busy()">{{ t('common.save') }}</button>
+                <button pButton text type="button" (click)="editing.set(false)">{{ t('common.cancel') }}</button>
+                <button pButton type="submit" [disabled]="busy()">{{ t('common.save') }}</button>
               </div>
             </div>
           </form>
@@ -561,7 +543,7 @@ interface CatalogPayload {
         <div class="dw-panel">
           <dw-data-table [columns]="columns" [rows]="rows()" [loading]="loading()" [error]="error()" [trackBy]="track" [clickable]="true" emptyIcon="category" [emptyTitle]="t('common.empty')"
             (rowClick)="edit($event)" (retry)="load()">
-            <ng-template dwCell="name" let-i><strong>{{ i.name | dwLocalized }}</strong><div class="dw-faint dw-mono">{{ i.code }}</div></ng-template>
+            <ng-template dwCell="name" let-i><strong>{{ i.name | dwLocalized }}</strong><div class="dw-faint dw-code">{{ i.code }}</div></ng-template>
             <ng-template dwCell="hazard" let-i>@if (i.is_hazardous) { <dw-status kind="alert" value="warning" [label]="t('common.hazardous')" /> }</ng-template>
             <ng-template dwCell="channel" let-i>{{ i.treatment_channel ? t('channels.' + i.treatment_channel) : '—' }}</ng-template>
             <ng-template dwCell="state" let-i><dw-status kind="member" [value]="i.is_active ? 'active' : 'suspended'" [label]="t(i.is_active ? 'common.active' : 'common.inactive')" [tone]="i.is_active ? 'success' : 'neutral'" /></ng-template>
@@ -669,7 +651,7 @@ interface PlatformRole {
 
 /** Cahier §2: the matrix of the standard roles, editable without touching the code. A role only receives permissions of its own audience. */
 @Component({
-  imports: [FormsModule, MatButtonModule, MatCheckboxModule, MatFormFieldModule, MatSelectModule, TranslocoDirective, PageHeaderComponent, StateComponent, LocalizedPipe],
+  imports: [FormsModule, TranslocoDirective, PageHeaderComponent, StateComponent, LocalizedPipe, ButtonDirective, ...FIELD, ...SELECT, CheckboxComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -677,21 +659,20 @@ interface PlatformRole {
       <dw-state [loading]="roles().length === 0 && !error()" [error]="error()" (retry)="load()">
         <div class="dw-panel">
           <div class="head">
-            <mat-form-field>
-              <mat-label>{{ t('fields.role') }}</mat-label>
-              <mat-select [ngModel]="selectedName()" (ngModelChange)="select($event)">
-                @for (role of roles(); track role.name) { <mat-option [value]="role.name">{{ role.label | dwLocalized: role.name }} — {{ role.audience }}</mat-option> }
-              </mat-select>
-            </mat-form-field>
+            <dw-field [label]="t('fields.role')">
+              <dw-select [ngModel]="selectedName()" (ngModelChange)="select($event)">
+                @for (role of roles(); track role.name) { <dw-option [value]="role.name" [label]="(role.label | dwLocalized: role.name) + ' — ' + role.audience" /> }
+              </dw-select>
+            </dw-field>
             <span class="dw-spacer"></span>
-            <button mat-flat-button type="button" [disabled]="busy() || !dirty()" (click)="save()">{{ t('common.save') }}</button>
+            <button pButton type="button" [disabled]="busy() || !dirty()" (click)="save()">{{ t('common.save') }}</button>
           </div>
           <div class="modules">
             @for (group of modules(); track group.module) {
               <fieldset>
                 <legend>{{ group.module }}</legend>
                 @for (permission of group.permissions; track permission.name) {
-                  <mat-checkbox [checked]="draft().has(permission.name)" (change)="toggle(permission.name, $event.checked)"><span class="dw-mono">{{ permission.name }}</span></mat-checkbox>
+                  <dw-checkbox [checked]="draft().has(permission.name)" (checkedChange)="toggle(permission.name, $event)"><span class="dw-code">{{ permission.name }}</span></dw-checkbox>
                 }
               </fieldset>
             }
@@ -702,7 +683,7 @@ interface PlatformRole {
   `,
   styles: `
     .head { display: flex; align-items: center; gap: var(--dw-3); padding: var(--dw-3) var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); }
-    .head mat-form-field { width: 360px; max-width: 100%; }
+    .head dw-field { width: 360px; max-width: 100%; }
     .modules { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--dw-3); padding: var(--dw-4); }
     fieldset { border: 1px solid var(--dw-line-soft); border-radius: var(--dw-radius); padding: 4px 8px 8px; margin: 0; display: grid; }
     legend { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dw-ink-2); padding-inline: 4px; }

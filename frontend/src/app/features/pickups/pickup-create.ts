@@ -1,14 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
 
 import { Api } from '../../core/api/api';
 import { DirectoryProvider, Lot, Pickup } from '../../core/api/models';
@@ -17,6 +12,11 @@ import { Toast } from '../../core/feedback/toast';
 import { DatePipe, KgPipe } from '../../core/format/pipes';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
+import { CheckboxComponent } from '../../ui/checkbox';
+import { DateComponent } from '../../ui/date';
+import { FIELD } from '../../ui/field';
+import { IconComponent } from '../../ui/icon';
+import { SELECT } from '../../ui/select';
 
 function today(): string {
   const now = new Date();
@@ -30,8 +30,9 @@ function today(): string {
  * when the selection needs it) is shown with the reason instead of being hidden (M4-02).
  */
 @Component({
-  imports: [FormsModule, RouterLink, MatButtonModule, MatCheckboxModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, TranslocoDirective, PageHeaderComponent, StatusComponent,
-    StateComponent, DatePipe, KgPipe],
+  imports: [
+    FormsModule, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, IconComponent, ButtonDirective, ...FIELD, ...SELECT, CheckboxComponent, DateComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -41,26 +42,23 @@ function today(): string {
         <section class="dw-panel">
           <div class="dw-panel-head">
             <h2 class="dw-h2">{{ t('pickups.create.site') }}</h2><span class="dw-spacer"></span>
-            <mat-form-field class="site">
-              <mat-label>{{ t('fields.site') }}</mat-label>
-              <mat-select [ngModel]="site()" (ngModelChange)="selectSite($event)">
-                @for (item of sites; track item.ulid) { <mat-option [value]="item.ulid">{{ item.name }}</mat-option> }
-              </mat-select>
-            </mat-form-field>
+            <dw-select class="site" [ariaLabel]="t('fields.site')" [placeholder]="t('fields.site')" [ngModel]="site()" (ngModelChange)="selectSite($event)">
+              @for (item of sites; track item.ulid) { <dw-option [value]="item.ulid" [label]="item.name" /> }
+            </dw-select>
           </div>
           <dw-state [loading]="loadingLots()" [error]="lotsError()" [empty]="lots().length === 0" [emptyTitle]="t('pickups.create.noLots')" icon="inventory_2" (retry)="loadLots()">
-            <table>
+            <table class="dw-table pick">
               <thead>
                 <tr>
-                  <th><mat-checkbox [checked]="allSelected()" [indeterminate]="selected().length > 0 && !allSelected()" (change)="toggleAll($event.checked)" [attr.aria-label]="t('pickups.create.selectLots')" /></th>
+                  <th><dw-checkbox [checked]="allSelected()" [indeterminate]="selected().length > 0 && !allSelected()" (checkedChange)="toggleAll($event)" [ariaLabel]="t('pickups.create.selectLots')" /></th>
                   <th>{{ t('lots.number') }}</th><th>{{ t('fields.wasteType') }}</th><th>{{ t('fields.zone') }}</th><th>{{ t('lots.generatedAt') }}</th><th class="dw-num">{{ t('fields.weight') }}</th>
                 </tr>
               </thead>
               <tbody>
                 @for (lot of lots(); track lot.ulid) {
                   <tr (click)="toggle(lot.ulid)" [class.on]="selected().includes(lot.ulid)">
-                    <td><mat-checkbox [checked]="selected().includes(lot.ulid)" (change)="toggle(lot.ulid)" (click)="$event.stopPropagation()" [attr.aria-label]="lot.lot_number" /></td>
-                    <td class="dw-mono">{{ lot.lot_number }} @if (lot.is_hazardous) { <mat-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</mat-icon> }</td>
+                    <td><dw-checkbox [checked]="selected().includes(lot.ulid)" (checkedChange)="toggle(lot.ulid)" (click)="$event.stopPropagation()" [ariaLabel]="lot.lot_number" /></td>
+                    <td class="dw-mono">{{ lot.lot_number }} @if (lot.is_hazardous) { <dw-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</dw-icon> }</td>
                     <td>{{ lot.waste_type?.name }}</td><td>{{ lot.zone?.name }}</td><td>{{ lot.generated_at | dwDate }}</td><td class="dw-num">{{ lot.net_weight_kg | dwKg }}</td>
                   </tr>
                 }
@@ -73,7 +71,7 @@ function today(): string {
           <div class="dw-panel-head"><h2 class="dw-h2">{{ t('pickups.create.provider') }}</h2></div>
           <div class="dw-panel-body dw-stack-sm">
             <p class="summary" role="status">{{ t('pickups.create.selected', { count: selected().length, kg: (selectedKg() | dwKg) }) }}</p>
-            @if (hazardous()) { <p class="warn"><mat-icon aria-hidden="true">warning</mat-icon>{{ t('pickups.create.hazardousWarning') }}</p> }
+            @if (hazardous()) { <p class="warn"><dw-icon aria-hidden="true">warning</dw-icon>{{ t('pickups.create.hazardousWarning') }}</p> }
 
             <div class="providers" role="radiogroup" [attr.aria-label]="t('pickups.provider')">
               @for (item of providers(); track item.ulid) {
@@ -91,14 +89,13 @@ function today(): string {
               }
             </div>
 
-            <mat-form-field>
-              <mat-label>{{ t('pickups.requestedDate') }}</mat-label>
-              <input matInput type="date" [ngModel]="date()" (ngModelChange)="date.set($event)" [min]="minDate" required />
-            </mat-form-field>
+            <dw-field [label]="t('pickups.requestedDate')">
+              <dw-date [ngModel]="date()" (ngModelChange)="date.set($event)" [min]="minDate" required />
+            </dw-field>
 
             <div class="dw-form-actions">
-              <button mat-stroked-button type="button" [disabled]="!ready() || busy()" (click)="save(false)">{{ t('pickups.create.saveDraft') }}</button>
-              <button mat-flat-button type="button" [disabled]="!ready() || busy()" (click)="save(true)"><mat-icon>send</mat-icon>{{ t('pickups.create.send') }}</button>
+              <button pButton severity="secondary" outlined type="button" [disabled]="!ready() || busy()" (click)="save(false)">{{ t('pickups.create.saveDraft') }}</button>
+              <button pButton type="button" [disabled]="!ready() || busy()" (click)="save(true)"><dw-icon>send</dw-icon>{{ t('pickups.create.send') }}</button>
             </div>
           </div>
         </section>
@@ -106,15 +103,15 @@ function today(): string {
     </ng-container>
   `,
   styles: `
-    .site { width: 240px; margin-block: 4px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { text-align: start; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dw-ink-3); padding: 4px 10px; border-block-end: 1px solid var(--dw-line); }
-    td { padding: 2px 10px; border-block-end: 1px solid var(--dw-line-soft); } tbody tr { cursor: pointer; } tr.on td { background: var(--dw-primary-soft); }
+    .site { width: 220px; }
+    .dw-form-actions { flex-wrap: wrap; } .dw-form-actions > * { flex: 1 1 auto; }
+    .pick tbody tr { cursor: pointer; } .pick tbody tr:hover td { background: var(--dw-surface-2); } .pick tr.on td, .pick tr.on:hover td { background: var(--dw-primary-soft); }
+    .pick th:first-child, .pick td:first-child { width: 40px; padding-inline-end: 0; }
     .hazard { font-size: 15px; width: 15px; height: 15px; color: var(--dw-warning); vertical-align: -2px; }
     .side { position: sticky; inset-block-start: calc(var(--dw-shell-bar) + var(--dw-4)); }
     .summary { font-weight: 600; }
     .warn { display: flex; gap: 8px; padding: 8px 10px; border-radius: var(--dw-radius); background: var(--dw-warning-soft); color: var(--dw-warning); font-size: 13px; }
-    .warn mat-icon { flex: none; font-size: 18px; width: 18px; height: 18px; }
+    .warn dw-icon { flex: none; font-size: 18px; }
     .providers { display: grid; gap: 8px; margin-block: var(--dw-2); }
     .provider { all: unset; cursor: pointer; display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--dw-line); border-radius: var(--dw-radius); }
     .provider .name { font-weight: 600; } .provider.on { border-color: var(--dw-primary); background: var(--dw-primary-soft); }
