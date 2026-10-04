@@ -2,6 +2,7 @@
 
 namespace App\Modules\Documents\Models;
 
+use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Models\Concerns\HasPublicUlid;
 use App\Modules\Common\Models\StoredFile;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Document extends Model
 {
+    use Auditable;
     use BelongsToCompany;
     use HasPublicUlid;
     use SoftDeletes;

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\Models;
 
+use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Common\Models\Concerns\HasPublicUlid;
 use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class UserInvitation extends Model
 {
+    use Auditable;
     use BelongsToCompany;
     use HasPublicUlid;
 

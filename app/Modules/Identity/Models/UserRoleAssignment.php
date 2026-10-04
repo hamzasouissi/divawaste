@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\Models;
 
+use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class UserRoleAssignment extends Model
 {
+    use Auditable;
     use BelongsToCompany;
 
     protected $fillable = ['company_id', 'user_id', 'role_id', 'site_id', 'granted_by_user_id'];

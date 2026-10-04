@@ -2,6 +2,7 @@
 
 namespace App\Modules\Tenancy\Models;
 
+use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Enums\MembershipStatus;
 use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CompanyUser extends Model
 {
+    use Auditable;
     use BelongsToCompany;
 
     protected $attributes = ['status' => 'active'];

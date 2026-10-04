@@ -2,6 +2,7 @@
 
 namespace App\Modules\Waste\Models;
 
+use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Catalog\Models\WasteType;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Models\Concerns\HasPublicUlid;
@@ -19,6 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class WasteLot extends Model
 {
+    use Auditable;
     use BelongsToCompany;
     use HasPublicUlid;
     use SoftDeletes;

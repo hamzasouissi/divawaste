@@ -5,59 +5,49 @@ namespace App\Modules\Audit\Models\Concerns;
 use App\Modules\Audit\Services\AuditLogger;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Records every creation, modification and deletion of the model in the audit trail (M7-02).
+ * Secrets never reach the trail; a model can add columns through `$auditExclude`.
+ */
 trait Auditable
 {
+    /** @var list<string> */
+    private static array $auditNeverLogged = [
+        'password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes', 'token_hash',
+        'created_at', 'updated_at', 'version',
+    ];
+
     protected static function bootAuditable(): void
     {
-        static::created(function (Model $model): void {
-            $model->audit('created');
-        });
+        static::created(fn (Model $model) => $model->audit('created', [], $model->getAttributes()));
 
         static::updated(function (Model $model): void {
-            $dirty = $model->getDirty();
-
-            if ($dirty === []) {
-                return;
-            }
-
-            $model->audit('updated', $model->getOriginal(), $dirty);
+            $changes = $model->getChanges();
+            $model->audit('updated', array_intersect_key($model->getRawOriginal(), $changes), $changes);
         });
 
-        static::deleted(function (Model $model): void {
-            $model->audit('deleted', $model->getOriginal(), [
-                'deleted_at' => $model->deleted_at ?? now(),
-            ]);
-        });
+        static::deleted(fn (Model $model) => $model->audit('deleted', $model->getRawOriginal()));
 
-        static::restored(function (Model $model): void {
-            $model->audit('restored', $model->getOriginal(), [
-                'restored_at' => now(),
-            ]);
-        });
-    }
-
-    public function audit(string $event, array $oldValues = [], array $newValues = []): void
-    {
-        $exclusions = property_exists($this, 'auditExclude') ? $this->auditExclude : [];
-        $filteredOld = $this->filterAuditPayload($oldValues, $exclusions);
-        $filteredNew = $this->filterAuditPayload($newValues, $exclusions);
-
-        AuditLogger::recordModel($this, $event, $filteredOld, $filteredNew);
+        if (method_exists(static::class, 'restored')) {
+            static::restored(fn (Model $model) => $model->audit('restored'));
+        }
     }
 
     /**
-     * @param  array<string, mixed>  $values
-     * @param  array<int, string>  $exclusions
-     * @return array<string, mixed>
+     * @param  array<string, mixed>  $oldValues
+     * @param  array<string, mixed>  $newValues
      */
-    protected function filterAuditPayload(array $values, array $exclusions): array
+    public function audit(string $event, array $oldValues = [], array $newValues = []): void
     {
-        foreach ($values as $key => $value) {
-            if (in_array($key, $exclusions, true)) {
-                unset($values[$key]);
-            }
+        $excluded = array_flip([...self::$auditNeverLogged, ...($this->auditExclude ?? [])]);
+        $oldValues = array_diff_key($oldValues, $excluded);
+        $newValues = array_diff_key($newValues, $excluded);
+
+        // An update that only touched excluded columns (timestamps, version…) is not an audit event.
+        if ($event === 'updated' && $newValues === []) {
+            return;
         }
 
-        return $values;
+        AuditLogger::recordModel($this, $event, $oldValues, $newValues);
     }
 }

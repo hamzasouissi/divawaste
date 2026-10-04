@@ -2,6 +2,7 @@
 
 namespace App\Modules\Billing\Models;
 
+use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Billing\Enums\PaymentStatus;
 use App\Modules\Common\Models\Concerns\HasPublicUlid;
 use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payment extends Model
 {
+    use Auditable;
     use BelongsToCompany;
     use HasPublicUlid;
 

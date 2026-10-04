@@ -2,6 +2,7 @@
 
 namespace App\Modules\Documents\Models;
 
+use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Common\Models\Concerns\HasPublicUlid;
 use App\Modules\Documents\Enums\AnnualDeclarationStatus;
 use App\Modules\Identity\Models\User;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AnnualDeclaration extends Model
 {
+    use Auditable;
     use BelongsToCompany;
     use HasPublicUlid;
 

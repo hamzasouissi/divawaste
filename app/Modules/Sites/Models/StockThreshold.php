@@ -2,6 +2,7 @@
 
 namespace App\Modules\Sites\Models;
 
+use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Catalog\Models\WasteType;
 use App\Modules\Common\Models\Concerns\HasPublicUlid;
 use App\Modules\Sites\Enums\AlertLevel;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class StockThreshold extends Model
 {
+    use Auditable;
     use BelongsToCompany;
     use HasPublicUlid;
 

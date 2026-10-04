@@ -2,6 +2,7 @@
 
 namespace App\Modules\Providers\Models;
 
+use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class ProviderProfile extends Model
 {
+    use Auditable;
     use BelongsToCompany;
 
     protected $table = 'provider_profiles';

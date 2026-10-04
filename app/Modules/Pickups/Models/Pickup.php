@@ -2,6 +2,7 @@
 
 namespace App\Modules\Pickups\Models;
 
+use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Common\Models\Concerns\HasPublicUlid;
 use App\Modules\Pickups\Enums\PickupStatus;
 use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Pickup extends Model
 {
+    use Auditable;
     use BelongsToCompany;
     use HasPublicUlid;
 

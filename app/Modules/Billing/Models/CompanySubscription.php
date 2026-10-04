@@ -2,6 +2,7 @@
 
 namespace App\Modules\Billing\Models;
 
+use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Billing\Enums\SubscriptionStatus;
 use App\Modules\Common\Models\Concerns\HasPublicUlid;
 use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class CompanySubscription extends Model
 {
+    use Auditable;
     use BelongsToCompany;
     use HasPublicUlid;
 

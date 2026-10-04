@@ -2,6 +2,7 @@
 
 namespace App\Modules\Billing\Models;
 
+use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Billing\Enums\InvoiceStatus;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Models\Concerns\HasPublicUlid;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Invoice extends Model
 {
+    use Auditable;
     use BelongsToCompany;
     use HasPublicUlid;
 

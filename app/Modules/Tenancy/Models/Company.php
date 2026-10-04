@@ -2,6 +2,7 @@
 
 namespace App\Modules\Tenancy\Models;
 
+use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Common\Models\Concerns\HasPublicUlid;
 use App\Modules\Tenancy\Enums\CompanyStatus;
 use App\Modules\Tenancy\Enums\CompanyType;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[UseFactory(CompanyFactory::class)]
 class Company extends Model
 {
+    use Auditable;
     /** @use HasFactory<CompanyFactory> */
     use HasFactory;
 

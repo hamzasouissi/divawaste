@@ -2,6 +2,7 @@
 
 namespace App\Modules\Reporting\Models;
 
+use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Common\Models\Concerns\HasPublicUlid;
 use App\Modules\Identity\Models\User;
 use App\Modules\Sites\Models\Site;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProductionVolume extends Model
 {
+    use Auditable;
     use BelongsToCompany;
     use HasPublicUlid;
 
