@@ -1,22 +1,15 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { ApplicationShellComponent } from './widgets/application-shell';
-import { SessionStore } from './entities/session';
-import { LocaleService } from './shared/i18n/locale.service';
+
+import { Locale } from './core/i18n/i18n';
 
 @Component({
-  selector: 'app-root',
-  imports: [RouterOutlet, ApplicationShellComponent],
-  templateUrl: './app.html',
-  styleUrl: './app.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  selector: 'dw-root',
+  imports: [RouterOutlet],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: '<router-outlet />',
 })
 export class App {
-  protected readonly session = inject(SessionStore);
-  protected readonly locale = inject(LocaleService);
-
-  constructor() {
-    this.locale.set(this.locale.locale());
-    void this.session.bootstrap();
-  }
+  // Instantiated here so <html lang dir> follows the active language from the first render.
+  protected readonly locale = inject(Locale);
 }

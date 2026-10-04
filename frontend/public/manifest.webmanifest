@@ -1,0 +1,21 @@
+{
+  "name": "DivaWaste Textile",
+  "short_name": "DivaWaste",
+  "description": "Traçabilité et valorisation des déchets textiles",
+  "lang": "fr",
+  "dir": "auto",
+  "start_url": "/m",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f6f7",
+  "theme_color": "#0f3d3a",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Nouveau lot", "url": "/m/lots/new" },
+    { "name": "Scanner", "url": "/m/scan" }
+  ]
+}

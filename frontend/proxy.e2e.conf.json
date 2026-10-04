@@ -1,0 +1,4 @@
+{
+  "/api/**": { "target": "http://127.0.0.1:8010", "secure": false, "changeOrigin": false },
+  "/sanctum/**": { "target": "http://127.0.0.1:8010", "secure": false, "changeOrigin": false }
+}

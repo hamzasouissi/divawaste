@@ -1,19 +1,32 @@
 import { Routes } from '@angular/router';
-import { sessionGuard } from './app/guards/session.guard';
 
+import { audienceGuard, authGuard, guestGuard } from './core/auth/guards';
+
+/**
+ * Three applications in one bundle, each loaded on demand: the public account flows, the desktop workspace
+ * (industrial, provider and platform areas share the shell) and the workshop application under /m.
+ */
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'sites' },
-  { path: 'login', loadComponent: () => import('./pages/auth').then((m) => m.AuthPage) },
-  { path: 'access-unavailable', loadComponent: () => import('./pages/auth').then((m) => m.AuthPage) },
-  { path: 'sites/new', canActivate: [sessionGuard], loadComponent: () => import('./pages/sites/create-site.page').then((m) => m.CreateSitePage) },
-  { path: 'sites', canActivate: [sessionGuard], loadComponent: () => import('./pages/sites').then((m) => m.SitesPage) },
-  { path: 'stock-thresholds', canActivate: [sessionGuard], loadComponent: () => import('./pages/stock-thresholds').then((m) => m.StockThresholdsPage) },
-  { path: 'catalog/waste-types', canActivate: [sessionGuard], loadComponent: () => import('./pages/waste-types').then((m) => m.WasteTypesPage) },
-  { path: 'providers', canActivate: [sessionGuard], loadComponent: () => import('./pages/providers').then((m) => m.ProvidersPage) },
-  { path: 'documents', canActivate: [sessionGuard], loadComponent: () => import('./pages/documents').then((m) => m.DocumentsPage) },
-  { path: 'reports', canActivate: [sessionGuard], loadComponent: () => import('./pages/reports').then((m) => m.ReportsPage) },
-  { path: 'notifications', canActivate: [sessionGuard], loadComponent: () => import('./pages/notifications').then((m) => m.NotificationsPage) },
-  { path: 'lots/:ulid', canActivate: [sessionGuard], loadComponent: () => import('./pages/lot-detail').then((m) => m.LotDetailPage) },
-  { path: 'pickups/:ulid', canActivate: [sessionGuard], loadComponent: () => import('./pages/pickup-detail').then((m) => m.PickupDetailPage) },
-  { path: '**', redirectTo: 'sites' }
+  {
+    path: '',
+    loadComponent: () => import('./features/auth/auth-layout').then((m) => m.AuthLayoutComponent),
+    children: [
+      { path: 'login', canActivate: [guestGuard], loadComponent: () => import('./features/auth/login').then((m) => m.LoginPage), title: 'DivaWaste — Connexion' },
+      { path: 'register', canActivate: [guestGuard], loadComponent: () => import('./features/auth/register').then((m) => m.RegisterPage), title: 'DivaWaste — Inscription' },
+      { path: 'forgot-password', loadComponent: () => import('./features/auth/account-flows').then((m) => m.ForgotPasswordPage) },
+      { path: 'reset-password', loadComponent: () => import('./features/auth/account-flows').then((m) => m.ResetPasswordPage) },
+      { path: 'verify-email', loadComponent: () => import('./features/auth/account-flows').then((m) => m.VerifyEmailPage) },
+      { path: 'invitation', loadComponent: () => import('./features/auth/account-flows').then((m) => m.InvitationPage) },
+    ],
+  },
+  { path: 'account-status', canActivate: [authGuard], loadComponent: () => import('./features/auth/account-flows').then((m) => m.AccountStatusPage) },
+  {
+    path: '',
+    canActivate: [authGuard],
+    loadComponent: () => import('./layout/shell').then((m) => m.AppShellComponent),
+    children: [
+      { path: '', canActivate: [audienceGuard('industrial')], loadChildren: () => import('./features/industrial.routes').then((m) => m.INDUSTRIAL_ROUTES) },
+    ],
+  },
+  { path: '**', redirectTo: 'login' },
 ];
