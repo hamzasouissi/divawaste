@@ -39,6 +39,10 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./layout/shell').then((m) => m.AppShellComponent),
     children: [
+      { path: 'provider', canActivate: [audienceGuard('provider')], loadChildren: () => import('./features/industrial.routes').then((m) => m.PROVIDER_ROUTES) },
+      { path: 'platform', canActivate: [audienceGuard('platform')], loadChildren: () => import('./features/industrial.routes').then((m) => m.PLATFORM_ROUTES) },
+      { path: '', loadChildren: () => import('./features/industrial.routes').then((m) => m.ACCOUNT_ROUTES) },
+      { path: '', canActivate: [audienceGuard('industrial', 'provider')], loadChildren: () => import('./features/industrial.routes').then((m) => m.TENANT_ROUTES) },
       { path: '', canActivate: [audienceGuard('industrial')], loadChildren: () => import('./features/industrial.routes').then((m) => m.INDUSTRIAL_ROUTES) },
     ],
   },
