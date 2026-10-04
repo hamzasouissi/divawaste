@@ -188,7 +188,14 @@ Route::middleware('auth:sanctum')->prefix('platform')->group(function () use ($l
             'treatment_channel' => $codes->code('treatment_channels', $item['default_treatment_channel_id']),
             'is_active' => (bool) $item['is_active'],
             'used_by' => DB::table('waste_types')->where('waste_catalog_item_id', $item['id'])->distinct()->count('company_id'),
-        ])];
+        ]),
+            // The platform has no company, hence no /reference: the vocabularies its form needs come with the list.
+            'meta' => [
+                'waste_families' => $localized(DB::table('waste_families')->where('is_active', true)->orderBy('sort_order')->get(['code', 'name'])),
+                'treatment_channels' => $localized(DB::table('treatment_channels')->where('is_active', true)->orderBy('sort_order')->get(['code', 'name'])),
+                'regulatory_waste_codes' => $localized(DB::table('regulatory_waste_codes')->where('is_selectable', true)->orderBy('code')
+                    ->get(['code', 'label', 'is_hazardous']), ['is_hazardous']),
+            ]];
     })->name('platform.waste-catalog.index');
 
     Route::post('waste-catalog', function (Request $request, ReferenceCodes $codes) use ($allow, $rules, $attributes) {
