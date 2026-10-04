@@ -5,8 +5,10 @@ namespace App\Modules\Pickups\Resources;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Pickups\Models\Pickup;
 use App\Modules\Pickups\Support\PartyDirectory;
+use App\Modules\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Read by both parties of a pickup. Lines are snapshots taken at request time: a provider never reads
@@ -25,6 +27,12 @@ class PickupResource extends JsonResource
         $lines = $this->relationLoaded('lines') ? $this->lines : null;
         $parties = app(PartyDirectory::class);
         $declared = $this->resource->getAttributes()['lines_sum_declared_weight_kg'] ?? null;
+        // The lot identifier belongs to the industrial: only the owner of the pickup receives it
+        // (to record the loading and open the lot). A provider keeps working with lot numbers.
+        $context = app(TenantContext::class);
+        $lotUlids = $lines !== null && $context->hasTenant() && $context->companyId() === (int) $this->company_id
+            ? DB::table('waste_lots')->whereIn('id', $lines->pluck('waste_lot_id'))->pluck('ulid', 'id')
+            : collect();
 
         return [
             'ulid' => $this->ulid,
@@ -56,6 +64,7 @@ class PickupResource extends JsonResource
             'net_amount' => $this->when($lines !== null, fn () => $lines->whereNotNull('net_amount')->isEmpty() ? null
                 : $lines->reduce(fn ($sum, $line) => bcadd($sum, (string) ($line->net_amount ?? '0'), 3), '0')),
             'lots' => $this->when($lines !== null, fn () => $lines->map(fn ($line) => [
+                'lot' => $lotUlids[$line->waste_lot_id] ?? null,
                 'lot_number_snapshot' => $line->lot_number_snapshot,
                 'qr_tag_value_snapshot' => $line->qr_tag_value_snapshot,
                 'waste_type_label_snapshot' => $line->waste_type_label_snapshot,
