@@ -11,6 +11,7 @@ use App\Modules\Identity\Support\EmailVerification;
 use App\Modules\Tenancy\Models\Company;
 use Database\Seeders\AuthorizationSeeder;
 use Database\Seeders\ReferenceDataSeeder;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Notification;
 use PragmaRX\Google2FA\Google2FA;
 use Tests\Concerns\InteractsWithTenants;
@@ -29,7 +30,7 @@ class AccountSecurityTest extends TestCase
     {
         parent::setUp();
         $this->seed([ReferenceDataSeeder::class, AuthorizationSeeder::class]);
-        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+        $this->withoutMiddleware(ThrottleRequests::class);
     }
 
     public function test_account_is_locked_after_five_failed_passwords_and_the_user_is_notified(): void

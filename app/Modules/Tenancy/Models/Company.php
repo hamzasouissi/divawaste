@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Company extends Model
 {
     use Auditable;
+
     /** @use HasFactory<CompanyFactory> */
     use HasFactory;
 

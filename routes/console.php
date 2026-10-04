@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Billing\Actions\ManageSubscription;
 use App\Modules\Identity\Models\User;
 use App\Modules\Providers\Actions\AlertExpiringAccreditations;
 use Illuminate\Support\Facades\Artisan;
@@ -16,6 +17,12 @@ Artisan::command('accreditations:alert', function (AlertExpiringAccreditations $
 })->purpose('M4-02: alert providers and their partners 30 days before an accreditation expires, and at expiry');
 
 Schedule::command('accreditations:alert')->dailyAt('06:00')->withoutOverlapping()->onOneServer();
+
+Artisan::command('subscriptions:run', function (ManageSubscription $subscriptions) {
+    $this->info('Subscriptions: '.json_encode($subscriptions->runDaily()));
+})->purpose('M7-04: invoice the periods that ended, apply cancellations, warn before a trial ends and expire it after');
+
+Schedule::command('subscriptions:run')->dailyAt('05:00')->withoutOverlapping()->onOneServer();
 
 /*
  * First platform administrator (Diva Software staff). Not exposed through the API on purpose.

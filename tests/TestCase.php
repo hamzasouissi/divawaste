@@ -20,7 +20,7 @@ abstract class TestCase extends BaseTestCase
     protected function refreshTestDatabase()
     {
         if (! RefreshDatabaseState::$migrated) {
-            if (! $this->testSchemaIsReusable()) {
+            if (! $this->canReuseSchema()) {
                 $this->migrateDatabases();
                 $this->app[Kernel::class]->setArtisan(null);
                 $this->writeSchemaFingerprint();
@@ -32,7 +32,7 @@ abstract class TestCase extends BaseTestCase
         $this->beginDatabaseTransaction();
     }
 
-    private function testSchemaIsReusable(): bool
+    private function canReuseSchema(): bool
     {
         if (env('TEST_DB_FRESH')) {
             return false;

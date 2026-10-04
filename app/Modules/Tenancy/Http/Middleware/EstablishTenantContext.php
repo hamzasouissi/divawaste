@@ -4,15 +4,18 @@ namespace App\Modules\Tenancy\Http\Middleware;
 
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Enums\CompanyStatus;
+use App\Modules\Tenancy\Enums\CompanyType;
 use App\Modules\Tenancy\Enums\MembershipStatus;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\Models\CompanyUser;
 use App\Modules\Tenancy\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * Resolves the tenant from the token binding (PWA/API) or the session (web SPA), never from a
@@ -44,11 +47,42 @@ final class EstablishTenantContext
 
         $this->context->set($company);
 
+        if ($this->subscriptionLapsed($request, $company)) {
+            $this->context->clear();
+
+            throw new HttpException(Response::HTTP_PAYMENT_REQUIRED, 'The subscription has ended: the account is read-only until a plan is activated.');
+        }
+
         try {
             return $next($request);
         } finally {
             $this->context->clear();
         }
+    }
+
+    /**
+     * M0-03: when the trial or the plan has ended, an industrial keeps reading (and exporting) its data but can no
+     * longer change it, apart from its account and subscription. Providers use the platform free of charge.
+     * A company without any subscription row predates billing and is left alone.
+     */
+    private function subscriptionLapsed(Request $request, Company $company): bool
+    {
+        if ($request->isMethodSafe() || $company->company_type !== CompanyType::Industrial) {
+            return false;
+        }
+
+        $route = (string) $request->route()?->getName();
+        foreach (['subscription.', 'invoices.', 'me.', 'auth.', 'company.', 'reports.'] as $exempt) {
+            if (str_starts_with($route, $exempt)) {
+                return false;
+            }
+        }
+
+        return in_array(
+            DB::table('company_subscriptions')->where('company_id', $company->id)->where('is_current', true)->value('status'),
+            ['expired', 'cancelled', 'suspended'],
+            true,
+        );
     }
 
     private function resolveCompanyId(Request $request, User $user): ?int

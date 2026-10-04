@@ -16,5 +16,5 @@ return [
         'reuse' => 'Réutilisation', 'recycling' => 'Recyclage', 'energy_recovery' => 'Valorisation énergétique',
         'incineration' => 'Incinération sans valorisation', 'other_treatment' => 'Autre traitement', 'landfill' => 'Enfouissement',
     ],
-    'signer' =>['producer' => 'Producteur', 'transporter' => 'Transporteur', 'receiver' => 'Destinataire'],
+    'signer' => ['producer' => 'Producteur', 'transporter' => 'Transporteur', 'receiver' => 'Destinataire'],
 ];

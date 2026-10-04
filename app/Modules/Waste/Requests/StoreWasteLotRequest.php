@@ -26,18 +26,28 @@ class StoreWasteLotRequest extends FormRequest
      */
     public function rules(): array
     {
-        $site = is_string($this->input('site')) ? strtoupper($this->input('site')) : '';
+        return self::lotRules(is_string($this->input('site')) ? $this->input('site') : '');
+    }
+
+    /**
+     * One definition of a valid lot, shared by the online endpoint and the offline synchronisation (M2-08).
+     *
+     * @return array<string, mixed>
+     */
+    public static function lotRules(string $siteUlid): array
+    {
+        $site = strtoupper($siteUlid);
         $ref = fn (string $table) => Rule::exists($table, 'code')->where('is_active', true);
 
         return [
             'ulid' => ['nullable', 'ulid', Rule::unique('waste_lots', 'ulid')],
             'tag' => ['nullable', 'string', 'max:64', Rule::unique('lot_tags', 'tag_value')->where('tag_type', 'qr')],
-            'site' => ['required', 'string', new TenantExists(Site::class)],
-            'zone' => ['required', 'string', new TenantExists(Zone::class, fn ($q) => $q->whereIn('site_id', Site::query()->select('id')->where('ulid', $site)))],
+            'site' => ['required', 'string', new TenantExists(Site::class, fn ($q) => $q->where('is_active', true))],
+            'zone' => ['required', 'string', new TenantExists(Zone::class, fn ($q) => $q->where('is_active', true)->whereIn('site_id', Site::query()->select('id')->where('ulid', $site)))],
             'waste_type' => ['required', 'string', new TenantExists(WasteType::class, fn ($q) => $q->where('is_active', true))],
-            'net_weight_kg' => ['required', 'decimal:0,3', 'gte:0'],
-            'gross_weight_kg' => ['nullable', 'decimal:0,3', 'gte:0'],
-            'tare_weight_kg' => ['nullable', 'decimal:0,3', 'gte:0'],
+            'net_weight_kg' => ['required', 'decimal:0,3', 'gte:0', 'lte:999999'],
+            'gross_weight_kg' => ['nullable', 'decimal:0,3', 'gte:0', 'lte:999999'],
+            'tare_weight_kg' => ['nullable', 'decimal:0,3', 'gte:0', 'lte:999999'],
             'packaging_type' => ['nullable', 'string', $ref('packaging_types')],
             'quantity' => ['nullable', 'decimal:0,3', 'gt:0', 'required_with:unit'],
             'unit' => ['nullable', 'string', Rule::exists('units', 'code')],
@@ -55,18 +65,19 @@ class StoreWasteLotRequest extends FormRequest
 
     public function toData(): CreateWasteLotData
     {
-        $v = fn (string $key) => $this->validated($key) === null ? null : (string) $this->validated($key);
+        // Only a request made with a device token is a mobile creation.
         $token = $this->user()?->currentAccessToken();
-        $deviceId = null;
+        $deviceId = $token instanceof PersonalAccessToken && $token->device_id !== null ? (int) $token->device_id : null;
 
-        if ($token instanceof PersonalAccessToken && $token->device_id !== null) {
-            $deviceId = (int) $token->device_id;
-        } else {
-            $deviceToken = $this->user()?->tokens()->whereNotNull('device_id')->latest('last_used_at')->first();
-            if ($deviceToken !== null) {
-                $deviceId = (int) $deviceToken->device_id;
-            }
-        }
+        return self::dataFrom($this->validated(), $deviceId, $deviceId !== null ? 'mobile' : 'web');
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    public static function dataFrom(array $validated, ?int $deviceId, string $source): CreateWasteLotData
+    {
+        $v = fn (string $key) => ($validated[$key] ?? null) === null ? null : (string) $validated[$key];
 
         return new CreateWasteLotData(
             siteUlid: strtoupper((string) $v('site')),
@@ -83,12 +94,12 @@ class StoreWasteLotRequest extends FormRequest
             colorFamily: $v('color_family'),
             colorLabel: $v('color_label'),
             grammageGsm: $v('grammage_gsm'),
-            composition: $this->validated('composition'),
-            extraAttributes: $this->validated('extra_attributes'),
+            composition: $validated['composition'] ?? null,
+            extraAttributes: $validated['extra_attributes'] ?? null,
             notes: $v('notes'),
             generatedAt: $v('generated_at'),
             deviceId: $deviceId,
-            source: $deviceId !== null ? 'mobile' : 'web',
+            source: $source,
         );
     }
 }

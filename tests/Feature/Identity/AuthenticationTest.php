@@ -5,12 +5,12 @@ namespace Tests\Feature\Identity;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\Models\CompanyUser;
+use Database\Seeders\AuthorizationSeeder;
+use Database\Seeders\ReferenceDataSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
-use Database\Seeders\AuthorizationSeeder;
-use Database\Seeders\ReferenceDataSeeder;
 use Tests\Concerns\InteractsWithTenants;
 use Tests\TestCase;
 

@@ -53,7 +53,7 @@ return [
 
     'custom' => [
         'composition' => ['total' => 'La somme des pourcentages de composition doit être égale à 100.'],
-        'email_verification' =>['invalid' => 'Ce lien de confirmation est invalide ou expiré.'],
+        'email_verification' => ['invalid' => 'Ce lien de confirmation est invalide ou expiré.'],
         'invitation' => ['invalid' => 'Cette invitation est invalide, expirée ou déjà utilisée.'],
         'tenant' => ['missing' => 'La valeur sélectionnée n\'existe pas dans votre société.'],
     ],

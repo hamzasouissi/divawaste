@@ -15,5 +15,5 @@ return [
         'reuse' => 'Reuse', 'recycling' => 'Recycling', 'energy_recovery' => 'Energy recovery',
         'incineration' => 'Incineration', 'other_treatment' => 'Other treatment', 'landfill' => 'Landfill',
     ],
-    'signer' =>['producer' => 'Producer', 'transporter' => 'Transporter', 'receiver' => 'Receiver'],
+    'signer' => ['producer' => 'Producer', 'transporter' => 'Transporter', 'receiver' => 'Receiver'],
 ];

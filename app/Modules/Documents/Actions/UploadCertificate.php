@@ -18,7 +18,6 @@ use App\Modules\Waste\Models\WasteLot;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
 
 final class UploadCertificate
 {
@@ -73,7 +72,6 @@ final class UploadCertificate
             $document = $this->context->runAs($ownerCompany, function () use (
                 $pickup,
                 $data,
-                $actor,
                 $actorId,
                 $actorCompanyId,
                 $ownerCompany,

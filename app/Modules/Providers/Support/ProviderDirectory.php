@@ -42,7 +42,7 @@ final class ProviderDirectory
 
         $today = Carbon::today();
 
-        return $providers->map(function (object $provider) use ($accepted, $accreditations, $today, $filter) {
+        return $providers->map(function (object $provider) use ($accepted, $accreditations, $today) {
             $list = ($accreditations[$provider->id] ?? collect())->map(function (object $row) use ($today) {
                 $expires = Carbon::parse($row->expires_on);
                 $days = (int) $today->diffInDays($expires, false);
