@@ -61,6 +61,15 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute((int) config('app.api_rate_limit', 240))
             ->by($request->user()?->id ? 'u:'.$request->user()->id : 'ip:'.$request->ip()));
 
+        // Generated PDFs: only the glyphs used are embedded (a label drops from ~1 MB to a few kB), and a
+        // document can never pull a remote resource or run PHP, whatever text ends up in it.
+        config([
+            'dompdf.options.enable_font_subsetting' => true,
+            'dompdf.options.enable_remote' => false,
+            'dompdf.options.enable_php' => false,
+            'dompdf.options.enable_javascript' => false,
+        ]);
+
         DB::prohibitDestructiveCommands($this->app->isProduction());
     }
 }
