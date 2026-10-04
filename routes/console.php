@@ -3,6 +3,7 @@
 use App\Modules\Billing\Actions\ManageSubscription;
 use App\Modules\Identity\Models\User;
 use App\Modules\Providers\Actions\AlertExpiringAccreditations;
+use Database\Seeders\DemoSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Str;
@@ -23,6 +24,39 @@ Artisan::command('subscriptions:run', function (ManageSubscription $subscription
 })->purpose('M7-04: invoice the periods that ended, apply cancellations, warn before a trial ends and expire it after');
 
 Schedule::command('subscriptions:run')->dailyAt('05:00')->withoutOverlapping()->onOneServer();
+
+/*
+ * Local demonstration environment (docs/DEVELOPER_RUNBOOK.md): its own database, rebuilt from scratch with the demo dataset.
+ * Refuses to run anywhere else, so it can never empty a real database.
+ */
+Artisan::command('demo:reset', function () {
+    $database = (string) config('database.connections.'.config('database.default').'.database');
+    if (! app()->environment('demo') || ! str_contains($database, 'demo')) {
+        $this->error("Refused: demo:reset only runs with --env=demo on a database whose name contains \"demo\" (current: {$database}, environment: ".app()->environment().').');
+
+        return 1;
+    }
+
+    $connection = config('database.connections.'.config('database.default'));
+    $pdo = new PDO("mysql:host={$connection['host']};port={$connection['port']}", $connection['username'], $connection['password']);
+    $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+    $this->info("Rebuilding {$database} (about a minute)…");
+    $this->call('migrate:fresh', ['--seed' => true, '--force' => true]);
+    $this->call('db:seed', ['--class' => DemoSeeder::class, '--force' => true]);
+    $this->call('cache:clear');
+
+    $this->newLine();
+    $this->info('Demo data ready. Password of every account: '.DemoSeeder::PASSWORD);
+    $this->table(['Email', 'Role'], [
+        ['admin@divawaste.test', 'Platform administrator'], ['amira@capbon.test', 'Client administrator — Textile du Cap Bon'],
+        ['sami@capbon.test', 'Environment manager'], ['leila@capbon.test', 'Workshop operator (Nabeul)'],
+        ['direction@capbon.test', 'Management, read-only'], ['audit@capbon.test', 'Auditor'],
+        ['karim@sahel-recyclage.test', 'Provider administrator — Recyclage du Sahel'], ['nour@monastir-jeans.test', 'Client administrator — Monastir Jeans Confection'],
+    ]);
+
+    return 0;
+})->purpose('Rebuild the local demonstration database with the demo dataset');
 
 /*
  * First platform administrator (Diva Software staff). Not exposed through the API on purpose.

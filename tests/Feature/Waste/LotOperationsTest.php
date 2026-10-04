@@ -95,6 +95,8 @@ class LotOperationsTest extends TestCase
 
         $this->withToken($this->token)->getJson("/api/v1/lots/scan/{$lot['qr']}")->assertOk()->assertJsonPath('data.ulid', $lot['ulid']);
         $this->withToken($this->token)->getJson('/api/v1/lots/scan/UNKNOWN-TAG')->assertNotFound();
+        // The number printed on the label, typed by hand (any case), designates the same lot.
+        $this->withToken($this->token)->getJson('/api/v1/lots/scan/'.strtolower($lot['lot_number']))->assertOk()->assertJsonPath('data.ulid', $lot['ulid']);
 
         $response = $this->withToken($this->token)->get("/api/v1/lots/{$lot['ulid']}/label")->assertOk()->assertHeader('Content-Type', 'application/pdf');
         $pdf = $response->getContent();
@@ -114,6 +116,7 @@ class LotOperationsTest extends TestCase
         $foreign = $this->makeCompany();
         $foreignToken = $this->tokenFor($this->makeMember($foreign, ['client_admin' => null]), $foreign);
         $this->withToken($foreignToken)->getJson("/api/v1/lots/scan/{$lot['qr']}")->assertNotFound();
+        $this->withToken($foreignToken)->getJson("/api/v1/lots/scan/{$lot['lot_number']}")->assertNotFound();
         $this->withToken($foreignToken)->get("/api/v1/lots/{$lot['ulid']}/label")->assertNotFound();
     }
 

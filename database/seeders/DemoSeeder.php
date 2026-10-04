@@ -6,6 +6,7 @@ use App\Modules\Billing\Actions\StartTrial;
 use App\Modules\Catalog\Actions\CreateWasteType;
 use App\Modules\Catalog\DTOs\CreateWasteTypeData;
 use App\Modules\Common\Support\FileStorage;
+use App\Modules\Documents\Actions\ManifestWorkflow;
 use App\Modules\Identity\Models\Role;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Models\UserRoleAssignment;
@@ -40,12 +41,79 @@ use RuntimeException;
  *   direction@capbon.test       management, read-only
  *   audit@capbon.test           auditor
  *   karim@sahel-recyclage.test  provider administrator
+ *   nour@monastir-jeans.test    client administrator of a second, unrelated industrial (tenant isolation checks)
+ *   mehdi@tissages-kh.test      contact of a registration awaiting approval
+ *   sonia@sfax-eco.test         contact of a provider awaiting approval
+ *   walid@ecotri-tunis.test     provider whose accreditation has expired
+ * The full table is in docs/TEST_ACCOUNTS.md.
  */
 class DemoSeeder extends Seeder
 {
     public const PASSWORD = 'DivaWaste!2026';
 
-    public function run(TenantContext $context, CreateWasteType $createType, CreateWasteLot $createLot, PickupWorkflow $pickups, StartTrial $trial, FileStorage $files): void
+    /**
+     * What the main company must never see, and what the platform has to decide:
+     * a second industrial with its own data, a registration awaiting approval, a provider awaiting approval with an
+     * accreditation to review, and a provider whose accreditation has expired.
+     */
+    private function otherCompanies(TenantContext $context, \Closure $company, \Closure $user, \Closure $role, Company $provider, CreateWasteType $createType,
+        CreateWasteLot $createLot, StartTrial $trial, FileStorage $files): void
+    {
+        $member = fn (User $who, string $roleName) => [CompanyUser::query()->create(['user_id' => $who->id, 'joined_at' => now()]),
+            UserRoleAssignment::query()->create(['user_id' => $who->id, 'role_id' => $role($roleName), 'site_id' => null])];
+        $accreditation = fn (Company $owner, User $by, string $type, string $reference, $expires, string $status) => ProviderAccreditation::query()->create([
+            'accreditation_type_id' => DB::table('accreditation_types')->where('code', $type)->value('id'), 'reference_number' => $reference, 'issuing_authority' => 'ANGed',
+            'valid_from' => now()->subYears(2), 'expires_on' => $expires, 'review_status' => $status, 'reviewed_at' => $status === 'pending' ? null : now(),
+            'stored_file_id' => $files->storeContent("%PDF-1.4\n% Agrément de démonstration {$reference}\n%%EOF\n", "{$reference}.pdf", 'application/pdf', $owner, 'accreditations', $by->id)->id,
+        ]);
+
+        // Second industrial: used to check that two clients never see each other's data.
+        $other = $company('industrial', 'Monastir Jeans Confection', '2468135C', 'Monastir');
+        $nour = $user('Nour', 'Belhadj', 'nour@monastir-jeans.test');
+        $other->forceFill(['primary_contact_user_id' => $nour->id])->save();
+        $trial->handle($other);
+        $context->runAs($other, function () use ($other, $nour, $member, $provider, $createType, $createLot) {
+            $member($nour, 'client_admin');
+            $site = Site::query()->create(['code' => 'MON', 'name' => 'Unité de Monastir', 'city' => 'Monastir', 'country_id' => $other->country_id, 'activated_at' => now(), 'created_by_user_id' => $nour->id]);
+            $zone = $site->zones()->create(['code' => 'DELAV', 'name' => 'Délavage', 'zone_type_id' => DB::table('zone_types')->where('code', 'dyeing')->value('id')]);
+            $denim = $createType->handle(new CreateWasteTypeData(code: 'DENIM', catalogItem: 'cutting_scraps'), $nour);
+            foreach ([210, 185, 240] as $index => $kg) {
+                $createLot->handle(new CreateWasteLotData(siteUlid: $site->ulid, zoneUlid: $zone->ulid, wasteTypeUlid: $denim->ulid, netWeightKg: (string) $kg,
+                    packagingType: 'bale', generatedAt: now()->subDays(6 - $index * 2)->setTime(10, 0)->toDateTimeString()), $nour);
+            }
+            ProviderPartnership::query()->create(['provider_company_id' => $provider->id, 'status' => 'active', 'started_at' => now()->subMonth(), 'created_by_user_id' => $nour->id]);
+        });
+
+        // Registration waiting for the platform's decision.
+        $pending = $company('industrial', 'Tissages de Ksar Hellal', '1357924D', 'Ksar Hellal');
+        $mehdi = $user('Mehdi', 'Chaabane', 'mehdi@tissages-kh.test');
+        $pending->forceFill(['status' => 'pending_approval', 'approved_at' => null, 'submitted_at' => now()->subDay(), 'primary_contact_user_id' => $mehdi->id,
+            'settings' => ['requested_plan' => 'per_site']])->save();
+        $context->runAs($pending, fn () => $member($mehdi, 'client_admin'));
+
+        // Provider waiting for approval, with an accreditation to review.
+        $applicant = $company('provider', 'Sfax Éco-Collecte', '9753108E', 'Sfax');
+        $sonia = $user('Sonia', 'Hammami', 'sonia@sfax-eco.test');
+        $applicant->forceFill(['status' => 'pending_approval', 'approved_at' => null, 'submitted_at' => now()->subHours(5), 'primary_contact_user_id' => $sonia->id])->save();
+        $context->runAs($applicant, function () use ($applicant, $sonia, $member, $accreditation) {
+            $member($sonia, 'provider_admin');
+            ProviderProfile::query()->create(['is_collector' => true, 'is_transporter' => true, 'service_area' => 'Sfax, Gabès', 'description' => 'Collecte et transport de déchets industriels banals.',
+                'public_contact_name' => 'Sonia Hammami', 'public_contact_email' => $sonia->email, 'is_published' => false]);
+            $accreditation($applicant, $sonia, 'recycling_recovery', 'ANGED-REC-2026-207', now()->addYears(2), 'pending');
+        });
+
+        // Published provider whose only accreditation has expired: listed in the directory, refused for a pickup.
+        $expired = $company('provider', 'Éco-Tri Tunis', '8642097F', 'Tunis');
+        $walid = $user('Walid', 'Dridi', 'walid@ecotri-tunis.test');
+        $context->runAs($expired, function () use ($expired, $walid, $member, $accreditation) {
+            $member($walid, 'provider_admin');
+            ProviderProfile::query()->create(['is_collector' => true, 'is_recycler' => true, 'service_area' => 'Grand Tunis', 'description' => 'Tri et recyclage de cartons et plastiques.',
+                'public_contact_name' => 'Walid Dridi', 'public_contact_email' => $walid->email, 'is_published' => true, 'published_at' => now()->subYear()]);
+            $accreditation($expired, $walid, 'recycling_recovery', 'ANGED-REC-2024-031', now()->subDays(10), 'approved');
+        });
+    }
+
+    public function run(TenantContext $context, CreateWasteType $createType, CreateWasteLot $createLot, PickupWorkflow $pickups, StartTrial $trial, FileStorage $files, ManifestWorkflow $manifests): void
     {
         if (app()->isProduction()) {
             throw new RuntimeException('DemoSeeder must never run in production.');
@@ -95,7 +163,9 @@ class DemoSeeder extends Seeder
         $industrial->forceFill(['primary_contact_user_id' => $amira->id])->save();
         $trial->handle($industrial);
 
-        $context->runAs($industrial, function () use ($industrial, $provider, $amira, $karim, $user, $role, $createType, $createLot, $pickups) {
+        $this->otherCompanies($context, $company, $user, $role, $provider, $createType, $createLot, $trial, $files);
+
+        $context->runAs($industrial, function () use ($context, $industrial, $provider, $amira, $karim, $user, $role, $createType, $createLot, $pickups, $manifests) {
             DB::table('company_textile_activities')->insert(DB::table('textile_activities')->whereIn('code', ['weaving', 'garment_making', 'dyeing'])->pluck('id')
                 ->map(fn ($id) => ['company_id' => $industrial->id, 'textile_activity_id' => $id, 'created_at' => now()])->all());
 
@@ -182,6 +252,14 @@ class DemoSeeder extends Seeder
                     $pickup = $pickups->receive($pickup, $received, $karim);
                     $pickups->price($pickup, $prices, $sami);
                     $pickups->treat($pickup, $treated, $karim);
+                    // Dye residues are hazardous: their tracking slip is signed by the three parties and archived.
+                    foreach ($manifests->generate($pickup->refresh(), $sami) as $manifest) {
+                        $manifests->sign($manifest, $sami, request());
+                        $context->runAs($provider, function () use ($manifests, $manifest, $karim) {
+                            $manifests->sign($manifest->refresh(), $karim, request());
+                            $manifests->sign($manifest->refresh(), $karim, request());
+                        });
+                    }
                     if ($pickup->variance_flagged) {
                         $pickups->acknowledgeVariance($pickup, 'Écart dû à l\'humidité des chutes à la pesée de départ.', $sami);
                     }
@@ -197,6 +275,16 @@ class DemoSeeder extends Seeder
             if ($pending !== []) {
                 $pickups->submit($pickups->create($sites['NAB']->id, $provider->id, null, now()->addDays(3)->toDateString(), array_map(fn (WasteLot $lot) => $lot->ulid, $pending), $sami), $sami);
             }
+
+            // A pickup confirmed for today, ready to be loaded from the workshop application, with its slip awaiting the producer's signature.
+            $ready = [];
+            foreach (['TEINT' => ['TEINT', '36.5'], 'CHUTES' => ['COUPE', '120'], 'CARTON' => ['STOCK', '55']] as $typeCode => [$zoneCode, $kg]) {
+                $zone = Zone::query()->where('site_id', $sites['NAB']->id)->where('code', $zoneCode)->firstOrFail();
+                $ready[] = $createLot->handle(new CreateWasteLotData(siteUlid: $sites['NAB']->ulid, zoneUlid: $zone->ulid, wasteTypeUlid: $types[$typeCode]->ulid,
+                    netWeightKg: $kg, packagingType: $typeCode === 'TEINT' ? 'drum' : 'bale', generatedAt: now()->subDay()->setTime(14, 30)->toDateTimeString()), $sami)->ulid;
+            }
+            $confirmed = $pickups->confirm($pickups->submit($pickups->create($sites['NAB']->id, $provider->id, null, now()->toDateString(), $ready, $sami), $sami), now()->toDateString(), $karim);
+            $manifests->generate($confirmed, $sami);
 
             foreach ([2, 1, 0] as $monthsAgo) {
                 foreach ($sites as $siteCode => $site) {

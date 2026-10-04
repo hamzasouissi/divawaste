@@ -70,10 +70,12 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
     /*
      * M2-02: what a scanned QR (or, later, RFID) tag designates. Tags of another company are simply unknown.
+     * The lot number printed on the label is accepted too: it is what an operator types when the camera cannot read.
      */
     Route::get('lots/scan/{tag}', function (Request $request, string $tag) {
         abort_if(strlen($tag) > 64, 404);
-        $lot = WasteLot::query()->whereHas('tags', fn ($query) => $query->where('tag_value', $tag)->where('is_active_flag', true))->firstOrFail();
+        $lot = WasteLot::query()->whereHas('tags', fn ($query) => $query->where('tag_value', $tag)->where('is_active_flag', true))->first()
+            ?? WasteLot::query()->where('lot_number', strtoupper(trim($tag)))->firstOrFail();
         abort_unless($request->user()->can('lots.view', $lot->site_id), 403);
 
         return new WasteLotResource($lot);

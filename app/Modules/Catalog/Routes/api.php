@@ -6,6 +6,7 @@ use App\Modules\Catalog\Requests\StoreWasteTypeRequest;
 use App\Modules\Catalog\Resources\WasteTypeResource;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Support\ReferenceCodes;
+use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Sites\Support\StockQuery;
 use App\Modules\Tenancy\TenantContext;
 use Illuminate\Http\Request;
@@ -73,8 +74,9 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
             ])];
     })->name('waste-catalog.index');
 
-    Route::get('waste-types', function (Request $request) use ($allow) {
-        $allow($request, 'waste_types.view');
+    // Whoever may read lots may read the names of their types (list filters, lot forms): it reveals nothing more.
+    Route::get('waste-types', function (Request $request) {
+        abort_unless($request->user()->can('waste_types.view') || app(AccessResolver::class)->siteIdsFor($request->user(), 'lots.view') !== [], 403);
 
         return WasteTypeResource::collection(WasteType::query()
             ->when($request->boolean('active_only', true), fn ($query) => $query->where('is_active', true))

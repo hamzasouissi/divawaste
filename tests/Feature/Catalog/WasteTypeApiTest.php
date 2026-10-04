@@ -98,7 +98,9 @@ class WasteTypeApiTest extends TestCase
         $operator = $this->makeMember($this->company, ['workshop_operator' => $this->makeSite($this->company, 'SFX')]);
         $token = $this->tokenFor($operator, $this->company);
 
-        $this->withToken($token)->getJson('/api/v1/waste-types')->assertForbidden();
+        // Reading the type names comes with reading lots; changing them does not.
+        $this->withToken($token)->getJson('/api/v1/waste-types')->assertOk();
+        $this->withToken($token)->getJson('/api/v1/waste-catalog')->assertForbidden();
         $this->withToken($token)->postJson('/api/v1/waste-types', ['code' => 'X', 'name' => 'X', 'waste_family' => 'packaging'])->assertForbidden();
     }
 
