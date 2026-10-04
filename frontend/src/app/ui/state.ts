@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { ButtonDirective } from 'primeng/button';
+import { ProgressBar } from 'primeng/progressbar';
+import { Skeleton } from 'primeng/skeleton';
 
 import { Toast } from '../core/feedback/toast';
+import { IconComponent } from './icon';
 
 /**
  * The three states every data region has besides its content: loading, failed, empty. Used the same way
@@ -14,50 +15,56 @@ import { Toast } from '../core/feedback/toast';
  */
 @Component({
   selector: 'dw-state',
-  imports: [MatButtonModule, MatIconModule, MatProgressBarModule, TranslocoDirective],
+  imports: [ButtonDirective, ProgressBar, Skeleton, IconComponent, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       @if (loading()) {
-        <mat-progress-bar mode="indeterminate" class="bar" [attr.aria-label]="t('common.loading')" />
+        <p-progressbar mode="indeterminate" class="bar" [attr.aria-label]="t('common.loading')" />
       }
       @if (error()) {
         <div class="box" role="alert">
-          <mat-icon class="icon danger" aria-hidden="true">error_outline</mat-icon>
-          <p class="dw-h2">{{ t('common.loadFailed') }}</p>
-          <p class="dw-muted">{{ message() }}</p>
-          <button mat-stroked-button type="button" (click)="retry.emit()">
-            <mat-icon>refresh</mat-icon>
+          <span class="badge danger"><dw-icon>error_outline</dw-icon></span>
+          <p class="title">{{ t('common.loadFailed') }}</p>
+          <p class="hint">{{ message() }}</p>
+          <button pButton type="button" severity="secondary" outlined size="small" class="action" (click)="retry.emit()">
+            <dw-icon>refresh</dw-icon>
             {{ t('common.retry') }}
           </button>
         </div>
       } @else if (empty() && !loading()) {
         <div class="box">
-          <mat-icon class="icon" aria-hidden="true">{{ icon() }}</mat-icon>
-          <p class="dw-h2">{{ emptyTitle() || t('common.empty') }}</p>
+          <span class="badge"><dw-icon>{{ icon() }}</dw-icon></span>
+          <p class="title">{{ emptyTitle() || t('common.empty') }}</p>
           @if (emptyHint()) {
-            <p class="dw-muted">{{ emptyHint() }}</p>
+            <p class="hint">{{ emptyHint() }}</p>
           }
-          <ng-content select="[dwEmptyAction]" />
+          <div class="action"><ng-content select="[dwEmptyAction]" /></div>
         </div>
       } @else if (!loading() || keepContent()) {
         <ng-content />
       } @else {
-        <div class="skeleton" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="skeleton" aria-hidden="true">
+          <p-skeleton width="38%" height="12px" />
+          <p-skeleton width="86%" height="12px" />
+          <p-skeleton width="72%" height="12px" />
+          <p-skeleton width="54%" height="12px" />
+        </div>
       }
     </ng-container>
   `,
   styles: `
-    :host { display: block; position: relative; min-height: 4px; }
-    .bar { position: absolute; inset-block-start: 0; inset-inline: 0; height: 2px; z-index: 1; }
-    .box { display: flex; flex-direction: column; align-items: center; gap: var(--dw-2); padding: var(--dw-7) var(--dw-4); text-align: center; }
-    .icon { width: 36px; height: 36px; font-size: 36px; color: var(--dw-ink-3); }
-    .icon.danger { color: var(--dw-danger); }
-    .skeleton { display: grid; gap: var(--dw-3); padding: var(--dw-4); }
-    .skeleton span { height: 14px; border-radius: 4px; background: linear-gradient(90deg, var(--dw-line-soft), var(--dw-surface-2), var(--dw-line-soft)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
-    .skeleton span:nth-child(2) { width: 82%; }
-    .skeleton span:nth-child(3) { width: 64%; }
-    @keyframes shimmer { to { background-position: -200% 0; } }
+    :host { display: block; position: relative; min-height: 3px; }
+    .bar { position: absolute; inset-block-start: 0; inset-inline: 0; z-index: 2; }
+    .box { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 40px var(--dw-4); text-align: center; }
+    .badge { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--dw-surface-2); border: 1px solid var(--dw-line-soft);
+      color: var(--dw-ink-3); font-size: 20px; margin-block-end: 8px; }
+    .badge.danger { background: var(--dw-danger-soft); border-color: transparent; color: var(--dw-danger); }
+    .title { font-size: 14px; font-weight: 600; color: var(--dw-ink); }
+    .hint { font-size: 13px; color: var(--dw-ink-2); max-width: 46ch; }
+    .action { margin-block-start: 12px; }
+    .action:empty { display: none; }
+    .skeleton { display: grid; gap: 14px; padding: var(--dw-4); }
   `,
 })
 export class StateComponent {

@@ -1,42 +1,48 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { Tag } from 'primeng/tag';
+
+import { IconComponent } from './icon';
 
 /**
  * Header of every screen: where you are, what it is, and the actions that apply to the whole screen
- * (projected on the trailing side). One primary action at most.
+ * (projected on the trailing side). One primary action at most, placed last.
  */
 @Component({
   selector: 'dw-page-header',
-  imports: [RouterLink, MatIconModule],
+  imports: [RouterLink, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="main">
       @if (back()) {
-        <a class="back" [routerLink]="back()" [attr.aria-label]="backLabel()">
-          <mat-icon aria-hidden="true">arrow_back</mat-icon>
+        <a class="back" [routerLink]="back()">
+          <dw-icon>chevron_left</dw-icon>
           <span>{{ backLabel() }}</span>
         </a>
       }
       <div class="title-row">
-        <h1 class="dw-h1">{{ title() }}</h1>
+        <h1>{{ title() }}</h1>
         <ng-content select="[dwTitleBadge]" />
       </div>
       @if (subtitle()) {
-        <p class="dw-muted">{{ subtitle() }}</p>
+        <p class="subtitle">{{ subtitle() }}</p>
       }
     </div>
     <div class="actions"><ng-content /></div>
   `,
   styles: `
-    :host { display: flex; align-items: flex-end; gap: var(--dw-4); flex-wrap: wrap; margin-block-end: var(--dw-4); }
+    :host { display: flex; align-items: flex-end; gap: var(--dw-3) var(--dw-4); flex-wrap: wrap; margin-block-end: var(--dw-4); min-height: 44px; }
     .main { flex: 1 1 320px; min-width: 0; }
     .title-row { display: flex; align-items: center; gap: var(--dw-3); flex-wrap: wrap; }
-    .back { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--dw-ink-2); margin-block-end: 2px; }
-    .back mat-icon { font-size: 16px; width: 16px; height: 16px; }
-    :host-context([dir='rtl']) .back mat-icon { transform: scaleX(-1); }
+    h1 { font-size: 19px; line-height: 26px; font-weight: 650; letter-spacing: -0.015em; color: var(--dw-ink); }
+    .subtitle { font-size: 13px; line-height: 18px; color: var(--dw-ink-2); margin-block-start: 1px; max-width: 86ch; }
+    .back { display: inline-flex; align-items: center; gap: 1px; margin-inline-start: -4px; margin-block-end: 2px; font-size: 12px; font-weight: 500; color: var(--dw-ink-2); border-radius: 4px; }
+    .back:hover { color: var(--dw-primary); text-decoration: none; }
+    .back dw-icon { font-size: 16px; }
+    :host-context([dir='rtl']) .back dw-icon { transform: scaleX(-1); }
     .actions { display: flex; align-items: center; gap: var(--dw-2); flex-wrap: wrap; }
+    .actions:empty { display: none; }
   `,
 })
 export class PageHeaderComponent {
@@ -67,25 +73,20 @@ const TONES: Record<string, Record<string, Tone>> = {
   sync: { pending: 'warning', synced: 'success', failed: 'danger', conflict: 'danger' },
 };
 
+const SEVERITY: Record<Tone, 'secondary' | 'info' | 'success' | 'warn' | 'danger'> = { neutral: 'secondary', info: 'info', success: 'success', warning: 'warn', danger: 'danger' };
+
 /**
- * Status as a compact badge. Text always accompanies the colour (never colour alone).
+ * Status as a compact tag (PrimeNG Tag). Text always accompanies the colour (never colour alone), and a
+ * status has the same tone on every screen.
  *
  *   <dw-status kind="lot" [value]="lot.status" />
  */
 @Component({
   selector: 'dw-status',
-  imports: [TranslocoDirective],
+  imports: [Tag, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span class="badge" [class]="resolved()" *transloco="let t">{{ label() || t('status.' + kind() + '.' + value()) }}</span>`,
-  styles: `
-    :host { display: inline-flex; }
-    .badge { display: inline-flex; align-items: center; height: 22px; padding-inline: 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
-    .neutral { background: var(--dw-neutral-soft); color: var(--dw-ink-2); }
-    .info { background: var(--dw-info-soft); color: var(--dw-info); }
-    .success { background: var(--dw-success-soft); color: var(--dw-success); }
-    .warning { background: var(--dw-warning-soft); color: var(--dw-warning); }
-    .danger { background: var(--dw-danger-soft); color: var(--dw-danger); }
-  `,
+  template: `<p-tag *transloco="let t" class="dw-status-tag" [severity]="severity()" [value]="label() || t('status.' + kind() + '.' + value())" />`,
+  styles: ':host { display: inline-flex; vertical-align: middle; }',
 })
 export class StatusComponent {
   readonly kind = input.required<string>();
@@ -95,27 +96,31 @@ export class StatusComponent {
   readonly tone = input<Tone | null>(null);
 
   protected readonly resolved = computed(() => this.tone() ?? TONES[this.kind()]?.[this.value()] ?? 'neutral');
+  protected readonly severity = computed(() => SEVERITY[this.resolved()]);
 }
 
-/** A figure with its label; the building block of dashboards and summaries. */
+/**
+ * A figure with its label; the building block of dashboards and summaries. Several of them go in a
+ * `.dw-stats` strip: one panel, cells separated by hairlines, instead of a row of cards.
+ */
 @Component({
   selector: 'dw-kpi',
-  imports: [MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="dw-label">{{ label() }}</div>
+    <div class="label">{{ label() }}</div>
     <div class="value" [class]="tone()">{{ value() }}</div>
     @if (hint()) {
-      <div class="hint dw-faint">{{ hint() }}</div>
+      <div class="hint">{{ hint() }}</div>
     }
   `,
   styles: `
-    :host { display: block; background: var(--dw-surface); border: 1px solid var(--dw-line); border-radius: var(--dw-radius-lg); padding: var(--dw-3) var(--dw-4); min-width: 0; }
-    .value { font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; margin-block-start: 2px; overflow-wrap: anywhere; }
+    :host { display: block; background: var(--dw-surface); padding: 12px var(--dw-4) 13px; min-width: 0; }
+    .label { font-size: 12px; line-height: 16px; font-weight: 500; color: var(--dw-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .value { font-size: 21px; line-height: 28px; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-block-start: 3px; color: var(--dw-ink); overflow-wrap: anywhere; }
     .value.danger { color: var(--dw-danger); }
     .value.warning { color: var(--dw-warning); }
     .value.success { color: var(--dw-success); }
-    .hint { font-size: 12px; }
+    .hint { font-size: 12px; line-height: 16px; color: var(--dw-ink-3); margin-block-start: 1px; }
   `,
 })
 export class KpiComponent {

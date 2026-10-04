@@ -1,11 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, model, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslocoDirective } from '@jsverse/transloco';
 
 import { Session } from '../core/auth/session';
+import { DateComponent } from './date';
+import { SELECT } from './select';
 
 export interface Period {
   from: string;
@@ -46,39 +45,32 @@ export function presetPeriod(preset: Preset, site: string | null = null): Period
  */
 @Component({
   selector: 'dw-period-filter',
-  imports: [FormsModule, MatFormFieldModule, MatInputModule, MatSelectModule, TranslocoDirective],
+  imports: [FormsModule, DateComponent, ...SELECT, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <mat-form-field class="preset">
-        <mat-label>{{ t('period.label') }}</mat-label>
-        <mat-select [ngModel]="preset()" (ngModelChange)="applyPreset($event)">
-          @for (option of presets; track option) { <mat-option [value]="option">{{ t('period.' + option) }}</mat-option> }
-          <mat-option value="custom">{{ t('period.custom') }}</mat-option>
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field class="date">
-        <mat-label>{{ t('period.from') }}</mat-label>
-        <input matInput type="date" [ngModel]="value().from" (ngModelChange)="patch({ from: $event })" [max]="value().to" />
-      </mat-form-field>
-      <mat-form-field class="date">
-        <mat-label>{{ t('period.to') }}</mat-label>
-        <input matInput type="date" [ngModel]="value().to" (ngModelChange)="patch({ to: $event })" [min]="value().from" />
-      </mat-form-field>
+      <dw-select class="preset" [ariaLabel]="t('period.label')" [value]="preset()" (valueChange)="applyPreset($any($event))">
+        @for (option of presets; track option) { <dw-option [value]="option" [label]="t('period.' + option)" /> }
+        <dw-option value="custom" [label]="t('period.custom')" />
+      </dw-select>
+      <div class="range">
+        <dw-date class="date" [ariaLabel]="t('period.from')" [placeholder]="t('period.from')" [ngModel]="value().from" (ngModelChange)="patch({ from: $event })" [max]="value().to" />
+        <span class="dash" aria-hidden="true">–</span>
+        <dw-date class="date" [ariaLabel]="t('period.to')" [placeholder]="t('period.to')" [ngModel]="value().to" (ngModelChange)="patch({ to: $event })" [min]="value().from" />
+      </div>
       @if (sites().length > 1) {
-        <mat-form-field class="site">
-          <mat-label>{{ t('fields.site') }}</mat-label>
-          <mat-select [ngModel]="value().site ?? ''" (ngModelChange)="patch({ site: $event || null })">
-            <mat-option value="">{{ t('common.allSites') }}</mat-option>
-            @for (site of sites(); track site.ulid) { <mat-option [value]="site.ulid">{{ site.name }}</mat-option> }
-          </mat-select>
-        </mat-form-field>
+        <dw-select class="site" [ariaLabel]="t('fields.site')" [value]="value().site ?? ''" (valueChange)="patch({ site: $any($event) || null })">
+          <dw-option value="" [label]="t('common.allSites')" />
+          @for (site of sites(); track site.ulid) { <dw-option [value]="site.ulid" [label]="site.name" /> }
+        </dw-select>
       }
     </ng-container>
   `,
   styles: `
     :host { display: flex; gap: var(--dw-2); flex-wrap: wrap; align-items: center; }
-    .preset { width: 190px; } .date { width: 160px; } .site { width: 220px; }
+    .preset { width: 176px; } .date { width: 132px; } .site { width: 200px; }
+    .range { display: flex; align-items: center; gap: 6px; }
+    .dash { color: var(--dw-ink-3); }
   `,
 })
 export class PeriodFilterComponent {

@@ -23,7 +23,7 @@
     "none": "Aucun",
     "search": "Rechercher",
     "filters": "Filtres",
-    "resetFilters": "Effacer les filtres",
+    "resetFilters": "Réinitialiser",
     "noResult": "Aucun résultat pour ces filtres",
     "rows": "{{count}} ligne(s)",
     "pagination": "Pagination",
@@ -42,7 +42,12 @@
     "print": "Imprimer",
     "export": "Exporter",
     "details": "Détails",
-    "readOnly": "Lecture seule"
+    "readOnly": "Lecture seule",
+    "clear": "Effacer",
+    "selectAll": "Tout sélectionner",
+    "selected": "{{count}} sélectionné(s)",
+    "collapseNavigation": "Réduire la navigation",
+    "expandNavigation": "Déployer la navigation"
   },
   "paginator": {
     "perPage": "Lignes par page",
@@ -240,21 +245,113 @@
     }
   },
   "status": {
-    "lot": { "created": "Créé", "stored": "Stocké", "awaiting_pickup": "En attente d'enlèvement", "collected": "Enlevé", "treated": "Traité", "closed": "Clôturé" },
-    "pickup": { "draft": "Brouillon", "requested": "Demandé", "confirmed": "Confirmé", "refused": "Refusé", "collected": "Enlevé", "received": "Réceptionné", "completed": "Clôturé", "cancelled": "Annulé" },
-    "line": { "planned": "Prévu", "loaded": "Chargé", "not_loaded": "Non chargé", "received": "Reçu", "rejected": "Rejeté", "treated": "Traité" },
-    "company": { "pending_verification": "Email à confirmer", "pending_approval": "En attente de validation", "active": "Active", "rejected": "Rejetée", "suspended": "Suspendue", "closed": "Clôturée" },
-    "accreditation": { "valid": "Valide", "expiring": "Expire bientôt", "expired": "Expiré", "pending": "À valider", "approved": "Approuvé", "rejected": "Rejeté", "revoked": "Révoqué" },
-    "alert": { "warning": "Seuil proche", "exceeded": "Seuil dépassé", "ok": "Normal" },
-    "manifest": { "draft": "Brouillon", "pending_producer_signature": "Signature producteur attendue", "pending_transporter_signature": "Signature transporteur attendue", "pending_receiver_signature": "Signature destinataire attendue", "completed": "Signé", "cancelled": "Annulé" },
-    "declaration": { "draft": "Projet", "in_review": "En revue", "validated": "Validée", "submitted": "Transmise" },
-    "document": { "draft": "Brouillon", "pending_signatures": "En cours de signature", "issued": "Émis", "superseded": "Remplacé", "cancelled": "Annulé" },
-    "report": { "queued": "En file d'attente", "processing": "En cours", "completed": "Prêt", "failed": "Échec", "expired": "Expiré" },
-    "invoice": { "issued": "À régler", "partially_paid": "Partiellement réglée", "paid": "Réglée", "overdue": "En retard", "cancelled": "Annulée" },
-    "subscription": { "trialing": "Essai gratuit", "active": "Actif", "past_due": "Paiement en retard", "suspended": "Suspendu", "cancelled": "Résilié", "expired": "Terminé" },
-    "member": { "active": "Actif", "suspended": "Suspendu" },
-    "invitation": { "pending": "En attente", "accepted": "Acceptée", "expired": "Expirée", "revoked": "Annulée" },
-    "sync": { "pending": "À synchroniser", "synced": "Synchronisé", "failed": "Refusé", "conflict": "Conflit" }
+    "lot": {
+      "created": "Créé",
+      "stored": "Stocké",
+      "awaiting_pickup": "En attente d'enlèvement",
+      "collected": "Enlevé",
+      "treated": "Traité",
+      "closed": "Clôturé"
+    },
+    "pickup": {
+      "draft": "Brouillon",
+      "requested": "Demandé",
+      "confirmed": "Confirmé",
+      "refused": "Refusé",
+      "collected": "Enlevé",
+      "received": "Réceptionné",
+      "completed": "Clôturé",
+      "cancelled": "Annulé"
+    },
+    "line": {
+      "planned": "Prévu",
+      "loaded": "Chargé",
+      "not_loaded": "Non chargé",
+      "received": "Reçu",
+      "rejected": "Rejeté",
+      "treated": "Traité"
+    },
+    "company": {
+      "pending_verification": "Email à confirmer",
+      "pending_approval": "En attente de validation",
+      "active": "Active",
+      "rejected": "Rejetée",
+      "suspended": "Suspendue",
+      "closed": "Clôturée"
+    },
+    "accreditation": {
+      "valid": "Valide",
+      "expiring": "Expire bientôt",
+      "expired": "Expiré",
+      "pending": "À valider",
+      "approved": "Approuvé",
+      "rejected": "Rejeté",
+      "revoked": "Révoqué"
+    },
+    "alert": {
+      "warning": "Seuil proche",
+      "exceeded": "Seuil dépassé",
+      "ok": "Normal"
+    },
+    "manifest": {
+      "draft": "Brouillon",
+      "pending_producer_signature": "Signature producteur attendue",
+      "pending_transporter_signature": "Signature transporteur attendue",
+      "pending_receiver_signature": "Signature destinataire attendue",
+      "completed": "Signé",
+      "cancelled": "Annulé"
+    },
+    "declaration": {
+      "draft": "Projet",
+      "in_review": "En revue",
+      "validated": "Validée",
+      "submitted": "Transmise"
+    },
+    "document": {
+      "draft": "Brouillon",
+      "pending_signatures": "En cours de signature",
+      "issued": "Émis",
+      "superseded": "Remplacé",
+      "cancelled": "Annulé"
+    },
+    "report": {
+      "queued": "En file d'attente",
+      "processing": "En cours",
+      "completed": "Prêt",
+      "failed": "Échec",
+      "expired": "Expiré"
+    },
+    "invoice": {
+      "issued": "À régler",
+      "partially_paid": "Partiellement réglée",
+      "paid": "Réglée",
+      "overdue": "En retard",
+      "cancelled": "Annulée"
+    },
+    "subscription": {
+      "trialing": "Essai gratuit",
+      "active": "Actif",
+      "past_due": "Paiement en retard",
+      "suspended": "Suspendu",
+      "cancelled": "Résilié",
+      "expired": "Terminé"
+    },
+    "member": {
+      "active": "Actif",
+      "suspended": "Suspendu"
+    },
+    "invitation": {
+      "pending": "En attente",
+      "accepted": "Acceptée",
+      "expired": "Expirée",
+      "revoked": "Annulée"
+    },
+    "sync": {
+      "pending": "À synchroniser",
+      "synced": "Synchronisé",
+      "failed": "Refusé",
+      "conflict": "Conflit"
+    }
   },
   "channels": {
     "reuse": "Réutilisation",
@@ -264,7 +361,11 @@
     "other_treatment": "Autre traitement",
     "landfill": "Enfouissement"
   },
-  "origin": { "created": "Production", "split": "Scission", "grouping": "Regroupement" },
+  "origin": {
+    "created": "Production",
+    "split": "Scission",
+    "grouping": "Regroupement"
+  },
   "errors": {
     "UNEXPECTED": "Une erreur inattendue s'est produite. Réessayez.",
     "NETWORK": "Connexion au serveur impossible. Vérifiez votre réseau et réessayez.",
@@ -346,28 +447,94 @@
       "company.pending_review": "Inscription à valider"
     },
     "types": {
-      "stock.threshold_warning": { "title": "Seuil de stock bientôt atteint — {{site}}", "body": "{{quantity_kg}} kg en stock pour un seuil de {{max_quantity_kg}} kg." },
-      "stock.threshold_exceeded": { "title": "Seuil de stock dépassé — {{site}}", "body": "{{quantity_kg}} kg en stock pour un seuil de {{max_quantity_kg}} kg. Planifiez un enlèvement." },
-      "pickup.requested": { "title": "Nouvelle demande d'enlèvement {{number}}", "body": "{{company}} — {{lots}} lots, {{weight_kg}} kg, le {{date}} ({{site}})." },
-      "pickup.confirmed": { "title": "Enlèvement {{number}} confirmé", "body": "{{provider}} a confirmé pour le {{date}}." },
-      "pickup.refused": { "title": "Enlèvement {{number}} refusé", "body": "{{provider}} : {{reason}}" },
-      "pickup.cancelled": { "title": "Enlèvement {{number}} annulé", "body": "{{company}} : {{reason}}" },
-      "pickup.collected": { "title": "Enlèvement {{number}} chargé", "body": "{{weight_kg}} kg au départ du site." },
-      "pickup.received": { "title": "Enlèvement {{number}} réceptionné", "body": "{{provider}} a réceptionné {{weight_kg}} kg." },
-      "pickup.variance_flagged": { "title": "Écart de poids — enlèvement {{number}}", "body": "{{received_kg}} kg reçus pour {{departure_kg}} kg au départ ({{variance_pct}} %)." },
-      "pickup.completed": { "title": "Enlèvement {{number}} clôturé", "body": "L'enlèvement est clôturé par {{company}}." },
-      "accreditation.expiring_soon": { "title": "Agrément bientôt expiré — {{provider}}", "body": "{{reference}} expire le {{date}} (dans {{days}} jours)." },
-      "accreditation.expired": { "title": "Agrément expiré — {{provider}}", "body": "{{reference}} a expiré le {{date}} : ce prestataire ne peut plus être choisi." },
-      "accreditation.reviewed": { "title": "Agrément {{reference}}", "body": "Décision de la plateforme : {{status}}." },
-      "document.signature_requested": { "title": "Bordereau {{number}} à signer", "body": "Votre signature est attendue." },
-      "document.certificate_uploaded": { "title": "Certificat déposé — enlèvement {{number}}", "body": "{{provider}} a déposé un certificat." },
-      "report.ready": { "title": "Rapport prêt", "body": "« {{name}} » est disponible au téléchargement." },
-      "report.failed": { "title": "Échec de génération", "body": "« {{name}} » n'a pas pu être généré." },
-      "payment.declared": { "title": "Virement déclaré — {{company}}", "body": "{{amount}} pour la facture {{invoice}}." },
-      "payment.reviewed": { "title": "Virement {{status}}", "body": "{{amount}} — facture {{invoice}}." },
-      "invoice.issued": { "title": "Nouvelle facture {{invoice}}", "body": "{{amount}}, échéance le {{due_date}}." },
-      "subscription.trial_ending": { "title": "Fin de l'essai gratuit le {{date}}", "body": "Il reste {{days}} jour(s). Choisissez une formule pour continuer." },
-      "company.pending_review": { "title": "À valider — {{company}}", "body": "{{type}}" }
+      "stock.threshold_warning": {
+        "title": "Seuil de stock bientôt atteint — {{site}}",
+        "body": "{{quantity_kg}} kg en stock pour un seuil de {{max_quantity_kg}} kg."
+      },
+      "stock.threshold_exceeded": {
+        "title": "Seuil de stock dépassé — {{site}}",
+        "body": "{{quantity_kg}} kg en stock pour un seuil de {{max_quantity_kg}} kg. Planifiez un enlèvement."
+      },
+      "pickup.requested": {
+        "title": "Nouvelle demande d'enlèvement {{number}}",
+        "body": "{{company}} — {{lots}} lots, {{weight_kg}} kg, le {{date}} ({{site}})."
+      },
+      "pickup.confirmed": {
+        "title": "Enlèvement {{number}} confirmé",
+        "body": "{{provider}} a confirmé pour le {{date}}."
+      },
+      "pickup.refused": {
+        "title": "Enlèvement {{number}} refusé",
+        "body": "{{provider}} : {{reason}}"
+      },
+      "pickup.cancelled": {
+        "title": "Enlèvement {{number}} annulé",
+        "body": "{{company}} : {{reason}}"
+      },
+      "pickup.collected": {
+        "title": "Enlèvement {{number}} chargé",
+        "body": "{{weight_kg}} kg au départ du site."
+      },
+      "pickup.received": {
+        "title": "Enlèvement {{number}} réceptionné",
+        "body": "{{provider}} a réceptionné {{weight_kg}} kg."
+      },
+      "pickup.variance_flagged": {
+        "title": "Écart de poids — enlèvement {{number}}",
+        "body": "{{received_kg}} kg reçus pour {{departure_kg}} kg au départ ({{variance_pct}} %)."
+      },
+      "pickup.completed": {
+        "title": "Enlèvement {{number}} clôturé",
+        "body": "L'enlèvement est clôturé par {{company}}."
+      },
+      "accreditation.expiring_soon": {
+        "title": "Agrément bientôt expiré — {{provider}}",
+        "body": "{{reference}} expire le {{date}} (dans {{days}} jours)."
+      },
+      "accreditation.expired": {
+        "title": "Agrément expiré — {{provider}}",
+        "body": "{{reference}} a expiré le {{date}} : ce prestataire ne peut plus être choisi."
+      },
+      "accreditation.reviewed": {
+        "title": "Agrément {{reference}}",
+        "body": "Décision de la plateforme : {{status}}."
+      },
+      "document.signature_requested": {
+        "title": "Bordereau {{number}} à signer",
+        "body": "Votre signature est attendue."
+      },
+      "document.certificate_uploaded": {
+        "title": "Certificat déposé — enlèvement {{number}}",
+        "body": "{{provider}} a déposé un certificat."
+      },
+      "report.ready": {
+        "title": "Rapport prêt",
+        "body": "« {{name}} » est disponible au téléchargement."
+      },
+      "report.failed": {
+        "title": "Échec de génération",
+        "body": "« {{name}} » n'a pas pu être généré."
+      },
+      "payment.declared": {
+        "title": "Virement déclaré — {{company}}",
+        "body": "{{amount}} pour la facture {{invoice}}."
+      },
+      "payment.reviewed": {
+        "title": "Virement {{status}}",
+        "body": "{{amount}} — facture {{invoice}}."
+      },
+      "invoice.issued": {
+        "title": "Nouvelle facture {{invoice}}",
+        "body": "{{amount}}, échéance le {{due_date}}."
+      },
+      "subscription.trial_ending": {
+        "title": "Fin de l'essai gratuit le {{date}}",
+        "body": "Il reste {{days}} jour(s). Choisissez une formule pour continuer."
+      },
+      "company.pending_review": {
+        "title": "À valider — {{company}}",
+        "body": "{{type}}"
+      }
     }
   },
   "onboarding": {
@@ -384,10 +551,26 @@
     "open": "Ouvrir",
     "finish": "Terminer et aller au tableau de bord",
     "steps": {
-      "sites": { "title": "Vos sites et leurs zones", "body": "Déclarez chaque site de production et ses zones (coupe, confection, teinture, aire de stockage).", "count": "{{count}} site(s)" },
-      "waste_types": { "title": "Vos types de déchets", "body": "Activez dans le catalogue les types qui vous concernent, ou créez les vôtres.", "count": "{{count}} type(s) activé(s)" },
-      "users": { "title": "Votre équipe", "body": "Invitez le responsable environnement, les opérateurs d'atelier et la direction.", "count": "{{count}} personne(s) invitée(s)" },
-      "providers": { "title": "Vos prestataires", "body": "Choisissez dans l'annuaire les collecteurs et recycleurs avec lesquels vous travaillez.", "count": "{{count}} partenaire(s)" }
+      "sites": {
+        "title": "Vos sites et leurs zones",
+        "body": "Déclarez chaque site de production et ses zones (coupe, confection, teinture, aire de stockage).",
+        "count": "{{count}} site(s)"
+      },
+      "waste_types": {
+        "title": "Vos types de déchets",
+        "body": "Activez dans le catalogue les types qui vous concernent, ou créez les vôtres.",
+        "count": "{{count}} type(s) activé(s)"
+      },
+      "users": {
+        "title": "Votre équipe",
+        "body": "Invitez le responsable environnement, les opérateurs d'atelier et la direction.",
+        "count": "{{count}} personne(s) invitée(s)"
+      },
+      "providers": {
+        "title": "Vos prestataires",
+        "body": "Choisissez dans l'annuaire les collecteurs et recycleurs avec lesquels vous travaillez.",
+        "count": "{{count}} partenaire(s)"
+      }
     }
   },
   "dashboard": {
@@ -516,7 +699,11 @@
     "new": "Nouveau site",
     "edit": "Modifier le site",
     "kind": "Nature",
-    "kinds": { "production": "Production", "warehouse": "Entrepôt", "mixed": "Mixte" },
+    "kinds": {
+      "production": "Production",
+      "warehouse": "Entrepôt",
+      "mixed": "Mixte"
+    },
     "zones": "Zones",
     "zonesCount": "{{count}} zone(s)",
     "addZone": "Ajouter une zone",
@@ -587,7 +774,10 @@
       "selected": "{{count}} lot(s) — {{kg}}",
       "noLots": "Aucun lot disponible sur ce site.",
       "hazardousWarning": "La sélection contient des déchets dangereux : seul un prestataire agréé pour les déchets dangereux peut être retenu.",
-      "notSelectable": { "no_valid_accreditation": "Agrément expiré ou absent", "not_a_partner": "Non partenaire" },
+      "notSelectable": {
+        "no_valid_accreditation": "Agrément expiré ou absent",
+        "not_a_partner": "Non partenaire"
+      },
       "saveDraft": "Enregistrer le brouillon",
       "send": "Envoyer au prestataire"
     },
@@ -614,12 +804,27 @@
     "treatHint": "Indiquez la filière de traitement de chaque lot reçu.",
     "channel": "Filière",
     "priceHint": "Prix de vente (recette) ou coût d'élimination, par lot. Le montant est calculé sur le poids reçu.",
-    "direction": { "label": "Nature", "sale": "Vente", "cost": "Coût" },
-    "pricingMode": { "label": "Mode", "per_kg": "par kg", "per_tonne": "par tonne", "flat": "forfait" },
+    "direction": {
+      "label": "Nature",
+      "sale": "Vente",
+      "cost": "Coût"
+    },
+    "pricingMode": {
+      "label": "Mode",
+      "per_kg": "par kg",
+      "per_tonne": "par tonne",
+      "flat": "forfait"
+    },
     "unitPrice": "Prix",
     "amount": "Montant",
     "netAmount": "Bilan net",
-    "timeline": { "requested": "Demande envoyée", "confirmed": "Confirmé pour le {{date}}", "collected": "Lots chargés", "received": "Réceptionné par le prestataire", "completed": "Clôturé" },
+    "timeline": {
+      "requested": "Demande envoyée",
+      "confirmed": "Confirmé pour le {{date}}",
+      "collected": "Lots chargés",
+      "received": "Réceptionné par le prestataire",
+      "completed": "Clôturé"
+    },
     "refused": "Refusé : {{reason}}",
     "cancelled": "Annulé : {{reason}}",
     "varianceBanner": "Poids reçu {{received}} pour {{departure}} au départ, soit {{pct}} % d'écart.",
@@ -639,14 +844,23 @@
       "certificate": "Certificat déposé."
     },
     "documents": "Documents",
-    "certificateType": { "label": "Type de certificat", "recycling": "Recyclage", "destruction": "Destruction" },
+    "certificateType": {
+      "label": "Type de certificat",
+      "recycling": "Recyclage",
+      "destruction": "Destruction"
+    },
     "certificateFile": "Fichier (PDF, JPEG ou PNG, 20 Mo maximum)"
   },
   "providers": {
     "title": "Prestataires",
     "subtitle": "Annuaire des collecteurs, transporteurs et recycleurs agréés.",
     "roles": "Activités",
-    "role": { "collector": "Collecteur", "transporter": "Transporteur", "recycler": "Recycleur", "eliminator": "Éliminateur" },
+    "role": {
+      "collector": "Collecteur",
+      "transporter": "Transporteur",
+      "recycler": "Recycleur",
+      "eliminator": "Éliminateur"
+    },
     "serviceArea": "Zone d'intervention",
     "contact": "Contact",
     "accepted": "Déchets acceptés",
@@ -728,7 +942,12 @@
       "title": "Documents réglementaires",
       "subtitle": "Certificats, bordereaux signés et déclarations validées, conservés 10 ans.",
       "type": "Type",
-      "types": { "recycling_certificate": "Certificat de recyclage", "destruction_certificate": "Certificat de destruction", "hazardous_manifest": "Bordereau de suivi", "annual_declaration": "Déclaration annuelle" },
+      "types": {
+        "recycling_certificate": "Certificat de recyclage",
+        "destruction_certificate": "Certificat de destruction",
+        "hazardous_manifest": "Bordereau de suivi",
+        "annual_declaration": "Déclaration annuelle"
+      },
       "reference": "Référence",
       "issuedAt": "Émis le",
       "retention": "Conservé jusqu'au",
@@ -742,7 +961,11 @@
     "subtitle": "Rapports RSE et exports réglementaires, avec votre logo, en PDF ou Excel.",
     "new": "Générer un rapport",
     "type": "Rapport",
-    "types": { "waste_register": "Registre chronologique des déchets", "rse_summary": "Rapport RSE — gestion des déchets", "economic_balance": "Bilan économique" },
+    "types": {
+      "waste_register": "Registre chronologique des déchets",
+      "rse_summary": "Rapport RSE — gestion des déchets",
+      "economic_balance": "Bilan économique"
+    },
     "format": "Format",
     "requested": "Demandé le",
     "expires": "Disponible jusqu'au",
@@ -805,7 +1028,12 @@
       "before": "Avant",
       "after": "Après",
       "system": "Système",
-      "events": { "created": "Création", "updated": "Modification", "deleted": "Suppression", "restored": "Restauration" },
+      "events": {
+        "created": "Création",
+        "updated": "Modification",
+        "deleted": "Suppression",
+        "restored": "Restauration"
+      },
       "emptyTitle": "Aucune entrée"
     },
     "subscription": {
@@ -816,7 +1044,10 @@
       "period": "Période en cours : du {{from}} au {{to}}",
       "sites": "{{active}} site(s) actif(s) sur {{quantity}} inclus",
       "unitPrice": "{{amount}} par {{interval}}",
-      "intervals": { "monthly": "mois", "yearly": "an" },
+      "intervals": {
+        "monthly": "mois",
+        "yearly": "an"
+      },
       "requested": "Demande en cours : {{plan}} pour {{sites}} site(s). Diva Software vous contactera pour l'activer.",
       "change": "Changer de formule ou de nombre de sites",
       "changeTitle": "Demander une formule",
@@ -880,17 +1111,46 @@
     }
   },
   "provider": {
-    "pickups": { "title": "Demandes d'enlèvement", "subtitle": "Les demandes que les industriels vous adressent.", "emptyTitle": "Aucune demande", "emptyHint": "Les demandes d'enlèvement de vos clients apparaîtront ici." },
-    "profile": { "title": "Profil et déchets acceptés", "subtitle": "Ces informations figurent dans l'annuaire consulté par les industriels.", "published": "Profil publié dans l'annuaire", "unpublished": "Profil non publié (en attente de validation)", "addWaste": "Ajouter un déchet accepté", "saved": "Profil enregistré." },
-    "accreditations": { "title": "Mes agréments", "subtitle": "Chaque agrément est vérifié par Diva Software avant d'être affiché.", "add": "Ajouter un agrément", "added": "Agrément transmis pour validation.", "withdraw": "Retirer", "withdrawConfirm": "Retirer cet agrément ?", "withdrawn": "Agrément retiré.", "emptyTitle": "Aucun agrément", "emptyHint": "Sans agrément valide, vous ne pouvez pas être choisi pour un enlèvement." },
-    "documents": { "title": "Documents", "subtitle": "Certificats que vous avez déposés et bordereaux auxquels vous êtes partie." }
+    "pickups": {
+      "title": "Demandes d'enlèvement",
+      "subtitle": "Les demandes que les industriels vous adressent.",
+      "emptyTitle": "Aucune demande",
+      "emptyHint": "Les demandes d'enlèvement de vos clients apparaîtront ici."
+    },
+    "profile": {
+      "title": "Profil et déchets acceptés",
+      "subtitle": "Ces informations figurent dans l'annuaire consulté par les industriels.",
+      "published": "Profil publié dans l'annuaire",
+      "unpublished": "Profil non publié (en attente de validation)",
+      "addWaste": "Ajouter un déchet accepté",
+      "saved": "Profil enregistré."
+    },
+    "accreditations": {
+      "title": "Mes agréments",
+      "subtitle": "Chaque agrément est vérifié par Diva Software avant d'être affiché.",
+      "add": "Ajouter un agrément",
+      "added": "Agrément transmis pour validation.",
+      "withdraw": "Retirer",
+      "withdrawConfirm": "Retirer cet agrément ?",
+      "withdrawn": "Agrément retiré.",
+      "emptyTitle": "Aucun agrément",
+      "emptyHint": "Sans agrément valide, vous ne pouvez pas être choisi pour un enlèvement."
+    },
+    "documents": {
+      "title": "Documents",
+      "subtitle": "Certificats que vous avez déposés et bordereaux auxquels vous êtes partie."
+    }
   },
   "platform": {
     "companies": {
       "title": "Sociétés",
       "subtitle": "Inscriptions à valider et comptes clients.",
       "type": "Type",
-      "types": { "industrial": "Industriel", "provider": "Prestataire", "brand": "Marque" },
+      "types": {
+        "industrial": "Industriel",
+        "provider": "Prestataire",
+        "brand": "Marque"
+      },
       "submittedAt": "Soumise le",
       "contact": "Contact",
       "emailVerified": "Email confirmé",
@@ -913,10 +1173,41 @@
       "planActivated": "Formule activée et première facture émise.",
       "emptyTitle": "Aucune société"
     },
-    "accreditations": { "title": "Agréments à valider", "subtitle": "Agréments déposés par les prestataires.", "approve": "Approuver", "reject": "Rejeter", "rejectReason": "Motif du rejet", "reviewed": "Décision enregistrée. Le prestataire est prévenu.", "emptyTitle": "Aucun agrément en attente" },
-    "payments": { "title": "Virements déclarés", "subtitle": "Paiements par virement à rapprocher.", "validate": "Valider", "reject": "Rejeter", "rejectReason": "Motif du rejet", "declaredOn": "Déclaré le", "reference": "Référence", "reviewed": "Décision enregistrée.", "emptyTitle": "Aucun virement en attente" },
-    "catalog": { "title": "Catalogue de déchets de référence", "subtitle": "Types proposés à tous les clients.", "new": "Nouveau type de référence", "usedBy": "Activé par", "nameFr": "Libellé (français)", "nameEn": "Libellé (anglais)", "saved": "Catalogue mis à jour." },
-    "roles": { "title": "Rôles et permissions", "subtitle": "Matrice des rôles standard, commune à toutes les sociétés. Les modifications s'appliquent immédiatement.", "audience": "Type de compte", "saved": "Matrice enregistrée." }
+    "accreditations": {
+      "title": "Agréments à valider",
+      "subtitle": "Agréments déposés par les prestataires.",
+      "approve": "Approuver",
+      "reject": "Rejeter",
+      "rejectReason": "Motif du rejet",
+      "reviewed": "Décision enregistrée. Le prestataire est prévenu.",
+      "emptyTitle": "Aucun agrément en attente"
+    },
+    "payments": {
+      "title": "Virements déclarés",
+      "subtitle": "Paiements par virement à rapprocher.",
+      "validate": "Valider",
+      "reject": "Rejeter",
+      "rejectReason": "Motif du rejet",
+      "declaredOn": "Déclaré le",
+      "reference": "Référence",
+      "reviewed": "Décision enregistrée.",
+      "emptyTitle": "Aucun virement en attente"
+    },
+    "catalog": {
+      "title": "Catalogue de déchets de référence",
+      "subtitle": "Types proposés à tous les clients.",
+      "new": "Nouveau type de référence",
+      "usedBy": "Activé par",
+      "nameFr": "Libellé (français)",
+      "nameEn": "Libellé (anglais)",
+      "saved": "Catalogue mis à jour."
+    },
+    "roles": {
+      "title": "Rôles et permissions",
+      "subtitle": "Matrice des rôles standard, commune à toutes les sociétés. Les modifications s'appliquent immédiatement.",
+      "audience": "Type de compte",
+      "saved": "Matrice enregistrée."
+    }
   },
   "mobile": {
     "title": "Atelier",
@@ -935,7 +1226,12 @@
     "lastSync": "Dernière synchronisation : {{date}}",
     "never": "jamais",
     "desktop": "Version bureau",
-    "step": { "site": "Site", "zone": "Zone", "type": "Type de déchet", "weight": "Poids" },
+    "step": {
+      "site": "Site",
+      "zone": "Zone",
+      "type": "Type de déchet",
+      "weight": "Poids"
+    },
     "chooseSite": "Sur quel site ?",
     "chooseZone": "Dans quelle zone ?",
     "chooseType": "Quel déchet ?",
@@ -969,6 +1265,117 @@
       "confirm": "Valider le chargement",
       "missing": "{{count}} lot(s) non scanné(s) resteront en stock.",
       "none": "Aucun enlèvement confirmé à charger."
+    }
+  },
+  "validation": {
+    "required": "Ce champ est obligatoire.",
+    "email": "Adresse e-mail invalide.",
+    "minlength": "{{requiredLength}} caractères au minimum.",
+    "maxlength": "{{requiredLength}} caractères au maximum.",
+    "min": "La valeur minimale est {{min}}.",
+    "max": "La valeur maximale est {{max}}.",
+    "pattern": "Format invalide.",
+    "invalid": "Valeur invalide."
+  },
+  "primeng": {
+    "dayNames": [
+      "dimanche",
+      "lundi",
+      "mardi",
+      "mercredi",
+      "jeudi",
+      "vendredi",
+      "samedi"
+    ],
+    "dayNamesShort": [
+      "dim.",
+      "lun.",
+      "mar.",
+      "mer.",
+      "jeu.",
+      "ven.",
+      "sam."
+    ],
+    "dayNamesMin": [
+      "D",
+      "L",
+      "M",
+      "M",
+      "J",
+      "V",
+      "S"
+    ],
+    "monthNames": [
+      "janvier",
+      "février",
+      "mars",
+      "avril",
+      "mai",
+      "juin",
+      "juillet",
+      "août",
+      "septembre",
+      "octobre",
+      "novembre",
+      "décembre"
+    ],
+    "monthNamesShort": [
+      "janv.",
+      "févr.",
+      "mars",
+      "avr.",
+      "mai",
+      "juin",
+      "juil.",
+      "août",
+      "sept.",
+      "oct.",
+      "nov.",
+      "déc."
+    ],
+    "firstDayOfWeek": 1,
+    "dateFormat": "dd/mm/yy",
+    "weekHeader": "Sem.",
+    "today": "Aujourd'hui",
+    "clear": "Effacer",
+    "chooseDate": "Choisir une date",
+    "chooseYear": "Choisir l'année",
+    "chooseMonth": "Choisir le mois",
+    "prevMonth": "Mois précédent",
+    "nextMonth": "Mois suivant",
+    "prevYear": "Année précédente",
+    "nextYear": "Année suivante",
+    "prevDecade": "Décennie précédente",
+    "nextDecade": "Décennie suivante",
+    "emptyMessage": "Aucun élément",
+    "emptyFilterMessage": "Aucun résultat",
+    "emptySearchMessage": "Aucun résultat",
+    "searchMessage": "{0} résultats disponibles",
+    "selectionMessage": "{0} sélectionnés",
+    "emptySelectionMessage": "Aucun élément sélectionné",
+    "accept": "Oui",
+    "reject": "Non",
+    "choose": "Choisir",
+    "upload": "Envoyer",
+    "cancel": "Annuler",
+    "aria": {
+      "close": "Fermer",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "navigation": "Navigation",
+      "selectAll": "Tout sélectionner",
+      "unselectAll": "Tout désélectionner",
+      "selectRow": "Sélectionner la ligne",
+      "unselectRow": "Désélectionner la ligne",
+      "firstPageLabel": "Première page",
+      "lastPageLabel": "Dernière page",
+      "nextPageLabel": "Page suivante",
+      "prevPageLabel": "Page précédente",
+      "previousPageLabel": "Page précédente",
+      "rowsPerPageLabel": "Lignes par page",
+      "pageLabel": "Page {page}",
+      "jumpToPageDropdownLabel": "Aller à la page",
+      "clear": "Effacer"
     }
   }
 }

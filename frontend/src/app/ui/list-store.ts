@@ -31,7 +31,8 @@ export class ListStore<T, F extends object = Record<string, never>, Extra = unkn
   readonly page = computed(() => this.state().page);
   readonly perPage = computed(() => this.state().perPage);
   /** True when the list is empty because of the filters, not because nothing exists. */
-  readonly filtered = computed(() => Object.values(this.state().filter).some((value) => value !== null && value !== undefined && value !== '' && !(Array.isArray(value) && value.length === 0)));
+  readonly activeCount = computed(() => Object.values(this.state().filter).filter((value) => value !== null && value !== undefined && value !== '' && !(Array.isArray(value) && value.length === 0)).length);
+  readonly filtered = computed(() => this.activeCount() > 0);
 
   constructor(
     private readonly loader: (query: Query) => Observable<Page<T> & Extra>,

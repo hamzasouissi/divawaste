@@ -1,30 +1,30 @@
 import { Injectable, inject } from '@angular/core';
 import { AbstractControl, FormGroup } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslocoService } from '@jsverse/transloco';
+import { MessageService } from 'primeng/api';
 
 import { ApiError } from '../api/api';
 
 /**
- * One way to tell the user what happened. Success messages are short and disappear; errors stay until
- * dismissed and always say something actionable — a translated business message when the API code is known,
+ * One way to tell the user what happened (PrimeNG Toast, rendered by the application root). Success messages
+ * are short and disappear; errors stay longer and always say something actionable — a translated business message when the API code is known,
  * the request reference otherwise.
  */
 @Injectable({ providedIn: 'root' })
 export class Toast {
-  private readonly snack = inject(MatSnackBar);
+  private readonly messages = inject(MessageService);
   private readonly transloco = inject(TranslocoService);
 
   success(key: string, params?: Record<string, unknown>): void {
-    this.snack.open(this.transloco.translate(key, params), undefined, { duration: 3500, panelClass: 'dw-toast-success' });
+    this.messages.add({ severity: 'success', detail: this.transloco.translate(key, params), life: 3500 });
   }
 
   info(key: string, params?: Record<string, unknown>): void {
-    this.snack.open(this.transloco.translate(key, params), undefined, { duration: 4500 });
+    this.messages.add({ severity: 'info', detail: this.transloco.translate(key, params), life: 4500 });
   }
 
   error(error: unknown): void {
-    this.snack.open(this.describe(error), this.transloco.translate('common.close'), { duration: 12000, panelClass: 'dw-toast-error' });
+    this.messages.add({ severity: 'error', detail: this.describe(error), life: 12000 });
   }
 
   /** Translated text, for the few places that build a sentence outside a template (dialog titles…). */
