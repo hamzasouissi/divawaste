@@ -226,6 +226,33 @@ class PickupScenarioTest extends TestCase
         $this->withToken($this->tokenFor($elsewhere, $this->industrial))->getJson('/api/v1/pickups')->assertOk()->assertJsonCount(0, 'data');
     }
 
+    public function test_a_gap_on_one_lot_flags_the_pickup_even_when_the_total_is_within_tolerance(): void
+    {
+        $this->partner();
+        $small = $this->lot('36.5');
+        $large = $this->lot('120');
+        $industrial = fn () => $this->withToken($this->tokenFor($this->manager, $this->industrial));
+        $provider = fn () => $this->withToken($this->tokenFor($this->providerUser, $this->provider));
+
+        $pickup = $industrial()->postJson('/api/v1/pickups', [
+            'site' => $this->site->ulid, 'provider' => $this->provider->ulid, 'requested_date' => now()->addDay()->toDateString(), 'lots' => [$small, $large],
+        ])->assertCreated()->json('data');
+        $numbers = array_column($pickup['lots'], 'lot_number_snapshot');
+        $industrial()->postJson("/api/v1/pickups/{$pickup['ulid']}/submit")->assertOk();
+        $provider()->postJson("/api/v1/pickups/{$pickup['ulid']}/confirm", ['confirmed_date' => now()->addDay()->toDateString()])->assertOk();
+        $industrial()->postJson("/api/v1/pickups/{$pickup['ulid']}/collect", ['lots' => [['lot' => $small], ['lot' => $large]]])->assertOk();
+
+        // 36.5 → 33.2 kg is 9 % off on that lot, but only 2.1 % of the 156.5 kg loaded.
+        $received = $provider()->postJson("/api/v1/pickups/{$pickup['ulid']}/receive", ['lots' => [
+            ['lot_number' => $numbers[0], 'received_weight_kg' => '33.2'], ['lot_number' => $numbers[1], 'received_weight_kg' => '120'],
+        ]])->assertOk()->json('data');
+
+        $this->assertSame('-2.11', $received['weight_variance_pct']);
+        $this->assertTrue($received['lots'][0]['variance_flagged']);
+        $this->assertTrue($received['variance_flagged']);
+        Notification::assertSentTo($this->manager, BusinessEventNotification::class, fn (BusinessEventNotification $n) => $n->type === 'pickup.variance_flagged');
+    }
+
     private function partner(): void
     {
         $this->withToken($this->tokenFor($this->makeMember($this->industrial, ['client_admin' => null]), $this->industrial))

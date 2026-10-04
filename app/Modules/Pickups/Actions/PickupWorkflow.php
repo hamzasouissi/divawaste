@@ -130,6 +130,7 @@ final class PickupWorkflow
         return $this->step($pickup, [PickupStatus::Collected], PickupStatus::Received, function (Pickup $p) use ($received, $actor) {
             $threshold = $this->varianceThreshold((int) $p->company_id);
             $total = '0';
+            $lineFlagged = false;
             foreach ($this->lines($p) as $line) {
                 if ($line->line_status !== 'loaded' || ! isset($received[$line->lot_number_snapshot])) {
                     continue;
@@ -138,10 +139,12 @@ final class PickupWorkflow
                 $line->forceFill(['line_status' => 'received', 'received_weight_kg' => $received[$line->lot_number_snapshot], 'weight_variance_kg' => $kg,
                     'weight_variance_pct' => $pct, 'variance_flagged' => $flag, 'received_at' => now(), 'received_by_user_id' => $actor->id])->save();
                 $total = bcadd($total, $received[$line->lot_number_snapshot], 3);
+                $lineFlagged = $lineFlagged || $flag;
             }
+            // A gap on one lot must not be hidden by the others: the pickup is flagged when its total or any of its lots is off.
             [$kg, $pct, $flag] = self::variance((string) $p->departure_weight_kg, $total, $threshold);
             $p->forceFill(['received_weight_kg' => $total, 'weight_variance_kg' => $kg, 'weight_variance_pct' => $pct,
-                'variance_threshold_pct' => $threshold, 'variance_flagged' => $flag, 'received_at' => now(), 'received_by_user_id' => $actor->id]);
+                'variance_threshold_pct' => $threshold, 'variance_flagged' => $flag || $lineFlagged, 'received_at' => now(), 'received_by_user_id' => $actor->id]);
             $p->save();
         });
     }
