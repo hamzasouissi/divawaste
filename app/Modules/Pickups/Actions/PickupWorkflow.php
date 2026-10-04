@@ -147,6 +147,113 @@ final class PickupWorkflow
     }
 
     /**
+     * The industrial acknowledges a flagged weight discrepancy (M4-04) before the pickup can be closed.
+     */
+    public function acknowledgeVariance(Pickup $pickup, string $comment, User $actor): Pickup
+    {
+        return DB::transaction(function () use ($pickup, $comment, $actor) {
+            $pickup = Pickup::query()->whereKey($pickup->id)->lockForUpdate()->firstOrFail();
+            if (! $pickup->variance_flagged || $pickup->status !== PickupStatus::Received) {
+                throw new BusinessRuleViolation('NO_VARIANCE_TO_ACKNOWLEDGE', 'This pickup has no weight discrepancy waiting for acknowledgement.');
+            }
+            $pickup->forceFill(['variance_acknowledged_at' => now(), 'variance_acknowledged_by_user_id' => $actor->id, 'variance_comment' => $comment])->save();
+
+            return $pickup;
+        });
+    }
+
+    /**
+     * M4-05: sale price or disposal cost per lot. `net_amount` is signed: positive = revenue, negative = cost.
+     * Priced on the received weight when known (what the provider actually took), otherwise on the departure weight.
+     *
+     * @param  array<string, array{direction: string, pricing_mode: string, unit_price: string}>  $prices  lot number => price
+     */
+    public function price(Pickup $pickup, array $prices, User $actor): Pickup
+    {
+        return DB::transaction(function () use ($pickup, $prices) {
+            $pickup = Pickup::query()->whereKey($pickup->id)->lockForUpdate()->firstOrFail();
+            if (! in_array($pickup->status, [PickupStatus::Collected, PickupStatus::Received, PickupStatus::Completed], true)) {
+                throw new BusinessRuleViolation('PICKUP_NOT_PRICEABLE', 'Prices are entered once the lots have left the site.');
+            }
+
+            foreach ($this->lines($pickup) as $line) {
+                $price = $prices[$line->lot_number_snapshot] ?? null;
+                if ($price === null || ! in_array($line->line_status, ['loaded', 'received', 'treated'], true)) {
+                    continue;
+                }
+
+                $received = $line->received_weight_kg !== null;
+                $weight = (string) ($received ? $line->received_weight_kg : $line->departure_weight_kg);
+                $amount = match ($price['pricing_mode']) {
+                    'per_kg' => bcmul($weight, $price['unit_price'], 3),
+                    'per_tonne' => bcdiv(bcmul($weight, $price['unit_price'], 6), '1000', 3),
+                    default => bcadd($price['unit_price'], '0', 3),
+                };
+
+                $line->forceFill([
+                    'pricing_mode' => $price['pricing_mode'],
+                    'unit_price' => $price['unit_price'],
+                    'price_basis' => $price['pricing_mode'] === 'flat' ? 'flat' : ($received ? 'received' : 'departure'),
+                    'net_amount' => $price['direction'] === 'cost' ? bcsub('0', $amount, 3) : $amount,
+                    'currency_code' => $pickup->currency_code,
+                ])->save();
+            }
+
+            return $pickup;
+        });
+    }
+
+    /**
+     * The provider declares what was done with each received lot (channel), which drives the recovery rate (M6-01).
+     *
+     * @param  array<string, int>  $channels  lot number => treatment channel id
+     */
+    public function treat(Pickup $pickup, array $channels, User $actor): Pickup
+    {
+        return DB::transaction(function () use ($pickup, $channels, $actor) {
+            $pickup = Pickup::query()->whereKey($pickup->id)->lockForUpdate()->firstOrFail();
+            if ($pickup->status !== PickupStatus::Received) {
+                throw new BusinessRuleViolation('INVALID_PICKUP_TRANSITION', 'Treatment is declared on a received pickup.');
+            }
+
+            $this->context->runAs(Company::query()->findOrFail($pickup->company_id), function () use ($pickup, $channels, $actor) {
+                foreach ($this->lines($pickup) as $line) {
+                    if ($line->line_status !== 'received' || ! isset($channels[$line->lot_number_snapshot])) {
+                        continue;
+                    }
+                    $line->forceFill(['line_status' => 'treated', 'actual_treatment_channel_id' => $channels[$line->lot_number_snapshot], 'treated_at' => now()])->save();
+                    $this->lots->handle(WasteLot::query()->findOrFail($line->waste_lot_id), LotStatus::Treated, $actor);
+                }
+            });
+
+            return $pickup;
+        });
+    }
+
+    /**
+     * Closure by the industrial: every received lot has a declared treatment and any discrepancy was acknowledged.
+     */
+    public function complete(Pickup $pickup, User $actor): Pickup
+    {
+        return $this->step($pickup, [PickupStatus::Received], PickupStatus::Completed, function (Pickup $p) use ($actor) {
+            if ($p->variance_flagged && $p->variance_acknowledged_at === null) {
+                throw new BusinessRuleViolation('VARIANCE_NOT_ACKNOWLEDGED', 'The weight discrepancy must be acknowledged before closing the pickup.');
+            }
+
+            foreach ($this->lines($p) as $line) {
+                if ($line->line_status === 'received') {
+                    throw new BusinessRuleViolation('TREATMENT_MISSING', "The treatment of lot {$line->lot_number_snapshot} has not been declared by the provider.");
+                }
+                if ($line->line_status === 'treated') {
+                    $this->lots->handle(WasteLot::query()->findOrFail($line->waste_lot_id), LotStatus::Closed, $actor);
+                }
+                $line->forceFill(['is_active_flag' => null])->save();
+            }
+            $p->forceFill(['completed_at' => now(), 'completed_by_user_id' => $actor->id]);
+        });
+    }
+
+    /**
      * @return array{string, string|null, bool} variance kg, variance % (null if no departure weight), flagged
      */
     public static function variance(string $departure, string $received, string $thresholdPct): array
