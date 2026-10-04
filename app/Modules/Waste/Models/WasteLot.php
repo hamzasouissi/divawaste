@@ -13,6 +13,7 @@ use App\Modules\Waste\Enums\LotStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -100,6 +101,16 @@ class WasteLot extends Model
     public function tags(): HasMany
     {
         return $this->hasMany(LotTag::class);
+    }
+
+    /**
+     * The QR printed on the label: one active tag per lot (enforced by uq_lot_tags_active).
+     *
+     * @return HasOne<LotTag, $this>
+     */
+    public function activeQrTag(): HasOne
+    {
+        return $this->hasOne(LotTag::class)->where('tag_type', 'qr')->where('is_active_flag', true);
     }
 
     /**

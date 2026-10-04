@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Sites\Models\Site;
@@ -24,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Reset for every request and every queued job.
         $this->app->scoped(TenantContext::class);
+        $this->app->scoped(ReferenceCodes::class);
 
         // API only: Fortify provides the TOTP engine (cahier §5), never its session/web routes.
         Fortify::ignoreRoutes();

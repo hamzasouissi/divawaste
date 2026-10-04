@@ -48,18 +48,15 @@ class Site extends Model
                 return;
             }
 
-            $zoneTypeId = (int) DB::table('zone_types')->where('code', 'waste_storage')->value('id');
+            // Every site starts with its waste storage area so lots can be created at once (M1-01, M2-01).
+            $type = DB::table('zone_types')->where('code', 'waste_storage')->first(['id', 'name']);
 
             $site->zones()->create([
                 'ulid' => strtoupper((string) Str::ulid()),
-                'zone_type_id' => $zoneTypeId,
-                'code' => 'DEFAULT',
-                'name' => 'Default Zone',
-                'capacity_kg' => 0,
-                'capacity_m3' => 0,
-                'capacity_alert_pct' => 90,
+                'zone_type_id' => (int) $type->id,
+                'code' => 'STOCK',
+                'name' => (string) (json_decode((string) $type->name, true)['fr'] ?? 'Aire de stockage déchets'),
                 'is_waste_storage' => true,
-                'is_active' => true,
             ]);
         });
     }

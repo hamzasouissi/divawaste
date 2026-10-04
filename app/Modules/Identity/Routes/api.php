@@ -19,6 +19,7 @@ use App\Modules\Identity\Support\CompanyRoles;
 use App\Modules\Identity\Support\EmailVerification;
 use App\Modules\Identity\Support\LegalAcceptance;
 use App\Modules\Identity\Support\PasswordRules;
+use App\Modules\Notifications\Actions\NotifyUsers;
 use App\Modules\Tenancy\Enums\MembershipStatus;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\Resources\CompanyResource;
@@ -94,8 +95,12 @@ Route::post('auth/email/verify', function (Request $request) {
     if ($user->email_verified_at === null) {
         $user->forceFill(['email_verified_at' => now()])->save();
         // M0-06: a registration only reaches the platform review queue once the contact's email is confirmed.
-        Company::query()->where('primary_contact_user_id', $user->id)->where('status', 'pending_verification')
-            ->update(['status' => 'pending_approval', 'submitted_at' => now()]);
+        foreach (Company::query()->where('primary_contact_user_id', $user->id)->where('status', 'pending_verification')->get() as $company) {
+            $company->forceFill(['status' => 'pending_approval', 'submitted_at' => now()])->save();
+            app(NotifyUsers::class)->toPlatformPermission('platform.companies.review', 'company.pending_review', [
+                'company' => $company->legal_name, 'type' => $company->company_type->value,
+            ], '/platform/companies/'.$company->ulid);
+        }
     }
 
     return response()->json(['data' => ['email' => $user->email, 'verified' => true]]);

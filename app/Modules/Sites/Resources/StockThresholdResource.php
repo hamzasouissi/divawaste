@@ -19,8 +19,11 @@ class StockThresholdResource extends JsonResource
         return [
             'ulid' => $this->ulid,
             'site' => $this->site?->ulid,
+            'site_name' => $this->site?->name,
             'zone' => $this->zone?->ulid,
+            'zone_name' => $this->zone?->name,
             'waste_type' => $this->wasteType?->ulid,
+            'waste_type_name' => $this->wasteType?->name,
             'max_quantity_kg' => $this->max_quantity_kg,
             'warning_pct' => $this->warning_pct,
             'alert_level' => $this->alert_level,
