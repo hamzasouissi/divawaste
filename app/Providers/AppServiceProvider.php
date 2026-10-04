@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Fortify\Fortify;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,6 +21,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // Reset for every request and every queued job.
         $this->app->scoped(TenantContext::class);
+
+        // API only: Fortify provides the TOTP engine (cahier §5), never its session/web routes.
+        Fortify::ignoreRoutes();
     }
 
     public function boot(): void

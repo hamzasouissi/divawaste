@@ -8,9 +8,12 @@
     "require": {
         "php": "^8.3",
         "ext-bcmath": "*",
+        "barryvdh/laravel-dompdf": "^3.1",
+        "laravel/fortify": "^1.40",
         "laravel/framework": "^13.17",
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
+        "maatwebsite/excel": "^4.0",
         "spatie/laravel-permission": "^8.3"
     },
     "require-dev": {
@@ -72,7 +75,7 @@
     },
     "extra": {
         "laravel": {
-            "dont-discover": []
+            "dont-discover": ["laravel/passkeys"]
         }
     },
     "config": {

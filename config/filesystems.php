@@ -33,7 +33,8 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Files are served only through authorised StoredFile endpoints, never by the framework route.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
