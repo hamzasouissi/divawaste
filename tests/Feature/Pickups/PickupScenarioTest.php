@@ -195,6 +195,37 @@ class PickupScenarioTest extends TestCase
         $this->withToken($this->tokenFor($elsewhere, $this->industrial))->getJson("/api/v1/pickups/{$ulid}")->assertForbidden();
     }
 
+    public function test_operator_who_loads_sees_confirmed_pickups_of_their_site_and_nothing_else(): void
+    {
+        $this->partner();
+        $manager = fn () => $this->withToken($this->tokenFor($this->manager, $this->industrial));
+        $request = fn (string $lot) => $manager()->postJson('/api/v1/pickups', [
+            'site' => $this->site->ulid, 'provider' => $this->provider->ulid, 'requested_date' => now()->addDay()->toDateString(), 'lots' => [$lot],
+        ])->assertCreated()->json('data.ulid');
+
+        $lot = $this->lot('30');
+        $confirmed = $request($lot);
+        $draft = $request($this->lot('10'));
+        $manager()->postJson("/api/v1/pickups/{$confirmed}/submit")->assertOk();
+        $this->withToken($this->tokenFor($this->providerUser, $this->provider))
+            ->postJson("/api/v1/pickups/{$confirmed}/confirm", ['confirmed_date' => now()->addDay()->toDateString()])->assertOk();
+
+        $operatorUser = $this->makeMember($this->industrial, ['workshop_operator' => $this->site]);
+        $operator = fn () => $this->withToken($this->tokenFor($operatorUser, $this->industrial));
+
+        $operator()->getJson('/api/v1/pickups')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.ulid', $confirmed);
+        $operator()->getJson("/api/v1/pickups/{$draft}")->assertForbidden();
+        $operator()->getJson("/api/v1/pickups/{$confirmed}")->assertOk()->assertJsonPath('data.lots.0.lot', $lot);
+        $operator()->postJson("/api/v1/pickups/{$confirmed}/collect", ['lots' => [['lot' => $lot]]])->assertOk()->assertJsonPath('data.status', 'collected');
+        // Once loaded it is no longer theirs to see.
+        $operator()->getJson('/api/v1/pickups')->assertOk()->assertJsonCount(0, 'data');
+        $operator()->getJson("/api/v1/pickups/{$confirmed}")->assertForbidden();
+
+        // An operator of another site sees none of it.
+        $elsewhere = $this->makeMember($this->industrial, ['workshop_operator' => $this->makeSite($this->industrial, 'TUN')]);
+        $this->withToken($this->tokenFor($elsewhere, $this->industrial))->getJson('/api/v1/pickups')->assertOk()->assertJsonCount(0, 'data');
+    }
+
     private function partner(): void
     {
         $this->withToken($this->tokenFor($this->makeMember($this->industrial, ['client_admin' => null]), $this->industrial))

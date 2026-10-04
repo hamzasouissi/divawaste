@@ -19,6 +19,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(AssignRequestId::class);
         // Web SPA: cookie session + CSRF for requests coming from the configured front-end origins (cahier §5).
         $middleware->statefulApi();
+        // The workshop app replays its offline queue with its device bearer token, sent without cookies (it must
+        // work after the web session has expired). No cookie means nothing for CSRF to protect; the endpoint itself
+        // refuses anything that is not a registered device token.
+        $middleware->validateCsrfTokens(except: ['api/v1/sync/push']);
         $middleware->throttleApi('api');
         $middleware->alias(['tenant' => EstablishTenantContext::class]);
         // Tenant context must exist before route-model binding queries scoped models.

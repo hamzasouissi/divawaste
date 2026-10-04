@@ -20,8 +20,10 @@ use Illuminate\Validation\Rule;
 
 Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     $allow = fn (Request $request, string $permission, ?int $siteId = null) => abort_unless($request->user()->can($permission, $siteId), 403);
+    // Whoever loads the truck must see what is to be loaded: `pickups.load` alone opens the confirmed pickups of the site, nothing else.
     $view = fn (Request $request, Pickup $pickup) => abort_unless(
-        $request->user()->can('pickups.view', $pickup->site_id) || $request->user()->can('provider.pickups.view'), 403);
+        $request->user()->can('pickups.view', $pickup->site_id) || $request->user()->can('provider.pickups.view')
+        || ($pickup->status === PickupStatus::Confirmed && $request->user()->can('pickups.load', $pickup->site_id)), 403);
     $show = fn (Pickup $pickup) => new PickupResource($pickup->load('lines'));
 
     /*
@@ -31,6 +33,10 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::get('pickups', function (Request $request, AccessResolver $access, TenantContext $context) {
         $provider = $context->companyType() !== CompanyType::Industrial;
         $siteIds = $provider ? null : $access->siteIdsFor($request->user(), 'pickups.view');
+        $loadOnly = $siteIds === [];
+        if ($loadOnly) {
+            $siteIds = $access->siteIdsFor($request->user(), 'pickups.load');
+        }
         abort_unless($provider ? $request->user()->can('provider.pickups.view') : $siteIds !== [], 403);
 
         $input = $request->validate([
@@ -52,6 +58,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             // A provider never sees drafts: they have not been sent to it.
             ->when($provider, fn ($query) => $query->where('status', '!=', PickupStatus::Draft))
             ->when($siteIds !== null, fn ($query) => $query->whereIn('site_id', $siteIds))
+            ->when($loadOnly, fn ($query) => $query->where('status', PickupStatus::Confirmed))
             ->when($filter['status'] ?? null, fn ($query, $value) => $query->whereIn('status', $value))
             ->when(! $provider && ($filter['site'] ?? null), fn ($query) => $query->whereIn('site_id', Site::query()->select('id')->where('ulid', strtoupper($filter['site']))))
             ->when($filter['provider'] ?? null, fn ($query, $value) => $query->whereIn('provider_company_id', Company::query()->select('id')->where('ulid', strtoupper($value))))
