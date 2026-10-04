@@ -1,7 +1,8 @@
 <?php
 
-use App\Modules\Catalog\Models\WasteType;
+use App\Modules\Catalog\Support\UnitConversion;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
+use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Sites\Actions\CreateSite;
 use App\Modules\Sites\Actions\CreateStockThreshold;
@@ -16,7 +17,6 @@ use App\Modules\Sites\Resources\SiteResource;
 use App\Modules\Sites\Resources\StockThresholdResource;
 use App\Modules\Sites\Resources\ZoneResource;
 use App\Modules\Sites\Support\StockQuery;
-use App\Modules\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -138,7 +138,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     /*
      * M2-07: real-time stock by site, zone and waste type, with zone capacity and threshold state.
      */
-    Route::get('stock', function (Request $request, AccessResolver $access, StockQuery $stock, TenantContext $context) {
+    Route::get('stock', function (Request $request, AccessResolver $access, StockQuery $stock, ReferenceCodes $codes) {
         $siteIds = $access->siteIdsFor($request->user(), 'stock.view');
         abort_if($siteIds === [], 403);
         $filter = $request->validate([
@@ -154,11 +154,13 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             ->when($filter['zone'] ?? null, fn ($query, $value) => $query->where('z.ulid', strtoupper($value)))
             ->when($filter['waste_type'] ?? null, fn ($query, $value) => $query->where('t.ulid', strtoupper($value)))
             ->when(array_key_exists('hazardous', $filter) && $filter['hazardous'] !== null, fn ($query) => $query->where('l.is_hazardous', (bool) $filter['hazardous']))
-            ->groupBy('l.site_id', 'l.zone_id', 'l.waste_type_id', 's.ulid', 's.name', 'z.ulid', 'z.name', 'z.capacity_kg', 'z.capacity_alert_pct', 't.ulid', 't.name', 't.is_hazardous')
+            ->groupBy('l.site_id', 'l.zone_id', 'l.waste_type_id', 's.ulid', 's.name', 'z.ulid', 'z.name', 'z.capacity_kg', 'z.capacity_alert_pct',
+                't.ulid', 't.name', 't.is_hazardous', 't.default_unit_id', 't.density_kg_m3', 't.unit_weight_kg')
             ->orderBy('s.name')->orderBy('z.name')->orderBy('t.name')
             ->get([
                 'l.site_id', 'l.zone_id', 'l.waste_type_id', 's.ulid as site', 's.name as site_name', 'z.ulid as zone', 'z.name as zone_name',
                 'z.capacity_kg', 'z.capacity_alert_pct', 't.ulid as waste_type', 't.name as waste_type_name', 't.is_hazardous',
+                't.default_unit_id', 't.density_kg_m3', 't.unit_weight_kg',
                 DB::raw('SUM(l.net_weight_kg) as quantity_kg'), DB::raw('COUNT(*) as lots'),
                 DB::raw("SUM(CASE WHEN l.status = 'awaiting_pickup' THEN l.net_weight_kg ELSE 0 END) as awaiting_pickup_kg"),
                 DB::raw('MIN(l.generated_at) as oldest_lot_at'),
@@ -169,10 +171,14 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             ->get(['ulid', 'site_id', 'zone_id', 'waste_type_id', 'max_quantity_kg', 'warning_pct']);
 
         return response()->json([
-            'data' => $rows->map(function ($row) use ($zoneTotals) {
+            'data' => $rows->map(function ($row) use ($zoneTotals, $codes) {
                 $capacity = $row->capacity_kg === null || bccomp((string) $row->capacity_kg, '0', 3) === 0 ? null : (string) $row->capacity_kg;
+                $unit = $codes->code('units', $row->default_unit_id);
 
                 return [
+                    // M1-05: the same quantity in the unit this waste type is counted in (null when it cannot be converted).
+                    'unit' => $unit,
+                    'quantity_in_unit' => UnitConversion::fromKg((string) $row->quantity_kg, $unit, $row->density_kg_m3, $row->unit_weight_kg),
                     'site' => $row->site, 'site_name' => $row->site_name, 'zone' => $row->zone, 'zone_name' => $row->zone_name,
                     'waste_type' => $row->waste_type, 'waste_type_name' => $row->waste_type_name, 'is_hazardous' => (bool) $row->is_hazardous,
                     'quantity_kg' => (string) $row->quantity_kg, 'awaiting_pickup_kg' => (string) $row->awaiting_pickup_kg, 'lots' => (int) $row->lots,
