@@ -19,8 +19,12 @@ npm install
 npm start          # http://localhost:4200 — /api and /sanctum are proxied to http://localhost:8000 (proxy.conf.json)
 ```
 
-The API must be running (`php artisan serve`) with `FRONTEND_URL=http://localhost:4200` and
-`SANCTUM_STATEFUL_DOMAINS=localhost:4200`. Demo accounts are listed in the API's `docs/SETUP.md`.
+To try the product with ready-made data and accounts, use the demo environment instead: `npm run demo` (port 4300)
+with the API started by `scripts\demo.ps1 api` — see `docs/DEVELOPER_RUNBOOK.md` and `docs/USER_TEST_GUIDE.md` in the API
+repository.
+
+For plain development the API must be running (`php artisan serve`) with `FRONTEND_URL=http://localhost:4200` and
+`SANCTUM_STATEFUL_DOMAINS=localhost:4200`. Demo accounts are listed in the API's `docs/TEST_ACCOUNTS.md`.
 
 ## Check
 
