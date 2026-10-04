@@ -1281,13 +1281,13 @@
       "models": {
         "trial": "Essai gratuit",
         "per_site": "Par site actif",
-        "per_volume": "Par tonne gérée",
+        "per_volume": "Par volume (forfait par période)",
         "hybrid": "Mixte"
       },
       "unit": {
         "trial": "",
         "per_site": "par site",
-        "per_volume": "par tonne",
+        "per_volume": "forfait",
         "hybrid": "par site"
       },
       "priceHint": "Tarif proposé lors de l'activation d'une formule ; il reste modifiable client par client. Un changement de tarif ne modifie pas les abonnements déjà actifs.",

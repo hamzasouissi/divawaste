@@ -11,7 +11,7 @@ export type Audience = 'platform' | 'industrial' | 'provider' | 'none';
 const LANDING: Record<'platform' | 'provider' | 'industrial', [string, string][]> = {
   platform: [
     ['platform.companies.review', '/platform/overview'], ['platform.providers.review', '/platform/accreditations'], ['platform.payments.validate', '/platform/payments'],
-    ['platform.catalog.manage', '/platform/catalog'], ['platform.roles.manage', '/platform/roles'],
+    ['platform.catalog.manage', '/platform/catalog'], ['platform.roles.manage', '/platform/roles'], ['platform.support.view', '/platform/activity'],
   ],
   provider: [
     ['provider.pickups.view', '/provider/pickups'], ['provider.profile.manage', '/provider/profile'], ['provider.accreditations.manage', '/provider/accreditations'], ['users.view', '/admin/users'],
