@@ -57,6 +57,16 @@ class StoreWasteLotRequest extends FormRequest
     {
         $v = fn (string $key) => $this->validated($key) === null ? null : (string) $this->validated($key);
         $token = $this->user()?->currentAccessToken();
+        $deviceId = null;
+
+        if ($token instanceof PersonalAccessToken && $token->device_id !== null) {
+            $deviceId = (int) $token->device_id;
+        } else {
+            $deviceToken = $this->user()?->tokens()->whereNotNull('device_id')->latest('last_used_at')->first();
+            if ($deviceToken !== null) {
+                $deviceId = (int) $deviceToken->device_id;
+            }
+        }
 
         return new CreateWasteLotData(
             siteUlid: strtoupper((string) $v('site')),
@@ -77,8 +87,8 @@ class StoreWasteLotRequest extends FormRequest
             extraAttributes: $this->validated('extra_attributes'),
             notes: $v('notes'),
             generatedAt: $v('generated_at'),
-            deviceId: $token instanceof PersonalAccessToken && $token->device_id !== null ? (int) $token->device_id : null,
-            source: $token instanceof PersonalAccessToken && $token->device_id !== null ? 'mobile' : 'web',
+            deviceId: $deviceId,
+            source: $deviceId !== null ? 'mobile' : 'web',
         );
     }
 }

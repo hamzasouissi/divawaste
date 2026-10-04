@@ -3,15 +3,114 @@
 namespace Tests\Feature\Identity;
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Tenancy\Models\Company;
+use App\Modules\Tenancy\Models\CompanyUser;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
+use Database\Seeders\AuthorizationSeeder;
+use Database\Seeders\ReferenceDataSeeder;
+use Tests\Concerns\InteractsWithTenants;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
 {
+    use InteractsWithTenants;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed([ReferenceDataSeeder::class, AuthorizationSeeder::class]);
+    }
+
+    public function test_login_is_throttled_after_five_attempts_per_minute(): void
+    {
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->postJson('/api/v1/auth/login', [
+                'email' => 'unknown@example.test',
+                'password' => 'wrong-password',
+            ])->assertUnauthorized();
+        }
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => 'unknown@example.test',
+            'password' => 'wrong-password',
+        ])->assertTooManyRequests();
+    }
+
+    public function test_login_issues_company_bound_token_for_single_active_membership(): void
+    {
+        $company = $this->makeCompany();
+        $user = User::factory()->create(['password' => 'a-strong-password-123']);
+        $this->addMembership($user, $company);
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'email' => $user->email,
+            'password' => 'a-strong-password-123',
+        ])->assertOk()
+            ->assertJsonPath('data.token_type', 'Bearer')
+            ->assertJsonPath('data.requires_company_selection', false)
+            ->assertJsonPath('data.company.ulid', $company->ulid)
+            ->assertJsonPath('data.user.ulid', $user->ulid);
+
+        $this->withToken($response->json('data.access_token'))
+            ->getJson('/api/v1/company')
+            ->assertOk()
+            ->assertJsonPath('data.ulid', $company->ulid);
+    }
+
+    public function test_login_requires_company_selection_when_user_has_multiple_memberships(): void
+    {
+        $first = $this->makeCompany();
+        $second = $this->makeCompany();
+        $user = User::factory()->create(['password' => 'a-strong-password-123']);
+        $this->addMembership($user, $first);
+        $this->addMembership($user, $second);
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => $user->email,
+            'password' => 'a-strong-password-123',
+        ])->assertOk()
+            ->assertJsonPath('data.requires_company_selection', true)
+            ->assertJsonCount(2, 'data.companies')
+            ->assertJsonMissingPath('data.access_token');
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'email' => $user->email,
+            'password' => 'a-strong-password-123',
+            'company' => $second->ulid,
+        ])->assertOk()
+            ->assertJsonPath('data.company.ulid', $second->ulid);
+
+        $this->withToken($response->json('data.access_token'))
+            ->getJson('/api/v1/company')
+            ->assertOk()
+            ->assertJsonPath('data.ulid', $second->ulid);
+    }
+
+    public function test_login_rejects_invalid_credentials_inactive_and_locked_users(): void
+    {
+        $user = User::factory()->create(['password' => 'a-strong-password-123']);
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => $user->email,
+            'password' => 'wrong-password',
+        ])->assertUnauthorized()->assertJsonPath('code', 'UNAUTHENTICATED');
+
+        $user->forceFill(['status' => 'disabled'])->save();
+        $this->postJson('/api/v1/auth/login', [
+            'email' => $user->email,
+            'password' => 'a-strong-password-123',
+        ])->assertUnauthorized()->assertJsonPath('code', 'UNAUTHENTICATED');
+
+        $user->forceFill(['status' => 'active', 'locked_until' => now()->addMinutes(10)])->save();
+        $this->postJson('/api/v1/auth/login', [
+            'email' => $user->email,
+            'password' => 'a-strong-password-123',
+        ])->assertUnauthorized()->assertJsonPath('code', 'UNAUTHENTICATED');
+    }
 
     public function test_me_requires_authentication_and_returns_problem_json(): void
     {
@@ -67,5 +166,13 @@ class AuthenticationTest extends TestCase
 
         $this->assertTrue($user->isLocked());
         $this->assertFalse($user->isActive());
+    }
+
+    private function addMembership(User $user, Company $company): void
+    {
+        $this->tenant()->runAs($company, fn () => CompanyUser::query()->create([
+            'user_id' => $user->id,
+            'joined_at' => now(),
+        ]));
     }
 }

@@ -142,6 +142,7 @@ final class PickupWorkflow
             [$kg, $pct, $flag] = self::variance((string) $p->departure_weight_kg, $total, $threshold);
             $p->forceFill(['received_weight_kg' => $total, 'weight_variance_kg' => $kg, 'weight_variance_pct' => $pct,
                 'variance_threshold_pct' => $threshold, 'variance_flagged' => $flag, 'received_at' => now(), 'received_by_user_id' => $actor->id]);
+            $p->save();
         });
     }
 
@@ -154,10 +155,11 @@ final class PickupWorkflow
         if (bccomp($departure, '0', 3) === 0) {
             return [$kg, null, false];
         }
-        $raw = bcdiv(bcmul($kg, '100', 6), $departure, 6);
-        $pct = bcadd($raw, bccomp($raw, '0', 6) < 0 ? '-0.005' : '0.005', 2);
 
-        return [$kg, $pct, bccomp(ltrim($raw, '-'), $thresholdPct, 6) > 0];
+        $raw = bcdiv(bcmul($kg, '100', 6), $departure, 6);
+        $pct = number_format((float) $raw, 2, '.', '');
+
+        return [$kg, $pct, abs((float) $raw) > (float) $thresholdPct];
     }
 
     /**

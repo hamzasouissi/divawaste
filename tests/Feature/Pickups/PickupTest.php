@@ -16,6 +16,7 @@ use Database\Seeders\AuthorizationSeeder;
 use Database\Seeders\ReferenceDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithTenants;
 use Tests\TestCase;
 
@@ -46,7 +47,7 @@ class PickupTest extends TestCase
 
         $this->tenant()->runAs($this->provider, function () {
             ProviderProfile::query()->create(['is_recycler' => true, 'is_published' => true, 'published_at' => now()]);
-            $file = DB::table('stored_files')->insertGetId(['ulid' => '01JC2Z8M4W3V9R6T1QXK5B7N2D', 'company_id' => $this->provider->id, 'disk' => 's3',
+            $file = DB::table('stored_files')->insertGetId(['ulid' => strtoupper((string) Str::ulid()), 'company_id' => $this->provider->id, 'disk' => 's3',
                 'path' => 'tenants/p/agrement.pdf', 'original_name' => 'agrement.pdf', 'mime_type' => 'application/pdf', 'extension' => 'pdf',
                 'size_bytes' => 1, 'checksum_sha256' => str_repeat('a', 64), 'purpose' => 'accreditation', 'created_at' => now(), 'updated_at' => now()]);
             $type = DB::table('accreditation_types')->insertGetId(['country_id' => DB::table('countries')->value('id'), 'code' => 'TN_COLLECT', 'name' => '{}']);

@@ -25,10 +25,14 @@ final class TableClassification
         'document_signatures',
         'hazardous_waste_manifests',
         'annual_declarations',
+        'production_volumes',
+        'waste_daily_stats',
+        'generated_reports',
+        'notification_preferences',
     ];
 
     /** company_id NULL = platform row */
-    public const MIXED = ['roles', 'stored_files'];
+    public const MIXED = ['roles', 'stored_files', 'notifications', 'notification_logs', 'audit_logs'];
 
     public const GLOBAL = [
         'currencies', 'countries', 'tax_rates', 'textile_activities', 'legal_documents', 'zone_types',

@@ -17,9 +17,9 @@ class DatabaseConventionsTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_tests_run_on_mariadb_in_utc_with_utf8mb4(): void
+    public function test_tests_run_on_mysql_in_utc_with_utf8mb4(): void
     {
-        $this->assertSame('mariadb', DB::connection()->getDriverName());
+        $this->assertSame('mysql', DB::connection()->getDriverName());
         $this->assertSame('+00:00', DB::scalar('select @@session.time_zone'));
         $this->assertSame('utf8mb4', DB::scalar('select @@character_set_database'));
     }
@@ -32,15 +32,29 @@ class DatabaseConventionsTest extends TestCase
         });
 
         $column = DB::selectOne(
-            "select column_type, character_set_name, collation_name, is_nullable from information_schema.columns
-             where table_schema = database() and table_name = 'convention_probes' and column_name = 'ulid'"
+            "select
+                COLUMN_TYPE as column_type,
+                CHARACTER_SET_NAME as character_set_name,
+                COLLATION_NAME as collation_name,
+                IS_NULLABLE as is_nullable
+             from information_schema.columns
+             where table_schema = database()
+               and table_name = 'convention_probes'
+               and column_name = 'ulid'"
         );
 
-        $this->assertSame('char(26)', $column->column_type);
-        $this->assertSame('ascii', $column->character_set_name);
-        $this->assertSame('ascii_bin', $column->collation_name);
+        $this->assertNotNull($column);
+        $this->assertSame('char(26)', strtolower($column->column_type));
+        $this->assertSame('ascii', strtolower($column->character_set_name));
+        $this->assertSame('ascii_bin', strtolower($column->collation_name));
         $this->assertSame('NO', $column->is_nullable);
-        $this->assertTrue(Schema::hasIndex('convention_probes', 'convention_probes_ulid_unique', 'unique'));
+        $this->assertTrue(
+            Schema::hasIndex(
+                'convention_probes',
+                'convention_probes_ulid_unique',
+                'unique'
+            )
+        );
     }
 
     public function test_has_public_ulid_generates_uppercase_ulid_and_keeps_client_value(): void
@@ -62,11 +76,20 @@ class DatabaseConventionsTest extends TestCase
         };
 
         $generated = $model->newQuery()->create();
-        $this->assertMatchesRegularExpression('/^[0-9A-HJKMNP-TV-Z]{26}$/', $generated->ulid);
+
+        $this->assertMatchesRegularExpression(
+            '/^[0-9A-HJKMNP-TV-Z]{26}$/',
+            $generated->ulid
+        );
+
         $this->assertIsInt($generated->getKey());
         $this->assertSame('ulid', $generated->getRouteKeyName());
 
         $clientUlid = '01JC2Z8M4V7H3K9P2RQW5X6Y8Z';
-        $this->assertSame($clientUlid, $model->newQuery()->create(['ulid' => $clientUlid])->ulid);
+
+        $this->assertSame(
+            $clientUlid,
+            $model->newQuery()->create(['ulid' => $clientUlid])->ulid
+        );
     }
 }

@@ -10,6 +10,7 @@ use App\Modules\Tenancy\Models\CompanyUser;
 use App\Modules\Tenancy\TenantContext;
 use Database\Seeders\ReferenceDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class TenantScopeTest extends TestCase
@@ -89,7 +90,19 @@ class TenantScopeTest extends TestCase
 
     public function test_system_mode_is_explicit_and_unfiltered(): void
     {
-        $this->assertSame(2, $this->context->runAsSystem('test', fn () => CompanyUser::query()->count()));
-        $this->assertFalse($this->context->isSystem(), 'system mode must not leak after the callback');
+        $expected = (int) DB::table('company_users')->count();
+
+        $this->assertSame(
+            $expected,
+            $this->context->runAsSystem(
+                'test',
+                fn () => CompanyUser::query()->count()
+            )
+        );
+
+        $this->assertFalse(
+            $this->context->isSystem(),
+            'system mode must not leak after the callback'
+        );
     }
 }

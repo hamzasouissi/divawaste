@@ -88,6 +88,7 @@ final class TenantContext
             $this->companyId = null;
             $this->companyType = null;
             $this->system = true;
+            Context::forgetHidden('company_id');
 
             return $callback();
         });
@@ -101,12 +102,18 @@ final class TenantContext
      */
     private function restoring(Closure $callback): mixed
     {
-        $previous = [$this->companyId, $this->companyType, $this->system];
+        $previous = [$this->companyId, $this->companyType, $this->system, Context::getHidden('company_id')];
 
         try {
             return $callback();
         } finally {
-            [$this->companyId, $this->companyType, $this->system] = $previous;
+            [$this->companyId, $this->companyType, $this->system, $previousCompanyId] = $previous;
+
+            if ($previousCompanyId !== null) {
+                Context::addHidden('company_id', $previousCompanyId);
+            } else {
+                Context::forgetHidden('company_id');
+            }
         }
     }
 }

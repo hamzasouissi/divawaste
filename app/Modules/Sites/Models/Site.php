@@ -8,6 +8,8 @@ use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class Site extends Model
 {
@@ -35,6 +37,29 @@ class Site extends Model
             'activated_at' => 'datetime',
             'deactivated_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::created(function (self $site): void {
+            if ($site->zones()->exists()) {
+                return;
+            }
+
+            $zoneTypeId = (int) DB::table('zone_types')->where('code', 'waste_storage')->value('id');
+
+            $site->zones()->create([
+                'ulid' => strtoupper((string) Str::ulid()),
+                'zone_type_id' => $zoneTypeId,
+                'code' => 'DEFAULT',
+                'name' => 'Default Zone',
+                'capacity_kg' => 0,
+                'capacity_m3' => 0,
+                'capacity_alert_pct' => 90,
+                'is_waste_storage' => true,
+                'is_active' => true,
+            ]);
+        });
     }
 
     /**
