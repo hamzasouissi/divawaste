@@ -101,6 +101,8 @@ class LotOperationsTest extends TestCase
         $this->assertStringStartsWith('%PDF-', $pdf);
         // 100 mm × 50 mm in PDF points.
         $this->assertMatchesRegularExpression('/MediaBox \[0\.0+ 0\.0+ 283\.46\d* 141\.73\d*\]/', $pdf);
+        // Exactly one label per print: a layout overflowing onto a second page would feed two labels.
+        $this->assertMatchesRegularExpression('/\/Type \/Pages\b[^>]*\/Count 1\b/s', $pdf);
 
         $this->withToken($this->token)->get("/api/v1/lots/{$lot['ulid']}/label")->assertOk();
         $this->withToken($this->token)->getJson("/api/v1/lots/{$lot['ulid']}")->assertOk()->assertJsonPath('data.label_print_count', 2);
