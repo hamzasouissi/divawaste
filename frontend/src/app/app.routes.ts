@@ -21,6 +21,20 @@ export const routes: Routes = [
   },
   { path: 'account-status', canActivate: [authGuard], loadComponent: () => import('./features/auth/account-flows').then((m) => m.AccountStatusPage) },
   {
+    path: 'm',
+    canActivate: [authGuard, audienceGuard('industrial')],
+    loadComponent: () => import('./features/mobile/mobile').then((m) => m.MobileShellComponent),
+    title: 'DivaWaste — Atelier',
+    children: [
+      { path: '', loadComponent: () => import('./features/mobile/mobile').then((m) => m.MobileHomePage) },
+      { path: 'lots/new', loadComponent: () => import('./features/mobile/mobile').then((m) => m.MobileNewLotPage) },
+      { path: 'lots/:tag', loadComponent: () => import('./features/mobile/mobile').then((m) => m.MobileLotPage) },
+      { path: 'scan', loadComponent: () => import('./features/mobile/mobile').then((m) => m.MobileScanPage) },
+      { path: 'loading', loadComponent: () => import('./features/mobile/mobile').then((m) => m.MobileLoadingPage) },
+      { path: 'sync', loadComponent: () => import('./features/mobile/mobile').then((m) => m.MobileSyncPage) },
+    ],
+  },
+  {
     path: '',
     canActivate: [authGuard],
     loadComponent: () => import('./layout/shell').then((m) => m.AppShellComponent),
