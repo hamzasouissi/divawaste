@@ -51,25 +51,35 @@ cd C:\Projects\diva-waste; powershell -ExecutionPolicy Bypass -File .\scripts\de
 cd C:\Projects\DIVA-WASTE-FRONTEND-LAB\frontend; npm run demo
 ```
 
-## URLs
+## Quick reference — where to go
 
-| What | URL |
-|---|---|
-| **The application (open this one)** | http://localhost:4300 |
-| Workshop / mobile application | http://localhost:4300/m (operators are sent there automatically) |
-| Platform administration | http://localhost:4300/platform/companies (sign in as `admin@divawaste.test`) |
-| Provider area | http://localhost:4300/provider/pickups |
-| API (called by the application, not opened by hand) | http://127.0.0.1:8010/api/v1 |
-| API health check | http://127.0.0.1:8010/up |
-| API documentation | No generated site. The routes are listed in [API.md](API.md) |
+| What | URL | Sign in as |
+|---|---|---|
+| **The application (open this one)** | http://localhost:4300 | any account of [TEST_ACCOUNTS.md](TEST_ACCOUNTS.md), password `DivaWaste!2026` |
+| **Back office (platform administrator)** | http://localhost:4300/platform/overview | `admin@divawaste.test` |
+| Client workspace | http://localhost:4300/dashboard | `amira@capbon.test`, `sami@capbon.test` |
+| Workshop / mobile application | http://localhost:4300/m | `leila@capbon.test` (sent there automatically) |
+| Provider workspace | http://localhost:4300/provider/pickups | `karim@sahel-recyclage.test` |
+| Registration (public) | http://localhost:4300/register | — |
+| API (called by the application, not opened by hand) | http://127.0.0.1:8010/api/v1 | — |
+| API health check | http://127.0.0.1:8010/up | — |
+| API documentation | No generated site. Routes are listed in [API.md](API.md) | — |
 
 The browser only ever talks to port 4300: the Angular development server forwards `/api` and `/sanctum` to port 8010
 (`proxy.demo.conf.json`). That single origin is what makes the login cookie work.
 
-Useful application routes: `/login`, `/register`, `/forgot-password`, `/dashboard`, `/lots`, `/stock`, `/pickups`,
-`/providers`, `/compliance/register`, `/compliance/manifests`, `/compliance/declarations`, `/compliance/documents`,
-`/reports`, `/sites`, `/waste-types`, `/admin/users`, `/admin/subscription`, `/admin/audit`, `/admin/company`,
-`/account/profile`, `/account/security`, `/account/notifications`, `/onboarding`.
+| Area | Routes |
+|---|---|
+| Public | `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`, `/invitation`, `/account-status` |
+| Client | `/dashboard`, `/lots`, `/lots/:id`, `/stock`, `/pickups`, `/pickups/new`, `/pickups/:id`, `/providers`, `/sites`, `/sites/:id`, `/waste-types`, `/reports`, `/onboarding` |
+| Compliance | `/compliance/register`, `/compliance/manifests`, `/compliance/declarations`, `/compliance/documents` |
+| Administration | `/admin/users`, `/admin/subscription`, `/admin/audit`, `/admin/company` |
+| Account | `/account/profile`, `/account/security`, `/account/notifications` |
+| Workshop | `/m`, `/m/lots/new`, `/m/scan`, `/m/lots/:number`, `/m/loading`, `/m/sync` |
+| Provider | `/provider/pickups`, `/provider/pickups/:id`, `/provider/manifests`, `/provider/documents`, `/provider/profile`, `/provider/accreditations` |
+| Back office | `/platform/overview`, `/platform/companies`, `/platform/companies/:id`, `/platform/accreditations`, `/platform/plans`, `/platform/invoices`, `/platform/payments`, `/platform/catalog`, `/platform/roles`, `/platform/activity` |
+
+What each screen does: [USER_MANUAL.md](USER_MANUAL.md) and [PLATFORM_ADMIN_GUIDE.md](PLATFORM_ADMIN_GUIDE.md).
 
 ## What each piece is
 
@@ -121,7 +131,7 @@ php artisan tinker --env=demo --execute="echo DB::table('waste_lots')->count().'
 
 ```powershell
 cd C:\Projects\diva-waste
-php artisan test                 # 158 tests, database divawaste_test, about 1 minute
+php artisan test                 # 162 tests, database divawaste_test, about 1 minute
 vendor\bin\pint --test app database tests routes
 
 cd C:\Projects\DIVA-WASTE-FRONTEND-LAB\frontend
@@ -136,6 +146,7 @@ npm run verify                   # lint + translation keys + 20 unit tests + pro
 | A page of raw JSON, or "404" | You opened `http://127.0.0.1:8010` (the API) in the browser | Use `http://localhost:4300` only |
 | "Connexion au serveur impossible" | The API window is closed | `scripts\demo.ps1 api` |
 | Pages are slow on first load | The PHP built-in server handles one request at a time on Windows | Normal in the demo; not the production setup |
+| A page stays blank or "Le chargement a échoué" right after `git pull` or `npm install` | The development server does not pick up new packages while running | Stop `npm run demo` (Ctrl+C) and start it again |
 | `Access denied for user` during reset | `.env` has no valid database credentials, or `.env.demo` was created before you fixed them | Delete `.env.demo` and run reset again |
 | Port already in use | A previous server is still running | `scripts\demo.ps1 stop` |
 | `demo.ps1 cannot be loaded because running scripts is disabled` | PowerShell execution policy | Use the `powershell -ExecutionPolicy Bypass -File …` form shown above |

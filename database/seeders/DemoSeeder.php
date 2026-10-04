@@ -2,7 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Modules\Billing\Actions\DeclareBankTransfer;
+use App\Modules\Billing\Actions\ManageSubscription;
 use App\Modules\Billing\Actions\StartTrial;
+use App\Modules\Billing\DTOs\DeclareBankTransferData;
+use App\Modules\Billing\Models\Invoice;
 use App\Modules\Catalog\Actions\CreateWasteType;
 use App\Modules\Catalog\DTOs\CreateWasteTypeData;
 use App\Modules\Common\Support\FileStorage;
@@ -19,6 +23,7 @@ use App\Modules\Reporting\Models\ProductionVolume;
 use App\Modules\Sites\Models\Site;
 use App\Modules\Sites\Models\StockThreshold;
 use App\Modules\Sites\Models\Zone;
+use App\Modules\Tenancy\Actions\ReviewCompany;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\Models\CompanyUser;
 use App\Modules\Tenancy\TenantContext;
@@ -45,6 +50,8 @@ use RuntimeException;
  *   mehdi@tissages-kh.test      contact of a registration awaiting approval
  *   sonia@sfax-eco.test         contact of a provider awaiting approval
  *   walid@ecotri-tunis.test     provider whose accreditation has expired
+ *   hatem@sousse-mode.test      client administrator of a suspended company
+ *   rim@atelier-rades.test      contact of a rejected registration
  * The full table is in docs/TEST_ACCOUNTS.md.
  */
 class DemoSeeder extends Seeder
@@ -111,6 +118,53 @@ class DemoSeeder extends Seeder
                 'public_contact_name' => 'Walid Dridi', 'public_contact_email' => $walid->email, 'is_published' => true, 'published_at' => now()->subYear()]);
             $accreditation($expired, $walid, 'recycling_recovery', 'ANGED-REC-2024-031', now()->subDays(10), 'approved');
         });
+    }
+
+    /**
+     * The platform's side of the story, played through the real actions so the back office has something true to
+     * show: reference prices, a paying client with an invoice and a declared bank transfer, a plan request, a
+     * suspended client and a rejected registration.
+     */
+    private function platformStory(TenantContext $context, \Closure $company, \Closure $user, \Closure $role, User $staff, StartTrial $trial): void
+    {
+        $member = fn (User $who) => [CompanyUser::query()->create(['user_id' => $who->id, 'joined_at' => now()]),
+            UserRoleAssignment::query()->create(['user_id' => $who->id, 'role_id' => $role('client_admin'), 'site_id' => null])];
+
+        // Reference prices (demonstration values: the real price grid is Diva Software's decision).
+        foreach (['per_site' => ['per_site', '150', '1500'], 'per_volume' => ['base_fee', '400', '4000']] as $plan => [$component, $monthly, $yearly]) {
+            foreach (['monthly' => $monthly, 'yearly' => $yearly] as $interval => $amount) {
+                DB::table('subscription_plan_prices')->insert(['subscription_plan_id' => DB::table('subscription_plans')->where('code', $plan)->value('id'), 'currency_code' => 'TND',
+                    'billing_interval' => $interval, 'component' => $component, 'unit_amount' => $amount, 'tier_min' => 0, 'valid_from' => now()->subMonths(3)->toDateString(),
+                    'is_active' => true, 'created_at' => now(), 'updated_at' => now()]);
+            }
+        }
+
+        // Monastir Jeans pays: plan activated at the reference price, first invoice issued, transfer declared and waiting.
+        $monastir = Company::query()->where('tax_id', '2468135C')->firstOrFail();
+        $nour = User::query()->where('email', 'nour@monastir-jeans.test')->firstOrFail();
+        app(ManageSubscription::class)->activate($monastir, ['plan' => 'per_site', 'billing_interval' => 'monthly', 'sites_quantity' => 1, 'unit_amount' => '150'], $staff);
+        $context->runAs($monastir, function () use ($nour) {
+            $invoice = Invoice::query()->latest('id')->firstOrFail();
+            app(DeclareBankTransfer::class)->handle($invoice, new DeclareBankTransferData((string) $invoice->total_amount, 'VIR-BIAT-2026-10-0412', now()->subDay()->toDateString()), $nour);
+        });
+
+        // Textile du Cap Bon is on trial and has asked for the per-site formula for its two sites.
+        $capBon = Company::query()->where('tax_id', '1234567A')->firstOrFail();
+        $capBon->forceFill(['settings' => ['requested_plan' => 'per_site', 'requested_sites' => 2] + ($capBon->settings ?? [])])->save();
+
+        // A client suspended for non-payment, and a registration rejected for an invalid tax identifier.
+        $suspended = $company('industrial', 'Sousse Mode Confection', '3692581G', 'Sousse');
+        $hatem = $user('Hatem', 'Ben Amor', 'hatem@sousse-mode.test');
+        $suspended->forceFill(['primary_contact_user_id' => $hatem->id, 'submitted_at' => now()->subMonths(2), 'approved_at' => now()->subMonths(2)])->save();
+        $trial->handle($suspended);
+        $context->runAs($suspended, fn () => $member($hatem));
+        app(ReviewCompany::class)->suspend($suspended, 'Deux factures impayées malgré relances. Accès rétabli dès réception du règlement.', $staff);
+
+        $rejected = $company('industrial', 'Atelier Textile de Radès', '0000000Z', 'Radès');
+        $rim = $user('Rim', 'Gharsallah', 'rim@atelier-rades.test');
+        $rejected->forceFill(['status' => 'pending_approval', 'approved_at' => null, 'submitted_at' => now()->subDays(3), 'primary_contact_user_id' => $rim->id])->save();
+        $context->runAs($rejected, fn () => $member($rim));
+        app(ReviewCompany::class)->reject($rejected, 'Matricule fiscal introuvable au registre national des entreprises. Merci de vous réinscrire avec le matricule exact.', $staff);
     }
 
     public function run(TenantContext $context, CreateWasteType $createType, CreateWasteLot $createLot, PickupWorkflow $pickups, StartTrial $trial, FileStorage $files, ManifestWorkflow $manifests): void
@@ -293,5 +347,7 @@ class DemoSeeder extends Seeder
                 }
             }
         });
+
+        $this->platformStory($context, $company, $user, $role, $staff, $trial);
     }
 }

@@ -150,6 +150,15 @@ Route::middleware('auth:sanctum')->prefix('platform')->group(function () {
             'rejection_reason' => $company->rejection_reason,
             'suspension_reason' => $company->suspension_reason,
             'requested_plan' => $company->settings['requested_plan'] ?? null,
+            'requested_sites' => $company->settings['requested_sites'] ?? null,
+            'subscription' => ($subscription = DB::table('company_subscriptions as s')->join('subscription_plans as p', 'p.id', '=', 's.subscription_plan_id')
+                ->where('s.company_id', $company->id)->where('s.is_current', true)
+                ->first(['p.code', 'p.name', 's.status', 's.billing_interval', 's.sites_quantity', 's.currency_code', 's.price_snapshot', 's.trial_ends_at', 's.current_period_end', 's.cancel_at_period_end'])) === null ? null : [
+                    'plan' => $subscription->code, 'name' => json_decode((string) $subscription->name, true), 'status' => $subscription->status,
+                    'billing_interval' => $subscription->billing_interval, 'sites_quantity' => $subscription->sites_quantity, 'currency_code' => $subscription->currency_code,
+                    'unit_amount' => json_decode((string) $subscription->price_snapshot, true)['unit_amount'] ?? null,
+                    'trial_ends_at' => $subscription->trial_ends_at, 'current_period_end' => $subscription->current_period_end, 'cancel_at_period_end' => (bool) $subscription->cancel_at_period_end,
+                ],
             'contact' => $contact === null ? null : [
                 'name' => trim("{$contact->first_name} {$contact->last_name}"), 'email' => $contact->email, 'phone' => $contact->phone,
                 'email_verified' => $contact->email_verified_at !== null,

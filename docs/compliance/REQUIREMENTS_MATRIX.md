@@ -24,7 +24,7 @@ Nothing in the product uses mock data.
 |---|---|---|---|---|---|
 | M0-01 | Company self-registration | ✅ | `POST auth/register`, screen `/register` | T `RegistrationAndReviewTest` · S | |
 | M0-02 | Email link valid 24 h | ✅ | signed link → `/verify-email`, resend | T `RegistrationAndReviewTest` · S | Mail goes to the configured mailer (`log` locally). SMS/WhatsApp = V2 |
-| M0-03 | Plan choice (trial, per site, per volume) | 🟡 | plans seeded, chosen at registration | T `SubscriptionTest` · S | **Price grid not decided**: plans carry no price; the platform enters the agreed unit price at activation. Every plan starts with the 30-day trial |
+| M0-03 | Plan choice (trial, per site, per volume) | 🟡 | plans seeded, chosen at registration | T `SubscriptionTest` · S | **Price grid not decided**: reference prices are managed in `/platform/plans` and proposed at activation; the invoiced price is the one confirmed for each client. Per-volume is a flat fee (tonnage not metered). Every plan starts with the 30-day trial |
 | M0-04 | Bank transfer validated by super-admin | ✅ | declare → `/platform/payments` | T `SubscriptionTest`, `BillingTest` · **B** | Card payment = V2 |
 | M0-05 | Provider registration with accreditation PDFs | ✅ | `/register` (provider), `/provider/accreditations` | T `RegistrationAndReviewTest` · S | |
 | M0-06 | Approve / reject with reason / suspend, applicant emailed | ✅ | `/platform/companies/:id` | T `RegistrationAndReviewTest` · S | |

@@ -73,7 +73,7 @@ npm run build        # dist/frontend/browser
 API:
 
 ```bash
-php artisan test                 # 158 tests. Needs a database named by DB_DATABASE in phpunit.xml (divawaste_test)
+php artisan test                 # 162 tests. Needs a database named by DB_DATABASE in phpunit.xml (divawaste_test)
 vendor/bin/pint --test
 ```
 

@@ -53,6 +53,7 @@ Artisan::command('demo:reset', function () {
         ['sami@capbon.test', 'Environment manager'], ['leila@capbon.test', 'Workshop operator (Nabeul)'],
         ['direction@capbon.test', 'Management, read-only'], ['audit@capbon.test', 'Auditor'],
         ['karim@sahel-recyclage.test', 'Provider administrator — Recyclage du Sahel'], ['nour@monastir-jeans.test', 'Client administrator — Monastir Jeans Confection'],
+        ['(others)', 'Pending, suspended, rejected and expired accounts: docs/TEST_ACCOUNTS.md'],
     ]);
 
     return 0;
