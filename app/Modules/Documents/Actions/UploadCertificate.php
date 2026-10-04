@@ -175,8 +175,8 @@ final class UploadCertificate
                     'document_type' => $documentType,
                     'title' => $data->title
                         ?? match ($documentType) {
-                            DocumentType::DestructionCertificate => 'Destruction certificate - Pickup '.$pickup->ulid,
-                            default => 'Recycling certificate - Pickup '.$pickup->ulid,
+                            DocumentType::DestructionCertificate => 'Certificat de destruction — '.$pickup->pickup_number,
+                            default => 'Certificat de recyclage — '.$pickup->pickup_number,
                         },
                     'reference_number' => null,
                     'status' => DocumentStatus::Draft,
