@@ -52,7 +52,7 @@ const STATUSES: LotStatus[] = ['created', 'stored', 'awaiting_pickup', 'collecte
 
       <div class="dw-panel">
         <div class="filters">
-          <dw-search [placeholder]="t('lots.searchPlaceholder')" (search)="list.setFilter({ search: $event })" />
+          <dw-search [placeholder]="t('lots.searchPlaceholder')" (queryChange)="list.setFilter({ search: $event })" />
           <mat-form-field class="f-status">
             <mat-label>{{ t('fields.status') }}</mat-label>
             <mat-select multiple [value]="list.filter().status ?? []" (selectionChange)="list.setFilter({ status: $event.value })">

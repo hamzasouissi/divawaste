@@ -39,7 +39,7 @@ interface PickupFilter {
 
       <div class="dw-panel">
         <div class="filters">
-          <dw-search [placeholder]="t('pickups.number')" (search)="list.setFilter({ search: $event })" />
+          <dw-search [placeholder]="t('pickups.number')" (queryChange)="list.setFilter({ search: $event })" />
           <mat-form-field class="f-status">
             <mat-label>{{ t('fields.status') }}</mat-label>
             <mat-select multiple [value]="list.filter().status ?? []" (selectionChange)="list.setFilter({ status: $event.value })">

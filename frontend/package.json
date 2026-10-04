@@ -6,7 +6,10 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "lint": "ng lint",
+    "i18n": "node scripts/check-i18n.mjs",
+    "verify": "ng lint && node scripts/check-i18n.mjs && ng test --watch=false && ng build"
   },
   "prettier": {
     "printWidth": 100,

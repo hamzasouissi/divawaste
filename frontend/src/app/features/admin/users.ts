@@ -218,7 +218,7 @@ export class InviteDialog {
       <div class="dw-panel">
         <mat-tab-group animationDuration="0" (selectedIndexChange)="$event === 1 && loadInvitations()">
           <mat-tab [label]="t('admin.users.members')">
-            <div class="filters"><dw-search [placeholder]="t('common.search')" (search)="members.setFilter({ search: $event })" /></div>
+            <div class="filters"><dw-search [placeholder]="t('common.search')" (queryChange)="members.setFilter({ search: $event })" /></div>
             <dw-data-table [columns]="memberColumns" [rows]="members.rows()" [loading]="members.loading()" [error]="members.error()" [total]="members.total()"
               [pageIndex]="members.page() - 1" [pageSize]="members.perPage()" emptyIcon="group" [emptyTitle]="t('common.noResult')"
               (page)="members.setPage($event.pageIndex + 1, $event.pageSize)" (retry)="members.reload()">

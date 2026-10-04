@@ -20,7 +20,7 @@ import { MatIconModule } from '@angular/material/icon';
 })
 export class SearchComponent implements OnDestroy {
   readonly placeholder = input('');
-  readonly search = output<string>();
+  readonly queryChange = output<string>();
 
   protected readonly value = signal('');
   private timer: ReturnType<typeof setTimeout> | null = null;
@@ -30,7 +30,7 @@ export class SearchComponent implements OnDestroy {
     if (this.timer) {
       clearTimeout(this.timer);
     }
-    this.timer = setTimeout(() => this.search.emit(value.trim()), 300);
+    this.timer = setTimeout(() => this.queryChange.emit(value.trim()), 300);
   }
 
   ngOnDestroy(): void {

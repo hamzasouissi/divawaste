@@ -76,7 +76,7 @@ const TONES: Record<string, Record<string, Tone>> = {
   selector: 'dw-status',
   imports: [TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span class="badge" [class]="tone()" *transloco="let t">{{ label() || t('status.' + kind() + '.' + value()) }}</span>`,
+  template: `<span class="badge" [class]="resolved()" *transloco="let t">{{ label() || t('status.' + kind() + '.' + value()) }}</span>`,
   styles: `
     :host { display: inline-flex; }
     .badge { display: inline-flex; align-items: center; height: 22px; padding-inline: 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
@@ -92,9 +92,9 @@ export class StatusComponent {
   readonly value = input.required<string>();
   /** Overrides the translated status text (already-translated label). */
   readonly label = input('');
-  readonly toneOverride = input<Tone | null>(null, { alias: 'tone' });
+  readonly tone = input<Tone | null>(null);
 
-  protected readonly tone = computed(() => this.toneOverride() ?? TONES[this.kind()]?.[this.value()] ?? 'neutral');
+  protected readonly resolved = computed(() => this.tone() ?? TONES[this.kind()]?.[this.value()] ?? 'neutral');
 }
 
 /** A figure with its label; the building block of dashboards and summaries. */

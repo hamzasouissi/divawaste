@@ -42,7 +42,7 @@ interface CompanyFilter {
       <dw-page-header [title]="t('platform.companies.title')" [subtitle]="t('platform.companies.subtitle')" />
       <div class="dw-panel">
         <div class="filters">
-          <dw-search [placeholder]="t('fields.legalName')" (search)="list.setFilter({ search: $event })" />
+          <dw-search [placeholder]="t('fields.legalName')" (queryChange)="list.setFilter({ search: $event })" />
           <mat-form-field>
             <mat-label>{{ t('fields.status') }}</mat-label>
             <mat-select [value]="list.filter().status ?? ''" (selectionChange)="list.setFilter({ status: $event.value || null })">

@@ -6,6 +6,8 @@ import { Locale } from '../i18n/i18n';
 type Numeric = string | number | null | undefined;
 
 const EMPTY = '—';
+// Non-breaking space: a figure and its unit never wrap apart.
+const NBSP = String.fromCharCode(0xa0);
 
 function toNumber(value: Numeric): number | null {
   if (value === null || value === undefined || value === '') {
@@ -29,7 +31,7 @@ export class KgPipe implements PipeTransform {
     const tonnes = unit === 't' || (unit === 'auto' && Math.abs(kg) >= 1000);
     const formatted = new Intl.NumberFormat(this.locale.intl, { maximumFractionDigits: tonnes ? 2 : 1 }).format(tonnes ? kg / 1000 : kg);
 
-    return `${formatted} ${tonnes ? 't' : 'kg'}`;
+    return `${formatted}${NBSP}${tonnes ? 't' : 'kg'}`;
   }
 }
 

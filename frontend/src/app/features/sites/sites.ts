@@ -202,7 +202,7 @@ export class ZoneDialog {
       </dw-page-header>
       <div class="dw-panel">
         <div class="filters">
-          <dw-search [placeholder]="t('common.search')" (search)="search.set($event); list.reload()" />
+          <dw-search [placeholder]="t('common.search')" (queryChange)="search.set($event); list.reload()" />
           <mat-checkbox [checked]="inactive()" (change)="inactive.set($event.checked); list.reload()">{{ t('sites.showInactive') }}</mat-checkbox>
         </div>
         <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1" [pageSize]="list.perPage()"

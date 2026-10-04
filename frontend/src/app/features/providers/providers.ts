@@ -39,7 +39,7 @@ interface DirectoryFilter {
       <dw-page-header [title]="t('providers.title')" [subtitle]="t('providers.subtitle')" />
 
       <div class="dw-panel filters">
-        <dw-search [placeholder]="t('common.search')" (search)="patch({ search: $event })" />
+        <dw-search [placeholder]="t('common.search')" (queryChange)="patch({ search: $event })" />
         <mat-form-field>
           <mat-label>{{ t('providers.channels') }}</mat-label>
           <mat-select [value]="filter().channel" (selectionChange)="patch({ channel: $event.value })">
