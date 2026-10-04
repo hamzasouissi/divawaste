@@ -1,0 +1,3 @@
+import { Injectable, inject } from '@angular/core'; import { ApiClient, ApiEnvelope } from '../../../shared/api';
+export interface WasteLotDto extends Record<string,unknown>{ulid:string;lot_number:string;status:string;closed_reason:string|null;origin_type:string;site:string;zone:string|null;waste_type:string;is_hazardous:boolean;net_weight_kg:string;gross_weight_kg:string|null;tare_weight_kg:string|null;composition_label:string|null;qr:string|null;version:number;generated_at:string|null;}
+@Injectable({providedIn:'root'}) export class WasteLotsApi {private readonly api=inject(ApiClient);get(ulid:string){return this.api.get<ApiEnvelope<WasteLotDto>>(`/lots/${ulid}`);}events(ulid:string){return this.api.get<ApiEnvelope<Record<string,unknown>[]>>(`/lots/${ulid}/events`);}}

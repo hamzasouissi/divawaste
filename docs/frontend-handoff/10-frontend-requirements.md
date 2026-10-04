@@ -1,0 +1,24 @@
+# Frontend Requirements (Backend Facts)
+
+This is a list of backend-derived obligations, not a UI or architecture proposal.
+
+- All 43 application API routes are under `/api/v1`; protected requests require Sanctum. Most resources additionally require an active tenant context derived from the token/session; do not select company via a client header.
+- `POST /auth/login` accepts email/password and optional company ULID, can return a company-selection response, and otherwise issues a company-bound Sanctum bearer token. Logout/revocation, refresh, password reset, MFA challenge, and standalone company switching are not found. Device registration separately returns a 30-day token.
+- Respect permission checks in [02-api-inventory.md](02-api-inventory.md). Tenant authorization is separate from authentication, and many permissions are site-scoped. The backend exposes only platform roles on `/me`, not effective tenant permissions. Audit and report-create permission names mismatch the catalog; certificate authorization uses owner/provider company and pickup status rather than an explicit catalog permission.
+- Use path model ULIDs where routes bind models. Request reference fields vary: ULIDs for sites/zones/lots in many requests; reference codes for catalog values; numeric DB IDs for manifest request regulatory/waste/company fields and several response fields. Inspect endpoint-specific contract; `_id` does not consistently mean ULID.
+- Waste lot creation requires site, zone, waste type, and net weight. Composition percentages must meet `ValidComposition`; catalog waste type composition, if supplied, must sum exactly 100. Quantities are kg unless field says otherwise; weights use decimal precision up to three places.
+- Pickup create requires a future/today requested date and at least one available lot at the chosen site. Submit depends on active partnership, published active provider and valid accreditation; hazardous lots require hazardous coverage. Only confirmed pickups can be collected; only collected pickups can be received. Cancel/refuse require reasons.
+- Pickup weight variance is calculated both directions and flagged strictly above configured threshold (default 5%). Collection omission means not loaded and returned to stored; omitted departure weight defaults to lot net weight.
+- Lot transforms are limited to created/stored lots. Split needs at least two positive-weight outputs; a >2% gap requires notes. Group requires same site, waste type, hazard flag, at least two lots, and a same-site zone. Closed lots cannot transform; physical delete is prohibited.
+- Certificate upload requires a collected/received pickup, owner or provider company, at least one pickup-associated lot, multipart PDF/JPEG/PNG <=20 MiB, and type `recycling|destruction`. Response document status is issued; retention is ten years. No application download URL is exposed.
+- Payment declaration is only valid for issued/partially paid/overdue invoices. The declaration creates pending payment; payment confirmation/rejection API route is absent.
+- Report create returns 202. The action stores the record and a 30-day expiry; report generation completion/download behavior is not established by the inspected action.
+- Page lists default 25/max100 unless the endpoint differs; notifications use cursor pagination size20. Sorting and filters are not global; use [08-pagination-filtering-sorting.md](08-pagination-filtering-sorting.md). No lot/pickup list endpoints exist.
+- Handle `application/problem+json`, map 422 field error arrays, distinguish 401/403/404/409, and retain `X-Request-Id` for support/correlation. Do not depend on production 500 detail.
+- Decimal fields are not globally normalized to JSON number/string; fixed-scale strings are evidenced for lot/pickup resources. Date-only and datetime fields have distinct formats.
+- Seed data is not complete across all environments: tax rates, regulatory codes, accreditation types, legal documents and plan prices are intentionally unseeded pending validated sources. No reference lookup API was found.
+- The Sanctum CSRF-cookie and framework local-storage routes exist outside `/api/v1`; they are not substitutes for application auth or StoredFile download endpoints.
+
+Source index: routes and checks in [02-api-inventory.md](02-api-inventory.md), security in [03-auth-and-permissions.md](03-auth-and-permissions.md), contracts in [04-data-contracts.md](04-data-contracts.md), rules in [05-workflows-and-business-rules.md](05-workflows-and-business-rules.md).
+
+`UNKNOWN — NOT FOUND IN BACKEND`: logout/revocation/refresh and standalone company-switch request flows; role-grant discovery; a generic download URL; report completion and file retrieval; list endpoints for lots and pickups; reference-data lookup routes; and behavior for workflows whose state exists in schema/enums but has no route.

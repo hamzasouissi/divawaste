@@ -1,0 +1,4 @@
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+export interface TableColumn<T extends Record<string, unknown>> { key: keyof T & string; label: string; format?: (value: unknown, row: T) => string; }
+@Component({ selector: 'app-resource-table', template: `<div class="card"><table class="table"><thead><tr>@for (column of columns(); track column.key) { <th scope="col">{{ column.label }}</th> }</tr></thead><tbody>@for (row of rows(); track identify(row)) { <tr>@for (column of columns(); track column.key) { <td>{{ column.format ? column.format(row[column.key], row) : row[column.key] ?? '—' }}</td> }</tr> }</tbody></table></div>`, changeDetection: ChangeDetectionStrategy.OnPush })
+export class ResourceTableComponent<T extends Record<string, unknown>> { readonly rows = input.required<T[]>(); readonly columns = input.required<TableColumn<T>[]>(); identify(row: T): string { return String(row['ulid'] ?? row['id'] ?? JSON.stringify(row)); } }

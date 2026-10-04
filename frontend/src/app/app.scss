@@ -1,0 +1,3 @@
+:host { display: block; min-height: 100dvh; }
+.session-loading { min-height: 100dvh; display: flex; align-items: center; justify-content: center; gap: .75rem; color: var(--text-muted); background: var(--surface-muted); }
+.loading-mark { width: 32px; aspect-ratio: 1; display: grid; place-items: center; border-radius: 6px; color: #fff; background: var(--primary); font-size: .85rem; font-weight: 800; }

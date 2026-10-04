@@ -1,0 +1,288 @@
+backend_name: DivaWaste
+extraction_date: 2026-10-02
+api_base_paths:
+  - path: /api/v1
+    owner: application modules
+    runtime_route_count: 43
+    confidence: HIGH
+  - path: /up
+    owner: Laravel framework health route
+    confidence: HIGH
+  - path: /sanctum/csrf-cookie
+    owner: Laravel Sanctum package
+    confidence: HIGH
+  - path: /storage/{path}
+    methods: [GET, HEAD, PUT]
+    owner: Laravel filesystem package (local disk serve=true)
+    confidence: HIGH
+authentication_mechanism:
+  primary: Laravel Sanctum auth:sanctum on protected API routes
+  tenant_binding: personal access token company_id, or session current_company_id
+  login_endpoint: POST /api/v1/auth/login (email/password; optional company ULID; Sanctum bearer token)
+  refresh_endpoint: "UNKNOWN — NOT FOUND IN BACKEND"
+  confidence: HIGH
+counts:
+  application_api_endpoints: 43
+  all_runtime_routes: 47
+  module_eloquent_model_classes: 42
+  model_count_basis: app/Modules/*/Models PHP classes excluding Concerns; includes support/operational models
+  schema_create_declarations: 70
+  migration_files: 27
+  confidence: HIGH
+roles:
+  - super_admin
+  - platform_support
+  - client_admin
+  - environment_manager
+  - workshop_operator
+  - management_viewer
+  - auditor
+  - provider_admin
+  - provider_operator
+permissions:
+  - app.web.access
+  - app.mobile.access
+  - company.view
+  - company.update
+  - users.view
+  - users.invite
+  - users.manage
+  - roles.manage
+  - audit.view
+  - subscription.view
+  - subscription.manage
+  - invoices.view
+  - payments.declare
+  - sites.view
+  - sites.manage
+  - zones.manage
+  - waste_types.view
+  - waste_types.manage
+  - lots.view
+  - lots.create
+  - lots.update
+  - lots.weigh
+  - lots.move
+  - lots.split
+  - lots.group
+  - lots.print_label
+  - lots.delete
+  - stock.view
+  - stock.thresholds.manage
+  - pickups.view
+  - pickups.request
+  - pickups.cancel
+  - pickups.load
+  - pickups.price
+  - pickups.complete
+  - pickups.override_eligibility
+  - providers.view
+  - providers.partnerships.manage
+  - documents.view
+  - documents.generate
+  - documents.upload
+  - documents.sign
+  - documents.delete
+  - declarations.prepare
+  - declarations.validate
+  - dashboard.view
+  - reports.view
+  - reports.export
+  - production_volumes.manage
+  - sync_conflicts.resolve
+  - provider.profile.manage
+  - provider.accreditations.manage
+  - provider.pickups.view
+  - provider.pickups.respond
+  - provider.pickups.receive
+  - provider.certificates.upload
+  - provider.manifests.sign
+  - platform.support.view
+  - platform.companies.review
+  - platform.companies.suspend
+  - platform.providers.review
+  - platform.catalog.manage
+  - platform.countries.manage
+  - platform.plans.manage
+  - platform.invoices.manage
+  - platform.payments.validate
+  - platform.roles.manage
+  - platform.legal.manage
+permission_count_from_source: 68
+enums:
+  company_type: [industrial, provider, brand]
+  company_status: [pending_verification, pending_approval, active, rejected, suspended, closed]
+  membership_status: [active, suspended, removed]
+  user_status: [active, disabled, anonymized]
+  invitation_status: [pending, accepted, revoked, expired]
+  legal_document_type: [terms, privacy, dpa, provider_terms]
+  legal_acceptance_context: [registration, invitation, reacceptance, provider_registration]
+  permission_scope: [platform, company, site]
+  audience: [platform, industrial, provider, brand, any]
+  site_kind: [production, warehouse, mixed]
+  alert_level: [warning, exceeded]
+  lot_status: [created, stored, awaiting_pickup, collected, treated, closed]
+  lot_origin: [created, split, grouping]
+  lot_closed_reason: [completed, split, grouped, cancelled]
+  tag_type: [qr, rfid_epc]
+  tag_status: [unassigned, active, revoked]
+  weight_source: [manual, scale, computed]
+  pickup_status: [draft, requested, confirmed, refused, collected, received, completed, cancelled]
+  pickup_time_slot: [morning, afternoon, any]
+  pickup_line_status: [planned, loaded, not_loaded, received, rejected, treated]
+  pickup_weight_source: [lots_sum, weighbridge]
+  pricing_mode: [per_kg, per_tonne, flat]
+  price_basis: [received, departure, flat]
+  document_status: [draft, pending_signatures, issued, superseded, cancelled]
+  document_type: [recycling_certificate, destruction_certificate, hazardous_manifest, annual_declaration]
+  annual_declaration_status: [draft, in_review, validated, submitted]
+  manifest_status: [draft, pending_producer_signature, pending_transporter_signature, pending_receiver_signature, completed, cancelled]
+  signature_status: [pending, signed, declined]
+  signer_party: [producer, transporter, receiver]
+  subscription_status: [trialing, active, past_due, suspended, cancelled, expired]
+  invoice_status: [draft, issued, partially_paid, paid, overdue, cancelled]
+  payment_status: [pending, validated, rejected, refunded]
+  invoice_type: [invoice, credit_note]
+  invoice_item_type: [subscription, site, volume, adjustment, discount]
+  usage_metric: [active_sites, tonnes_managed]
+  subscription_interval: [monthly, yearly]
+  subscription_payment_method: [bank_transfer, card]
+  subscription_billing_model: [trial, per_site, per_volume, hybrid]
+  subscription_price_component: [base_fee, per_site, per_tonne]
+  provider_accreditation_status: [pending, approved, rejected, revoked]
+  provider_partnership_status: [active, suspended, ended]
+  sync_operation_status: [applied, rejected, conflict]
+  report_format: [pdf, xlsx, csv]
+  report_status: [queued, processing, completed, failed, expired]
+  notification_channel: [mail, database, whatsapp]
+  notification_log_status: [queued, sent, failed, bounced]
+  audit_actor_type: [user, system, api_client, scheduler]
+  audit_source: [web, mobile, provider_portal, api, sync, system, console]
+  units: [kg, t, m3, l, piece]
+  packaging_types: [bag, bale, big_bag, drum, box, pallet, container, bulk]
+  treatment_channels: [reuse, recycling, energy_recovery, incineration, other_treatment, landfill]
+  waste_families: [textile_fibre, textile_product, packaging, chemical_sludge, oil, metal, other]
+  materials: [CO, LI, WO, CV, PES, PA, PAN, EL, OTHER]
+  color_families: [white, ecru, undyed, black, grey, navy, blue, red, pink, yellow, orange, green, brown, beige, multicolor, mixed]
+  confidence: HIGH
+major_workflows:
+  - lot lifecycle, storage, split, grouping, append-only history
+  - pickup eligibility, submit, provider response, collect, receive, variance
+  - provider accreditation and partnership checks at pickup eligibility
+  - certificate upload, pickup-party authorization, issue, ten-year retention
+  - bank transfer declaration creates pending payment
+  - device registration issues company/device-bound 30-day token
+  - annual declaration creation and unique site/format/year
+  - confidence: HIGH
+known_unknowns:
+  - "UNKNOWN — NOT FOUND IN BACKEND: application login, logout, token refresh, MFA challenge, or company-switch HTTP routes."
+  - "UNKNOWN — NOT FOUND IN BACKEND: application file download/preview endpoints, malware scan workflow, and file deletion API."
+  - "UNKNOWN — NOT FOUND IN BACKEND: implemented sync push/pull/bootstrap routes; schema and blueprint do not establish a live API."
+  - "UNKNOWN — NOT FOUND IN BACKEND: report worker/completion and generated-file download behavior in the inspected route/action."
+  - "UNKNOWN — NOT FOUND IN BACKEND: OpenAPI/API schema and global rate-limit policy."
+  - "UNKNOWN — NOT FOUND IN BACKEND: definitive conceptual entity count; migration and documentation table counts conflict."
+  - Repository count claims differ: CLAUDE.md says reviewed MVP 68 tables; README/blueprint say 89 MVP / 108 total; current migration scan found 70 create declarations.
+  - Audit route requests audit_logs.view and report create requests reports.create; neither is in the 60-entry seeded catalog.
+  - confidence: HIGH
+confidence:
+  route_count: HIGH
+  source_permission_catalog_and_role_names: HIGH
+  current_schema_create_count: HIGH
+  conceptual_entity_count: MEDIUM
+  blueprint_feature_completeness: LOW
+source_files_inspected:
+  - app/Providers/ModuleServiceProvider.php
+  - bootstrap/app.php
+  - routes/web.php
+  - app/Modules/Common/Routes/api.php
+  - app/Modules/Identity/Routes/api.php
+  - app/Modules/Tenancy/Routes/api.php
+  - app/Modules/Audit/Routes/api.php
+  - app/Modules/Billing/Routes/api.php
+  - app/Modules/Catalog/Routes/api.php
+  - app/Modules/Sites/Routes/api.php
+  - app/Modules/Waste/Routes/api.php
+  - app/Modules/Pickups/Routes/api.php
+  - app/Modules/Providers/Routes/api.php
+  - app/Modules/Documents/Routes/api.php
+  - app/Modules/Notifications/Routes/api.php
+  - app/Modules/Reporting/Routes/api.php
+  - app/Modules/Sync/Routes/api.php
+  - app/Modules/Common/Http/ProblemDetails.php
+  - app/Modules/Common/Http/Middleware/AssignRequestId.php
+  - app/Modules/Tenancy/Http/Middleware/EstablishTenantContext.php
+  - app/Modules/Tenancy/Scopes/TenantScope.php
+  - app/Modules/Tenancy/TenantContext.php
+  - app/Modules/Identity/Authorization/PermissionCatalog.php
+  - app/Modules/Identity/Authorization/AccessResolver.php
+  - app/Modules/Waste/Enums/LotStatus.php
+  - app/Modules/Waste/Actions/TransitionLot.php
+  - app/Modules/Waste/Actions/TransformLots.php
+  - app/Modules/Pickups/Actions/PickupWorkflow.php
+  - app/Modules/Documents/Actions/UploadCertificate.php
+  - app/Modules/Documents/Actions/CreateHazardousWasteManifest.php
+  - app/Modules/Documents/Actions/CreateAnnualDeclaration.php
+  - app/Modules/Billing/Actions/DeclareBankTransfer.php
+  - app/Modules/Reporting/Actions/CreateGeneratedReport.php
+  - app/Modules/Sync/Actions/RegisterDevice.php
+  - app/Modules/Common/Support/FileStorage.php
+  - app/Modules/Identity/Resources/MeResource.php
+  - app/Modules/Tenancy/Resources/CompanyResource.php
+  - app/Modules/Waste/Resources/WasteLotResource.php
+  - app/Modules/Pickups/Resources/PickupResource.php
+  - app/Modules/Documents/Resources/DocumentResource.php
+  - app/Modules/Documents/Resources/HazardousWasteManifestResource.php
+  - app/Modules/Documents/Resources/AnnualDeclarationResource.php
+  - app/Modules/Audit/Resources/AuditLogResource.php
+  - app/Modules/Reporting/Resources/GeneratedReportResource.php
+  - app/Modules/Notifications/Resources/NotificationResource.php
+  - app/Modules/Notifications/Resources/NotificationPreferenceResource.php
+  - app/Modules/Sites/Resources/SiteResource.php
+  - app/Modules/Sites/Resources/StockThresholdResource.php
+  - app/Modules/Catalog/Resources/WasteTypeResource.php
+  - app/Modules/Billing/Resources/PaymentResource.php
+  - database/migrations/2026_10_01_000010_create_failed_jobs_and_job_batches_tables.php
+  - database/migrations/2026_10_01_000100_create_currencies_and_countries_tables.php
+  - database/migrations/2026_10_01_000110_create_tax_rates_table.php
+  - database/migrations/2026_10_01_000120_create_platform_vocabulary_tables.php
+  - database/migrations/2026_10_01_000130_create_waste_reference_tables.php
+  - database/migrations/2026_10_01_000140_create_accreditation_types_table.php
+  - database/migrations/2026_10_01_000150_create_subscription_plan_tables.php
+  - database/migrations/2026_10_01_000300_create_users_table.php
+  - database/migrations/2026_10_01_000320_create_permission_tables.php
+  - database/migrations/2026_10_01_000330_create_companies_table.php
+  - database/migrations/2026_10_01_000340_create_identity_tenant_tables.php
+  - database/migrations/2026_10_01_000400_create_stored_files_and_number_sequences_tables.php
+  - database/migrations/2026_10_01_000500_create_sites_and_zones_tables.php
+  - database/migrations/2026_10_01_000520_create_user_role_assignments_and_invitations_tables.php
+  - database/migrations/2026_10_01_000600_create_billing_tables.php
+  - database/migrations/2026_10_01_000700_create_waste_types_and_stock_thresholds_tables.php
+  - database/migrations/2026_10_01_000800_create_devices_and_sync_operations_tables.php
+  - database/migrations/2026_10_01_000900_create_waste_lot_tables.php
+  - database/migrations/2026_10_01_001000_create_provider_and_pickup_tables.php
+  - database/migrations/2026_10_01_001300_create_production_volumes_table.php
+  - database/migrations/2026_10_01_001310_create_waste_daily_stats_table.php
+  - database/migrations/2026_10_01_001320_create_generated_reports_table.php
+  - database/migrations/2026_10_01_001400_create_notifications_table.php
+  - database/migrations/2026_10_01_001410_create_notification_preferences_table.php
+  - database/migrations/2026_10_01_001420_create_notification_logs_table.php
+  - database/migrations/2026_10_01_001500_create_audit_logs_table.php
+  - database/migrations/2026_10_01_110523_create_compliance_tables.php
+  - database/seeders/AuthorizationSeeder.php
+  - database/seeders/ReferenceDataSeeder.php
+  - app/Modules/Tenancy/TableClassification.php
+  - tests/Feature/Foundation/ApiFoundationTest.php
+  - tests/Feature/Pickups/PickupTest.php
+  - tests/Feature/Waste/WasteLotTest.php
+  - tests/Feature/Documents/CertificateUploadTest.php
+  - tests/Feature/Common/StoredFileTest.php
+  - config/auth.php
+  - config/permission.php
+  - config/filesystems.php
+  - vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php
+  - vendor/laravel/framework/src/Illuminate/Filesystem/ServeFile.php
+  - vendor/laravel/framework/src/Illuminate/Filesystem/ReceiveFile.php
+  - docs/DivaWasteTextile-Technical-Architecture-Blueprint.md
+validation:
+  runtime_route_list: "php artisan route:list; php artisan route:list --path=api/v1"
+  tests: "php artisan test (MariaDB divawaste_test per CLAUDE.md)"
