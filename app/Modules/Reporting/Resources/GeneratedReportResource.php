@@ -21,13 +21,12 @@ class GeneratedReportResource extends JsonResource
             'report_type' => $this->report_type,
             'format' => $this->format,
             'status' => $this->status,
-            'parameters' => $this->parameters,
-            'stored_file_id' => $this->stored_file_id,
+            'parameters' => array_intersect_key($this->parameters ?? [], array_flip(['from', 'to', 'site'])),
+            'downloadable' => $this->status === 'completed' && $this->stored_file_id !== null && ($this->expires_at === null || $this->expires_at->isFuture()),
             'error_message' => $this->error_message,
-            'started_at' => $this->started_at?->toISOString(),
-            'completed_at' => $this->completed_at?->toISOString(),
-            'expires_at' => $this->expires_at?->toISOString(),
-            'created_at' => $this->created_at?->toISOString(),
+            'completed_at' => $this->completed_at?->toIso8601ZuluString(),
+            'expires_at' => $this->expires_at?->toIso8601ZuluString(),
+            'created_at' => $this->created_at?->toIso8601ZuluString(),
         ];
     }
 }
