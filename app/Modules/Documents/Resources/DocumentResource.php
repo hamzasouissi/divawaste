@@ -2,13 +2,24 @@
 
 namespace App\Modules\Documents\Resources;
 
+use App\Modules\Documents\Models\Document;
+use App\Modules\Pickups\Support\PartyDirectory;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\DB;
 
+/**
+ * @mixin Document
+ */
 final class DocumentResource extends JsonResource
 {
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
+        $parties = app(PartyDirectory::class);
+
         return [
             'ulid' => $this->ulid,
             'document_type' => $this->document_type?->value,
@@ -16,45 +27,24 @@ final class DocumentResource extends JsonResource
             'reference_number' => $this->reference_number,
             'status' => $this->status?->value,
             'is_regulatory' => $this->is_regulatory,
-
-            'site_id' => $this->site_id,
-            'pickup_id' => $this->pickup?->ulid,
-
-            'shared_with_company_id' => $this->shared_with_company_id,
-            'uploaded_by_company_id' => $this->uploaded_by_company_id,
-
-            'stored_file' => $this->whenLoaded(
-                'storedFile',
-                fn () => [
-                    'ulid' => $this->storedFile->ulid,
-                    'original_name' => $this->storedFile->original_name,
-                    'mime_type' => $this->storedFile->mime_type,
-                    'size_bytes' => $this->storedFile->size_bytes,
-                    'checksum_sha256' => $this->storedFile->checksum_sha256,
-                    'retention_until' => $this->storedFile->retention_until?->toDateString(),
-                ],
-            ),
-
-            'issued_at' => $this->issued_at?->toISOString(),
+            'site' => $this->site_id === null ? null : $parties->site($this->site_id),
+            'pickup' => $this->pickup_id === null ? null : DB::table('pickups')->where('id', $this->pickup_id)->first(['ulid', 'pickup_number']),
+            // Kept for existing consumers: the pickup's public identifier.
+            'pickup_id' => $this->pickup_id === null ? null : DB::table('pickups')->where('id', $this->pickup_id)->value('ulid'),
+            'uploaded_by' => $parties->company($this->uploaded_by_company_id),
+            'period_start' => $this->period_start?->toDateString(),
+            'period_end' => $this->period_end?->toDateString(),
+            'has_file' => $this->stored_file_id !== null,
+            'stored_file' => $this->whenLoaded('storedFile', fn () => $this->storedFile === null ? null : [
+                'original_name' => $this->storedFile->original_name,
+                'mime_type' => $this->storedFile->mime_type,
+                'size_bytes' => $this->storedFile->size_bytes,
+                'checksum_sha256' => $this->storedFile->checksum_sha256,
+            ]),
+            'lots' => $this->whenLoaded('wasteLots', fn () => $this->wasteLots->map(fn ($lot) => ['ulid' => $lot->ulid, 'lot_number' => $lot->lot_number])->values()),
+            'issued_at' => $this->issued_at?->toIso8601ZuluString(),
             'retention_until' => $this->retention_until?->toDateString(),
-
-            'source_snapshot' => $this->source_snapshot,
-
-            'signatures' => $this->whenLoaded(
-                'signatures',
-                fn () => $this->signatures->map(
-                    fn ($signature) => [
-                        'id' => $signature->ulid,
-                        'signer_party' => $signature->signer_party?->value,
-                        'status' => $signature->status?->value,
-                        'sequence' => $signature->sequence,
-                        'signed_at' => $signature->signed_at?->toISOString(),
-                    ]
-                )->values(),
-            ),
-
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
+            'created_at' => $this->created_at?->toIso8601ZuluString(),
         ];
     }
 }

@@ -81,8 +81,9 @@ class Document extends Model
     protected static function booted(): void
     {
         static::updating(function (self $document): void {
+            // A document still collecting signatures is not issued yet: its file is attached when the last party signs.
             if (
-                $document->getOriginal('status') !== DocumentStatus::Draft &&
+                ! in_array($document->getOriginal('status'), [DocumentStatus::Draft, DocumentStatus::PendingSignatures], true) &&
                 $document->isDirty(self::FROZEN_WHEN_ISSUED)
             ) {
                 throw new BusinessRuleViolation(
