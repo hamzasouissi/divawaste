@@ -19,6 +19,8 @@ final class AccessResolver
 {
     private const ALL_SITES = 0;
 
+    private const GLOBAL_VERSION_KEY = 'perm-version:global';
+
     public function __construct(private readonly TenantContext $context) {}
 
     public function can(User $user, string $permission, Site|int|null $site = null): bool
@@ -84,12 +86,20 @@ final class AccessResolver
     }
 
     /**
+     * Invalidates every company at once (a system role shared by all companies was edited).
+     */
+    public function flushAll(): void
+    {
+        Cache::forever(self::GLOBAL_VERSION_KEY, (int) Cache::get(self::GLOBAL_VERSION_KEY, 0) + 1);
+    }
+
+    /**
      * @return array<int, list<string>> site id (0 = all sites) => permission names
      */
     private function permissionMap(User $user): array
     {
         $companyId = $this->context->companyId();
-        $version = (int) Cache::get($this->versionKey($companyId), 0);
+        $version = Cache::get(self::GLOBAL_VERSION_KEY, 0).'.'.Cache::get($this->versionKey($companyId), 0);
 
         return Cache::remember(
             "t:{$companyId}:u:{$user->id}:perm:v{$version}",
