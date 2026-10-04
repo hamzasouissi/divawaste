@@ -25,6 +25,7 @@ export const INDUSTRIAL_ROUTES: Routes = [
   { path: 'admin/audit', canActivate: [permissionGuard('audit.view')], loadComponent: () => import('./admin/admin').then((m) => m.AuditPage), title: "Journal d'audit — DivaWaste" },
   // Notifications emitted by the API point here.
   { path: 'subscription', redirectTo: 'admin/subscription' },
+  { path: 'compliance/manifests/:ulid', redirectTo: 'compliance/manifests' },
 ];
 
 /** Workspace of a provider: the requests addressed to it, its documents, its public profile and accreditations. */
@@ -33,6 +34,7 @@ export const PROVIDER_ROUTES: Routes = [
   { path: 'pickups', canActivate: [permissionGuard('provider.pickups.view')], loadComponent: () => import('./pickups/pickups').then((m) => m.PickupsPage), title: 'Demandes — DivaWaste' },
   { path: 'pickups/:ulid', canActivate: [permissionGuard('provider.pickups.view')], loadComponent: () => import('./pickups/pickup-detail').then((m) => m.PickupDetailPage), title: 'Demande — DivaWaste' },
   { path: 'manifests', canActivate: [permissionGuard('provider.pickups.view')], loadComponent: () => import('./compliance/compliance').then((m) => m.ManifestsPage), title: 'Bordereaux — DivaWaste' },
+  { path: 'manifests/:ulid', redirectTo: 'manifests' },
   { path: 'documents', canActivate: [permissionGuard('provider.pickups.view')], loadComponent: () => import('./compliance/compliance').then((m) => m.DocumentsPage), title: 'Documents — DivaWaste' },
   { path: 'profile', canActivate: [permissionGuard('provider.profile.manage')], loadComponent: () => import('./provider/provider').then((m) => m.ProviderProfilePage), title: 'Profil — DivaWaste' },
   { path: 'accreditations', canActivate: [permissionGuard('provider.accreditations.manage')], loadComponent: () => import('./provider/provider').then((m) => m.ProviderAccreditationsPage), title: 'Agréments — DivaWaste' },

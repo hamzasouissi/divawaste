@@ -7,6 +7,21 @@ import { Access, AccessSite, Me } from '../api/models';
 
 export type Audience = 'platform' | 'industrial' | 'provider' | 'none';
 
+/** Per kind of account: [permission, page] in order of preference for the landing page. */
+const LANDING: Record<'platform' | 'provider' | 'industrial', [string, string][]> = {
+  platform: [
+    ['platform.companies.review', '/platform/companies'], ['platform.providers.review', '/platform/accreditations'], ['platform.payments.validate', '/platform/payments'],
+    ['platform.catalog.manage', '/platform/catalog'], ['platform.roles.manage', '/platform/roles'],
+  ],
+  provider: [
+    ['provider.pickups.view', '/provider/pickups'], ['provider.profile.manage', '/provider/profile'], ['provider.accreditations.manage', '/provider/accreditations'], ['users.view', '/admin/users'],
+  ],
+  industrial: [
+    ['dashboard.view', '/dashboard'], ['lots.view', '/lots'], ['stock.view', '/stock'], ['pickups.view', '/pickups'], ['documents.view', '/compliance/register'],
+    ['reports.view', '/reports'], ['sites.view', '/sites'], ['users.view', '/admin/users'],
+  ],
+};
+
 export interface LoginResult {
   requires_two_factor?: boolean;
   requires_company_selection?: boolean;
@@ -47,16 +62,22 @@ export class Session {
   /** Where this person starts: the workshop application for someone who only has mobile rights. */
   readonly home = computed(() => {
     switch (this.audience()) {
+      // The landing page is the first screen the role may actually open: sending a user to a page his role
+      // does not include would bounce him back here forever.
       case 'platform':
-        return '/platform';
+        return this.firstAllowed(LANDING.platform, (permission) => this.canPlatform(permission));
       case 'provider':
-        return '/provider';
+        return this.firstAllowed(LANDING.provider, (permission) => this.can(permission));
       case 'industrial':
-        return this.can('app.web.access') ? '/dashboard' : '/m';
+        return this.can('app.web.access') ? this.firstAllowed(LANDING.industrial, (permission) => this.can(permission)) : '/m';
       default:
         return '/account-status';
     }
   });
+
+  private firstAllowed(candidates: [string, string][], allowed: (permission: string) => boolean): string {
+    return candidates.find(([permission]) => allowed(permission))?.[1] ?? '/account/profile';
+  }
 
   /** Loads the session once per page load; later calls reuse the result. */
   ensureLoaded(): Promise<void> {

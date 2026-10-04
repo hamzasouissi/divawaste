@@ -38,13 +38,14 @@ export class Toast {
       return this.transloco.translate('errors.UNEXPECTED');
     }
 
+    // A refused field says what is wrong ("Le mot de passe est incorrect") better than any generic sentence.
+    if (error.isValidation) {
+      return Object.values(error.errors)[0]?.[0] ?? this.transloco.translate('errors.VALIDATION_FAILED');
+    }
     const key = `errors.${error.code}`;
     const known = this.transloco.translate(key);
     if (known !== key) {
       return known;
-    }
-    if (error.isValidation) {
-      return Object.values(error.errors)[0]?.[0] ?? this.transloco.translate('errors.VALIDATION_FAILED');
     }
 
     // Business rules without a dedicated translation still carry a readable explanation from the API.

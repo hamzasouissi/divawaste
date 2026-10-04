@@ -10,10 +10,10 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, map } from 'rxjs';
 
 import { Api } from '../../core/api/api';
-import { Site, Zone } from '../../core/api/models';
+import { Localized, Site, Zone } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
@@ -250,7 +250,7 @@ export class SitesPage {
 
 /** A site and its zones. Zones holding waste cannot be closed; nothing is ever deleted (traceability). */
 @Component({
-  imports: [MatButtonModule, MatIconModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KgPipe],
+  imports: [MatButtonModule, MatIconModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KgPipe, LocalizedPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -286,7 +286,7 @@ export class SitesPage {
                     <tr [class.off]="!zone.is_active">
                       <td class="dw-mono">{{ zone.code }}</td>
                       <td>{{ zone.name }} @if (zone.is_waste_storage) { <dw-status kind="lot" value="stored" [label]="t('sites.storage')" /> }</td>
-                      <td>{{ zone.zone_type }}</td>
+                      <td>{{ zoneType(zone.zone_type) | dwLocalized: (zone.zone_type ?? '—') }}</td>
                       <td class="dw-num">{{ zone.capacity_kg | dwKg: 'auto' }}</td>
                       <td><dw-status kind="member" [value]="zone.is_active ? 'active' : 'suspended'" [label]="t(zone.is_active ? 'common.active' : 'common.inactive')" /></td>
                       <td class="dw-num">
@@ -325,9 +325,15 @@ export class SiteDetailPage implements OnInit {
   protected readonly loading = signal(true);
   protected readonly error = signal<unknown>(null);
   protected readonly canManage = this.session.can('sites.manage');
+  private readonly zoneTypes = toSignal(this.reference.vocabulary().pipe(map((vocabulary) => new Map(vocabulary.zone_types.map((type) => [type.code, type.name])))));
 
   ngOnInit(): void {
     this.load();
+  }
+
+  /** "Confection" rather than the stored code "sewing". */
+  protected zoneType(code: string | null): Localized | null {
+    return (code && this.zoneTypes()?.get(code)) || null;
   }
 
   protected canManageZones(): boolean {

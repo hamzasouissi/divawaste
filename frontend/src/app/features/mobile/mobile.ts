@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
@@ -241,11 +241,14 @@ export class MobileNewLotPage {
   protected readonly valid = computed(() => /^\d{1,6}(,\d{1,3})?$/.test(this.weight()) && Number(this.weight().replace(',', '.')) > 0);
 
   constructor() {
-    // A single site is the usual case for an operator: skip the question.
-    const only = this.sites().length === 1 ? this.sites()[0] : null;
-    if (only) {
-      this.pickSite(only);
-    }
+    // A single site is the usual case for an operator: skip the question. The list may arrive after the screen
+    // opens (first visit on this device), hence an effect and not a one-time check.
+    effect(() => {
+      const sites = this.sites();
+      if (sites.length === 1 && untracked(() => this.site() === null)) {
+        untracked(() => this.pickSite(sites[0]));
+      }
+    });
   }
 
   protected go(step: Step): void {

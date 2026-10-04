@@ -9,7 +9,8 @@
     "test": "ng test",
     "lint": "ng lint",
     "i18n": "node scripts/check-i18n.mjs",
-    "verify": "ng lint && node scripts/check-i18n.mjs && ng test --watch=false && ng build"
+    "verify": "ng lint && node scripts/check-i18n.mjs && ng test --watch=false && ng build",
+    "demo": "ng serve --port 4300 --proxy-config proxy.demo.conf.json"
   },
   "prettier": {
     "printWidth": 100,

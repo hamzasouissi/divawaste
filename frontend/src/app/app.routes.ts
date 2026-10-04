@@ -1,12 +1,14 @@
 import { Routes } from '@angular/router';
 
-import { audienceGuard, authGuard, guestGuard } from './core/auth/guards';
+import { audienceGuard, authGuard, desktopGuard, guestGuard } from './core/auth/guards';
 
 /**
  * Three applications in one bundle, each loaded on demand: the public account flows, the desktop workspace
  * (industrial, provider and platform areas share the shell) and the workshop application under /m.
  */
 export const routes: Routes = [
+  // The bare address: the sign-in screen, which sends an already signed-in user to their home.
+  { path: '', pathMatch: 'full', redirectTo: 'login' },
   {
     path: '',
     loadComponent: () => import('./features/auth/auth-layout').then((m) => m.AuthLayoutComponent),
@@ -42,8 +44,8 @@ export const routes: Routes = [
       { path: 'provider', canActivate: [audienceGuard('provider')], loadChildren: () => import('./features/industrial.routes').then((m) => m.PROVIDER_ROUTES) },
       { path: 'platform', canActivate: [audienceGuard('platform')], loadChildren: () => import('./features/industrial.routes').then((m) => m.PLATFORM_ROUTES) },
       { path: '', loadChildren: () => import('./features/industrial.routes').then((m) => m.ACCOUNT_ROUTES) },
-      { path: '', canActivate: [audienceGuard('industrial', 'provider')], loadChildren: () => import('./features/industrial.routes').then((m) => m.TENANT_ROUTES) },
-      { path: '', canActivate: [audienceGuard('industrial')], loadChildren: () => import('./features/industrial.routes').then((m) => m.INDUSTRIAL_ROUTES) },
+      { path: '', canActivate: [audienceGuard('industrial', 'provider'), desktopGuard], loadChildren: () => import('./features/industrial.routes').then((m) => m.TENANT_ROUTES) },
+      { path: '', canActivate: [audienceGuard('industrial'), desktopGuard], loadChildren: () => import('./features/industrial.routes').then((m) => m.INDUSTRIAL_ROUTES) },
     ],
   },
   { path: '**', redirectTo: 'login' },

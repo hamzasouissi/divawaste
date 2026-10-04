@@ -81,12 +81,12 @@ describe('Session', () => {
 
   it('routes a provider and a platform user to their own area', async () => {
     await load(me(), access({ company: { ulid: 'P1', company_type: 'provider', status: 'active', legal_name: 'Recyclage du Sahel' } as Access['company'], company_permissions: ['provider.pickups.view'], sites: [] }));
-    expect(session.home()).toBe('/provider');
+    expect(session.home()).toBe('/provider/pickups');
     expect(navigationFor(session).flatMap((group) => group.items.map((item) => item.path))).toContain('/provider/pickups');
 
     await load(me({ memberships: [], platform_permissions: ['platform.companies.review'] }), null);
     expect(session.audience()).toBe('platform');
-    expect(session.home()).toBe('/platform');
+    expect(session.home()).toBe('/platform/companies');
     expect(session.can('lots.view')).toBe(false);
   });
 
