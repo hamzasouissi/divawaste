@@ -317,8 +317,20 @@ export class AccountStatusPage {
     }
   }
 
+  constructor() {
+    // Opened from the approval email while still signed in: the page checks again by itself.
+    void this.refresh();
+  }
+
   protected async refresh(): Promise<void> {
     await this.session.reload();
+    if (this.session.audience() === 'none') {
+      // The session was opened while the company was not active yet: attach it to the company now that it may be.
+      const company = this.session.me()?.memberships.find((membership) => membership.status === 'active')?.company;
+      if (company) {
+        await this.session.switchCompany(company).catch(() => undefined);
+      }
+    }
     if (this.session.audience() !== 'none') {
       await this.router.navigateByUrl(this.session.home());
     }

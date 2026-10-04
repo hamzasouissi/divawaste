@@ -259,7 +259,7 @@ interface AccreditationType {
               @for (row of rows(); track row.ulid) {
                 <li>
                   <div class="dw-spacer">
-                    <strong>{{ row.name | dwLocalized }}</strong> <span class="dw-mono dw-faint">{{ row.reference_number }}</span>
+                    <strong>{{ row.name | dwLocalized }}</strong><span class="dw-faint"> · {{ row.reference_number }}</span>
                     <div class="dw-muted">{{ row.valid_from | dwDate }} → {{ row.expires_on | dwDate }}@if (row.issuing_authority) { · {{ row.issuing_authority }} }</div>
                     @if (row.rejection_reason) { <div class="reason">{{ row.rejection_reason }}</div> }
                   </div>

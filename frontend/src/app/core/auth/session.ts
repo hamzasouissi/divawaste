@@ -10,7 +10,7 @@ export type Audience = 'platform' | 'industrial' | 'provider' | 'none';
 /** Per kind of account: [permission, page] in order of preference for the landing page. */
 const LANDING: Record<'platform' | 'provider' | 'industrial', [string, string][]> = {
   platform: [
-    ['platform.companies.review', '/platform/companies'], ['platform.providers.review', '/platform/accreditations'], ['platform.payments.validate', '/platform/payments'],
+    ['platform.companies.review', '/platform/overview'], ['platform.providers.review', '/platform/accreditations'], ['platform.payments.validate', '/platform/payments'],
     ['platform.catalog.manage', '/platform/catalog'], ['platform.roles.manage', '/platform/roles'],
   ],
   provider: [

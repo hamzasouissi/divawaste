@@ -28,7 +28,7 @@ const RAIL_KEY = 'dw.nav.collapsed';
   selector: 'dw-app-shell',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, Badge, TranslocoDirective, DatePipe, IconComponent, ButtonDirective, MenuComponent, Tooltip, Popover],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[class.rail]': 'collapsed()' },
+  host: { '[class.rail]': 'collapsed()', '[class.platform]': "session.audience() === 'platform'" },
   template: `
     <ng-container *transloco="let t">
       <a class="skip" href="#main">{{ t('shell.skip') }}</a>
@@ -36,7 +36,7 @@ const RAIL_KEY = 'dw.nav.collapsed';
       <nav class="nav" [class.open]="navOpen()" [attr.aria-label]="t('shell.navigation')">
         <a class="brand" [routerLink]="session.home()">
           <img src="icons/icon.svg" alt="" width="26" height="26" />
-          <span class="brand-name">DivaWaste<small>Textile</small></span>
+          <span class="brand-name">DivaWaste<small>{{ session.audience() === 'platform' ? t('shell.backOffice') : 'Textile' }}</small></span>
         </a>
         <div class="groups dw-scroll-dark">
           @for (group of groups(); track group.label) {
@@ -53,7 +53,15 @@ const RAIL_KEY = 'dw.nav.collapsed';
           }
         </div>
         <div class="nav-foot">
-          @if (session.company(); as company) {
+          @if (session.audience() === 'platform') {
+            <div class="company">
+              <span class="company-mark" aria-hidden="true">D</span>
+              <span class="company-text">
+                <span class="company-label">{{ t('shell.operator') }}</span>
+                <span class="company-name">Diva Software</span>
+              </span>
+            </div>
+          } @else if (session.company(); as company) {
             <div class="company" [pTooltip]="company.legal_name" tooltipPosition="right" [showDelay]="400">
               <span class="company-mark" aria-hidden="true">{{ company.legal_name.slice(0, 1) }}</span>
               <span class="company-text">
@@ -85,6 +93,7 @@ const RAIL_KEY = 'dw.nav.collapsed';
             </div>
           }
           <span class="dw-spacer"></span>
+          @if (session.audience() === 'platform') { <span class="space"><dw-icon>admin_panel_settings</dw-icon>{{ t('shell.platformSpace') }}</span> }
 
           @if (session.audience() !== 'platform') {
             <button pButton text severity="secondary" type="button" class="dw-icon-btn bell" (click)="loadNotifications(); notif.toggle($event)"
@@ -167,6 +176,16 @@ const RAIL_KEY = 'dw.nav.collapsed';
     .collapse:hover { background: rgb(255 255 255 / 7%); color: #fff; }
     .collapse dw-icon { font-size: 18px; }
 
+    /* Back office: another colour, so nobody mistakes it for a client workspace */
+    :host(.platform) .nav { background: #14172b; }
+    :host(.platform) .item.active dw-icon, :host(.platform) .brand-name small { color: #a5b0ff; }
+    :host(.platform) .item.active::before { background: #8c9bff; }
+    :host(.platform) .company-mark { background: rgb(140 155 255 / 18%); color: #c3caff; }
+    :host(.platform) .avatar { background: #3b448f; }
+    .space { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding-inline: 8px 10px; margin-inline-end: 6px; border-radius: 12px; background: #eceefb; color: #3b448f;
+      font-size: 12px; font-weight: 600; white-space: nowrap; }
+    .space dw-icon { font-size: 15px; }
+
     /* Icon rail */
     :host(.rail) .brand { padding-inline: 15px; }
     :host(.rail) .brand-name, :host(.rail) .item-label, :host(.rail) .company-text { display: none; }
@@ -226,7 +245,7 @@ const RAIL_KEY = 'dw.nav.collapsed';
       .scrim { display: block; position: fixed; inset: 0; z-index: 15; border: 0; background: rgb(13 20 27 / 45%); }
       .menu { display: inline-flex; }
       .bar { padding-inline: var(--dw-2) var(--dw-3); }
-      .user-name { display: none; }
+      .user-name, .space { display: none; }
       .content { padding: var(--dw-4) var(--dw-3); }
     }
   `,

@@ -42,11 +42,15 @@ export const PROVIDER_ROUTES: Routes = [
 
 /** Back-office of Diva Software staff. */
 export const PLATFORM_ROUTES: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'companies' },
+  { path: '', pathMatch: 'full', redirectTo: 'overview' },
+  { path: 'overview', canActivate: [permissionGuard('platform.companies.review')], loadComponent: () => import('./platform/back-office').then((m) => m.PlatformOverviewPage), title: 'Back-office — DivaWaste' },
   { path: 'companies', canActivate: [permissionGuard('platform.companies.review')], loadComponent: () => import('./platform/platform').then((m) => m.PlatformCompaniesPage), title: 'Sociétés — DivaWaste' },
   { path: 'companies/:ulid', canActivate: [permissionGuard('platform.companies.review')], loadComponent: () => import('./platform/platform').then((m) => m.PlatformCompanyPage), title: 'Société — DivaWaste' },
   { path: 'accreditations', canActivate: [permissionGuard('platform.providers.review')], loadComponent: () => import('./platform/platform').then((m) => m.PlatformAccreditationsPage), title: 'Agréments — DivaWaste' },
   { path: 'payments', canActivate: [permissionGuard('platform.payments.validate')], loadComponent: () => import('./platform/platform').then((m) => m.PlatformPaymentsPage), title: 'Virements — DivaWaste' },
+  { path: 'plans', canActivate: [permissionGuard('platform.plans.manage')], loadComponent: () => import('./platform/back-office').then((m) => m.PlatformPlansPage), title: 'Formules — DivaWaste' },
+  { path: 'invoices', canActivate: [permissionGuard('platform.invoices.manage')], loadComponent: () => import('./platform/back-office').then((m) => m.PlatformInvoicesPage), title: 'Factures — DivaWaste' },
+  { path: 'activity', canActivate: [permissionGuard('platform.support.view')], loadComponent: () => import('./platform/back-office').then((m) => m.PlatformActivityPage), title: 'Activité — DivaWaste' },
   { path: 'catalog', canActivate: [permissionGuard('platform.catalog.manage')], loadComponent: () => import('./platform/platform').then((m) => m.PlatformCatalogPage), title: 'Catalogue — DivaWaste' },
   { path: 'roles', canActivate: [permissionGuard('platform.roles.manage')], loadComponent: () => import('./platform/platform').then((m) => m.PlatformRolesPage), title: 'Rôles — DivaWaste' },
 ];

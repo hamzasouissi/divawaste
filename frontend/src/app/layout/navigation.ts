@@ -77,17 +77,32 @@ const NAVIGATION: Record<Exclude<Audience, 'none'>, NavGroup[]> = {
       ],
     },
   ],
+  // Diva Software operating the SaaS: its own vocabulary and order, nothing of a client workspace.
   platform: [
+    { label: 'nav.groups.platform', items: [{ path: '/platform/overview', label: 'nav.platformOverview', icon: 'space_dashboard', permissions: ['platform.companies.review'] }] },
     {
-      label: 'nav.groups.platform',
+      label: 'nav.groups.platformCustomers',
       items: [
         { path: '/platform/companies', label: 'nav.platformCompanies', icon: 'domain', permissions: ['platform.companies.review'] },
         { path: '/platform/accreditations', label: 'nav.platformAccreditations', icon: 'verified', permissions: ['platform.providers.review'] },
+      ],
+    },
+    {
+      label: 'nav.groups.platformBilling',
+      items: [
+        { path: '/platform/plans', label: 'nav.platformPlans', icon: 'sell', permissions: ['platform.plans.manage'] },
+        { path: '/platform/invoices', label: 'nav.platformInvoices', icon: 'receipt_long', permissions: ['platform.invoices.manage'] },
         { path: '/platform/payments', label: 'nav.platformPayments', icon: 'account_balance', permissions: ['platform.payments.validate'] },
+      ],
+    },
+    {
+      label: 'nav.groups.platformReference',
+      items: [
         { path: '/platform/catalog', label: 'nav.platformCatalog', icon: 'category', permissions: ['platform.catalog.manage'] },
         { path: '/platform/roles', label: 'nav.platformRoles', icon: 'admin_panel_settings', permissions: ['platform.roles.manage'] },
       ],
     },
+    { label: 'nav.groups.platformMonitoring', items: [{ path: '/platform/activity', label: 'nav.platformActivity', icon: 'history', permissions: ['platform.support.view'] }] },
   ],
 };
 

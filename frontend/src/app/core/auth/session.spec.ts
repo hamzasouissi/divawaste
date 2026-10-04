@@ -86,7 +86,7 @@ describe('Session', () => {
 
     await load(me({ memberships: [], platform_permissions: ['platform.companies.review'] }), null);
     expect(session.audience()).toBe('platform');
-    expect(session.home()).toBe('/platform/companies');
+    expect(session.home()).toBe('/platform/overview');
     expect(session.can('lots.view')).toBe(false);
   });
 

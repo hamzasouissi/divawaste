@@ -111,7 +111,10 @@
     "profile": "Mon profil",
     "security": "Sécurité du compte",
     "switchCompany": "Changer de société",
-    "logout": "Se déconnecter"
+    "logout": "Se déconnecter",
+    "backOffice": "Back-office",
+    "operator": "Opérateur de la plateforme",
+    "platformSpace": "Administration de la plateforme"
   },
   "nav": {
     "groups": {
@@ -123,7 +126,11 @@
       "workshop": "Atelier",
       "provider": "Activité",
       "providerAccount": "Mon entreprise",
-      "platform": "Plateforme"
+      "platform": "Back-office",
+      "platformCustomers": "Clients et prestataires",
+      "platformBilling": "Abonnements et facturation",
+      "platformReference": "Référentiels",
+      "platformMonitoring": "Suivi"
     },
     "dashboard": "Tableau de bord",
     "lots": "Lots de déchets",
@@ -149,7 +156,11 @@
     "platformAccreditations": "Agréments à valider",
     "platformPayments": "Virements déclarés",
     "platformCatalog": "Catalogue de déchets",
-    "platformRoles": "Rôles et permissions"
+    "platformRoles": "Rôles et permissions",
+    "platformOverview": "Vue d'ensemble",
+    "platformPlans": "Formules et tarifs",
+    "platformInvoices": "Factures",
+    "platformActivity": "Activité de la plateforme"
   },
   "auth": {
     "pitch": "Tracer, valoriser et déclarer vos déchets textiles.",
@@ -1144,7 +1155,7 @@
   "platform": {
     "companies": {
       "title": "Sociétés",
-      "subtitle": "Inscriptions à valider et comptes clients.",
+      "subtitle": "Toutes les sociétés inscrites : inscriptions à valider, clients actifs, comptes suspendus.",
       "type": "Type",
       "types": {
         "industrial": "Industriel",
@@ -1171,7 +1182,18 @@
       "interval": "Périodicité",
       "unitAmount": "Prix unitaire HT",
       "planActivated": "Formule activée et première facture émise.",
-      "emptyTitle": "Aucune société"
+      "emptyTitle": "Aucune société",
+      "subscription": "Abonnement",
+      "noSubscription": "Aucun abonnement.",
+      "currentPlan": "Formule",
+      "price": "Prix unitaire HT",
+      "periodEnd": "Fin de période",
+      "trialEnd": "Fin de l'essai",
+      "requestedSites": "Sites demandés",
+      "cancelling": "Résiliation programmée en fin de période",
+      "referencePrice": "Tarif de référence : {{amount}}. Le prix saisi ici est celui qui sera facturé.",
+      "noReferencePrice": "Aucun tarif de référence pour cette formule : saisissez le prix convenu avec le client.",
+      "selfRegistration": "Les sociétés s'inscrivent elles-mêmes depuis la page d'inscription ; elles apparaissent ici pour validation."
     },
     "accreditations": {
       "title": "Agréments à valider",
@@ -1200,13 +1222,116 @@
       "usedBy": "Activé par",
       "nameFr": "Libellé (français)",
       "nameEn": "Libellé (anglais)",
-      "saved": "Catalogue mis à jour."
+      "saved": "Catalogue mis à jour.",
+      "search": "Nom, code ou code déchet"
     },
     "roles": {
       "title": "Rôles et permissions",
       "subtitle": "Matrice des rôles standard, commune à toutes les sociétés. Les modifications s'appliquent immédiatement.",
       "audience": "Type de compte",
       "saved": "Matrice enregistrée."
+    },
+    "overview": {
+      "title": "Vue d'ensemble",
+      "subtitle": "Ce qui attend une décision de Diva Software, et la santé de la plateforme.",
+      "pendingCompanies": "inscription(s) à valider",
+      "pendingAccreditations": "agrément(s) à valider",
+      "pendingPayments": "virement(s) à rapprocher",
+      "planRequests": "formule(s) à activer",
+      "activeCompanies": "Sociétés actives",
+      "split": "{{industrial}} industriel(s) · {{provider}} prestataire(s) inscrits",
+      "trials": "Essais en cours",
+      "trialsHint": "30 jours après validation",
+      "paying": "Abonnements payants",
+      "pastDue": "{{count}} en retard de paiement",
+      "openInvoices": "Factures à encaisser",
+      "overdue": "{{count}} échue(s)",
+      "suspended": "Sociétés suspendues",
+      "unverified": "Email non confirmé",
+      "unverifiedHint": "inscriptions non finalisées",
+      "expiring": "Agréments expirant",
+      "expiringHint": "dans les 30 jours",
+      "expired": "Agréments expirés",
+      "queue": "Inscriptions à valider",
+      "queueEmpty": "Aucune inscription en attente.",
+      "requests": "Formules demandées par les clients",
+      "requestsEmpty": "Aucune demande de formule.",
+      "sites": "{{count}} site(s)",
+      "recent": "Dernières décisions",
+      "recentEmpty": "Aucune activité pour le moment."
+    },
+    "plans": {
+      "title": "Formules et tarifs",
+      "subtitle": "Les formules proposées à l'inscription et leur tarif de référence.",
+      "plan": "Formule",
+      "model": "Facturation",
+      "monthly": "Tarif mensuel HT",
+      "yearly": "Tarif annuel HT",
+      "subscribers": "Clients",
+      "visibility": "État",
+      "edit": "Modifier la formule",
+      "trialDays": "Durée de l'essai (jours)",
+      "currency": "Devise",
+      "public": "Proposée à l'inscription",
+      "publicShort": "Publique",
+      "active": "Activable pour un client",
+      "free": "Gratuit",
+      "onQuote": "Sur devis",
+      "days": "{{count}} jours",
+      "models": {
+        "trial": "Essai gratuit",
+        "per_site": "Par site actif",
+        "per_volume": "Par tonne gérée",
+        "hybrid": "Mixte"
+      },
+      "unit": {
+        "trial": "",
+        "per_site": "par site",
+        "per_volume": "par tonne",
+        "hybrid": "par site"
+      },
+      "priceHint": "Tarif proposé lors de l'activation d'une formule ; il reste modifiable client par client. Un changement de tarif ne modifie pas les abonnements déjà actifs.",
+      "note": "Le prix facturé à un client est celui confirmé au moment où vous activez sa formule (fiche de la société) : il est figé sur son abonnement. Le tarif de référence ne sert qu'à pré-remplir ce prix."
+    },
+    "invoices": {
+      "title": "Factures",
+      "subtitle": "Les factures de tous les clients et ce qui reste à encaisser.",
+      "search": "Société ou n° de facture",
+      "company": "Société",
+      "emptyTitle": "Aucune facture émise",
+      "emptyHint": "La première facture d'un client est émise quand vous activez sa formule.",
+      "transferDeclared": "Virement déclaré"
+    },
+    "activity": {
+      "title": "Activité de la plateforme",
+      "subtitle": "Qui a décidé quoi : inscriptions, suspensions, agréments, formules, paiements, référentiels.",
+      "entity": "Objet",
+      "emptyTitle": "Aucune activité",
+      "events": {
+        "company_approved": "Inscription validée",
+        "company_rejected": "Inscription rejetée",
+        "company_suspended": "Société suspendue",
+        "company_reactivated": "Société réactivée",
+        "subscription_activated": "Formule activée",
+        "plan_updated": "Formule modifiée",
+        "accreditation_approved": "Agrément validé",
+        "accreditation_rejected": "Agrément rejeté",
+        "payment_validated": "Virement validé",
+        "payment_rejected": "Virement rejeté",
+        "created": "Création",
+        "updated": "Modification",
+        "deleted": "Suppression"
+      },
+      "entities": {
+        "companies": "Société",
+        "provider_accreditations": "Agrément",
+        "company_subscriptions": "Abonnement",
+        "invoices": "Facture",
+        "payments": "Paiement",
+        "waste_catalog_items": "Catalogue de déchets",
+        "subscription_plans": "Formule",
+        "roles": "Rôle"
+      }
     }
   },
   "mobile": {

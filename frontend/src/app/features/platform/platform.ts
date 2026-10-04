@@ -22,8 +22,10 @@ import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
 import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
+import { PlatformPlan } from './back-office';
 
 const FILTERS = `
+  .how { margin-block-end: var(--dw-3); }
   .filters dw-field { width: 220px; }
 `;
 
@@ -35,11 +37,12 @@ interface CompanyFilter {
 
 /** M0-06: registrations to review first, then every account. */
 @Component({
-  imports: [TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, DatePipe, ...SELECT, FilterBarComponent],
+  imports: [TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, DatePipe, IconComponent, ...SELECT, FilterBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('platform.companies.title')" [subtitle]="t('platform.companies.subtitle')" />
+      <p class="dw-notice info how"><dw-icon>info</dw-icon><span>{{ t('platform.companies.selfRegistration') }}</span></p>
       <div class="dw-panel">
         <dw-filter-bar [active]="list.activeCount()" (cleared)="list.resetFilter()">
           <dw-search [placeholder]="t('fields.legalName')" [query]="list.filter().search ?? ''" (queryChange)="list.setFilter({ search: $event })" />
@@ -66,9 +69,12 @@ interface CompanyFilter {
   `,
   styles: FILTERS,
 })
-export class PlatformCompaniesPage {
+export class PlatformCompaniesPage implements OnInit {
   private readonly api = inject(Api);
   private readonly router = inject(Router);
+
+  /** Query parameter: opens the list on one status (link of the overview). */
+  readonly status = input<CompanyStatus>();
 
   protected readonly statuses: CompanyStatus[] = ['pending_approval', 'pending_verification', 'active', 'suspended', 'rejected', 'closed'];
   protected readonly list = new ListStore<Company, CompanyFilter>((query) => this.api.list<Company>('platform/companies', query));
@@ -80,6 +86,13 @@ export class PlatformCompaniesPage {
     { key: 'status', header: 'fields.status' },
   ];
 
+  ngOnInit(): void {
+    const status = this.status();
+    if (status && this.statuses.includes(status)) {
+      this.list.setFilter({ status });
+    }
+  }
+
   protected open(company: Company): void {
     void this.router.navigate(['/platform/companies', company.ulid]);
   }
@@ -89,21 +102,21 @@ interface CompanyDetail extends Company {
   rejection_reason: string | null;
   suspension_reason: string | null;
   requested_plan: string | null;
+  requested_sites: number | null;
+  subscription: {
+    plan: string; name: Localized; status: string; billing_interval: 'monthly' | 'yearly' | null; sites_quantity: number | null; currency_code: string; unit_amount: string | null;
+    trial_ends_at: string | null; current_period_end: string | null; cancel_at_period_end: boolean;
+  } | null;
   contact: { name: string; email: string; phone: string | null; email_verified: boolean } | null;
   counts: { sites: number; users: number; lots: number };
   accreditations: { ulid: string; type: string; name: Localized; reference_number: string; valid_from: string; expires_on: string; review_status: string; rejection_reason: string | null }[];
 }
 
-interface Plan {
-  code: string;
-  name: Localized;
-  is_trial: boolean;
-}
 
 /** One registration or account: everything needed to decide, and the decision itself. */
 @Component({
   imports: [
-    ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT,
+    ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, LocalizedPipe, MoneyPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -137,7 +150,7 @@ interface Plan {
                       } @else { — }
                     </dd>
                     @if (c.activities.length > 0) { <dt>{{ t('auth.register.activities') }}</dt><dd>{{ c.activities.join(', ') }}</dd> }
-                    @if (c.requested_plan) { <dt>{{ t('platform.companies.requestedPlan') }}</dt><dd>{{ c.requested_plan }}</dd> }
+                    @if (c.requested_plan) { <dt>{{ t('platform.companies.requestedPlan') }}</dt><dd>{{ planName(c.requested_plan) }}@if (c.requested_sites) { · {{ t('platform.overview.sites', { count: c.requested_sites }) }} }</dd> }
                     <dt>{{ t('platform.companies.usage') }}</dt><dd>{{ t('platform.companies.usageDetail', c.counts) }}</dd>
                     @if (c.rejection_reason) { <dt>{{ t('fields.reason') }}</dt><dd>{{ c.rejection_reason }}</dd> }
                     @if (c.suspension_reason) { <dt>{{ t('fields.reason') }}</dt><dd>{{ c.suspension_reason }}</dd> }
@@ -162,10 +175,32 @@ interface Plan {
               }
             </div>
 
-            @if (canBill && c.company_type === 'industrial' && c.status === 'active') {
+            @if (c.company_type === 'industrial' && (c.subscription || (canBill && c.status === 'active'))) {
+            <div class="dw-stack">
+              <section class="dw-panel">
+                <header class="dw-panel-head"><h2 class="dw-h2">{{ t('platform.companies.subscription') }}</h2>
+                  @if (c.subscription; as sub) { <dw-status kind="subscription" [value]="sub.status" /> }
+                </header>
+                <div class="dw-panel-body">
+                  @if (c.subscription; as sub) {
+                    <dl class="dw-facts">
+                      <dt>{{ t('platform.companies.currentPlan') }}</dt><dd><strong>{{ sub.name | dwLocalized }}</strong></dd>
+                      @if (sub.unit_amount) {
+                        <dt>{{ t('platform.companies.price') }}</dt>
+                        <dd>{{ sub.unit_amount | dwMoney: sub.currency_code }}@if (sub.billing_interval) { / {{ t('admin.subscription.intervals.' + sub.billing_interval) }} }</dd>
+                      }
+                      @if (sub.sites_quantity) { <dt>{{ t('admin.subscription.sitesWanted') }}</dt><dd>{{ sub.sites_quantity }}</dd> }
+                      @if (sub.status === 'trialing' && sub.trial_ends_at) { <dt>{{ t('platform.companies.trialEnd') }}</dt><dd>{{ sub.trial_ends_at | dwDate }}</dd> }
+                      @if (sub.current_period_end) { <dt>{{ t('platform.companies.periodEnd') }}</dt><dd>{{ sub.current_period_end | dwDate }}</dd> }
+                    </dl>
+                    @if (sub.cancel_at_period_end) { <p class="dw-notice warning cancelling"><dw-icon>event_busy</dw-icon><span>{{ t('platform.companies.cancelling') }}</span></p> }
+                  } @else { <p class="dw-faint">{{ t('platform.companies.noSubscription') }}</p> }
+                </div>
+              </section>
+            @if (canBill && c.status === 'active') {
               <form class="dw-panel" [formGroup]="form" (ngSubmit)="activate()">
+                <header class="dw-panel-head"><h2 class="dw-h2">{{ t('platform.companies.activatePlan') }}</h2></header>
                 <div class="dw-panel-body plan">
-                  <h2 class="dw-h2">{{ t('platform.companies.activatePlan') }}</h2>
                   <dw-field [label]="t('auth.register.plan')">
                     <dw-select formControlName="plan">@for (plan of plans(); track plan.code) { <dw-option [value]="plan.code" [label]="plan.name | dwLocalized" /> }</dw-select>
                   </dw-field>
@@ -177,10 +212,13 @@ interface Plan {
                   <dw-field [label]="t('admin.subscription.sitesWanted')"><input pInputText type="number" min="1" max="500" formControlName="sites_quantity" /></dw-field>
                   <dw-field>
                     <span dwLabel>{{ t('platform.companies.unitAmount') }} ({{ c.currency_code }})</span><input pInputText inputmode="decimal" formControlName="unit_amount" />
+                    <small dwHint>{{ reference() ? t('platform.companies.referencePrice', { amount: (reference() | dwMoney: c.currency_code) }) : t('platform.companies.noReferencePrice') }}</small>
                   </dw-field>
                   <div class="dw-form-actions"><button pButton type="submit" [disabled]="busy()">{{ t('platform.companies.activatePlan') }}</button></div>
                 </div>
               </form>
+            }
+            </div>
             }
           </div>
         }
@@ -190,7 +228,8 @@ interface Plan {
   styles: `
     .list { list-style: none; margin: 0; padding: 0; }
     .list li { display: flex; align-items: center; gap: var(--dw-3); padding: var(--dw-3) var(--dw-4); border-block-start: 1px solid var(--dw-line-soft); }
-    .plan { display: grid; }
+    .plan { display: grid; gap: var(--dw-3); }
+    .cancelling { margin-block-start: var(--dw-3); }
   `,
 })
 export class PlatformCompanyPage implements OnInit {
@@ -206,7 +245,9 @@ export class PlatformCompanyPage implements OnInit {
   protected readonly company = signal<CompanyDetail | null>(null);
   protected readonly error = signal<unknown>(null);
   protected readonly busy = signal(false);
-  protected readonly plans = signal<Plan[]>([]);
+  protected readonly plans = signal<PlatformPlan[]>([]);
+  /** Reference price of the chosen plan and interval, in the currency of the company; proposed, never imposed. */
+  protected readonly reference = signal<string | null>(null);
   protected readonly form = inject(FormBuilder).nonNullable.group({
     plan: ['', Validators.required], billing_interval: ['monthly', Validators.required],
     sites_quantity: [1, [Validators.required, Validators.min(1), Validators.max(500)]], unit_amount: ['', [Validators.required, Validators.pattern(/^\d+([.,]\d{1,3})?$/)]],
@@ -214,7 +255,15 @@ export class PlatformCompanyPage implements OnInit {
 
   ngOnInit(): void {
     this.load();
-    this.api.get<{ plans: Plan[] }>('registration/options').subscribe({ next: (options) => this.plans.set(options.plans.filter((plan) => !plan.is_trial)), error: () => undefined });
+    this.api.get<PlatformPlan[]>('platform/plans').subscribe({
+      next: (plans) => {
+        this.plans.set(plans.filter((plan) => !plan.is_trial && plan.is_active));
+        this.propose();
+      },
+      error: () => undefined,
+    });
+    this.form.controls.plan.valueChanges.subscribe(() => this.propose());
+    this.form.controls.billing_interval.valueChanges.subscribe(() => this.propose());
   }
 
   protected load(): void {
@@ -222,10 +271,26 @@ export class PlatformCompanyPage implements OnInit {
     this.api.get<CompanyDetail>(`platform/companies/${this.ulid()}`).subscribe({
       next: (company) => {
         this.company.set(company);
-        this.form.patchValue({ plan: company.requested_plan ?? '', sites_quantity: Math.max(1, company.counts.sites) });
+        this.form.patchValue({ plan: company.requested_plan && company.requested_plan !== 'trial' ? company.requested_plan : '', sites_quantity: Math.max(1, company.requested_sites ?? company.counts.sites) });
+        this.propose();
       },
       error: (error: unknown) => this.error.set(error),
     });
+  }
+
+  protected planName(code: string): string {
+    return this.plans().find((plan) => plan.code === code)?.name['fr'] ?? code;
+  }
+
+  /** Fills the price with the reference price as long as nobody typed one. */
+  private propose(): void {
+    const { plan, billing_interval } = this.form.getRawValue();
+    const currency = this.company()?.currency_code;
+    const price = this.plans().find((item) => item.code === plan)?.prices.find((item) => item.billing_interval === billing_interval && item.currency_code === currency)?.unit_amount ?? null;
+    this.reference.set(price);
+    if (price !== null && !this.form.controls.unit_amount.dirty) {
+      this.form.controls.unit_amount.setValue(String(Number(price)));
+    }
   }
 
   protected async decide(action: 'approve' | 'reject' | 'suspend' | 'reactivate'): Promise<void> {
@@ -497,7 +562,7 @@ interface CatalogPayload {
 /** M1-02: the reference catalogue every client starts from. An item in use is deactivated, never removed. */
 @Component({
   imports: [
-    ReactiveFormsModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, LocalizedPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT, CheckboxComponent,
+    ReactiveFormsModule, TranslocoDirective, SearchComponent, ...TABLE, PageHeaderComponent, StatusComponent, LocalizedPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT, CheckboxComponent, FilterBarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -541,8 +606,17 @@ interface CatalogPayload {
           </form>
         }
         <div class="dw-panel">
-          <dw-data-table [columns]="columns" [rows]="rows()" [loading]="loading()" [error]="error()" [trackBy]="track" [clickable]="true" emptyIcon="category" [emptyTitle]="t('common.empty')"
-            (rowClick)="edit($event)" (retry)="load()">
+          <dw-filter-bar [active]="(query() ? 1 : 0) + (family() ? 1 : 0) + (hazardous() ? 1 : 0)" (cleared)="query.set(''); family.set(''); hazardous.set(false)">
+            <dw-search [placeholder]="t('platform.catalog.search')" [query]="query()" (queryChange)="query.set($event)" />
+            <dw-select class="wide" [placeholder]="t('wasteTypes.family')" [value]="family()" (valueChange)="family.set($event)">
+              <dw-option value="" [label]="t('common.all')" />
+              @for (item of meta()?.waste_families ?? []; track item.code) { <dw-option [value]="item.code" [label]="item.name | dwLocalized" /> }
+            </dw-select>
+            <dw-checkbox [checked]="hazardous()" (checkedChange)="hazardous.set($event)">{{ t('lots.hazardousOnly') }}</dw-checkbox>
+          </dw-filter-bar>
+          <dw-data-table [columns]="columns" [rows]="visible()" [loading]="loading()" [error]="error()" [trackBy]="track" [clickable]="true" emptyIcon="category"
+            [emptyTitle]="rows().length > 0 ? t('common.noResult') : t('common.empty')" (rowClick)="edit($event)" (retry)="load()">
+            <ng-template dwCell="family" let-i>{{ familyName(i.waste_family) }}</ng-template>
             <ng-template dwCell="name" let-i><strong>{{ i.name | dwLocalized }}</strong><div class="dw-faint dw-code">{{ i.code }}</div></ng-template>
             <ng-template dwCell="hazard" let-i>@if (i.is_hazardous) { <dw-status kind="alert" value="warning" [label]="t('common.hazardous')" /> }</ng-template>
             <ng-template dwCell="channel" let-i>{{ i.treatment_channel ? t('channels.' + i.treatment_channel) : '—' }}</ng-template>
@@ -564,14 +638,29 @@ export class PlatformCatalogPage {
   protected readonly busy = signal(false);
   protected readonly editing = signal(false);
   private current: string | null = null;
+  protected readonly query = signal('');
+  protected readonly family = signal('');
+  protected readonly hazardous = signal(false);
+  /** The catalogue is small and loaded whole: it is filtered here, as the user types. */
+  protected readonly visible = computed(() => {
+    const needle = this.query().toLowerCase();
+
+    return this.rows().filter((item) => (!this.family() || item.waste_family === this.family()) && (!this.hazardous() || item.is_hazardous)
+      && (needle === '' || [item.code, item.regulatory_code ?? '', ...Object.values(item.name)].some((text) => text.toLowerCase().includes(needle))));
+  });
   protected readonly track = (item: CatalogItem): string => item.code;
+
+  protected familyName(code: string): string {
+    return this.meta()?.waste_families.find((family) => family.code === code)?.name['fr'] ?? code;
+  }
+
   protected readonly form = inject(FormBuilder).nonNullable.group({
     code: ['', [Validators.required, Validators.pattern(/^[a-z][a-z0-9_]*$/)]], waste_family: ['', Validators.required], name_fr: ['', Validators.required], name_en: [''],
     regulatory_code: [''], treatment_channel: [''], is_hazardous: [false], is_active: [true],
   });
   protected readonly columns: Column<CatalogItem>[] = [
     { key: 'name', header: 'fields.name' },
-    { key: 'family', header: 'wasteTypes.family', value: (i) => i.waste_family, hideBelow: 900 },
+    { key: 'family', header: 'wasteTypes.family', hideBelow: 900 },
     { key: 'code', header: 'lots.regulatoryCode', value: (i) => i.regulatory_code, hideBelow: 640 },
     { key: 'hazard', header: 'common.hazardous', hideBelow: 640 },
     { key: 'channel', header: 'wasteTypes.channel', hideBelow: 900 },
