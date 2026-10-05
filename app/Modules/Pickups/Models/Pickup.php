@@ -6,11 +6,21 @@ use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Common\Models\Concerns\HasPublicUlid;
 use App\Modules\Pickups\Enums\PickupStatus;
 use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Enlèvement owned by the industrial; visible to its provider/transporter through partyColumns().
+ *
+ * @property string $ulid
+ * @property string|null $submitted_at
+ * @property string|null $confirmed_at
+ * @property string|null $refused_at
+ * @property CarbonImmutable|null $collected_at
+ * @property CarbonImmutable|null $received_at
+ * @property string|null $completed_at
+ * @property string|null $cancelled_at
  */
 class Pickup extends Model
 {

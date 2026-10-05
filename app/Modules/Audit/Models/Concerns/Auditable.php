@@ -19,17 +19,17 @@ trait Auditable
 
     protected static function bootAuditable(): void
     {
-        static::created(fn (Model $model) => $model->audit('created', [], $model->getAttributes()));
+        static::created(fn (self $model) => $model->audit('created', [], $model->getAttributes()));
 
-        static::updated(function (Model $model): void {
+        static::updated(function (self $model): void {
             $changes = $model->getChanges();
             $model->audit('updated', array_intersect_key($model->getRawOriginal(), $changes), $changes);
         });
 
-        static::deleted(fn (Model $model) => $model->audit('deleted', $model->getRawOriginal()));
+        static::deleted(fn (self $model) => $model->audit('deleted', $model->getRawOriginal()));
 
         if (method_exists(static::class, 'restored')) {
-            static::restored(fn (Model $model) => $model->audit('restored'));
+            static::restored(fn (self $model) => $model->audit('restored'));
         }
     }
 

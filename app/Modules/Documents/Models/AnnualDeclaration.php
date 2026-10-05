@@ -12,6 +12,9 @@ use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $ulid
+ */
 class AnnualDeclaration extends Model
 {
     use Auditable;

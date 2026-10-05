@@ -30,6 +30,7 @@ final class NotificationCatalog
         'payment.declared' => ['mail' => true],
         'payment.reviewed' => ['mail' => true],
         'invoice.issued' => ['mail' => true],
+        'subscription.activated' => ['mail' => true],
         'subscription.trial_ending' => ['mail' => true],
         'company.pending_review' => ['mail' => true],
     ];

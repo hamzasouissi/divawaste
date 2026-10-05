@@ -46,8 +46,8 @@ address sends you back to your own home page. Try it: as Leila (operator) open `
 are back on `/m`. As Amira open `http://localhost:4300/platform/companies` → back on `/dashboard`. If the server refuses
 an action, a red message says "Vous n'avez pas les droits nécessaires pour cette action."
 
-**Email verification.** The demo accounts are already verified. For a new registration the email is not really sent:
-it is written to a log. Print the latest links with:
+**Email verification.** The demo accounts are already verified. For a new registration the email is generated but
+not delivered to any mailbox (the demo has no mail server). List the latest emails, with the link each one contains:
 
 ```powershell
 cd C:\Projects\diva-waste
@@ -98,6 +98,22 @@ Use a narrow window, or press F12 then Ctrl+Shift+M to show the page as a phone.
 | 7 | — | The lot card: number, status **Créé**, type, 58 kg, "Usine de Nabeul · Atelier de coupe" |
 | 8 | **Mettre en stock** | "Lot mis en stock." Status becomes **Stocké**. This is the only status change an operator makes by hand; the others follow the pickup |
 | 9 | Sign in as `amira@capbon.test` → **Lots de déchets** → click the lot | Its history: "Lot créé … par Leila Mansour", then the storing. **Stock** now counts it. **Journal d'audit** has the entries |
+
+## Test 2b — Signing out of the workshop application (as `leila@capbon.test`)
+
+| # | Do | Expected |
+|---|---|---|
+| 1 | Sign in as `leila@capbon.test` | You land on `/m` directly |
+| 2 | Look at the screen | A round account button at the top right; at the bottom, a tile "Leila Mansour — Mon compte · Se déconnecter" |
+| 3 | Tap either one | "Mon compte": Leila Mansour, leila@capbon.test, Textile du Cap Bon, and a large red **Se déconnecter** |
+| 4 | Tap **Se déconnecter** | The sign-in screen |
+| 5 | Type `http://localhost:4300/m` in the address bar | The sign-in screen again (address `/login?next=%2Fm`): the session is closed |
+| 6 | Sign in again as Leila | Back on `/m` |
+
+With records waiting (offline): follow Test 3 up to the lot recorded offline, **do not** bring the network back, tap the
+account button → "1 enregistrement(s) pas encore envoyé(s)" → **Se déconnecter** → a confirmation says the record
+stays on the device → confirm. Untick "Offline": within a few seconds the lot is sent. Sign in again: "Mes derniers
+lots" shows it once, "Synchronisé", with its number.
 
 ## Test 3 — Offline mode (as `leila@capbon.test`)
 
@@ -215,7 +231,8 @@ The same rules are enforced by 158 automated tests (`php artisan test`).
 - **Camera scanning** was not tried on a real phone. On the PC it needs a webcam; the typed code is the fallback.
 - **Label printing** on a thermal printer was not tried (the PDF is 100 × 50 mm, one page).
 - **Installation as an app** and offline reload need the production build, not the demo servers.
-- **Emails are not sent** in the demo: links come from `demo.ps1 mail`.
+- **Emails are generated, not delivered** in the demo: `demo.ps1 mail` lists them with their links. Delivery to a real
+  mailbox needs an SMTP account in `.env.demo` and was not tested (see "Emails" in the developer runbook).
 - **Scheduled tasks** (accreditation alerts, monthly invoicing) do not run by themselves in the demo:
   `demo.ps1 scheduler` runs them once.
 - Only French is available. Plans have no price list. Legal texts are placeholders.

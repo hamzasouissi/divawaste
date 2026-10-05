@@ -42,6 +42,7 @@ return [
         'issued' => ['title' => 'New invoice :invoice', 'body' => 'Invoice :invoice for :amount is available. Due: :due_date.'],
     ],
     'subscription' => [
+        'activated' => ['title' => 'Your DivaWaste subscription is active', 'body' => 'The :plan plan of :company is active since :start. Your first invoice :invoice, for :amount, is available under My subscription. Payment due: :due_date, by bank transfer.'],
         'trial_ending' => ['title' => 'Your free trial ends on :date', 'body' => ':days days of trial remain. Choose a plan to keep using DivaWaste.'],
     ],
     'company' => [

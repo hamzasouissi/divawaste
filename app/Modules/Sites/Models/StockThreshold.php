@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Storage limit for a site, optionally narrowed to a zone and/or a waste type (M2-07).
  * alert_level/alerted_at hold the current alert state (merged stock_alerts).
+ *
+ * @property string $ulid
  */
 class StockThreshold extends Model
 {

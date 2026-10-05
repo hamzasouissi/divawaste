@@ -7,9 +7,14 @@ use App\Modules\Common\Models\StoredFile;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $ulid
+ * @property CarbonImmutable|null $created_at
+ */
 class GeneratedReport extends Model
 {
     use BelongsToCompany;

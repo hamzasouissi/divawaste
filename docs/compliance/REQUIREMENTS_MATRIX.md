@@ -2,7 +2,7 @@
 
 Source of truth: *Cahier des charges — DivaWaste Textile* (28 Sep 2026). Requirement IDs are the cahier's.
 
-**State recorded here: 5 Oct 2026, after the MVP acceptance pass** — backend branch `takeover/mvp-alignment`, frontend repository
+**State recorded here: 5 Oct 2026, after the MVP acceptance pass and the technical-compliance pass (API documentation, Larastan, workshop sign-out, email trace)** — backend branch `takeover/mvp-alignment`, frontend repository
 `DIVA-WASTE-FRONTEND-LAB` branch `main`. The state found at the start is kept in
 [BASELINE_AUDIT_2026-10-04.md](BASELINE_AUDIT_2026-10-04.md).
 
@@ -29,7 +29,7 @@ Nothing in the product uses mock data.
 | M0-03 | Plan choice (trial, per site, per volume) | 🟡 | plans seeded, chosen at registration | T `SubscriptionTest`, `PlatformBackOfficeTest` · **B5** | **Price grid not decided**: reference prices are managed in `/platform/plans` and proposed at activation; the invoiced price is the one confirmed for each client. Per-volume is a flat fee (tonnage not metered). Every plan starts with the 30-day trial |
 | M0-04 | Bank transfer validated by super-admin | ✅ | declare → `/platform/payments` | T `SubscriptionTest`, `BillingTest` · **B** | Card payment = V2 |
 | M0-05 | Provider registration with accreditation PDFs | ✅ | `/register` (provider), `/provider/accreditations` | T `RegistrationAndReviewTest` · S | |
-| M0-06 | Approve / reject with reason / suspend, applicant emailed | ✅ | `/platform/companies/:id` | T `RegistrationAndReviewTest` · **B5** (approve, reject, suspend, reactivate) | |
+| M0-06 | Approve / reject with reason / suspend, applicant emailed | ✅ | `/platform/companies/:id` | T `RegistrationAndReviewTest`, `EmailDeliveryTest` (real transport, recipient, content) · **B5** (approve, reject, suspend, reactivate; emails read in the outbox and sent through SMTP to a local test server) | Delivery to a real mailbox not tested |
 | M0-07 | 4-step wizard, skippable, resumable | ✅ | `/onboarding` + banner on the dashboard | T `RegistrationAndReviewTest` · **B5** (site, zone, type, invitation) | Each step opens the real screen; the wizard tracks progress, it does not duplicate forms |
 | M0-08 | Invitation by email with role and sites, 7 days | ✅ | `/admin/users`, `/invitation` | T `UsersAndRolesTest` · **B5** (sent, accepted, invited user signed in) | |
 | M0-09 | Password ≥ 12, reset, optional TOTP, lockout 5 | ✅ | `/login`, `/forgot-password`, `/account/security` | T `AccountSecurityTest` · **B5** (2FA enabled with a real code, sign-in with the code) | Lockout: 5 failures → 15 minutes, email sent |
@@ -96,7 +96,7 @@ Nothing in the product uses mock data.
 
 | ID | Requirement | Status | Where | Verified by | Limit / note |
 |---|---|---|---|---|---|
-| M7-01 | Email and in-app notifications | ✅ | bell, `/account/notifications`, preferences per event | T several · S | WhatsApp = V2. The inbox polls every 60 s (no push) |
+| M7-01 | Email and in-app notifications | ✅ | bell, `/account/notifications`, preferences per event | T several · S · B5 | WhatsApp = V2. The inbox polls every 60 s (no push). Every email is traced (`notification_logs`: transport, sent or failed). **Delivery to a real mailbox was not tested**: it needs the SMTP account of a mail provider ([runbook](../DEVELOPER_RUNBOOK.md#emails)) |
 | M7-02 | Audit log readable by client admin | ✅ | `/admin/audit` | T `PickupScenarioTest` · **B** | 20 models audited, actor company and source recorded |
 | M7-03 | Public API with keys | V2 | | | |
 | M7-04 | Automatic invoicing, tax ID, VAT by country | 🟡 | daily `subscriptions:run`, invoice PDF | T `SubscriptionTest` · **B** (300 + 57 VAT + 1 stamp = 358 TND) | **Tunisian VAT 19 % and 1 TND stamp duty are provisional values.** Seller tax identifiers must be set in `.env` |
@@ -125,8 +125,8 @@ Nothing in the product uses mock data.
 | Auth | Sanctum SPA session (web), tokens (mobile), Fortify 2FA, spatie/laravel-permission | ✅ |
 | Documents | laravel-dompdf, **simple-qrcode**, Laravel Excel | 🟡 dompdf ✅, Excel ✅. **simple-qrcode cannot be installed next to Fortify** (it pins bacon-qr-code v2, Fortify needs v3): QR codes are generated with bacon/bacon-qr-code directly. Needs Diva's written agreement |
 | Background | Redis, queues with **Horizon**, scheduler | 🟡 jobs and schedule ✅. Horizon not installed (no Windows support on the development machine); Redis not run locally — tests use the sync queue |
-| API docs | Scribe / L5-Swagger | 🔴 not installed; [API.md](../API.md) lists the routes |
-| Quality (API) | Pest/PHPUnit, Larastan, Pint | 🟡 PHPUnit ✅ Pint ✅ · **Larastan not installed** |
+| API docs | Scribe / L5-Swagger | ✅ Scribe 5.11. `php artisan api:docs` → [api/openapi.yaml](../api/openapi.yaml) (OpenAPI 3), Postman collection, HTML at `/docs`. 155 routes, checked against the application by the command and by a test |
+| Quality (API) | Pest/PHPUnit, Larastan, Pint | ✅ PHPUnit (169 tests) · Pint · Larastan 3.12 level 5 on the whole project, 0 error, no baseline |
 | Front-end | Angular latest, standalone, Material or PrimeNG, ECharts | 🟡 Angular **20.3** (kept, not upgraded to the latest major), standalone, zoneless, **PrimeNG 20**, ECharts |
 | Mobile | Angular PWA, Dexie, ZXing | ✅ |
 | i18n | Transloco | ✅ |

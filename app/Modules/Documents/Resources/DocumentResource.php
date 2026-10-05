@@ -22,10 +22,10 @@ final class DocumentResource extends JsonResource
 
         return [
             'ulid' => $this->ulid,
-            'document_type' => $this->document_type?->value,
+            'document_type' => $this->document_type->value,
             'title' => $this->title,
             'reference_number' => $this->reference_number,
-            'status' => $this->status?->value,
+            'status' => $this->status->value,
             'is_regulatory' => $this->is_regulatory,
             'site' => $this->site_id === null ? null : $parties->site($this->site_id),
             'pickup' => $this->pickup_id === null ? null : DB::table('pickups')->where('id', $this->pickup_id)->first(['ulid', 'pickup_number']),

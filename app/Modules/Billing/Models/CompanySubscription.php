@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * One row per plan period; the rows are the subscription history. is_current = 1 on exactly one row.
+ *
+ * @property string $ulid
  */
 class CompanySubscription extends Model
 {

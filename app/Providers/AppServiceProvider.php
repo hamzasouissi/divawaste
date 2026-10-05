@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Modules\Common\Docs\DemoData;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Identity\Models\User;
+use App\Modules\Notifications\Channels\LoggedMailChannel;
 use App\Modules\Pickups\Support\PartyDirectory;
 use App\Modules\Sites\Models\Site;
 use App\Modules\Tenancy\TenantContext;
@@ -13,11 +15,13 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\Channels\MailChannel;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Knuckles\Scribe\Scribe;
 use Laravel\Fortify\Fortify;
 
 class AppServiceProvider extends ServiceProvider
@@ -28,6 +32,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(TenantContext::class);
         $this->app->scoped(ReferenceCodes::class);
         $this->app->scoped(PartyDirectory::class);
+
+        // Every notification email leaves a trace (notification_logs): sent or failed, and through which transport.
+        $this->app->bind(MailChannel::class, LoggedMailChannel::class);
 
         // API only: Fortify provides the TOTP engine (cahier §5), never its session/web routes.
         Fortify::ignoreRoutes();
@@ -71,5 +78,13 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         DB::prohibitDestructiveCommands($this->app->isProduction());
+
+        // API documentation (development dependency): its example calls are made as accounts of the demo dataset.
+        if ($this->app->runningInConsole() && class_exists(Scribe::class)) {
+            Scribe::beforeResponseCall(DemoData::authenticate(...));
+            Scribe::afterResponseCall(DemoData::summariseFile(...));
+            // Document the URLs as they are routed ("lots/{lot}"), not renamed after the model key.
+            Scribe::normalizeEndpointUrlUsing(fn (string $url) => $url);
+        }
     }
 }

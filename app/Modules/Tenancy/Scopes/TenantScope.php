@@ -11,11 +11,13 @@ use Illuminate\Database\Eloquent\Scope;
 
 /**
  * Filters tenant-owned models by the current company. Fails closed without context.
+ *
+ * @implements Scope<Model>
  */
 final class TenantScope implements Scope
 {
     /**
-     * @param  Builder<Model>  $builder
+     * @param  Builder<covariant Model>  $builder
      */
     public function apply(Builder $builder, Model $model): void
     {

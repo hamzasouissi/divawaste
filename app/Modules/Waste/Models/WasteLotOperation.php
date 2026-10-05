@@ -7,6 +7,9 @@ use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
 use App\Modules\Waste\Models\Concerns\AppendOnly;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property string $ulid
+ */
 class WasteLotOperation extends Model
 {
     use AppendOnly;

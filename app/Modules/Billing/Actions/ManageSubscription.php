@@ -34,43 +34,55 @@ final class ManageSubscription
      */
     public function activate(Company $company, array $terms, User $actor): CompanySubscription
     {
-        return $this->context->runAs($company, fn () => DB::transaction(function () use ($company, $terms, $actor) {
-            $plan = DB::table('subscription_plans')->where('code', $terms['plan'])->where('is_active', true)->where('is_trial', false)->first(['id', 'code', 'name', 'billing_model']);
-            if ($plan === null) {
-                throw new BusinessRuleViolation('PLAN_UNAVAILABLE', 'This plan cannot be activated.');
-            }
+        return $this->context->runAs($company, function () use ($company, $terms, $actor) {
+            [$subscription, $invoice, $planName] = DB::transaction(function () use ($company, $terms, $actor) {
+                $plan = DB::table('subscription_plans')->where('code', $terms['plan'])->where('is_active', true)->where('is_trial', false)->first(['id', 'code', 'name', 'billing_model']);
+                if ($plan === null) {
+                    throw new BusinessRuleViolation('PLAN_UNAVAILABLE', 'This plan cannot be activated.');
+                }
 
-            $previous = CompanySubscription::query()->where('is_current', true)->lockForUpdate()->first();
-            $start = now()->startOfDay();
+                $previous = CompanySubscription::query()->where('is_current', true)->lockForUpdate()->first();
+                $start = now()->startOfDay();
 
-            $subscription = new CompanySubscription([
-                'subscription_plan_id' => $plan->id, 'status' => SubscriptionStatus::Active, 'billing_interval' => $terms['billing_interval'],
-                'payment_method' => 'bank_transfer', 'currency_code' => $company->currency_code, 'sites_quantity' => $terms['sites_quantity'],
-                'starts_at' => $start, 'created_by_user_id' => $actor->id,
-                'price_snapshot' => ['plan' => $plan->code, 'billing_model' => $plan->billing_model, 'unit_amount' => $terms['unit_amount'],
-                    'max_sites' => $plan->billing_model === 'per_site' ? $terms['sites_quantity'] : null],
-            ]);
-            // The unique (company, is_current) index allows a single current row: release the old one first.
-            $previous?->forceFill(['is_current' => null, 'status' => $previous->status === SubscriptionStatus::Trialing ? SubscriptionStatus::Expired : SubscriptionStatus::Cancelled, 'ends_at' => now()])->save();
-            $subscription->forceFill(['is_current' => true])->save();
-            $previous?->forceFill(['replaced_by_subscription_id' => $subscription->id])->save();
+                $subscription = new CompanySubscription([
+                    'subscription_plan_id' => $plan->id, 'status' => SubscriptionStatus::Active, 'billing_interval' => $terms['billing_interval'],
+                    'payment_method' => 'bank_transfer', 'currency_code' => $company->currency_code, 'sites_quantity' => $terms['sites_quantity'],
+                    'starts_at' => $start, 'created_by_user_id' => $actor->id,
+                    'price_snapshot' => ['plan' => $plan->code, 'billing_model' => $plan->billing_model, 'unit_amount' => $terms['unit_amount'],
+                        'max_sites' => $plan->billing_model === 'per_site' ? $terms['sites_quantity'] : null],
+                ]);
+                // The unique (company, is_current) index allows a single current row: release the old one first.
+                $previous?->forceFill(['is_current' => null, 'status' => $previous->status === SubscriptionStatus::Trialing ? SubscriptionStatus::Expired : SubscriptionStatus::Cancelled, 'ends_at' => now()])->save();
+                $subscription->forceFill(['is_current' => true])->save();
+                $previous?->forceFill(['replaced_by_subscription_id' => $subscription->id])->save();
 
-            $settings = $company->settings ?? [];
-            unset($settings['requested_plan'], $settings['requested_sites']);
-            $company->forceFill(['settings' => $settings])->save();
+                $settings = $company->settings ?? [];
+                unset($settings['requested_plan'], $settings['requested_sites']);
+                $company->forceFill(['settings' => $settings])->save();
 
-            $this->billPeriod($subscription, $start, $actor);
+                // The activation email below carries the first invoice: no separate "new invoice" message.
+                $invoice = $this->billPeriod($subscription, $start, $actor, announce: false);
+
+                return [$subscription, $invoice, json_decode((string) $plan->name, true)];
+            });
+
+            // M0-04 / M7-01: the client is told its plan is active, with the first invoice to pay.
+            $this->notify->toCompanyPermission($company->id, 'invoices.view', 'subscription.activated', [
+                'company' => $company->legal_name, 'plan' => $planName[$company->default_locale] ?? $planName['fr'] ?? $terms['plan'],
+                'start' => $subscription->starts_at->format('d/m/Y'), 'invoice' => $invoice->invoice_number,
+                'amount' => $invoice->total_amount.' '.$invoice->currency_code, 'due_date' => $invoice->due_date->format('d/m/Y'),
+            ], '/subscription');
 
             return $subscription;
-        }));
+        });
     }
 
     /**
      * Invoices one period of an active subscription and moves its period forward. Runs in the company's context.
      */
-    public function billPeriod(CompanySubscription $subscription, CarbonInterface $periodStart, ?User $actor = null): Invoice
+    public function billPeriod(CompanySubscription $subscription, CarbonInterface $periodStart, ?User $actor = null, bool $announce = true): Invoice
     {
-        return DB::transaction(function () use ($subscription, $periodStart, $actor) {
+        return DB::transaction(function () use ($subscription, $periodStart, $actor, $announce) {
             $company = Company::query()->findOrFail($subscription->company_id);
             $periodEnd = ($subscription->billing_interval === 'yearly' ? $periodStart->copy()->addYear() : $periodStart->copy()->addMonth())->subDay();
             $snapshot = $subscription->price_snapshot;
@@ -94,9 +106,11 @@ final class ManageSubscription
             $invoice = $this->issue->handle($invoice, $actor);
 
             $subscription->forceFill(['current_period_start' => $periodStart, 'current_period_end' => $periodEnd])->save();
-            $this->notify->toCompanyPermission($company->id, 'invoices.view', 'invoice.issued', [
-                'invoice' => $invoice->invoice_number, 'amount' => $invoice->total_amount.' '.$invoice->currency_code, 'due_date' => $invoice->due_date->format('d/m/Y'),
-            ], '/subscription');
+            if ($announce) {
+                $this->notify->toCompanyPermission($company->id, 'invoices.view', 'invoice.issued', [
+                    'invoice' => $invoice->invoice_number, 'amount' => $invoice->total_amount.' '.$invoice->currency_code, 'due_date' => $invoice->due_date->format('d/m/Y'),
+                ], '/subscription');
+            }
 
             return $invoice;
         });

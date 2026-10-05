@@ -4,12 +4,18 @@
     .\scripts\demo.ps1 reset       rebuild the demo database (divawaste_demo) with the demo dataset
     .\scripts\demo.ps1 api         start the API on http://127.0.0.1:8010   (keep the window open)
     .\scripts\demo.ps1 scheduler   run the daily tasks once (accreditation alerts, invoicing)
-    .\scripts\demo.ps1 mail        show the links of the last emails (verification, invitation, password reset)
+    .\scripts\demo.ps1 mail        list the last emails the application produced: recipient, subject, link, delivered or not
+    .\scripts\demo.ps1 mail 12     print email number 12 and open it in the browser
+    .\scripts\demo.ps1 mailtest you@example.com   send one test email through the mail server of .env.demo
+    .\scripts\demo.ps1 apidocs     regenerate the API documentation (public\docs, OpenAPI in storage\app\private\scribe)
     .\scripts\demo.ps1 stop        stop the API (8010) and the Angular server (4300)
 
   It never touches .env or the database it names: everything goes through .env.demo.
 #>
-param([Parameter(Position = 0)][ValidateSet('reset', 'api', 'scheduler', 'mail', 'stop')][string]$Action = 'api')
+param(
+    [Parameter(Position = 0)][ValidateSet('reset', 'api', 'scheduler', 'mail', 'mailtest', 'apidocs', 'stop')][string]$Action = 'api',
+    [Parameter(Position = 1)][string]$Argument = ''
+)
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -57,14 +63,24 @@ switch ($Action) {
         php artisan subscriptions:run --env=demo
     }
     'mail' {
-        # Emails are written to the log in this environment: the links are what a tester needs.
-        $links = Select-String -Path "$root\storage\logs\laravel.log" -Pattern 'http://localhost:4300/[^\s"<)\]]+' -AllMatches |
-            ForEach-Object { $_.Matches.Value } | ForEach-Object { $_ -replace '&amp;', '&' }
-        if (-not $links) { Write-Host 'No link found yet in storage\logs\laravel.log.'; return }
-        $links = @($links)
-        [array]::Reverse($links)
-        # Newest first, each link once.
-        $links | Select-Object -Unique | Select-Object -First 8
+        # With MAIL_MAILER=log (the default of .env.demo) no email leaves this computer: this is where they are read.
+        Initialize-DemoEnv
+        if ($Argument) {
+            php artisan mail:outbox --show=$Argument --env=demo
+            $body = "$root\storage\app\mail-outbox\$Argument.html"
+            if (Test-Path $body) { Start-Process $body }
+        } else {
+            php artisan mail:outbox --env=demo
+        }
+    }
+    'mailtest' {
+        Initialize-DemoEnv
+        if (-not $Argument) { throw 'Give the address that should receive the test: .\scripts\demo.ps1 mailtest you@example.com' }
+        php artisan mail:test $Argument --env=demo
+    }
+    'apidocs' {
+        Initialize-DemoEnv
+        php artisan api:docs --env=demo
     }
     'stop' {
         Stop-Port 8010

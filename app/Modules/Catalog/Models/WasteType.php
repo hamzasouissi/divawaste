@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Company waste type, activated from the platform catalog (copied defaults) or custom (M1-02..05).
+ *
+ * @property string $ulid
  */
 class WasteType extends Model
 {

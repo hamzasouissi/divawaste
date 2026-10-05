@@ -131,7 +131,11 @@ Route::middleware('auth:sanctum')->group(function () {
         $user->forceFill(['password' => $input['password'], 'password_changed_at' => now()])->save();
         // Other devices are signed out; the current one stays.
         $current = $user->currentAccessToken();
-        $user->tokens()->when($current instanceof PersonalAccessToken, fn ($query) => $query->whereKeyNot($current->getKey()))->delete();
+        $others = $user->tokens();
+        if ($current instanceof PersonalAccessToken) {
+            $others->whereKeyNot($current->getKey());
+        }
+        $others->delete();
 
         return response()->noContent();
     })->name('me.password');

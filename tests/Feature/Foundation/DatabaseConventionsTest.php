@@ -79,7 +79,7 @@ class DatabaseConventionsTest extends TestCase
 
         $this->assertMatchesRegularExpression(
             '/^[0-9A-HJKMNP-TV-Z]{26}$/',
-            $generated->ulid
+            $generated->getAttribute('ulid')
         );
 
         $this->assertIsInt($generated->getKey());
@@ -89,7 +89,7 @@ class DatabaseConventionsTest extends TestCase
 
         $this->assertSame(
             $clientUlid,
-            $model->newQuery()->create(['ulid' => $clientUlid])->ulid
+            $model->newQuery()->create(['ulid' => $clientUlid])->getAttribute('ulid')
         );
     }
 }

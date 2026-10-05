@@ -123,16 +123,16 @@ final class DeclarationWorkflow
             ->where(fn ($query) => $query->whereNull('l.closed_at')->orWhere('l.closed_at', '>=', $end)->orWhere('l.closed_reason', 'completed'))
             ->sum('l.net_weight_kg');
 
-        $kg = fn ($value) => bcadd((string) ($value ?: '0'), '0', 3);
-        $line = fn (object $row, array $extra) => ['regulatory_code' => $row->code, 'waste_type' => $row->name, 'is_hazardous' => (bool) $row->is_hazardous, 'kg' => $kg($row->kg)] + $extra;
+        $kg = fn ($value): string => bcadd((string) ($value ?: '0'), '0', 3);
+        $line = fn (\stdClass $row, array $extra): array => ['regulatory_code' => $row->code, 'waste_type' => $row->name, 'is_hazardous' => (bool) $row->is_hazardous, 'kg' => $kg($row->kg)] + $extra;
 
         return [
             'format' => 'TN_ANGED',
             'year' => $year,
             'producer' => ['legal_name' => $company->legal_name, 'tax_id' => $company->tax_id, 'site' => $site->name, 'site_code' => $site->code,
                 'address' => trim("{$site->address_line1} {$site->postal_code} {$site->city}"), 'regulatory_identifier' => $site->regulatory_identifier],
-            'produced' => $produced->map(fn (object $row) => $line($row, ['lots' => (int) $row->lots]))->sortByDesc('kg', SORT_NUMERIC)->values()->all(),
-            'evacuated' => $evacuated->map(fn (object $row) => $line($row, ['provider' => $row->provider, 'channel' => $row->channel]))->sortByDesc('kg', SORT_NUMERIC)->values()->all(),
+            'produced' => $produced->map(fn (\stdClass $row) => $line($row, ['lots' => (int) $row->lots]))->sortByDesc('kg', SORT_NUMERIC)->values()->all(),
+            'evacuated' => $evacuated->map(fn (\stdClass $row) => $line($row, ['provider' => $row->provider, 'channel' => $row->channel]))->sortByDesc('kg', SORT_NUMERIC)->values()->all(),
             'totals' => [
                 'produced_kg' => $kg($produced->sum('kg')),
                 'hazardous_produced_kg' => $kg($produced->where('is_hazardous', 1)->sum('kg')),

@@ -9,6 +9,9 @@ use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $ulid
+ */
 class Payment extends Model
 {
     use Auditable;

@@ -29,7 +29,7 @@ class AuditLogResource extends JsonResource
             'new_values' => self::withoutInternalIds($this->new_values),
             'ip_address' => $this->ip_address,
             'request_id' => $this->request_id,
-            'occurred_at' => $this->created_at?->toIso8601ZuluString('millisecond'),
+            'occurred_at' => $this->created_at->toIso8601ZuluString('millisecond'),
         ];
     }
 

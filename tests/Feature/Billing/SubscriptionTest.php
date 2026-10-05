@@ -69,7 +69,10 @@ class SubscriptionTest extends TestCase
         $this->assertSame(['300.000', '57.000', '1.000', '358.000'], [$invoice['subtotal_amount'], $invoice['tax_amount'], $invoice['stamp_duty_amount'], $invoice['total_amount']]);
         $this->assertSame('issued', $invoice['status']);
         $this->assertSame('1234567A', json_decode((string) DB::table('invoices')->value('buyer_snapshot'), true)['tax_id']);
-        Notification::assertSentTo($this->admin, BusinessEventNotification::class, fn (BusinessEventNotification $n) => $n->type === 'invoice.issued');
+        // One message tells the client its plan is active and carries the first invoice; no separate "new invoice".
+        Notification::assertSentTo($this->admin, BusinessEventNotification::class, fn (BusinessEventNotification $n) => $n->type === 'subscription.activated'
+            && $n->params['invoice'] === $invoice['invoice_number'] && $n->params['amount'] === '358.000 TND' && $n->params['plan'] === 'Abonnement par site');
+        Notification::assertNotSentTo($this->admin, BusinessEventNotification::class, fn (BusinessEventNotification $n) => $n->type === 'invoice.issued');
         $this->assertStringStartsWith('%PDF-', $client()->get("/api/v1/invoices/{$invoice['ulid']}/pdf")->assertOk()->getContent());
 
         // M0-04: the client declares its transfer, the platform validates it.

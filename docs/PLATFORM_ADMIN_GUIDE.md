@@ -430,17 +430,20 @@ Operational data of a client (lots, pickups, documents) is **not** in this journ
 
 | Event | Who is told | How |
 |---|---|---|
-| Company registered and email confirmed | You | Counter and list on the overview |
-| Registration approved / rejected | The applicant | Email + in-app notification |
-| Company suspended / reactivated | The client's administrators | Email |
+| Company registered and email confirmed | You | Email "Inscription à valider — …" + counter and list on the overview |
+| Registration approved / rejected | The company's main contact | Email (the rejection gives your reason) |
+| Company suspended / reactivated | The company's main contact | Email (the suspension gives your reason) |
 | Plan requested by a client | You | "Formules demandées" on the overview |
-| Invoice issued | The client | Email + notification |
+| Plan activated | The client's administrators | Email "Votre abonnement DivaWaste est activé" with the plan, the first invoice, its amount and due date + notification |
+| Invoice issued at each renewal | The client's administrators | Email "Nouvelle facture …" + notification |
 | Transfer declared | You | "virement(s) à rapprocher" on the overview |
 | Transfer validated / rejected | The client | Email + notification |
 | Accreditation uploaded | You | "agrément(s) à valider" on the overview |
 | Accreditation approved / rejected / expiring | The provider (and partner clients for expiry) | Email + notification |
 
-In the demo environment no email is really sent: `scripts\demo.ps1 mail` prints the latest links.
+In the demo environment emails are generated but not delivered to any mailbox: `scripts\demo.ps1 mail` lists them
+(recipient, subject, link) and `scripts\demo.ps1 mail <number>` opens one. To receive them for real, see "Emails" in
+[DEVELOPER_RUNBOOK.md](DEVELOPER_RUNBOOK.md#emails).
 
 ## 14. What you can and cannot access
 

@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Tenant root. Not tenant-scoped itself: access is resolved through memberships.
+ *
+ * @property string $ulid
  */
 #[UseFactory(CompanyFactory::class)]
 class Company extends Model

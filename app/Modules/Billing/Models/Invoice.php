@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Fiscal document: once issued, number, amounts and snapshots never change (corrections = credit notes).
+ *
+ * @property string $ulid
  */
 class Invoice extends Model
 {

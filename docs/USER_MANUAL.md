@@ -446,6 +446,14 @@ back; the lot then gets its number and its label can be printed. Tap the band to
 **Synchroniser** forces a new attempt. An operation the server refuses stays in the queue, marked in red, with
 the reason.
 
+### Signing out
+
+![Mon compte](screenshots/operator/16-account.png)
+
+The round button at the top right of every workshop screen, and the tile with your name at the bottom of the home
+screen, open **Mon compte**: who is signed in, for which company, and **Se déconnecter**. If lots are still waiting
+on the device, a message says how many: they stay on the device under your name and are sent as soon as the network
+is back, even after you signed out. The next person signs in with their own account on the same tablet.
 ## 9. Direction — read-only
 
 Account: `direction@capbon.test`. Sees the dashboard, lots, stock, pickups, providers, documents, reports,

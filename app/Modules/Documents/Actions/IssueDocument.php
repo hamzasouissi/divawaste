@@ -44,7 +44,7 @@ class IssueDocument
             }
 
             if ($document->retention_until === null) {
-                $document->retention_until = now()->addYears(10)->toDateString();
+                $document->retention_until = now()->addYears(10)->startOfDay();
             }
 
             $document->status = DocumentStatus::Issued;

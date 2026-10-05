@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Industrial ↔ provider relationship (company_id = industrial). Pickups only go to active partners.
+ *
+ * @property string $ulid
  */
 class ProviderPartnership extends Model
 {

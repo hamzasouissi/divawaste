@@ -151,11 +151,7 @@ class WasteLotTest extends TestCase
         $this->createLot();
         $this->tenant()->runAs($this->company, function () {
             $event = WasteLotEvent::query()->firstOrFail();
-            try {
-                $event->delete();
-                $this->fail('Event deleted');
-            } catch (BusinessRuleViolation) {
-            }
+            $this->assertThrows(fn () => $event->delete(), BusinessRuleViolation::class);
 
             $this->expectException(BusinessRuleViolation::class);
             WasteLot::query()->firstOrFail()->forceDelete();

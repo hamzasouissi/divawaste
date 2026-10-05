@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 use Throwable;
 
 /**
@@ -80,6 +81,7 @@ final class ApplyOfflineOperations
                     [$lot, $conflict] = match ($operation['type']) {
                         'lot.create' => $this->createLot($operation['payload'], $occurredAt, $deviceId, $user),
                         'lot.store' => $this->storeLot($operation['payload'], $user),
+                        default => throw new InvalidArgumentException("Unsupported offline operation: {$operation['type']}"),
                     };
                     $sites[$lot->site_id] = true;
 

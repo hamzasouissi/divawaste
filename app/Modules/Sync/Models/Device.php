@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Registered workshop device (PWA install). Shared tablets: each operation records its own user.
+ *
+ * @property string $ulid
  */
 class Device extends Model
 {

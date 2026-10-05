@@ -82,6 +82,7 @@ return [
         'issued' => ['title' => 'Nouvelle facture :invoice', 'body' => 'La facture :invoice d\'un montant de :amount est disponible. Échéance : :due_date.'],
     ],
     'subscription' => [
+        'activated' => ['title' => 'Votre abonnement DivaWaste est activé', 'body' => 'La formule « :plan » de :company est active depuis le :start. Votre première facture :invoice, d\'un montant de :amount, est disponible dans « Mon abonnement ». Échéance de paiement : :due_date, par virement bancaire.'],
         'trial_ending' => ['title' => 'Votre essai gratuit se termine le :date', 'body' => 'Il reste :days jours d\'essai. Choisissez une formule pour continuer à utiliser DivaWaste.'],
     ],
     'company' => [

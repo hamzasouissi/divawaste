@@ -17,6 +17,8 @@ use Spatie\Permission\Traits\HasRoles;
 
 /**
  * Global identity. Tenant roles come from user_role_assignments; HasRoles only carries platform staff roles.
+ *
+ * @property string $ulid
  */
 #[UseFactory(UserFactory::class)]
 class User extends Authenticatable implements HasLocalePreference

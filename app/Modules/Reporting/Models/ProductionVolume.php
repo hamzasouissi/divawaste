@@ -11,6 +11,9 @@ use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $ulid
+ */
 class ProductionVolume extends Model
 {
     use Auditable;
@@ -36,6 +39,9 @@ class ProductionVolume extends Model
         return $this->belongsTo(Company::class);
     }
 
+    /**
+     * @return BelongsTo<Site, $this>
+     */
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);

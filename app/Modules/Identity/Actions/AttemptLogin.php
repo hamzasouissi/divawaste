@@ -84,7 +84,7 @@ final class AttemptLogin
             'locked_until' => null,
             'last_login_at' => now(),
             'last_login_ip' => $request->ip(),
-            'last_company_id' => $company?->id ?? $user->last_company_id,
+            'last_company_id' => $company->id ?? $user->last_company_id,
         ])->save();
 
         $session = ($input['mode'] ?? 'token') === 'session' && $request->hasSession();
@@ -111,7 +111,7 @@ final class AttemptLogin
     }
 
     /**
-     * @return Collection<int, object{id: int, ulid: string, legal_name: string}>
+     * @return Collection<int, \stdClass>
      */
     public function activeCompanies(User $user): Collection
     {
@@ -125,7 +125,7 @@ final class AttemptLogin
     }
 
     /**
-     * @param  Collection<int, object>  $companies
+     * @param  Collection<int, \stdClass>  $companies
      * @return object|false|null company, false when the user must choose, null when there is none
      */
     private function resolveCompany(User $user, Collection $companies, ?string $requested): object|false|null

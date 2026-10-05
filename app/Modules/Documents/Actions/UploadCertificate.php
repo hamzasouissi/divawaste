@@ -15,7 +15,6 @@ use App\Modules\Pickups\Models\PickupLot;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\TenantContext;
 use App\Modules\Waste\Models\WasteLot;
-use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 
@@ -24,7 +23,6 @@ final class UploadCertificate
     public function __construct(
         private readonly TenantContext $context,
         private readonly FileStorage $fileStorage,
-        private readonly DatabaseManager $db,
         private readonly IssueDocument $issueDocument,
     ) {}
 
@@ -36,10 +34,6 @@ final class UploadCertificate
         $actorCompanyId = $this->context->companyId();
         $actorId = is_object($actor) ? (int) ($actor->id ?? 0) : (int) $actor;
 
-        if ($actorCompanyId === null) {
-            abort(Response::HTTP_UNAUTHORIZED);
-        }
-
         $ownerCompanyId = (int) $pickup->company_id;
 
         if (
@@ -49,15 +43,7 @@ final class UploadCertificate
             abort(Response::HTTP_FORBIDDEN);
         }
 
-        $status = $pickup->status;
-        $statusValue = $status instanceof PickupStatus
-            ? $status->value
-            : strtolower((string) ($status ?? ''));
-
-        if (! in_array($statusValue, [
-            PickupStatus::Collected->value,
-            PickupStatus::Received->value,
-        ], true)) {
+        if (! in_array($pickup->status, [PickupStatus::Collected, PickupStatus::Received], true)) {
             throw new BusinessRuleViolation(
                 'CERTIFICATE_PICKUP_NOT_READY',
                 'The certificate can only be uploaded when the pickup is collected or received.'
@@ -141,8 +127,8 @@ final class UploadCertificate
                 $snapshot = [
                     'pickup' => [
                         'ulid' => $pickup->ulid,
-                        'status' => $pickup->status?->value,
-                        'requested_date' => $pickup->requested_date?->toDateString(),
+                        'status' => $pickup->status->value,
+                        'requested_date' => $pickup->requested_date->toDateString(),
                         'site_id' => $pickup->site_id,
                         'provider_company_id' => $pickup->provider_company_id,
                         'transporter_company_id' => $pickup->transporter_company_id,
@@ -153,9 +139,7 @@ final class UploadCertificate
                             'waste_type' => $line->waste_type_label_snapshot,
                             'regulatory_waste_code' => $line->regulatory_code_snapshot,
                             'is_hazardous' => (bool) $line->is_hazardous,
-                            'declared_weight_kg' => $line->declared_weight_kg !== null
-                                ? (string) $line->declared_weight_kg
-                                : null,
+                            'declared_weight_kg' => (string) $line->declared_weight_kg,
                             'loaded_weight_kg' => $line->departure_weight_kg !== null
                                 ? (string) $line->departure_weight_kg
                                 : null,

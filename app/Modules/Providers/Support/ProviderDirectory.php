@@ -5,6 +5,7 @@ namespace App\Modules\Providers\Support;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use stdClass;
 
 /**
  * M4-01 / M4-02: what an industrial may know about the published providers — contacts, accepted waste,
@@ -17,7 +18,7 @@ final class ProviderDirectory
 
     /**
      * @param  array{search?: ?string, channel?: ?string, partners_only?: bool, hazardous?: ?bool}  $filter
-     * @return Collection<int, array<string, mixed>>
+     * @return Collection<int, covariant array<string, mixed>>
      */
     public function list(int $industrialCompanyId, array $filter = []): Collection
     {
@@ -42,8 +43,8 @@ final class ProviderDirectory
 
         $today = Carbon::today();
 
-        return $providers->map(function (object $provider) use ($accepted, $accreditations, $today) {
-            $list = ($accreditations[$provider->id] ?? collect())->map(function (object $row) use ($today) {
+        $rows = $providers->map(function (stdClass $provider) use ($accepted, $accreditations, $today): array {
+            $list = collect($accreditations[$provider->id] ?? [])->map(function (stdClass $row) use ($today): array {
                 $expires = Carbon::parse($row->expires_on);
                 $days = (int) $today->diffInDays($expires, false);
 
@@ -60,7 +61,7 @@ final class ProviderDirectory
                 ];
             })->values();
             $valid = $list->where('state', '!=', 'expired');
-            $wastes = ($accepted[$provider->id] ?? collect());
+            $wastes = collect($accepted[$provider->id] ?? []);
 
             return [
                 'ulid' => $provider->ulid,
@@ -74,7 +75,7 @@ final class ProviderDirectory
                 'service_area' => $provider->service_area,
                 'contact' => ['name' => $provider->public_contact_name, 'email' => $provider->public_contact_email, 'phone' => $provider->public_contact_phone],
                 'channels' => $wastes->pluck('channel')->unique()->values(),
-                'accepted_wastes' => $wastes->map(fn (object $row) => [
+                'accepted_wastes' => $wastes->map(fn (stdClass $row): array => [
                     'channel' => $row->channel, 'family' => $row->family, 'catalog_item' => $row->catalog_item,
                     'min_quantity_kg' => $row->min_quantity_kg, 'notes' => $row->notes,
                 ])->values(),
@@ -89,9 +90,16 @@ final class ProviderDirectory
                     default => null,
                 },
             ];
-        })
-            ->when($filter['channel'] ?? null, fn (Collection $rows, string $channel) => $rows->filter(fn (array $row) => $row['channels']->contains($channel)))
-            ->when($filter['hazardous'] ?? false, fn (Collection $rows) => $rows->where('accepts_hazardous', true))
-            ->values();
+        });
+
+        $channel = $filter['channel'] ?? null;
+        if ($channel !== null && $channel !== '') {
+            $rows = $rows->filter(fn (array $row) => $row['channels']->contains($channel));
+        }
+        if ($filter['hazardous'] ?? false) {
+            $rows = $rows->where('accepts_hazardous', true);
+        }
+
+        return $rows->values();
     }
 }

@@ -34,7 +34,7 @@ abstract class TestCase extends BaseTestCase
 
     private function canReuseSchema(): bool
     {
-        if (env('TEST_DB_FRESH')) {
+        if (filter_var(getenv('TEST_DB_FRESH'), FILTER_VALIDATE_BOOLEAN)) {
             return false;
         }
 

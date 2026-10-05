@@ -26,6 +26,10 @@ interface (after the move to PrimeNG), on 5 October 2026.
 | Register export PDF and Excel; CSR report PDF and Excel, downloaded | ✅ |
 | Plan activation at the reference price; bank transfer validated | ✅ |
 | Tenant isolation: second company sees its 3 lots only; another company's lot address answers "not found" | ✅ |
+| Workshop sign-out: Leila lands on `/m`, signs out from "Mon compte", `/m` then asks to sign in, signing in returns to `/m` | ✅ |
+| Workshop sign-out without network, one lot waiting: confirmation shown, lot sent once when the network returns (one lot, one operation, in Leila's name), server session closed | ✅ |
+| Emails of a new company: confirmation, approval, plan activation — right recipient, right content, readable with `demo.ps1 mail` | ✅ generated; **not delivered** (demo has no mail server) |
+| Same emails through a real SMTP connection (to a local test server), and with the mail server down | ✅ accepted by SMTP; down → traced as failed, the decision stays saved |
 
 Fixed during this pass:
 
@@ -38,20 +42,48 @@ Fixed during this pass:
 - Closing a pickup asks for confirmation.
 - Bank-transfer decisions appear in the platform activity.
 
-Automated checks: 163 backend tests pass; frontend lint, translation keys, 20 unit tests and production build pass.
+Added on 5 October 2026 (technical-compliance pass):
+
+- **API documentation** generated from the code: `php artisan api:docs` → OpenAPI 3, Postman collection, HTML page at
+  `/docs`. 155 routes; the command and a test fail if a route is missing.
+- **Larastan** installed and run on the whole project: level 5, 0 error, no baseline, no ignored error. 545 findings at
+  the first run; two came from configuration (about 400), about 70 were fixed in the code.
+- **Workshop sign-out** ("Mon compte" on `/m`), and each operator's offline records now leave with that operator's
+  own device token.
+- **Emails**: a dedicated "Votre abonnement DivaWaste est activé" email with the first invoice; every email traced
+  (recipient, transport, sent or failed); `demo.ps1 mail` lists and opens them; `demo.ps1 mailtest` checks a real mail
+  server; email texts fully in French.
+
+Automated checks: 169 backend tests, Pint, Larastan and the API-documentation check pass; frontend lint, translation
+keys, TypeScript check, 21 unit tests and production build pass.
 
 ## 2. Remaining gaps, classified
 
-### MUST FIX BEFORE MVP ACCEPTANCE
+### FUNCTIONAL MVP REQUIREMENTS — product functionality still missing
 
 | Gap | Why | Size |
 |---|---|---|
 | **Personal-data export and erasure** | Required by the cahier (non-functional requirements); nothing exists. Until then Diva Software must answer such requests by hand | A few days |
-| **API documentation generator** (Scribe or Swagger) | Required by the cahier's stack (§5); only a hand-written route list exists | 1–2 days |
-| **Static analysis (Larastan)** | Required by the cahier's stack (§5); not installed | 1–2 days, plus fixing what it reports |
 
-None of these three prevents showing the product to a customer. They prevent signing off the MVP against the
-cahier.
+It does not prevent showing the product to a customer. It prevents signing off the MVP against the cahier.
+
+### TECHNICAL COMPLIANCE — the cahier's stack (§5)
+
+| Item | State |
+|---|---|
+| OpenAPI documentation generated automatically (Scribe) | ✅ Done — `php artisan api:docs`, [api/openapi.yaml](api/openapi.yaml) |
+| Larastan | ✅ Done — level 5, whole project, 0 error |
+| PHPUnit, Pint | ✅ |
+| Horizon | Not installed: it does not run on Windows. To install on the Linux server at deployment; no application code changes |
+| simple-qrcode | Cannot be installed next to Fortify; QR codes come from the library it wraps. Needs written agreement (below) |
+| Angular "latest" | Angular 20.3. Needs written agreement (below) |
+
+### EMAIL DELIVERY — to verify with a real mail account
+
+The application generates and hands over its emails correctly; this was verified up to a real SMTP conversation with a
+local test server. **Delivery into a real mailbox has not been tested**: it needs the SMTP account of a mail provider,
+which only Diva Software can supply. Procedure: "Emails" in [DEVELOPER_RUNBOOK.md](DEVELOPER_RUNBOOK.md#emails) — set
+the account in `.env.demo`, run `demo.ps1 mailtest <your address>`, then register a company with your own address.
 
 ### BUSINESS DECISION REQUIRED
 
@@ -111,17 +143,19 @@ http://localhost:4300. Password everywhere: `DivaWaste!2026`. Use a private wind
 | # | Action | Expected |
 |---|---|---|
 | A1 | Private window → `/register`. Industriel textile; Raison sociale `Maille Bizerte SARL`; Matricule fiscal `4455667H`; Ville `Bizerte`; phone; one activity; contact `Rania Mejri`, `rania@maille-bizerte.test`, phone, password `DivaWaste!2026`; Formule "Abonnement par site"; accept → **Créer mon compte** | "Vérifiez votre boîte mail" |
-| A2 | `demo.ps1 mail` → open the `verify-email` link | "Adresse email confirmée" |
+| A2 | `demo.ps1 mail` → the first line is "Confirmez votre adresse email" to rania@…; open its `verify-email` link | "Adresse email confirmée" |
 | A3 | Normal window → sign in as **admin@divawaste.test** | "Vue d'ensemble": 3 inscriptions à valider |
 | A4 | Tile "inscription(s) à valider" → **Maille Bizerte SARL** | Contact "Email confirmé : Oui", activity "Filature", formule demandée |
 | A5 | **Valider l'inscription** → **Confirmer** | "Active"; Abonnement "Essai gratuit"; history "Inscription validée" |
 | A6 | Same page, **Activer une formule** (pre-filled: par site, 1 site, 150) | "Formule activée et première facture émise"; Factures: 179,500 DT "À régler" |
+| A7 | `demo.ps1 mail` | Three emails to rania@maille-bizerte.test: "Confirmez votre adresse email", "Votre compte DivaWaste est validé", "Votre abonnement DivaWaste est activé" — each "generated, not delivered" |
+| A8 | `demo.ps1 mail <number of the last one>` | The email opens in the browser: plan "Abonnement par site", invoice DW-2026-000002, 179.500 TND, due date, button to "Mon abonnement" |
 
 ### B. Client administrator — `rania@maille-bizerte.test`
 
 | # | Action | Expected |
 |---|---|---|
-| B1 | Private window → sign in | Dashboard with the banner "Terminez la mise en route" |
+| B1 | Private window → sign in | Dashboard with the banner "Terminez la mise en route"; the bell shows "Votre abonnement est activé" |
 | B2 | **Sites et zones** → **Nouveau site**: code `BIZ`, name `Usine de Bizerte`, city → **Enregistrer** | Site page; a storage zone already exists |
 | B3 | **Ajouter une zone**: code `COUPE`, type Coupe, name `Atelier de coupe` | Two zones |
 | B4 | **Types de déchets** → **Catalogue de référence** → **Activer** "Chutes de coupe" | Listed in "Mes types" |
@@ -136,6 +170,7 @@ http://localhost:4300. Password everywhere: `DivaWaste!2026`. Use a private wind
 | C2 | **Nouveau lot** → Atelier de coupe → Chutes de coupe → `37,5` → **Créer le lot** | "Lot créé" + number; **Imprimer l'étiquette** opens the QR label |
 | C3 | **Scanner** → **Saisir le code à la main** → `L-2026-000062` → **Confirmer** → **Mettre en stock** | "Lot mis en stock", status Stocké |
 | C4 | **Charger un enlèvement** → `ENL-2026-0006` → type `L-2026-000069`, `…070`, `…071` → **Valider le chargement** | "Chargement enregistré" |
+| C5 | Account button (top right) → **Se déconnecter**; then type `/m` in the address bar | Sign-in screen both times; signing in again returns to `/m` |
 
 ### D. Environment manager — `sami@capbon.test`
 

@@ -42,7 +42,7 @@ class PickupResource extends JsonResource
             'provider' => $parties->company($this->provider_company_id),
             'transporter' => $parties->company($this->transporter_company_id),
             'site' => $parties->site($this->site_id),
-            'requested_date' => $this->requested_date?->toDateString(),
+            'requested_date' => $this->requested_date->toDateString(),
             'confirmed_date' => $this->confirmed_date?->toDateString(),
             'collected_at' => $this->collected_at?->toIso8601ZuluString(),
             'received_at' => $this->received_at?->toIso8601ZuluString(),

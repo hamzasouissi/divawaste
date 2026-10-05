@@ -1,0 +1,16 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - app
+        - config
+        - database
+        - routes
+        - tests
+    # The models declare their casts in casts(): read that method, otherwise enums and dates are seen as strings.
+    parseModelCastsMethod: true
+    stubFiles:
+        # Sanctum's PHPDoc says the current token is always a personal access token; with a cookie session it is not.
+        - stubs/phpstan/HasApiTokens.stub

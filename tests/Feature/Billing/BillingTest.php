@@ -124,12 +124,12 @@ class BillingTest extends TestCase
 
         $this->tenant()->runAs($this->company, function () use ($review, $staff, $ulid, $invoice) {
             $review->validate(Payment::query()->where('ulid', $ulid)->firstOrFail(), $staff);
-            $this->assertSame('partially_paid', $invoice->fresh()?->status->value);
+            $this->assertSame('partially_paid', $invoice->fresh()->status->value);
 
             $second = Payment::query()->create(['invoice_id' => $invoice->id, 'method' => 'bank_transfer', 'amount' => '60.000', 'currency_code' => 'TND']);
             $review->validate($second, $staff);
-            $this->assertSame('paid', $invoice->fresh()?->status->value);
-            $this->assertSame('100.000', $invoice->fresh()?->amount_paid);
+            $this->assertSame('paid', $invoice->fresh()->status->value);
+            $this->assertSame('100.000', $invoice->fresh()->amount_paid);
         });
     }
 

@@ -110,6 +110,15 @@ return [
     |
     */
 
+    /*
+    | Outside production the HTML of every email is kept in storage/app/mail-outbox, so it can be read without a
+    | mailbox (php artisan mail:outbox). The trace in notification_logs is written in every environment.
+    */
+    'outbox' => [
+        'keep_bodies' => (bool) env('MAIL_OUTBOX', env('APP_ENV', 'production') !== 'production'),
+        'path' => storage_path('app'.DIRECTORY_SEPARATOR.'mail-outbox'),
+    ],
+
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),

@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * "Expired" is computed from dates, never stored (blueprint §8.1).
+ *
+ * @property string $ulid
  */
 class ProviderAccreditation extends Model
 {

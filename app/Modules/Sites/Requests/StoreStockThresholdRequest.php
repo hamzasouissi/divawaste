@@ -24,7 +24,7 @@ class StoreStockThresholdRequest extends FormRequest
      */
     public function rules(): array
     {
-        $siteId = $this->site()?->id ?? 0;
+        $siteId = $this->site()->id ?? 0;
 
         return [
             'site' => ['required', 'string', new TenantExists(Site::class)],

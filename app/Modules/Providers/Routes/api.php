@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
-$accreditationData = fn (object $row) => [
+$accreditationData = fn (stdClass $row) => [
     'ulid' => $row->ulid, 'type' => $row->type, 'name' => json_decode((string) $row->name, true),
     'covers_hazardous' => (bool) $row->covers_hazardous, 'reference_number' => $row->reference_number,
     'issuing_authority' => $row->issuing_authority, 'valid_from' => $row->valid_from, 'expires_on' => $row->expires_on,

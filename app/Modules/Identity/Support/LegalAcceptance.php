@@ -16,7 +16,7 @@ final class LegalAcceptance
      * Latest published version of each requested document type, in the best available locale.
      *
      * @param  list<string>  $types
-     * @return Collection<int, object>
+     * @return Collection<int, \stdClass>
      */
     public static function current(array $types, string $locale = 'fr'): Collection
     {
@@ -34,7 +34,7 @@ final class LegalAcceptance
     {
         $now = now();
 
-        DB::table('legal_acceptances')->insert(self::current($types, $user->locale)->map(fn (object $document) => [
+        DB::table('legal_acceptances')->insert(self::current($types, $user->locale)->map(fn (\stdClass $document) => [
             'user_id' => $user->id,
             'legal_document_id' => $document->id,
             'company_id' => $companyId,

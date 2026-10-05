@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Email invitation with a role and sites, valid 7 days (M0-08). Accept/send actions come with the auth batch.
+ *
+ * @property string $ulid
  */
 class UserInvitation extends Model
 {

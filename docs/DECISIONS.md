@@ -10,8 +10,8 @@ depended on information Diva Software has not provided yet. **Items marked "to v
 | D1 | simple-qrcode | `bacon/bacon-qr-code` used directly | simple-qrcode requires bacon-qr-code v2; Fortify (imposed for 2FA) requires v3. They cannot be installed together. simple-qrcode is a thin wrapper over the same library | **To validate** (the cahier requires written agreement for any deviation) |
 | D2 | Horizon | Standard queue worker; jobs and schedule are in place | Horizon does not run on Windows (development machine). Installing it on the Linux server changes no application code | To do at deployment |
 | D3 | Angular latest | Angular 20.3 kept | The existing project was on 20; a major upgrade during a rebuild adds risk without functional gain | **To validate** |
-| D4 | Larastan | Not installed | Not reached | Open |
-| D5 | Scribe / Swagger | Not installed; `docs/API.md` lists the routes | The public API is V2 (M7-03) | Open |
+| D4 | Larastan | Installed (3.12, PHPStan 2.2): level 5 on the whole project, no baseline, no ignored error | Level 5 is Larastan's default; higher levels mostly ask for type declarations on the route closures | Done (5 Oct 2026) |
+| D5 | Scribe / Swagger | Scribe 5.11: `php artisan api:docs` generates OpenAPI 3, a Postman collection and an HTML page from the routes, and fails if a route is missing | The routes are closures, which Scribe cannot read alone: `app/Modules/Common/Docs` reads module, permissions, validation rules and business errors from the route code | Done (5 Oct 2026) |
 | D6 | PHP extension | `ext-gd` is required | QR image on the label and logo in PDF reports | Informative |
 
 ## Provisional data — to validate

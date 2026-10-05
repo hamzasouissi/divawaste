@@ -13,12 +13,17 @@ use App\Modules\Sites\Models\Site;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
 use App\Modules\Waste\Models\WasteLot;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property string $ulid
+ * @property CarbonImmutable|null $created_at
+ */
 class Document extends Model
 {
     use Auditable;
@@ -186,7 +191,7 @@ class Document extends Model
     }
 
     /**
-     * @return BelongsToMany<WasteLot>
+     * @return BelongsToMany<WasteLot, $this>
      */
     public function wasteLots(): BelongsToMany
     {

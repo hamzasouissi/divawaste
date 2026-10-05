@@ -123,15 +123,15 @@ final class PermissionCatalog
                 'app.mobile.access', 'lots.view', 'lots.create', 'lots.weigh', 'lots.move', 'lots.print_label',
                 'lots.split', 'lots.group', 'stock.view', 'pickups.load',
             ]],
-            'management_viewer' => [Audience::Industrial, array_values(array_merge(
+            'management_viewer' => [Audience::Industrial, array_merge(
                 ['app.web.access', 'reports.export'],
                 array_filter($industrial, fn (string $name) => str_ends_with($name, '.view')),
-            ))],
+            )],
             'auditor' => [Audience::Industrial, ['app.web.access', 'lots.view', 'documents.view', 'pickups.view', 'reports.view']],
-            'provider_admin' => [Audience::Provider, array_values(array_merge(
+            'provider_admin' => [Audience::Provider, array_merge(
                 ['app.web.access', 'company.view', 'company.update', 'users.view', 'users.invite', 'users.manage'],
                 $of(Audience::Provider),
-            ))],
+            )],
             'provider_operator' => [Audience::Provider, [
                 'app.web.access', 'provider.pickups.view', 'provider.pickups.receive', 'provider.certificates.upload',
             ]],

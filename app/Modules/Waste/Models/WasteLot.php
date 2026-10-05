@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Current state of a lot. History lives in waste_lot_events / lineage. Never physically deleted (cahier §4).
+ *
+ * @property string $ulid
  */
 class WasteLot extends Model
 {
