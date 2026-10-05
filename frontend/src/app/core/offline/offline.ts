@@ -22,6 +22,8 @@ export interface Operation {
   error?: string;
   lot_number?: string;
   entity?: string;
+  /** Who recorded it ("company:user"). It is sent with that person's device token, whoever uses the tablet afterwards. */
+  owner?: string;
 }
 
 export interface Bootstrap {
@@ -73,6 +75,10 @@ export class Offline {
   private readonly api = inject(Api);
   private readonly db = new WorkshopDatabase();
   private flushing: Promise<void> | null = null;
+  /** "company:user" of the operator using the application; null once signed out. */
+  private owner: string | null = null;
+  /** Operators whose device token the server refused during this visit: their operations wait for their next sign-in. */
+  private readonly refused = new Set<string>();
 
   readonly online = signal(navigator.onLine);
   readonly operations = signal<Operation[]>([]);
@@ -81,6 +87,9 @@ export class Offline {
   readonly lastSync = signal<string | null>(null);
   /** The device token expired or was revoked: the operator must sign in again, the queue is kept. */
   readonly needsSignIn = signal(false);
+
+  /** Operations recorded by someone else on this device and not sent yet. They are never shown, only counted. */
+  readonly othersPending = signal(0);
 
   readonly pending = computed(() => this.operations().filter((operation) => operation.status === 'pending').length);
   readonly problems = computed(() => this.operations().filter((operation) => operation.status === 'failed' || operation.status === 'conflict').length);
@@ -96,20 +105,24 @@ export class Offline {
 
   /** Called when the workshop application opens with a signed-in user: registers the device and refreshes the reference data. */
   async start(company: string, user: string): Promise<void> {
+    this.owner = `${company}:${user}`;
+    const devices = await this.devices();
+    await this.adopt(devices);
     await this.restore();
     if (!this.online()) {
       return;
     }
     try {
-      let device = await this.get<Device>('device');
-      // A device belongs to one company and one user: someone else signing in on a shared tablet gets a fresh token.
-      if (!device || device.company !== company || device.user !== user) {
-        const id = device?.company === company ? device.ulid : ulid();
+      // One token per operator: someone else signing in on a shared tablet gets their own, and what the previous
+      // operator recorded keeps being sent under that operator's name.
+      if (!devices[this.owner] || this.refused.has(this.owner)) {
+        const id = Object.values(devices).find((device) => device.company === company)?.ulid ?? ulid();
         const registered = await firstValueFrom(this.api.post<{ device: string; token: string }>('mobile/devices', {
           device: id, name: this.deviceName(), platform: /android/i.test(navigator.userAgent) ? 'android' : /iphone|ipad/i.test(navigator.userAgent) ? 'ios' : 'other',
         }));
-        device = { ulid: registered.device, token: registered.token, company, user };
-        await this.set('device', device);
+        devices[this.owner] = { ulid: registered.device, token: registered.token, company, user };
+        await this.set('devices', devices);
+        this.refused.delete(this.owner);
       }
       this.needsSignIn.set(false);
 
@@ -120,6 +133,21 @@ export class Offline {
     } catch {
       // Offline or briefly unreachable: the cached reference data and the queue keep the application usable.
     }
+  }
+
+  /**
+   * The operator signs out. Whatever can be sent is sent first; what cannot (no network) stays on the device with
+   * its owner's token and leaves as soon as the network is back, even if someone else is using the tablet by then.
+   * Returns how many of this operator's records are still waiting.
+   */
+  async leave(): Promise<number> {
+    await this.flush().catch(() => undefined);
+    const waiting = this.pending();
+    this.owner = null;
+    this.needsSignIn.set(false);
+    await this.refresh();
+
+    return waiting;
   }
 
   /** Records a lot created at the workshop. Returns at once; the lot number arrives with the synchronisation. */
@@ -152,7 +180,7 @@ export class Offline {
     const operation = await this.db.operations.get(id);
     if (operation) {
       await this.db.operations.delete(id);
-      await this.db.operations.put({ ...operation, id: ulid(), status: 'pending', error: undefined });
+      await this.db.operations.put({ ...operation, id: ulid(), status: 'pending', error: undefined, owner: operation.owner ?? this.owner ?? undefined });
       await this.refresh();
       await this.flush();
     }
@@ -168,9 +196,21 @@ export class Offline {
   }
 
   private async push(): Promise<void> {
-    const device = await this.get<Device>('device');
-    const batch = (await this.db.operations.where('status').equals('pending').sortBy('sequence')).slice(0, 100);
-    if (!this.online() || !device || batch.length === 0) {
+    if (!this.online()) {
+      return;
+    }
+    const devices = await this.devices();
+    for (const [owner, device] of Object.entries(devices)) {
+      if (!this.refused.has(owner)) {
+        await this.pushFor(owner, device);
+      }
+    }
+  }
+
+  /** Sends one operator's pending operations with that operator's token, in the order they were recorded. */
+  private async pushFor(owner: string, device: Device): Promise<void> {
+    const batch = (await this.db.operations.where('status').equals('pending').sortBy('sequence')).filter((operation) => operation.owner === owner).slice(0, 100);
+    if (!this.online() || batch.length === 0) {
       return;
     }
 
@@ -184,7 +224,11 @@ export class Offline {
       });
 
       if (response.status === 401 || response.status === 403) {
-        this.needsSignIn.set(true);
+        // The token expired or was revoked: the operations wait, untouched, for their owner's next sign-in.
+        this.refused.add(owner);
+        if (owner === this.owner) {
+          this.needsSignIn.set(true);
+        }
 
         return;
       }
@@ -219,15 +263,40 @@ export class Offline {
       await this.refresh();
     }
 
-    if ((await this.db.operations.where('status').equals('pending').count()) > 0 && this.online() && !this.needsSignIn()) {
-      await this.push();
+    if ((await this.db.operations.where('status').equals('pending').filter((operation) => operation.owner === owner).count()) > 0 && this.online() && !this.refused.has(owner)) {
+      await this.pushFor(owner, device);
+    }
+  }
+
+  private async devices(): Promise<Record<string, Device>> {
+    const devices = (await this.get<Record<string, Device>>('devices')) ?? {};
+    // Before each operator had a token of their own, the device kept a single one.
+    const single = await this.get<Device>('device');
+    if (single && !devices[`${single.company}:${single.user}`]) {
+      devices[`${single.company}:${single.user}`] = single;
+    }
+
+    return devices;
+  }
+
+  /** Operations recorded before owners were tracked belong to whoever held the device then, else to the current operator. */
+  private async adopt(devices: Record<string, Device>): Promise<void> {
+    const single = await this.get<Device>('device');
+    const owner = single ? `${single.company}:${single.user}` : this.owner;
+    const orphans = (await this.db.operations.toArray()).filter((operation) => !operation.owner);
+    if (owner && orphans.length > 0) {
+      await this.db.operations.bulkPut(orphans.map((operation) => ({ ...operation, owner })));
+    }
+    if (single) {
+      await this.set('devices', devices);
+      await this.db.meta.delete('device');
     }
   }
 
   private async enqueue(type: Operation['type'], payload: Record<string, unknown>, summary: string): Promise<Operation> {
     const sequence = ((await this.get<number>('sequence')) ?? 0) + 1;
     await this.set('sequence', sequence);
-    const operation: Operation = { id: ulid(), sequence, type, occurred_at: new Date().toISOString(), payload, status: 'pending', summary };
+    const operation: Operation = { id: ulid(), sequence, type, occurred_at: new Date().toISOString(), payload, status: 'pending', summary, owner: this.owner ?? undefined };
     await this.db.operations.put(operation);
     await this.refresh();
 
@@ -247,7 +316,10 @@ export class Offline {
   }
 
   private async refresh(): Promise<void> {
-    this.operations.set((await this.db.operations.orderBy('sequence').reverse().toArray()));
+    const all = await this.db.operations.orderBy('sequence').reverse().toArray();
+    // Each operator sees their own records only; the others' keep being sent in the background.
+    this.operations.set(all.filter((operation) => this.owner !== null && (operation.owner ?? this.owner) === this.owner));
+    this.othersPending.set(all.filter((operation) => operation.status === 'pending' && operation.owner !== undefined && operation.owner !== this.owner).length);
   }
 
   private async get<T>(key: string): Promise<T | undefined> {

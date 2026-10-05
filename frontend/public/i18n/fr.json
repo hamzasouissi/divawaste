@@ -454,6 +454,7 @@
       "payment.declared": "Virement déclaré",
       "payment.reviewed": "Décision sur un virement",
       "invoice.issued": "Nouvelle facture",
+      "subscription.activated": "Abonnement activé",
       "subscription.trial_ending": "Fin de l'essai gratuit",
       "company.pending_review": "Inscription à valider"
     },
@@ -537,6 +538,10 @@
       "invoice.issued": {
         "title": "Nouvelle facture {{invoice}}",
         "body": "{{amount}}, échéance le {{due_date}}."
+      },
+      "subscription.activated": {
+        "title": "Votre abonnement est activé",
+        "body": "Formule « {{plan}} ». Première facture {{invoice}} : {{amount}}, échéance le {{due_date}}."
       },
       "subscription.trial_ending": {
         "title": "Fin de l'essai gratuit le {{date}}",
@@ -1370,6 +1375,19 @@
     "lastSync": "Dernière synchronisation : {{date}}",
     "never": "jamais",
     "desktop": "Version bureau",
+    "account": {
+      "title": "Mon compte",
+      "entry": "Mon compte · Se déconnecter",
+      "user": "Connecté en tant que",
+      "company": "Société",
+      "logout": "Se déconnecter",
+      "leaving": "Déconnexion…",
+      "signedOut": "Vous êtes déconnecté. L'écran de connexion s'ouvrira au retour du réseau.",
+      "pendingOnline": "{{count}} enregistrement(s) en cours d'envoi.",
+      "pendingOffline": "{{count}} enregistrement(s) pas encore envoyé(s) : ils restent sur cet appareil.",
+      "offline": "Hors ligne : la déconnexion sera confirmée au serveur dès le retour du réseau.",
+      "confirmPending": "{{count}} enregistrement(s) ne sont pas encore envoyés. Ils restent sur cet appareil, à votre nom, et partiront automatiquement au retour du réseau. Se déconnecter quand même ?"
+    },
     "step": {
       "site": "Site",
       "zone": "Zone",

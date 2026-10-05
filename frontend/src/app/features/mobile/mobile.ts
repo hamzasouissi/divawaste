@@ -57,6 +57,7 @@ const MOBILE_STYLES = `
             </small>
           </span>
         </a>
+        <a routerLink="/m/account" class="account" [attr.aria-label]="t('mobile.account.title')"><dw-icon aria-hidden="true">account_circle</dw-icon></a>
       </header>
       @if (offline.needsSignIn()) {
         <a class="signin" routerLink="/login" [queryParams]="{ next: '/m' }">{{ t('errors.UNAUTHENTICATED') }}</a>
@@ -68,6 +69,10 @@ const MOBILE_STYLES = `
     :host { display: flex; flex-direction: column; min-height: 100dvh; background: var(--dw-canvas); }
     header { position: sticky; inset-block-start: 0; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 10px 14px; padding-block-start: max(10px, env(safe-area-inset-top)); background: var(--dw-nav); }
     .home { display: grid; place-items: center; width: 48px; height: 48px; }
+    .account { flex: none; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 12px; color: #fff; background: rgb(255 255 255 / 10%); }
+    .account:hover { text-decoration: none; } .account:active { background: rgb(255 255 255 / 25%); }
+    .account:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+    .account dw-icon { font-size: 32px; }
     .sync { flex: 1; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 12px; border-radius: 12px; color: #fff; background: rgb(255 255 255 / 10%); }
     .sync:hover { text-decoration: none; }
     .sync strong { display: block; font-size: 15px; line-height: 18px; } .sync small { font-size: 12.5px; color: #cfe0dd; }
@@ -116,6 +121,11 @@ export class MobileShellComponent {
           }
         </section>
       }
+      <a class="tile" routerLink="/m/account">
+        <dw-icon aria-hidden="true">account_circle</dw-icon>
+        <span class="dw-spacer">{{ name }}<small>{{ t('mobile.account.entry') }}</small></span>
+        <dw-icon aria-hidden="true">logout</dw-icon>
+      </a>
       @if (hasDesktop) { <a routerLink="/dashboard" class="muted">{{ t('mobile.desktop') }}</a> }
     </ng-container>
   `,
@@ -124,6 +134,8 @@ export class MobileShellComponent {
 export class MobileHomePage {
   protected readonly offline = inject(Offline);
   private readonly session = inject(Session);
+
+  protected readonly name = `${this.session.me()?.first_name ?? ''} ${this.session.me()?.last_name ?? ''}`.trim();
 
   protected readonly canLoad = this.session.can('pickups.load');
   protected readonly hasDesktop = this.session.can('app.web.access');
@@ -568,6 +580,84 @@ export class MobileLoadingPage {
       this.toast.error(error);
     } finally {
       this.busy.set(false);
+    }
+  }
+}
+
+/**
+ * Who is signed in on this device, and the way out. An operator who only has the workshop application never sees
+ * the desktop menu, so the sign-out lives here, at the size of every other workshop action.
+ */
+@Component({
+  imports: [RouterLink, TranslocoDirective, IconComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <ng-container *transloco="let t">
+      <h1 class="title">{{ t('mobile.account.title') }}</h1>
+      @if (signedOut()) {
+        <p class="notice" role="status"><dw-icon aria-hidden="true">logout</dw-icon><span>{{ t('mobile.account.signedOut') }}</span></p>
+      } @else {
+      <dl>
+        <div><dt>{{ t('mobile.account.user') }}</dt><dd>{{ name }}<small>{{ me?.email }}</small></dd></div>
+        <div><dt>{{ t('mobile.account.company') }}</dt><dd>{{ company }}</dd></div>
+      </dl>
+
+      @if (offline.pending() > 0) {
+        <p class="notice" role="status"><dw-icon aria-hidden="true">sync</dw-icon><span>{{ t(offline.online() ? 'mobile.account.pendingOnline' : 'mobile.account.pendingOffline', { count: offline.pending() }) }}</span></p>
+      }
+      @if (!offline.online()) { <p class="muted">{{ t('mobile.account.offline') }}</p> }
+
+      <button type="button" class="tile out" [disabled]="leaving()" (click)="logout()">
+        <dw-icon aria-hidden="true">logout</dw-icon><span>{{ leaving() ? t('mobile.account.leaving') : t('mobile.account.logout') }}</span>
+      </button>
+      <a class="tile" routerLink="/m"><dw-icon aria-hidden="true">arrow_back</dw-icon><span>{{ t('mobile.home') }}</span></a>
+      @if (hasDesktop) { <a routerLink="/dashboard" class="muted">{{ t('mobile.desktop') }}</a> }
+      }
+    </ng-container>
+  `,
+  styles: MOBILE_STYLES + `
+    dl { margin: 0; display: grid; gap: 10px; }
+    dl div { padding: 12px 16px; background: var(--dw-surface); border: 1px solid var(--dw-line); border-radius: 12px; }
+    dt { font-size: 13px; color: var(--dw-ink-2); } dd { margin: 2px 0 0; font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+    dd small { display: block; font-size: 14px; font-weight: 400; color: var(--dw-ink-2); }
+    .notice { display: flex; align-items: center; gap: 10px; margin: 0; padding: 12px 16px; border-radius: 12px; background: var(--dw-primary-soft); font-size: 15px; }
+    .tile.out { min-height: 88px; font-size: 20px; color: var(--dw-danger); border-color: var(--dw-danger); }
+    .tile.out:active { background: var(--dw-danger); color: #fff; }
+    .tile.out[disabled] { opacity: 0.6; cursor: default; }
+  `,
+})
+export class MobileAccountPage {
+  protected readonly offline = inject(Offline);
+  private readonly session = inject(Session);
+  private readonly router = inject(Router);
+  private readonly confirm = inject(Confirm);
+  private readonly toast = inject(Toast);
+
+  protected readonly me = this.session.me();
+  protected readonly name = `${this.me?.first_name ?? ''} ${this.me?.last_name ?? ''}`.trim();
+  protected readonly company = this.session.company()?.legal_name ?? '';
+  protected readonly hasDesktop = this.session.can('app.web.access');
+  protected readonly leaving = signal(false);
+  /** Signed out while the sign-in screen could not be opened (no network, application not installed). */
+  protected readonly signedOut = signal(false);
+
+  protected async logout(): Promise<void> {
+    this.leaving.set(true);
+    // Whatever can leave the device leaves now; the rest stays there, under this operator's name, until the network is back.
+    await this.offline.flush().catch(() => undefined);
+    const waiting = this.offline.pending();
+    if (waiting > 0 && !(await this.confirm.ask({ title: this.toast.text('mobile.account.logout'), message: this.toast.text('mobile.account.confirmPending', { count: waiting }), confirmLabel: this.toast.text('mobile.account.logout') }))) {
+      this.leaving.set(false);
+
+      return;
+    }
+
+    await this.offline.leave();
+    await this.session.logout();
+    if (!(await this.router.navigate(['/login']).catch(() => false))) {
+      // The sign-in screen could not be loaded: say plainly that the session is closed, and open it when the network is back.
+      this.signedOut.set(true);
+      addEventListener('online', () => location.assign('/login'), { once: true });
     }
   }
 }

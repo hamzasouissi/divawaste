@@ -106,4 +106,34 @@ describe('Session', () => {
     expect(session.isAuthenticated()).toBe(false);
     expect(session.can('lots.view')).toBe(false);
   });
+
+  it('signs out on the server, and when the server cannot be reached finishes the sign-out on the next load', async () => {
+    localStorage.clear();
+    await load(me(), access());
+
+    // No network: the screen is signed out at once, the server session is still open.
+    const leaving = session.logout();
+    http.expectOne('/api/v1/auth/logout').error(new ProgressEvent('error'));
+    await leaving;
+    expect(session.isAuthenticated()).toBe(false);
+
+    // Next load: the session is closed on the server before anything is read, so the operator is not signed in again.
+    const reopening = session.reload();
+    http.expectOne('/api/v1/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
+    await reopening;
+    http.expectNone('/api/v1/me');
+    expect(session.isAuthenticated()).toBe(false);
+
+    // Once done, loading reads the session normally again.
+    await load(me(), access());
+    expect(session.isAuthenticated()).toBe(true);
+
+    const online = session.logout();
+    http.expectOne('/api/v1/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
+    await online;
+    const after = session.reload();
+    http.expectOne('/api/v1/me').flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+    await after;
+    expect(session.isAuthenticated()).toBe(false);
+  });
 });

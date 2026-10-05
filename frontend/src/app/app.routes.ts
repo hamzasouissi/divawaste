@@ -34,6 +34,7 @@ export const routes: Routes = [
       { path: 'scan', loadComponent: () => import('./features/mobile/mobile').then((m) => m.MobileScanPage) },
       { path: 'loading', loadComponent: () => import('./features/mobile/mobile').then((m) => m.MobileLoadingPage) },
       { path: 'sync', loadComponent: () => import('./features/mobile/mobile').then((m) => m.MobileSyncPage) },
+      { path: 'account', loadComponent: () => import('./features/mobile/mobile').then((m) => m.MobileAccountPage) },
     ],
   },
   {

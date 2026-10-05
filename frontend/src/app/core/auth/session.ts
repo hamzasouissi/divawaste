@@ -22,6 +22,23 @@ const LANDING: Record<'platform' | 'provider' | 'industrial', [string, string][]
   ],
 };
 
+/** Set when the operator signed out without network: the server session is closed before anything else on the next load. */
+const SIGN_OUT_PENDING = 'dw.sign-out-pending';
+
+function signOutPending(value?: boolean): boolean {
+  try {
+    if (value === true) {
+      localStorage.setItem(SIGN_OUT_PENDING, '1');
+    } else if (value === false) {
+      localStorage.removeItem(SIGN_OUT_PENDING);
+    }
+
+    return localStorage.getItem(SIGN_OUT_PENDING) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export interface LoginResult {
   requires_two_factor?: boolean;
   requires_company_selection?: boolean;
@@ -59,6 +76,15 @@ export class Session {
     return (this.meState()?.platform_permissions.length ?? 0) > 0 ? 'platform' : 'none';
   });
 
+  constructor() {
+    // A sign-out asked without network is finished as soon as the network is back, without waiting for a reload.
+    addEventListener('online', () => {
+      if (signOutPending()) {
+        void this.closeServerSession();
+      }
+    });
+  }
+
   /** Where this person starts: the workshop application for someone who only has mobile rights. */
   readonly home = computed(() => {
     switch (this.audience()) {
@@ -87,6 +113,13 @@ export class Session {
   }
 
   async reload(): Promise<void> {
+    if (signOutPending()) {
+      // A sign-out asked without network: finish it now, and stay signed out whatever happens.
+      await this.closeServerSession();
+      this.clear();
+
+      return;
+    }
     try {
       const me = await firstValueFrom(this.api.get<Me>('me'));
       this.meState.set(me);
@@ -102,6 +135,8 @@ export class Session {
   async login(credentials: { email: string; password: string; code?: string; recovery_code?: string; company?: string }): Promise<LoginResult> {
     // The CSRF cookie must exist before the first state-changing request of a cookie session.
     await firstValueFrom(this.http.get('/sanctum/csrf-cookie', { responseType: 'text' }));
+    // Signing in replaces the session: a sign-out that was still waiting for the network no longer applies.
+    signOutPending(false);
     const result = await firstValueFrom(this.api.post<LoginResult>('auth/login', { ...credentials, mode: 'session' }));
 
     if (!result.requires_two_factor && !result.requires_company_selection) {
@@ -119,8 +154,19 @@ export class Session {
   }
 
   async logout(): Promise<void> {
-    await firstValueFrom(this.api.post('auth/logout')).catch(() => undefined);
+    await this.closeServerSession();
     this.clear();
+  }
+
+  /** Closes the session on the server. If it cannot be reached, the sign-out is remembered and finished on the next load. */
+  private async closeServerSession(): Promise<void> {
+    try {
+      await firstValueFrom(this.api.post('auth/logout'));
+      signOutPending(false);
+    } catch (error) {
+      // 401: the session is already closed. Anything else: the server did not hear us.
+      signOutPending(!(error instanceof ApiError && error.status === 401));
+    }
   }
 
   clear(): void {
