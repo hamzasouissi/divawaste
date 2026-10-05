@@ -4,6 +4,7 @@
 
 | Document | For | Content |
 |---|---|---|
+| [MVP_ACCEPTANCE.md](MVP_ACCEPTANCE.md) | The owner | **Acceptance status**: what was executed, every remaining gap classified, and the golden path to run yourself |
 | [DEVELOPER_RUNBOOK.md](DEVELOPER_RUNBOOK.md) | Anyone running it locally | Exact commands to start, stop and reset the demo; **URL quick reference**; troubleshooting |
 | [TEST_ACCOUNTS.md](TEST_ACCOUNTS.md) | Testers | The thirteen demo accounts — platform administrator first — and what the demo data contains |
 | [PLATFORM_ADMIN_GUIDE.md](PLATFORM_ADMIN_GUIDE.md) | The owner / operator of the SaaS | The back office screen by screen, with screenshots: companies, approvals, suspensions, plans, invoices, payments, providers, catalogue, activity |

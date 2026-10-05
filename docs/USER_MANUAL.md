@@ -1,7 +1,7 @@
 # DivaWaste Textile — user manual
 
 Every screen of the application, by workspace, with what it shows, what you can do on it and a screenshot taken
-from the running application (demo data, October 2026). Screen labels are quoted in French, as they appear.
+from the running application (demo data, re-captured on 5 October 2026 on the current interface). Screen labels are quoted in French, as they appear.
 
 - To run the application and sign in: [DEVELOPER_RUNBOOK.md](DEVELOPER_RUNBOOK.md) and [TEST_ACCOUNTS.md](TEST_ACCOUNTS.md).
 - To operate the SaaS itself: [PLATFORM_ADMIN_GUIDE.md](PLATFORM_ADMIN_GUIDE.md).
@@ -27,12 +27,12 @@ from the running application (demo data, October 2026). Screen labels are quoted
 
 ## 1. How the product is organised
 
-| Workspace | Who | Starts at | Navigation colour |
-|---|---|---|---|
-| Client workspace | Textile companies: administrator, environment manager, direction, auditor | `/dashboard` (or `/lots` for the auditor) | Dark green |
-| Workshop application | Operators, on a phone or tablet | `/m` | Full-screen, large buttons |
-| Provider workspace | Collectors, transporters, recyclers | `/provider/pickups` | Dark green, own menu |
-| Back office | Diva Software | `/platform/overview` | Dark blue, tag "Administration de la plateforme" |
+| Workspace            | Who                                                                       | Starts at                                 | Navigation colour                                |
+| -------------------- | ------------------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------ |
+| Client workspace     | Textile companies: administrator, environment manager, direction, auditor | `/dashboard` (or `/lots` for the auditor) | Dark green                                       |
+| Workshop application | Operators, on a phone or tablet                                           | `/m`                                      | Full-screen, large buttons                       |
+| Provider workspace   | Collectors, transporters, recyclers                                       | `/provider/pickups`                       | Dark green, own menu                             |
+| Back office          | Diva Software                                                             | `/platform/overview`                      | Dark blue, tag "Administration de la plateforme" |
 
 The life of a waste lot, which the whole product follows:
 
@@ -81,6 +81,12 @@ steps and opens the real screen for each; it can be left and resumed.
 ![First dashboard](screenshots/onboarding/06-first-dashboard.png)
 ![Set-up wizard](screenshots/onboarding/09-onboarding-wizard.png)
 
+The first three steps, done for real by a new client: a site, its zones, a waste type from the catalogue.
+
+![First site](screenshots/onboarding/10-site-form.png)
+![Site with its zones](screenshots/onboarding/11-site-with-zones.png)
+![First waste type activated](screenshots/onboarding/12-waste-type-activated.png)
+
 ## 3. Common elements of every screen
 
 - **Navigation** on the left, grouped (Pilotage, Opérations, Conformité, Référentiel, Administration, Atelier). You
@@ -106,16 +112,16 @@ Account: `amira@capbon.test`. Sees everything of the company *Textile du Cap Bon
 
 Filters (top right): period (this month, 3 months, year, 12 months, 3 years, custom dates) and site.
 
-| Figure | Meaning |
-|---|---|
-| Déchets générés | Weight and number of lots created in the period |
-| Stock sur site | Weight present on site right now (not affected by the period) |
-| Taux de valorisation | Share of treated waste that was reused, recycled or energy-recovered |
-| Part enfouie | Share sent to landfill (amber above 20 %) |
-| Déchets par pièce produite | Waste divided by the pieces produced (entered in Rapports) |
-| Déchets dangereux | Weight of hazardous lots |
-| Déchets évacués | Weight that left the site in the period |
-| Bilan économique net | Revenue from sold waste minus treatment costs |
+| Figure                     | Meaning                                                              |
+| -------------------------- | -------------------------------------------------------------------- |
+| Déchets générés            | Weight and number of lots created in the period                      |
+| Stock sur site             | Weight present on site right now (not affected by the period)        |
+| Taux de valorisation       | Share of treated waste that was reused, recycled or energy-recovered |
+| Part enfouie               | Share sent to landfill (amber above 20 %)                            |
+| Déchets par pièce produite | Waste divided by the pieces produced (entered in Rapports)           |
+| Déchets dangereux          | Weight of hazardous lots                                             |
+| Déchets évacués            | Weight that left the site in the period                              |
+| Bilan économique net       | Revenue from sold waste minus treatment costs                        |
 
 Then: **À traiter** (alerts: requests waiting for the provider, slips to sign, thresholds exceeded,
 accreditations expiring — each links to the screen), **Tonnage par site**, **Enlèvements en cours**, the monthly
@@ -156,6 +162,13 @@ Tab **Membres**: name, roles per site, two-factor, last sign-in, status. The "�
 **Inviter un utilisateur**: email, name, role, and the sites the role applies to (empty = all sites).
 
 ![Invite](screenshots/client/07-user-invite.png)
+
+The invited person receives a link valid 7 days, chooses a password, accepts the terms, then signs in.
+
+![Invitation filled](screenshots/onboarding/13-invite-filled.png)
+![Invitation pending](screenshots/onboarding/14-invitation-sent.png)
+![The invited person accepts](screenshots/onboarding/15-invitation-accept.png)
+![An invited operator lands on the workshop app](screenshots/onboarding/16-invited-operator-home.png)
 
 Tab **Invitations**: pending invitations, resend or revoke. Tab **Rôles et permissions**: the standard roles
 (read-only) and your own roles, with their permissions.
@@ -206,6 +219,7 @@ status, PDF, and **Déclarer un virement** (amount, bank reference, date) once y
 action, object, dates. Click a line to see the values before and after.
 
 ![Audit journal](screenshots/client/13-audit.png)
+![Audit entry detail](screenshots/client/13b-audit-detail.png)
 
 ### Mon compte — `/account/profile`, `/account/security`, `/account/notifications`
 
@@ -214,6 +228,14 @@ authenticator app and recovery codes); notifications (history, and per type: in 
 
 ![Profile](screenshots/client/14-profile.png)
 ![Security](screenshots/client/15-security.png)
+
+Two-factor authentication: **Activer** shows a QR code and a key for your authenticator application; type the
+6-digit code and **Confirmer**. Eight recovery codes are then shown once — keep them. From then on, sign-in asks
+for the code after the password.
+
+![Two-factor set-up](screenshots/client/15b-two-factor-setup.png)
+![Two-factor enabled, recovery codes](screenshots/client/15c-two-factor-enabled.png)
+![Sign-in asks for the code](screenshots/client/15d-login-two-factor.png)
 ![Notifications](screenshots/client/16-notifications.png)
 
 ## 5. Environment manager — daily operations
@@ -243,6 +265,10 @@ number (`L-2026-000072`) and a QR label.
 ### A lot — `/lots/:id`
 
 ![Lot detail](screenshots/manager/04-lot-detail.png)
+
+![Split a lot](screenshots/manager/04b-lot-split.png)
+![Select lots to group](screenshots/manager/04c-lots-selected.png)
+![Group lots](screenshots/manager/04d-lot-group.png)
 
 Identification, QR label, full history (who, when, from the web or the workshop app). Actions depend on status:
 
@@ -286,21 +312,24 @@ status.
 
 The lots become "En attente d'enlèvement". The pickup then moves through:
 
-| Status | Who acts | What happens |
-|---|---|---|
-| Brouillon | Client | Not sent yet |
-| Demandé | Provider | Confirms a date, or refuses with a reason |
-| Confirmé | Client's operator | Loads the lots (scan) on the day → weight at departure |
-| Enlevé | Provider | Records the weights received |
-| Réceptionné | Provider, then client | Provider declares the treatment channel and uploads the certificate; client enters prices |
-| Clôturé | Client | Closes: lots become Clôturé |
-| Refusé / Annulé | — | Lots return to stock |
+| Status          | Who acts              | What happens                                                                              |
+| --------------- | --------------------- | ----------------------------------------------------------------------------------------- |
+| Brouillon       | Client                | Not sent yet                                                                              |
+| Demandé         | Provider              | Confirms a date, or refuses with a reason                                                 |
+| Confirmé        | Client's operator     | Loads the lots (scan) on the day → weight at departure                                    |
+| Enlevé          | Provider              | Records the weights received                                                              |
+| Réceptionné     | Provider, then client | Provider declares the treatment channel and uploads the certificate; client enters prices |
+| Clôturé         | Client                | Closes: lots become Clôturé                                                               |
+| Refusé / Annulé | —                     | Lots return to stock                                                                      |
 
 **Weight discrepancy.** If the received weight differs by more than 5 % from the departure weight — on the
 total or on any line — a red banner appears and the client must click **Prendre en compte l'écart** before
 closing.
 
 ![Pickup with discrepancy](screenshots/manager/10-pickup-variance.png)
+![Acknowledge the discrepancy](screenshots/manager/11-variance-acknowledge.png)
+![Enter prices](screenshots/manager/12-pricing-dialog.png)
+![Closed pickup](screenshots/manager/13-pickup-closed.png)
 ![Received pickup](screenshots/manager/09-pickup-received.png)
 
 Other actions on a pickup: **Saisir les prix** (per line: sale or cost, per kg / per tonne / flat),
@@ -338,6 +367,7 @@ with who signed and when, status. **Signer** asks for your password (this is the
 *Prepare: declarations.prepare. Validate: declarations.validate.*
 
 ![Annual declaration](screenshots/compliance/05-declaration.png)
+![Validated declaration](screenshots/compliance/05b-declaration-validated.png)
 
 Choose a site and a year, **Préparer une déclaration**: produced, hazardous, evacuated and year-end stock are
 computed from lots and pickups, with the detail by waste code and by channel. **Recalculer** after corrections,
@@ -392,7 +422,9 @@ the same zone.
 | ![Scan](screenshots/operator/06-scan.png) | ![Manual](screenshots/operator/07-scan-manual.png) | ![Found](screenshots/operator/08-lot-found.png) |
 
 Point the camera at the QR code, or tap **Saisir le code à la main** and type the lot number printed on the
-label. Then **Mettre en stock** (choose the zone) or **Imprimer l'étiquette**.
+label. Then **Mettre en stock** (the lot becomes "Stocké") or **Imprimer l'étiquette**.
+
+![Lot in stock](screenshots/operator/08b-lot-stored.png)
 
 ### Load a pickup
 
@@ -418,6 +450,8 @@ the reason.
 
 Account: `direction@capbon.test`. Sees the dashboard, lots, stock, pickups, providers, documents, reports,
 subscription and audit — with **no action button**.
+
+![Lots, read-only](screenshots/direction/03-lots-read-only.png)
 
 ![Direction dashboard](screenshots/direction/01-dashboard.png)
 ![Direction reports](screenshots/direction/02-reports.png)
@@ -459,6 +493,8 @@ Requests addressed to you: number, client, site and city, date, lots, weight, st
 ![Reception](screenshots/provider/09-reception-dialog.png)
 ![Received, with discrepancy](screenshots/provider/10-pickup-received.png)
 ![Treatment](screenshots/provider/11-treatment-dialog.png)
+![Upload a certificate](screenshots/provider/12-certificate-upload.png)
+![Certificate listed on the pickup](screenshots/provider/13-certificate-listed.png)
 
 ### Bordereaux de suivi — `/provider/manifests`, Documents — `/provider/documents`
 
@@ -481,6 +517,7 @@ Your accreditations with their validity. **Ajouter un agrément** (type, referen
 checked by Diva Software before it counts. Without a valid, approved accreditation you cannot be chosen.
 
 ![Provider accreditations](screenshots/provider/08-accreditations.png)
+
 
 ### Utilisateurs — `/admin/users`
 
@@ -515,3 +552,10 @@ The back office of Diva Software is described screen by screen in
 | Invitation | En attente, Acceptée, Expirée, Révoquée | |
 | Threshold | Normal, Seuil proche, Seuil dépassé | Below 80 %, 80–100 %, above |
 | Workshop operation | À synchroniser, Synchronisé, Échec | Offline queue |
+
+## 14. Data isolation between companies
+
+A company never sees another company's data. Signed in as the second client (`nour@monastir-jeans.test`), the
+address of a lot of Textile du Cap Bon answers:
+
+![Another company's lot is not accessible](screenshots/client/18-isolation-not-found.png)

@@ -110,4 +110,26 @@ class PlatformBackOfficeTest extends TestCase
         // Operational data of a client never shows in the platform trail.
         $staff()->getJson('/api/v1/platform/activity?filter[entity]=waste_lots')->assertUnprocessable();
     }
+
+    public function test_company_page_carries_what_is_needed_to_run_the_account(): void
+    {
+        $staff = fn () => $this->withToken($this->platform);
+        $this->makeSite($this->company, 'NAB');
+        $this->company->forceFill(['settings' => ['requested_plan' => 'per_site', 'requested_sites' => 2]])->save();
+
+        // The overview's "plans to activate" opens exactly the clients that asked for a paid plan.
+        $staff()->getJson('/api/v1/platform/companies?filter[plan_requested]=1')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.legal_name', 'Textile du Cap Bon');
+
+        $staff()->postJson("/api/v1/platform/companies/{$this->company->ulid}/subscription",
+            ['plan' => 'per_site', 'billing_interval' => 'monthly', 'sites_quantity' => 2, 'unit_amount' => '150'])->assertCreated();
+        $staff()->getJson('/api/v1/platform/companies?filter[plan_requested]=1')->assertOk()->assertJsonCount(0, 'data');
+
+        $page = $staff()->getJson("/api/v1/platform/companies/{$this->company->ulid}")->assertOk();
+        $page->assertJsonPath('data.sites.0.code', 'NAB')->assertJsonCount(1, 'data.users')->assertJsonPath('data.users.0.email', $this->clientAdmin->email)
+            ->assertJsonCount(1, 'data.invoices')->assertJsonPath('data.invoices.0.total_amount', '358.000')
+            ->assertJsonPath('data.subscription.plan', 'per_site')->assertJsonPath('data.activity.0.event', 'subscription_activated')
+            ->assertJsonPath('data.country_name.fr', 'Tunisie');
+        // Nothing operational of the client is exposed to the platform.
+        $this->assertArrayNotHasKey('lots', $page->json('data'));
+    }
 }

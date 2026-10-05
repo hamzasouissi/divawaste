@@ -27,7 +27,7 @@ Accounts are in [TEST_ACCOUNTS.md](TEST_ACCOUNTS.md); step-by-step tests in [MAN
 | Sign-in by email and password (cookie session) | MVP | All | `/login` | `POST auth/login`, `GET me`, `GET me/access` | ✅ | any test |
 | Lockout after 5 failures (15 min), 5 attempts per minute | MVP | All | `/login` | `auth/login` | ✅ | type a wrong password 5 times |
 | Password reset by email | MVP | All | `/forgot-password`, `/reset-password` | `POST auth/forgot-password`, `auth/reset-password` | ✅ | "Mot de passe oublié ?" then `demo.ps1 mail` |
-| Two-factor authentication (TOTP) with recovery codes | MVP | All | `/account/security` | `POST/DELETE me/two-factor`, `me/two-factor/confirm` | 🟡 not re-clicked after the UI change | enable with an authenticator app |
+| Two-factor authentication (TOTP) with recovery codes | MVP | All | `/account/security` | `POST/DELETE me/two-factor`, `me/two-factor/confirm` | ✅ | enable with an authenticator app, sign out, sign in |
 | Several companies for one user, switch | MVP | All | account menu | `POST auth/switch-company` | ✅ | — |
 | Sign-out | MVP | All | account menu | `POST auth/logout` | ✅ | — |
 | SSO | V2 | | | | ⏳ | |

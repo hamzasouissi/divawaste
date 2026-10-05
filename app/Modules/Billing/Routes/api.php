@@ -172,6 +172,8 @@ Route::middleware('auth:sanctum')->prefix('platform')->group(function () {
         $context->runAs(Company::query()->findOrFail($row->company_id), function () use ($row, $input, $review, $request, $notify) {
             $model = Payment::query()->findOrFail($row->id);
             $model = $input['decision'] === 'validated' ? $review->validate($model, $request->user()) : $review->reject($model, $request->user(), $input['reason']);
+            AuditLogger::record(['company_id' => (int) $row->company_id, 'event' => 'payment_'.$input['decision'], 'auditable_type' => 'payments', 'auditable_id' => $model->id,
+                'auditable_ulid' => $model->ulid, 'new_values' => array_filter(['amount' => (string) $model->amount, 'reason' => $input['reason'] ?? null]), 'tags' => ['platform_billing']]);
             $notify->toCompanyPermission((int) $row->company_id, 'invoices.view', 'payment.reviewed', [
                 'status' => $input['decision'] === 'validated' ? 'validé' : 'rejeté', 'amount' => $model->amount.' '.$model->currency_code,
                 'invoice' => DB::table('invoices')->where('id', $model->invoice_id)->value('invoice_number'),

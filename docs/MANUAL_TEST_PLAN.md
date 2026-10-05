@@ -3,11 +3,8 @@
 Ten tests that cover every MVP workflow, to run by hand in the demo environment. Each step is
 **Action → Expected result**.
 
-What was executed when: Tests 01, 02 (steps 1–6, 9–12), 04 and 06 (steps 1–5) were run click by click on
-4 October 2026 while writing this plan, on the current interface. The other steps were run during the earlier
-verification round, before the interface was rebuilt on PrimeNG; since then their screens were opened and
-checked, but the actions were not all clicked again. If a step does not behave as written, that is a defect to
-report.
+Every test below was executed click by click on 5 October 2026, on the current interface, against a freshly
+reset demo database. The shortest end-to-end run is the golden path of [MVP_ACCEPTANCE.md](MVP_ACCEPTANCE.md).
 
 ## Before you start
 
@@ -66,7 +63,7 @@ Account `rania@maille-bizerte.test` (created in Test 01), or `amira@capbon.test`
 | 3 | **Sites et zones** → **Nouveau site**: code `BIZ`, name `Usine de Bizerte`, city → create; open it → **Ajouter une zone**: code `COUPE`, name `Atelier de coupe`, type Coupe | Site listed "Actif"; zone listed |
 | 4 | **Types de déchets** → tab **Catalogue de référence** → **Activer** on "Chutes de coupe" | Button becomes "Activé"; the type is in "Mes types" |
 | 5 | **Utilisateurs et rôles** → **Inviter un utilisateur**: an email, role "Opérateur atelier", site → send | Invitation listed "En attente" in tab Invitations |
-| 6 | `demo.ps1 mail` → open the `invitation` link in a private window, choose a password, accept | Signed in; lands on `/m` |
+| 6 | `demo.ps1 mail` → open the `invitation` link in a private window, choose a password, accept | "Invitation acceptée. Vous pouvez vous connecter." Sign in with the new password: lands on `/m` |
 | 7 | Tab **Membres** → "…" on a member → **Modifier les rôles** | Dialog with role and sites |
 | 8 | **Journal d'audit** | Lines for the site, the zone, the type created; click one → before / after values |
 
@@ -79,7 +76,7 @@ Account `leila@capbon.test`. On a PC: F12 → device toolbar → a phone size.
 | 1 | Sign in | `/m`: Nouveau lot, Scanner, Charger un enlèvement. Band "En ligne — Tout est synchronisé" |
 | 2 | **Nouveau lot** → "Atelier de coupe" → "Chutes de coupe" → type `37,5` → **Créer le lot** | "Lot créé" with a number `L-2026-0000NN` |
 | 3 | **Accueil** → **Scanner** → **Saisir le code à la main** → `L-2026-000062` → **Confirmer** | Lot page: Résidus de teinture, Dangereux, 33 kg, status Créé |
-| 4 | **Mettre en stock** → choose "Aire de stockage déchets" | Status "Stocké" |
+| 4 | **Mettre en stock** | "Lot mis en stock", status "Stocké" |
 | 5 | F12 → Network → **Offline** | Band turns amber "Hors ligne" |
 | 6 | **Nouveau lot** → Confection → Déchets de fil → `12` → **Créer le lot** | "Lot enregistré sur l'appareil" (no number yet) |
 | 7 | Tap the band | Queue: the lot "À synchroniser" |
@@ -107,18 +104,18 @@ Account `sami@capbon.test`.
 
 Accounts: `sami@capbon.test`, `karim@sahel-recyclage.test`, `leila@capbon.test`.
 
-| # | Who | Action | Expected result |
-|---|---|---|---|
-| 1 | Sami | **Enlèvements** → **Nouvelle demande** → site "Atelier de Korba", tick 2 lots, choose "Recyclage du Sahel", date → **Envoyer au prestataire** | Pickup `ENL-2026-0007` "Demandé"; lots "En attente d'enlèvement" |
-| 2 | Karim | Bell shows a new request. Open `ENL-2026-0007` → **Confirmer une date** → **Confirmer** | Status "Confirmé" |
-| 3 | Leila | `/m` → **Charger un enlèvement** → `ENL-2026-0006` → type `L-2026-000069`, `L-2026-000070`, `L-2026-000071` (**Confirmer** each) → **Valider le chargement** | "Chargement enregistré" |
-| 4 | Sami | Open `ENL-2026-0006` | Status "Enlevé", weight at departure 211,5 kg |
-| 5 | Karim | Open `ENL-2026-0006` → **Enregistrer la réception** → set the 2nd line to `108` → **Enregistrer** | "Réceptionné"; banner "Poids reçu 199,5 kg pour 211,5 kg au départ, soit -5,7 % d'écart"; line −10 % in red |
-| 6 | Karim | **Déclarer le traitement** → choose a channel per line → save | Lines "Traité", channel shown |
-| 7 | Karim | **Déposer un certificat** → type, PDF file → send | Certificate listed under Documents |
-| 8 | Sami | Open the pickup | Red banner with the discrepancy; **Prendre en compte l'écart** is the main button |
-| 9 | Sami | **Prendre en compte l'écart** → confirm; **Saisir les prix** → a price per line → save | Banner turns green; amounts shown |
-| 10 | Sami | **Clôturer** | Status "Clôturé"; the 3 lots are "Clôturé" |
+| #   | Who   | Action                                                                                                                                                       | Expected result                                                                                             |
+| --- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| 1   | Sami  | **Enlèvements** → **Nouvelle demande** → site "Atelier de Korba", tick 2 lots, choose "Recyclage du Sahel", date → **Envoyer au prestataire**                | Pickup `ENL-2026-0007` "Demandé"; lots "En attente d'enlèvement"                                            |
+| 2   | Karim | Bell shows a new request. Open `ENL-2026-0007` → **Confirmer une date** → **Confirmer**                                                                      | Status "Confirmé"                                                                                           |
+| 3   | Leila | `/m` → **Charger un enlèvement** → `ENL-2026-0006` → type `L-2026-000069`, `L-2026-000070`, `L-2026-000071` (**Confirmer** each) → **Valider le chargement** | "Chargement enregistré"                                                                                     |
+| 4   | Sami  | Open `ENL-2026-0006`                                                                                                                                         | Status "Enlevé", weight at departure 211,5 kg                                                               |
+| 5   | Karim | Open `ENL-2026-0006` → **Enregistrer la réception** → set the 2nd line to `108` → **Enregistrer**                                                            | "Réceptionné"; banner "Poids reçu 199,5 kg pour 211,5 kg au départ, soit -5,7 % d'écart"; line −10 % in red |
+| 6   | Karim | **Déclarer le traitement** → choose a channel per line → save                                                                                                | Lines "Traité", channel shown                                                                               |
+| 7   | Karim | **Déposer un certificat** → type, PDF file → send                                                                                                            | Certificate listed under Documents                                                                          |
+| 8   | Sami  | Open the pickup                                                                                                                                              | Red banner with the discrepancy; **Prendre en compte l'écart** is the main button                           |
+| 9   | Sami  | **Prendre en compte l'écart** → confirm; **Saisir les prix** → a price per line → save                                                                       | Banner turns green; amounts shown                                                                           |
+| 10  | Sami  | **Clôturer** → confirm                                                                                                                                       | Status "Clôturé"; the 3 lots are "Clôturé"                                                                  |
 
 ## Test 07 — Compliance
 

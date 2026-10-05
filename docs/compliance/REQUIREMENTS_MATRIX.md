@@ -2,18 +2,20 @@
 
 Source of truth: *Cahier des charges — DivaWaste Textile* (28 Sep 2026). Requirement IDs are the cahier's.
 
-**State recorded here: 4 Oct 2026, end of the takeover** — backend branch `takeover/mvp-alignment`, frontend repository
+**State recorded here: 5 Oct 2026, after the MVP acceptance pass** — backend branch `takeover/mvp-alignment`, frontend repository
 `DIVA-WASTE-FRONTEND-LAB` branch `main`. The state found at the start is kept in
 [BASELINE_AUDIT_2026-10-04.md](BASELINE_AUDIT_2026-10-04.md).
 
 ## How to read it
 
 Status: ✅ done and verified · 🟡 done with a stated limit · 🔴 not done · V2 out of MVP scope (cahier).
+A requirement is ✅ only when its real workflow was completed in the application, not because an endpoint or a
+screen exists. The classification of every remaining gap is in [MVP_ACCEPTANCE.md](../MVP_ACCEPTANCE.md).
 
 "Verified by" says what was actually run, nothing more:
 
-- **T** — automated backend feature test (the file is named; suite: 158 tests, 1 390 assertions, all passing).
-- **B** — driven through the real browser against the real API (headless Chrome, demo database), by clicks.
+- **T** — automated backend feature test (the file is named; suite: 163 tests, all passing).
+- **B** — driven through the real browser against the real API (headless Chrome, demo database), by clicks. **B5** = clicked again on 5 Oct 2026 on the current (PrimeNG) interface.
 - **S** — screen built on the real API and loaded in the browser without error; the action itself was exercised through the API, not by clicks.
 
 Nothing in the product uses mock data.
@@ -22,15 +24,15 @@ Nothing in the product uses mock data.
 
 | ID | Requirement | Status | Where | Verified by | Limit / note |
 |---|---|---|---|---|---|
-| M0-01 | Company self-registration | ✅ | `POST auth/register`, screen `/register` | T `RegistrationAndReviewTest` · S | |
-| M0-02 | Email link valid 24 h | ✅ | signed link → `/verify-email`, resend | T `RegistrationAndReviewTest` · S | Mail goes to the configured mailer (`log` locally). SMS/WhatsApp = V2 |
-| M0-03 | Plan choice (trial, per site, per volume) | 🟡 | plans seeded, chosen at registration | T `SubscriptionTest` · S | **Price grid not decided**: reference prices are managed in `/platform/plans` and proposed at activation; the invoiced price is the one confirmed for each client. Per-volume is a flat fee (tonnage not metered). Every plan starts with the 30-day trial |
+| M0-01 | Company self-registration | ✅ | `POST auth/register`, screen `/register` | T `RegistrationAndReviewTest` · **B5** | |
+| M0-02 | Email link valid 24 h | ✅ | signed link → `/verify-email`, resend | T `RegistrationAndReviewTest` · **B5** | Mail goes to the configured mailer (`log` locally). SMS/WhatsApp = V2 |
+| M0-03 | Plan choice (trial, per site, per volume) | 🟡 | plans seeded, chosen at registration | T `SubscriptionTest`, `PlatformBackOfficeTest` · **B5** | **Price grid not decided**: reference prices are managed in `/platform/plans` and proposed at activation; the invoiced price is the one confirmed for each client. Per-volume is a flat fee (tonnage not metered). Every plan starts with the 30-day trial |
 | M0-04 | Bank transfer validated by super-admin | ✅ | declare → `/platform/payments` | T `SubscriptionTest`, `BillingTest` · **B** | Card payment = V2 |
 | M0-05 | Provider registration with accreditation PDFs | ✅ | `/register` (provider), `/provider/accreditations` | T `RegistrationAndReviewTest` · S | |
-| M0-06 | Approve / reject with reason / suspend, applicant emailed | ✅ | `/platform/companies/:id` | T `RegistrationAndReviewTest` · S | |
-| M0-07 | 4-step wizard, skippable, resumable | ✅ | `/onboarding` + banner on the dashboard | T `RegistrationAndReviewTest` · S | Each step opens the real screen; the wizard tracks progress, it does not duplicate forms |
-| M0-08 | Invitation by email with role and sites, 7 days | ✅ | `/admin/users`, `/invitation` | T `UsersAndRolesTest` · S | |
-| M0-09 | Password ≥ 12, reset, optional TOTP, lockout 5 | ✅ | `/login`, `/forgot-password`, `/account/security` | T `AccountSecurityTest` · B (login) · S (2FA) | Lockout: 5 failures → 15 minutes, email sent |
+| M0-06 | Approve / reject with reason / suspend, applicant emailed | ✅ | `/platform/companies/:id` | T `RegistrationAndReviewTest` · **B5** (approve, reject, suspend, reactivate) | |
+| M0-07 | 4-step wizard, skippable, resumable | ✅ | `/onboarding` + banner on the dashboard | T `RegistrationAndReviewTest` · **B5** (site, zone, type, invitation) | Each step opens the real screen; the wizard tracks progress, it does not duplicate forms |
+| M0-08 | Invitation by email with role and sites, 7 days | ✅ | `/admin/users`, `/invitation` | T `UsersAndRolesTest` · **B5** (sent, accepted, invited user signed in) | |
+| M0-09 | Password ≥ 12, reset, optional TOTP, lockout 5 | ✅ | `/login`, `/forgot-password`, `/account/security` | T `AccountSecurityTest` · **B5** (2FA enabled with a real code, sign-in with the code) | Lockout: 5 failures → 15 minutes, email sent |
 | M0-10 | Timestamped acceptance of terms, versioned | 🟡 | recorded at registration and invitation | T `RegistrationAndReviewTest` | **Legal texts are placeholders** (`0.1-provisoire`): Diva must supply the real documents |
 | M0-11 | "Mon abonnement" | ✅ | `/admin/subscription` | T `SubscriptionTest` · **B** | Plan change is a request, activated by the platform at the agreed price |
 | M0-12 | SSO | V2 | | | |
@@ -54,7 +56,7 @@ Nothing in the product uses mock data.
 | M2-03 | RFID | V2 | | | |
 | M2-04 | Manual weight | ✅ | lot form, weigh action | T `LotOperationsTest` · B | Connected scale = V2 |
 | M2-05 | Lifecycle with timestamp and author | ✅ | lot detail timeline | T `PickupScenarioTest`, `LotOperationsTest` · S | |
-| M2-06 | Group / split | ✅ | lot dialogs | T `LotOperationsTest` · S | 2 % weight tolerance, comment required beyond |
+| M2-06 | Group / split | ✅ | lot dialogs | T `LotOperationsTest` · **B5** (split 42,5 → 20 + 22,5; grouped back) | 2 % weight tolerance, comment required beyond |
 | M2-07 | Real-time stock, threshold alert | ✅ | `/stock` | T `CatalogAndAlertsTest` · S | Stock is computed from lots, never stored |
 | M2-08 | Offline with sync, no loss, no duplicate | ✅ | IndexedDB outbox → `POST sync/push` | T `OfflineSyncTest` · **B** (network cut, lot created, network restored, lot numbered) | Offline covers lot creation and storing. Loading a pickup needs the network (it commits both parties) |
 
@@ -68,17 +70,17 @@ Nothing in the product uses mock data.
 | M4-02 | Alert 30 days before expiry; expired not selectable | ✅ | daily `accreditations:alert`; refused at submit and confirm | T `PickupScenarioTest`, `CatalogAndAlertsTest` | Needs the scheduler running |
 | M4-03 | Request to provider, confirm or refuse | ✅ | `/pickups/new`, `/provider/pickups` | T `PickupScenarioTest` · B (provider list) · S | |
 | M4-04 | Scan at pickup, received weight, variance > 5 % | ✅ | `/m/loading`, pickup dialogs | T `PickupScenarioTest` · **B** | Fixed during verification: a gap on one lot now flags the pickup even when the total is within tolerance |
-| M4-05 | Price or cost per lot, net balance | ✅ | pricing dialog, dashboard, `economic_balance` report | T `PickupScenarioTest`, `ReportingTest` | |
+| M4-05 | Price or cost per lot, net balance | ✅ | pricing dialog, dashboard, `economic_balance` report | T `PickupScenarioTest`, `ReportingTest` · **B5** (prices entered, net balance, pickup closed) | |
 | M4-06 | Marketplace | V2 | | | |
 
 ## M5 — Conformité réglementaire
 
 | ID | Requirement | Status | Where | Verified by | Limit / note |
 |---|---|---|---|---|---|
-| M5-01 | Chronological register, PDF and Excel | ✅ | `/compliance/register` | T `ReportingTest`, `ComplianceApiTest` · S | |
+| M5-01 | Chronological register, PDF and Excel | ✅ | `/compliance/register` | T `ReportingTest`, `ComplianceApiTest` · **B5** (PDF and Excel exports) | |
 | M5-02 | Hazardous slip, pre-filled, signed by each party | 🟡 | `/compliance/manifests`, `/provider/manifests` | T `ComplianceApiTest` · **B** (three signatures by clicks) | Signature = authenticated user + password re-entry + timestamp + IP, recorded in sequence. **Not a qualified electronic signature**; legal value to be confirmed by Diva. Layout is ours, not the official form |
-| M5-03 | ANGed annual declaration | 🟡 | `/compliance/declarations` | T `ComplianceApiTest` · **B** | Figures are computed and frozen at validation. **The layout is a structured declaration, not the official ANGed form** — to align once Diva supplies it |
-| M5-04 | Certificates archived 10 years, linked to lots | ✅ | `/compliance/documents`, upload from the pickup | T `ComplianceApiTest` · B (list) | No deletion endpoint exists for a regulated document |
+| M5-03 | ANGed annual declaration | 🟡 | `/compliance/declarations` | T `ComplianceApiTest` · **B5** (prepared, validated, exported PDF and Excel) | Figures are computed and frozen at validation. **The layout is a structured declaration, not the official ANGed form** — to align once Diva supplies it |
+| M5-04 | Certificates archived 10 years, linked to lots | ✅ | `/compliance/documents`, upload from the pickup | T `ComplianceApiTest` · **B5** (certificate uploaded by the provider, listed) | No deletion endpoint exists for a regulated document |
 
 ## M6 — Reporting RSE
 
@@ -87,7 +89,7 @@ Nothing in the product uses mock data.
 | M6-01 | Dashboard | 🟡 | `/dashboard` | T `ReportingTest` · S | Computed live with a 60 s cache. **Not measured at 5 M lots**: the pre-aggregated `waste_daily_stats` table exists but is not used |
 | M6-02 | kg per piece produced | ✅ | pieces entered in `/reports` | T `ReportingTest` · S | |
 | M6-03 | CO₂ avoided | V2 | | | |
-| M6-04 | RSE export PDF / Excel with logo | ✅ | `/reports`, logo in `/admin/company` | T `ReportingTest` · **B** | Generated by a queued job; needs a queue worker in production |
+| M6-04 | RSE export PDF / Excel with logo | ✅ | `/reports`, logo in `/admin/company` | T `ReportingTest` · **B5** (PDF and Excel generated and downloaded) | Generated by a queued job; needs a queue worker in production |
 | M6-05 | Brand portal | V2 | | | |
 
 ## M7 — Transverse
@@ -112,7 +114,7 @@ Nothing in the product uses mock data.
 | Mobile PWA | 🟡 | installable manifest, service worker in production build, Dexie outbox, ZXing | iOS home-screen icon needs PNG files (only SVG provided). Not tried on a real device or with gloves |
 | Ergonomics | 🟡 | responsive tables and forms checked at 1440 and 390 px | No session with real users yet |
 | Accessibility | 🟡 | labels, focus order, status never by colour alone, keyboard-activable rows | No audit with a screen reader |
-| i18n | ✅ | Transloco, one file per language, 1 144 key references checked by `npm run i18n`, logical CSS properties, `dir` switch | Only French ships. English and Arabic files are not written |
+| i18n | ✅ | Transloco, one file per language, 1 315 key references checked by `npm run i18n`, logical CSS properties, `dir` switch | Only French ships. English and Arabic files are not written |
 | Traceability | ✅ | no force delete on lots; regulated documents have no delete route | |
 
 ## Stack conformance (cahier §5)
@@ -125,7 +127,7 @@ Nothing in the product uses mock data.
 | Background | Redis, queues with **Horizon**, scheduler | 🟡 jobs and schedule ✅. Horizon not installed (no Windows support on the development machine); Redis not run locally — tests use the sync queue |
 | API docs | Scribe / L5-Swagger | 🔴 not installed; [API.md](../API.md) lists the routes |
 | Quality (API) | Pest/PHPUnit, Larastan, Pint | 🟡 PHPUnit ✅ Pint ✅ · **Larastan not installed** |
-| Front-end | Angular latest, standalone, Material or PrimeNG, ECharts | 🟡 Angular **20.3** (kept, not upgraded to the latest major), standalone, zoneless, Material 20, ECharts |
+| Front-end | Angular latest, standalone, Material or PrimeNG, ECharts | 🟡 Angular **20.3** (kept, not upgraded to the latest major), standalone, zoneless, **PrimeNG 20**, ECharts |
 | Mobile | Angular PWA, Dexie, ZXing | ✅ |
 | i18n | Transloco | ✅ |
 | Quality (front) | Vitest, ESLint | ✅ 20 unit tests, lint clean |
@@ -138,3 +140,7 @@ Nothing in the product uses mock data.
 4. Official layouts of the tracking slip and of the ANGed declaration; legal standing of the in-app signature (M5-02, M5-03).
 5. simple-qrcode replaced by bacon/bacon-qr-code (stack §5).
 6. Personal data export and erasure: procedure until the endpoint exists.
+7. How the per-volume plan is billed (flat fee today, tonnage not metered).
+8. An external penetration test and a load test before production.
+
+Every gap is classified (must fix, business decision, V2, hardware test, polish) in [MVP_ACCEPTANCE.md](../MVP_ACCEPTANCE.md).

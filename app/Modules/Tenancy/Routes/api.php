@@ -130,10 +130,14 @@ Route::middleware('auth:sanctum')->prefix('platform')->group(function () {
             'filter.status' => ['nullable', Rule::in(['pending_verification', 'pending_approval', 'active', 'rejected', 'suspended', 'closed'])],
             'filter.type' => ['nullable', Rule::in(['industrial', 'provider'])],
             'filter.search' => ['nullable', 'string', 'max:100'],
+            'filter.plan_requested' => ['nullable', 'boolean'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ])['filter'] ?? [];
 
         return CompanyResource::collection(Company::query()
+            // Clients waiting for the platform to activate the paid plan they asked for.
+            ->when(filter_var($filter['plan_requested'] ?? false, FILTER_VALIDATE_BOOLEAN), fn ($query) => $query->where('status', 'active')->where('company_type', 'industrial')
+                ->whereNotNull('settings->requested_plan')->where('settings->requested_plan', '!=', 'trial'))
             ->when($filter['status'] ?? null, fn ($query, $value) => $query->where('status', $value))
             ->when($filter['type'] ?? null, fn ($query, $value) => $query->where('company_type', $value))
             ->when($filter['search'] ?? null, fn ($query, $value) => $query->where(fn ($q) => $q
@@ -148,6 +152,27 @@ Route::middleware('auth:sanctum')->prefix('platform')->group(function () {
 
         return response()->json(['data' => (new CompanyResource($company))->resolve($request) + [
             'rejection_reason' => $company->rejection_reason,
+            'country_name' => json_decode((string) DB::table('countries')->where('id', $company->country_id)->value('name'), true),
+            'activity_names' => DB::table('company_textile_activities as cta')->join('textile_activities as a', 'a.id', '=', 'cta.textile_activity_id')
+                ->where('cta.company_id', $company->id)->orderBy('a.sort_order')->pluck('a.name')->map(fn ($name) => json_decode((string) $name, true)),
+            // What the operator of the platform needs to run the account: where it works, who uses it, what it owes,
+            // what was decided about it. Never its lots, pickups or documents.
+            'sites' => DB::table('sites')->where('company_id', $company->id)->whereNull('deleted_at')->orderBy('name')->get(['code', 'name', 'city', 'is_active'])
+                ->map(fn ($site) => ['code' => $site->code, 'name' => $site->name, 'city' => $site->city, 'is_active' => (bool) $site->is_active]),
+            'users' => DB::table('company_users as cu')->join('users as u', 'u.id', '=', 'cu.user_id')->where('cu.company_id', $company->id)->whereNull('cu.removed_at')
+                ->orderBy('u.last_name')->limit(50)->get(['u.id', 'u.first_name', 'u.last_name', 'u.email', 'cu.status', 'u.last_login_at'])
+                ->map(fn ($user) => ['name' => trim("{$user->first_name} {$user->last_name}"), 'email' => $user->email, 'status' => $user->status,
+                    'last_login_at' => $user->last_login_at === null ? null : now()->parse($user->last_login_at)->toIso8601ZuluString(),
+                    'roles' => DB::table('user_role_assignments as ra')->join('roles as r', 'r.id', '=', 'ra.role_id')->where('ra.company_id', $company->id)
+                        ->where('ra.user_id', $user->id)->distinct()->get(['r.name', 'r.label'])
+                        ->map(fn ($role) => json_decode((string) $role->label, true)['fr'] ?? $role->name)->values()]),
+            'invoices' => DB::table('invoices')->where('company_id', $company->id)->where('status', '!=', 'draft')->orderByDesc('issue_date')->orderByDesc('id')->limit(12)
+                ->get(['ulid', 'invoice_number', 'status', 'issue_date', 'due_date', 'currency_code', 'total_amount', 'amount_paid']),
+            'activity' => DB::table('audit_logs as a')->leftJoin('users as u', 'u.id', '=', 'a.actor_user_id')->where('a.company_id', $company->id)
+                ->whereIn('a.auditable_type', ['companies', 'provider_accreditations', 'company_subscriptions', 'invoices', 'payments'])->whereNotIn('a.event', ['created', 'updated'])
+                ->orderByDesc('a.created_at')->orderByDesc('a.id')->limit(10)->get(['a.event', 'a.created_at', 'a.new_values', 'u.first_name', 'u.last_name'])
+                ->map(fn ($row) => ['event' => $row->event, 'occurred_at' => now()->parse($row->created_at)->toIso8601ZuluString(),
+                    'actor' => trim("{$row->first_name} {$row->last_name}") ?: null, 'reason' => json_decode((string) $row->new_values, true)['reason'] ?? null]),
             'suspension_reason' => $company->suspension_reason,
             'requested_plan' => $company->settings['requested_plan'] ?? null,
             'requested_sites' => $company->settings['requested_sites'] ?? null,

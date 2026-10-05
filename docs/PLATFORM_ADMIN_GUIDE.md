@@ -2,7 +2,7 @@
 
 You are the person running DivaWaste as a SaaS platform: you work for Diva Software, not for a textile company.
 This guide shows every screen of the back office and what to do on each, with screenshots taken from the running
-application. Screen labels are quoted in French, as they appear.
+application (re-captured on 5 October 2026). Screen labels are quoted in French, as they appear.
 
 - **URL**: http://localhost:4300 (demo environment, see [DEVELOPER_RUNBOOK.md](DEVELOPER_RUNBOOK.md))
 - **Account**: `admin@divawaste.test` / `DivaWaste!2026` — role *Super-administrateur plateforme*
@@ -51,6 +51,10 @@ A client never sees it; you never see a client's workspace.
 
 ![Platform overview](screenshots/platform/01-overview.png)
 
+When everything is processed the tiles go back to zero and grey:
+
+![Overview with nothing pending](screenshots/platform/01b-overview-after-decisions.png)
+
 **Top row — what needs a decision.** Each tile is a link; it turns amber when the number is not zero.
 
 | Tile | Meaning | Opens |
@@ -91,6 +95,22 @@ shows the last platform decisions and links to the full activity.
 | Active | Approved | **Suspendre**; for an industrial, **Activer une formule** |
 | Suspendue | Access blocked by you | **Réactiver** |
 | Rejetée | Registration refused | Nothing: the applicant must register again |
+
+**The company page is where you run a customer account.** Without leaving it you see:
+
+| Panel | Content |
+|---|---|
+| Header | Name, type, status, and the decision buttons allowed in that status |
+| Informations | Tax identifier, address and country, phone, submission date, contact with "Email confirmé", activities, plan asked, usage counters, rejection or suspension reason |
+| Agréments (provider) | Each accreditation with reference, validity, review status and its PDF |
+| Sites | Code, name, city, open or closed |
+| Utilisateurs | Name, email, roles, last sign-in, status |
+| Factures | The last 12 invoices with total, paid and status |
+| Historique du compte | Decisions taken on this account, with author, date and reason |
+| Abonnement (right) | Current plan, price, sites, trial or period end |
+| Activer une formule (right) | The activation form, pre-filled with the request and the reference price |
+
+It never shows the client's lots, pickups or documents.
 
 The company page shows the tax identifier, address, contact (with "Email confirmé : Oui/Non"), declared activities,
 the plan asked at registration, usage (sites, users, lots) and, for a provider, its accreditations.
@@ -156,6 +176,11 @@ Click **Valider l'inscription**, then **Confirmer**.
 ### Step 6 — what changes
 
 ![Approved company](screenshots/platform/06-company-approved.png)
+
+Activating the plan right away on the same page issues the first invoice; the page then shows the invoice and the
+account's history:
+
+![New client with its plan, invoice and history](screenshots/platform/06b-new-client-plan-activated.png)
 
 - Status becomes **Active**; the message "Société validée. Le demandeur est prévenu par email." appears.
 - An industrial company gets a **30-day free trial** automatically (panel "Abonnement": *Essai gratuit*, end date).
@@ -263,7 +288,10 @@ Click **Modifier** on a line:
 
 ### Activating a plan for a client
 
-Open the company (from "Formules demandées par les clients" on the overview, or from Sociétés).
+Open the company from "Formules demandées par les clients" on the overview, or click the tile
+"formule(s) à activer": Sociétés opens filtered on **Formule demandée**.
+
+![Companies that asked for a plan](screenshots/platform/08b-companies-plan-requests.png)
 
 ![Activate a plan](screenshots/platform/09-activate-plan-form.png)
 
@@ -456,5 +484,4 @@ The server must run the scheduler for renewals, trial warnings and accreditation
 | No notification bell in the back office | You rely on the overview counters | Minor |
 | No suspension from the invoices list | Suspend from the company page | Minor |
 | No admin creation of a company | Use the registration page (section 7) | By design |
-| Activities and some reference codes appear as technical codes (e.g. `weaving`) on the company page | Cosmetic | To translate |
 | Card payment, SSO | Not available | V2 |
