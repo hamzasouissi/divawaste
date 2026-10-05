@@ -12,7 +12,7 @@ import { Api } from '../../core/api/api';
 import { AccessSite, Invitation, Member, RoleDefinition } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe, LocalizedPipe } from '../../core/format/pipes';
+import { DatePipe, LocalizedPipe, TermPipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { Column, TABLE } from '../../ui/data-table';
 import { ListStore } from '../../ui/list-store';
@@ -204,7 +204,7 @@ export class InviteDialog {
  */
 @Component({
   imports: [
-    FormsModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, InputText, ...FIELD, CheckboxComponent, FilterBarComponent, MenuComponent, Tabs, TabList, Tab, TabPanels, TabPanel,
+    TermPipe, FormsModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, InputText, ...FIELD, CheckboxComponent, FilterBarComponent, MenuComponent, Tabs, TabList, Tab, TabPanels, TabPanel,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -295,10 +295,10 @@ export class InviteDialog {
                       <div class="modules">
                         @for (group of modules(); track group.module) {
                           <fieldset>
-                            <legend>{{ group.module }}</legend>
+                            <legend>{{ group.module | dwTerm: 'terms.modules' }}</legend>
                             @for (permission of group.permissions; track permission.name) {
                               <dw-checkbox [checked]="draft().has(permission.name)" [disabled]="!editable()" (checkedChange)="toggle(permission.name, $event)">
-                                <span class="dw-code">{{ permission.name }}</span>
+                                {{ permission.name | dwTerm: 'permissions' }}
                               </dw-checkbox>
                             }
                           </fieldset>

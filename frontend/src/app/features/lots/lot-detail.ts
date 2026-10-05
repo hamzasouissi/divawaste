@@ -8,7 +8,7 @@ import { Api, openBlob } from '../../core/api/api';
 import { Lot, LotDetailMeta, LotEvent } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe, KgPipe, LocalizedPipe } from '../../core/format/pipes';
+import { CodePipe, DatePipe, KgPipe, LocalizedPipe, TermPipe } from '../../core/format/pipes';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
 import { LotActionData, SplitLotDialog, StoreLotDialog, WeighLotDialog } from './lot-dialogs';
@@ -20,7 +20,7 @@ import { IconComponent } from '../../ui/icon';
  * where it came from and what it became (M2-06), and which pickup took it.
  */
 @Component({
-  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LocalizedPipe, IconComponent, ButtonDirective],
+  imports: [TermPipe, CodePipe, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LocalizedPipe, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -55,8 +55,8 @@ import { IconComponent } from '../../ui/icon';
                     <div><dt>{{ t('lots.regulatoryCode') }}</dt><dd class="dw-mono">{{ l.regulatory_code ?? '—' }}</dd></div>
                     <div><dt>{{ t('lots.origin') }}</dt><dd>{{ t('origin.' + l.origin_type) }}</dd></div>
                     <div><dt>{{ t('lots.generatedAt') }}</dt><dd>{{ l.generated_at | dwDate: 'datetime' }}</dd></div>
-                    <div><dt>{{ t('lots.packaging') }}</dt><dd>{{ l.packaging_type ?? '—' }}</dd></div>
-                    <div><dt>{{ t('lots.color') }}</dt><dd>{{ l.color_label ?? l.color_family ?? '—' }}</dd></div>
+                    <div><dt>{{ t('lots.packaging') }}</dt><dd>{{ l.packaging_type | dwCode: 'packaging' }}</dd></div>
+                    <div><dt>{{ t('lots.color') }}</dt><dd>{{ l.color_label ?? (l.color_family | dwCode: 'color') }}</dd></div>
                     <div><dt>{{ t('lots.grammage') }}</dt><dd>{{ l.grammage_gsm ?? '—' }}</dd></div>
                     <div><dt>{{ t('lots.composition') }}</dt>
                       <dd>
@@ -105,7 +105,7 @@ import { IconComponent } from '../../ui/icon';
                           @if (event.weight_kg && (event.event_type === 'weighed' || event.event_type === 'created')) { <span class="dw-muted">{{ event.weight_kg | dwKg }}</span> }
                           @if (event.payload?.['previous_weight_kg']; as previous) { <span class="dw-faint">({{ t('lots.previousWeight', { kg: previous }) }})</span> }
                         </div>
-                        <div class="when dw-faint">{{ event.occurred_at | dwDate: 'datetime' }} @if (event.actor) { · {{ t('lots.by', { actor: event.actor }) }} } · {{ event.source }}</div>
+                        <div class="when dw-faint">{{ event.occurred_at | dwDate: 'datetime' }} @if (event.actor) { · {{ t('lots.by', { actor: event.actor }) }} } · {{ event.source | dwTerm: 'terms.sources' }}</div>
                       </div>
                     </li>
                   }
@@ -117,7 +117,7 @@ import { IconComponent } from '../../ui/icon';
               <section class="dw-panel">
                 <div class="dw-panel-head"><h2 class="dw-h2">{{ t('lots.qr') }}</h2></div>
                 <div class="dw-panel-body dw-stack-sm">
-                  <div class="dw-code tag">{{ l.qr }}</div>
+                  <p>{{ t('lots.qrHint', { number: l.lot_number }) }}</p>
                   <p class="dw-faint">{{ t('lots.printCount', { count: l.label_print_count }) }} · 100 × 50 mm</p>
                 </div>
               </section>

@@ -10,7 +10,7 @@ import { Api, openBlob } from '../../core/api/api';
 import { Company, CompanyStatus, Localized, ProviderAccreditation } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe, LocalizedPipe, MoneyPipe } from '../../core/format/pipes';
+import { CountryPipe, DatePipe, LocalizedPipe, MoneyPipe, TermPipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { Column, TABLE } from '../../ui/data-table';
 import { ListStore } from '../../ui/list-store';
@@ -30,6 +30,7 @@ const FILTERS = `
 `;
 
 interface CompanyFilter {
+  plan_requested?: boolean | null;
   status?: CompanyStatus | null;
   type?: string | null;
   search?: string;
@@ -37,7 +38,7 @@ interface CompanyFilter {
 
 /** M0-06: registrations to review first, then every account. */
 @Component({
-  imports: [TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, DatePipe, IconComponent, ...SELECT, FilterBarComponent],
+  imports: [TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, DatePipe, IconComponent, ...SELECT, CheckboxComponent, FilterBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -55,6 +56,7 @@ interface CompanyFilter {
             <dw-option value="industrial" [label]="t('platform.companies.types.industrial')" />
             <dw-option value="provider" [label]="t('platform.companies.types.provider')" />
           </dw-select>
+          <dw-checkbox [checked]="list.filter().plan_requested === true" (checkedChange)="list.setFilter({ plan_requested: $event ? true : null })">{{ t('platform.companies.planRequested') }}</dw-checkbox>
         </dw-filter-bar>
         <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1"
           [pageSize]="list.perPage()" [clickable]="true" emptyIcon="domain" [emptyTitle]="t('platform.companies.emptyTitle')"
@@ -75,13 +77,15 @@ export class PlatformCompaniesPage implements OnInit {
 
   /** Query parameter: opens the list on one status (link of the overview). */
   readonly status = input<CompanyStatus>();
+  /** Query parameter set by the overview: only clients waiting for a plan to be activated. */
+  readonly requests = input<string>();
 
   protected readonly statuses: CompanyStatus[] = ['pending_approval', 'pending_verification', 'active', 'suspended', 'rejected', 'closed'];
   protected readonly list = new ListStore<Company, CompanyFilter>((query) => this.api.list<Company>('platform/companies', query));
   protected readonly columns: Column<Company>[] = [
     { key: 'name', header: 'fields.legalName' },
     { key: 'type', header: 'platform.companies.type' },
-    { key: 'city', header: 'fields.city', value: (c) => [c.city, c.country].filter(Boolean).join(', '), hideBelow: 900 },
+    { key: 'city', header: 'fields.city', value: (c) => c.city, hideBelow: 900 },
     { key: 'submitted', header: 'platform.companies.submittedAt', hideBelow: 640 },
     { key: 'status', header: 'fields.status' },
   ];
@@ -90,6 +94,9 @@ export class PlatformCompaniesPage implements OnInit {
     const status = this.status();
     if (status && this.statuses.includes(status)) {
       this.list.setFilter({ status });
+    }
+    if (this.requests()) {
+      this.list.setFilter({ plan_requested: true });
     }
   }
 
@@ -103,6 +110,12 @@ interface CompanyDetail extends Company {
   suspension_reason: string | null;
   requested_plan: string | null;
   requested_sites: number | null;
+  country_name: Localized | null;
+  activity_names: Localized[];
+  sites: { code: string; name: string; city: string | null; is_active: boolean }[];
+  users: { name: string; email: string; status: string; last_login_at: string | null; roles: string[] }[];
+  invoices: { ulid: string; invoice_number: string; status: string; issue_date: string; due_date: string; currency_code: string; total_amount: string; amount_paid: string }[];
+  activity: { event: string; occurred_at: string; actor: string | null; reason: string | null }[];
   subscription: {
     plan: string; name: Localized; status: string; billing_interval: 'monthly' | 'yearly' | null; sites_quantity: number | null; currency_code: string; unit_amount: string | null;
     trial_ends_at: string | null; current_period_end: string | null; cancel_at_period_end: boolean;
@@ -116,7 +129,7 @@ interface CompanyDetail extends Company {
 /** One registration or account: everything needed to decide, and the decision itself. */
 @Component({
   imports: [
-    ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, LocalizedPipe, MoneyPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT,
+    CountryPipe, TermPipe, ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, LocalizedPipe, MoneyPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -139,7 +152,7 @@ interface CompanyDetail extends Company {
                 <div class="dw-panel-body">
                   <dl class="dw-facts">
                     <dt>{{ t('fields.taxId') }}</dt><dd class="dw-mono">{{ c.tax_id ?? '—' }}</dd>
-                    <dt>{{ t('fields.address') }}</dt><dd>{{ c.address_line1 }} {{ c.postal_code }} {{ c.city }} — {{ c.country }}</dd>
+                    <dt>{{ t('fields.address') }}</dt><dd>{{ c.address_line1 }} {{ c.postal_code }} {{ c.city }} — {{ c.country | dwCountry }}</dd>
                     <dt>{{ t('fields.phone') }}</dt><dd>{{ c.phone ?? '—' }}</dd>
                     <dt>{{ t('platform.companies.submittedAt') }}</dt><dd>{{ c.submitted_at | dwDate: 'datetime' }}</dd>
                     <dt>{{ t('platform.companies.contact') }}</dt>
@@ -149,7 +162,7 @@ interface CompanyDetail extends Company {
                         <dw-status kind="alert" [value]="contact.email_verified ? 'ok' : 'warning'" [label]="t('platform.companies.emailVerified') + ' : ' + t(contact.email_verified ? 'common.yes' : 'common.no')" />
                       } @else { — }
                     </dd>
-                    @if (c.activities.length > 0) { <dt>{{ t('auth.register.activities') }}</dt><dd>{{ c.activities.join(', ') }}</dd> }
+                    @if (c.activities.length > 0) { <dt>{{ t('auth.register.activities') }}</dt><dd>@for (activity of c.activity_names; track $index; let last = $last) { {{ activity | dwLocalized }}{{ last ? '' : ', ' }} }</dd> }
                     @if (c.requested_plan) { <dt>{{ t('platform.companies.requestedPlan') }}</dt><dd>{{ planName(c.requested_plan) }}@if (c.requested_sites) { · {{ t('platform.overview.sites', { count: c.requested_sites }) }} }</dd> }
                     <dt>{{ t('platform.companies.usage') }}</dt><dd>{{ t('platform.companies.usageDetail', c.counts) }}</dd>
                     @if (c.rejection_reason) { <dt>{{ t('fields.reason') }}</dt><dd>{{ c.rejection_reason }}</dd> }
@@ -173,6 +186,68 @@ interface CompanyDetail extends Company {
                   </ul>
                 </section>
               }
+              @if (c.company_type === 'industrial') {
+                <section class="dw-panel">
+                  <header class="dw-panel-head"><h2 class="dw-h2">{{ t('platform.companies.sites') }}</h2><span class="count">{{ c.sites.length }}</span></header>
+                  @if (c.sites.length > 0) {
+                    <table class="dw-table">
+                      <tbody>
+                        @for (site of c.sites; track site.code) {
+                          <tr><td class="dw-mono">{{ site.code }}</td><td>{{ site.name }}</td><td>{{ site.city ?? '—' }}</td>
+                            <td class="num"><dw-status kind="member" [value]="site.is_active ? 'active' : 'suspended'" [label]="t(site.is_active ? 'common.active' : 'platform.companies.inactiveSite')" [tone]="site.is_active ? 'success' : 'neutral'" /></td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  } @else { <p class="none">{{ t('platform.companies.noSites') }}</p> }
+                </section>
+              }
+
+              <section class="dw-panel">
+                <header class="dw-panel-head"><h2 class="dw-h2">{{ t('platform.companies.users') }}</h2><span class="count">{{ c.users.length }}</span></header>
+                @if (c.users.length > 0) {
+                  <table class="dw-table">
+                    <thead><tr><th>{{ t('fields.name') }}</th><th>{{ t('fields.role') }}</th><th>{{ t('platform.companies.lastLogin') }}</th><th></th></tr></thead>
+                    <tbody>
+                      @for (user of c.users; track user.email) {
+                        <tr><td><strong>{{ user.name }}</strong><div class="dw-faint">{{ user.email }}</div></td><td>{{ user.roles.join(', ') || '—' }}</td>
+                          <td>{{ user.last_login_at ? (user.last_login_at | dwDate: 'datetime') : t('platform.companies.neverLoggedIn') }}</td>
+                          <td class="num"><dw-status kind="member" [value]="user.status" /></td></tr>
+                      }
+                    </tbody>
+                  </table>
+                } @else { <p class="none">{{ t('platform.companies.noUsers') }}</p> }
+              </section>
+
+              @if (c.company_type === 'industrial') {
+                <section class="dw-panel">
+                  <header class="dw-panel-head"><h2 class="dw-h2">{{ t('platform.companies.invoices') }}</h2><span class="count">{{ c.invoices.length }}</span></header>
+                  @if (c.invoices.length > 0) {
+                    <table class="dw-table">
+                      <thead><tr><th>{{ t('admin.subscription.invoiceNumber') }}</th><th>{{ t('admin.subscription.issueDate') }}</th><th>{{ t('admin.subscription.dueDate') }}</th>
+                        <th class="num">{{ t('admin.subscription.total') }}</th><th class="num">{{ t('admin.subscription.paid') }}</th><th>{{ t('fields.status') }}</th></tr></thead>
+                      <tbody>
+                        @for (invoice of c.invoices; track invoice.ulid) {
+                          <tr><td class="dw-mono">{{ invoice.invoice_number }}</td><td>{{ invoice.issue_date | dwDate }}</td><td>{{ invoice.due_date | dwDate }}</td>
+                            <td class="num">{{ invoice.total_amount | dwMoney: invoice.currency_code }}</td><td class="num">{{ invoice.amount_paid | dwMoney: invoice.currency_code }}</td>
+                            <td><dw-status kind="invoice" [value]="invoice.status" /></td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  } @else { <p class="none">{{ t('platform.companies.noInvoices') }}</p> }
+                </section>
+              }
+
+              <section class="dw-panel">
+                <header class="dw-panel-head"><h2 class="dw-h2">{{ t('platform.companies.history') }}</h2></header>
+                <ul class="list">
+                  @for (entry of c.activity; track $index) {
+                    <li>
+                      <div class="dw-spacer"><strong>{{ entry.event | dwTerm: 'terms.events' }}</strong>@if (entry.reason) { <div class="dw-muted">{{ entry.reason }}</div> }</div>
+                      <span class="dw-faint">{{ entry.actor ?? t('admin.audit.system') }} · {{ entry.occurred_at | dwDate: 'datetime' }}</span>
+                    </li>
+                  } @empty { <li class="dw-faint">{{ t('platform.companies.noHistory') }}</li> }
+                </ul>
+              </section>
             </div>
 
             @if (c.company_type === 'industrial' && (c.subscription || (canBill && c.status === 'active'))) {
@@ -229,6 +304,9 @@ interface CompanyDetail extends Company {
     .list { list-style: none; margin: 0; padding: 0; }
     .list li { display: flex; align-items: center; gap: var(--dw-3); padding: var(--dw-3) var(--dw-4); border-block-start: 1px solid var(--dw-line-soft); }
     .plan { display: grid; gap: var(--dw-3); }
+    .none { padding: var(--dw-3) var(--dw-4); color: var(--dw-ink-3); }
+    .count { display: inline-grid; place-items: center; min-width: 20px; height: 18px; padding-inline: 6px; border-radius: 9px; background: var(--dw-neutral-soft); color: var(--dw-ink-2); font-size: 11px; font-weight: 700; }
+    .list li:first-child { border-block-start: 0; }
     .cancelling { margin-block-start: var(--dw-3); }
   `,
 })
@@ -740,7 +818,7 @@ interface PlatformRole {
 
 /** Cahier §2: the matrix of the standard roles, editable without touching the code. A role only receives permissions of its own audience. */
 @Component({
-  imports: [FormsModule, TranslocoDirective, PageHeaderComponent, StateComponent, LocalizedPipe, ButtonDirective, ...FIELD, ...SELECT, CheckboxComponent],
+  imports: [TermPipe, FormsModule, TranslocoDirective, PageHeaderComponent, StateComponent, LocalizedPipe, ButtonDirective, ...FIELD, ...SELECT, CheckboxComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -750,7 +828,7 @@ interface PlatformRole {
           <div class="head">
             <dw-field [label]="t('fields.role')">
               <dw-select [ngModel]="selectedName()" (ngModelChange)="select($event)">
-                @for (role of roles(); track role.name) { <dw-option [value]="role.name" [label]="(role.label | dwLocalized: role.name) + ' — ' + role.audience" /> }
+                @for (role of roles(); track role.name) { <dw-option [value]="role.name" [label]="(role.label | dwLocalized: role.name) + ' — ' + (role.audience | dwTerm: 'terms.audiences')" /> }
               </dw-select>
             </dw-field>
             <span class="dw-spacer"></span>
@@ -759,9 +837,9 @@ interface PlatformRole {
           <div class="modules">
             @for (group of modules(); track group.module) {
               <fieldset>
-                <legend>{{ group.module }}</legend>
+                <legend>{{ group.module | dwTerm: 'terms.modules' }}</legend>
                 @for (permission of group.permissions; track permission.name) {
-                  <dw-checkbox [checked]="draft().has(permission.name)" (checkedChange)="toggle(permission.name, $event)"><span class="dw-code">{{ permission.name }}</span></dw-checkbox>
+                  <dw-checkbox [checked]="draft().has(permission.name)" (checkedChange)="toggle(permission.name, $event)">{{ permission.name | dwTerm: 'permissions' }}</dw-checkbox>
                 }
               </fieldset>
             }

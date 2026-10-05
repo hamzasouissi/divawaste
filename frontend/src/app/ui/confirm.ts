@@ -35,12 +35,12 @@ export interface ConfirmOptions {
         }
         @if (data.reasonLabel) {
           <dw-field [label]="data.reasonLabel">
-            <textarea pTextarea rows="3" maxlength="1000" required [pAutoFocus]="true" [ngModel]="text()" (ngModelChange)="text.set($event)"></textarea>
+            <textarea pTextarea rows="3" maxlength="1000" [pAutoFocus]="true" [ngModel]="text()" (ngModelChange)="text.set($event)"></textarea>
           </dw-field>
         }
         @if (data.password) {
           <dw-field [label]="t('auth.password')">
-            <input pInputText type="password" autocomplete="current-password" required [pAutoFocus]="true" [ngModel]="text()" (ngModelChange)="text.set($event)" (keydown.enter)="confirm()" />
+            <input pInputText type="password" autocomplete="current-password" [pAutoFocus]="true" [ngModel]="text()" (ngModelChange)="text.set($event)" (keydown.enter)="confirm()" />
           </dw-field>
         }
       </div>

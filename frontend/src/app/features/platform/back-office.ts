@@ -13,7 +13,7 @@ import { Api } from '../../core/api/api';
 import { Localized } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe, LocalizedPipe, MoneyPipe } from '../../core/format/pipes';
+import { DatePipe, LocalizedPipe, MoneyPipe, TermPipe } from '../../core/format/pipes';
 import { Column, TABLE } from '../../ui/data-table';
 import { DateComponent } from '../../ui/date';
 import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
@@ -39,7 +39,7 @@ interface Overview {
 /** Events the platform trail knows by name; anything else keeps its technical name. */
 const EVENTS = ['company_approved', 'company_rejected', 'company_suspended', 'company_reactivated', 'subscription_activated', 'plan_updated', 'accreditation_approved',
   'accreditation_rejected', 'payment_validated', 'payment_rejected', 'created', 'updated', 'deleted'];
-const eventLabel = (event: string, t: (key: string) => string): string => (EVENTS.includes(event) ? t(`platform.activity.events.${event}`) : event);
+const eventLabel = (event: string, t: (key: string) => string): string => (EVENTS.includes(event) ? t(`platform.activity.events.${event}`) : event.replace(/_/g, ' ').replace(/^./, (letter) => letter.toUpperCase()));
 
 /**
  * First screen of the back office: what is waiting for Diva Software (registrations, accreditations, bank
@@ -70,7 +70,7 @@ const eventLabel = (event: string, t: (key: string) => string): string => (EVENT
                 <span class="text"><strong>{{ d.billing.payments_pending }}</strong>{{ t('platform.overview.pendingPayments') }}</span>
                 <dw-icon class="go">chevron_right</dw-icon>
               </a>
-              <a class="dw-panel task" routerLink="/platform/companies" [class.due]="d.subscriptions.plan_requests > 0">
+              <a class="dw-panel task" routerLink="/platform/companies" [queryParams]="{ requests: 1 }" [class.due]="d.subscriptions.plan_requests > 0">
                 <span class="mark"><dw-icon>sell</dw-icon></span>
                 <span class="text"><strong>{{ d.subscriptions.plan_requests }}</strong>{{ t('platform.overview.planRequests') }}</span>
                 <dw-icon class="go">chevron_right</dw-icon>
@@ -193,11 +193,11 @@ const AMOUNT = Validators.pattern(/^\d+([.,]\d{1,3})?$/);
 
 /** Name, visibility and reference price of a plan. The price really invoiced is confirmed for each client at activation. */
 @Component({
-  imports: [ReactiveFormsModule, TranslocoDirective, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, ...DIALOG_PARTS, ToggleSwitch],
+  imports: [ReactiveFormsModule, TranslocoDirective, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, ...DIALOG_PARTS, ToggleSwitch, LocalizedPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <dw-dialog-title>{{ t('platform.plans.edit') }} — {{ data.plan.code }}</dw-dialog-title>
+      <dw-dialog-title>{{ t('platform.plans.edit') }} — {{ data.plan.name | dwLocalized }}</dw-dialog-title>
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <div class="dw-dialog-body">
           <div class="dw-form">
@@ -296,7 +296,7 @@ export class PlanDialog {
               <tbody>
                 @for (plan of plans(); track plan.code) {
                   <tr>
-                    <td><strong>{{ plan.name | dwLocalized }}</strong><div class="dw-faint dw-code">{{ plan.code }}</div></td>
+                    <td><strong>{{ plan.name | dwLocalized }}</strong>@if (plan.description) { <div class="dw-faint">{{ plan.description | dwLocalized }}</div> }</td>
                     <td>{{ t('platform.plans.models.' + plan.billing_model) }}@if (plan.is_trial) { <span class="dw-faint"> · {{ t('platform.plans.days', { count: plan.trial_days }) }}</span> }</td>
                     <td class="num">@if (price(plan, 'monthly'); as p) { {{ p.unit_amount | dwMoney: p.currency_code }} } @else { <span class="dw-faint">{{ plan.is_trial ? t('platform.plans.free') : t('platform.plans.onQuote') }}</span> }</td>
                     <td class="num">@if (price(plan, 'yearly'); as p) { {{ p.unit_amount | dwMoney: p.currency_code }} } @else { <span class="dw-faint">{{ plan.is_trial ? t('platform.plans.free') : t('platform.plans.onQuote') }}</span> }</td>
@@ -453,7 +453,7 @@ const ENTITIES = ['companies', 'provider_accreditations', 'company_subscriptions
  * (lots, pickups, documents) is not in this trail: it belongs to each company's own audit journal.
  */
 @Component({
-  imports: [FormsModule, RouterLink, TranslocoDirective, ...TABLE, PageHeaderComponent, DatePipe, ...SELECT, DateComponent, FilterBarComponent, Drawer],
+  imports: [TermPipe, FormsModule, RouterLink, TranslocoDirective, ...TABLE, PageHeaderComponent, DatePipe, ...SELECT, DateComponent, FilterBarComponent, Drawer],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -483,17 +483,17 @@ const ENTITIES = ['companies', 'provider_accreditations', 'company_subscriptions
           <dl class="dw-facts">
             <dt>{{ t('admin.audit.when') }}</dt><dd>{{ e.occurred_at | dwDate: 'datetime' }}</dd>
             <dt>{{ t('admin.audit.event') }}</dt><dd>{{ label(e.event, t) }}</dd>
-            <dt>{{ t('admin.audit.entity') }}</dt><dd>{{ t('platform.activity.entities.' + e.entity) }}@if (e.object) { <div class="dw-faint dw-code">{{ e.object }}</div> }</dd>
+            <dt>{{ t('admin.audit.entity') }}</dt><dd>{{ t('platform.activity.entities.' + e.entity) }}</dd>
             <dt>{{ t('platform.invoices.company') }}</dt>
             <dd>@if (e.company; as company) { <a [routerLink]="['/platform/companies', company.ulid]">{{ company.legal_name }}</a> } @else { — }</dd>
             <dt>{{ t('admin.audit.actor') }}</dt><dd>{{ e.actor?.name ?? t('admin.audit.system') }}</dd>
-            <dt>{{ t('admin.audit.source') }}</dt><dd>{{ e.source }}@if (e.ip_address) { · {{ e.ip_address }} }</dd>
+            <dt>{{ t('admin.audit.source') }}</dt><dd>{{ e.source | dwTerm: 'terms.sources' }}@if (e.ip_address) { · {{ e.ip_address }} }</dd>
           </dl>
           <h3 class="dw-label">{{ t('admin.audit.changes') }}</h3>
           @if (changes(e).length > 0) {
             <table class="dw-table diff">
               <thead><tr><th></th><th>{{ t('admin.audit.before') }}</th><th>{{ t('admin.audit.after') }}</th></tr></thead>
-              <tbody>@for (change of changes(e); track change.key) { <tr><th scope="row">{{ change.key }}</th><td>{{ change.before }}</td><td>{{ change.after }}</td></tr> }</tbody>
+              <tbody>@for (change of changes(e); track change.key) { <tr><th scope="row">{{ change.key | dwTerm: 'terms.fields' }}</th><td>{{ change.before }}</td><td>{{ change.after }}</td></tr> }</tbody>
             </table>
           } @else { <p class="dw-faint">—</p> }
         }

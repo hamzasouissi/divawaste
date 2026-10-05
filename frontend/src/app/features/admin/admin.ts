@@ -11,7 +11,7 @@ import { Api, openBlob } from '../../core/api/api';
 import { AuditEntry, Company, Invoice, Subscription } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe, LocalizedPipe, MoneyPipe } from '../../core/format/pipes';
+import { CountryPipe, DatePipe, LocalizedPipe, MoneyPipe, TermPipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { Column, TABLE } from '../../ui/data-table';
 import { ListStore } from '../../ui/list-store';
@@ -33,7 +33,7 @@ interface AuditFilter {
 
 /** M7-02: who did what, when, from where. Read-only by nature; a row opens a side panel with the values before and after. */
 @Component({
-  imports: [FormsModule, TranslocoDirective, ...TABLE, PageHeaderComponent, DatePipe, ...SELECT, DateComponent, FilterBarComponent, Drawer],
+  imports: [TermPipe, FormsModule, TranslocoDirective, ...TABLE, PageHeaderComponent, DatePipe, ...SELECT, DateComponent, FilterBarComponent, Drawer],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -46,7 +46,7 @@ interface AuditFilter {
           </dw-select>
           <dw-select [placeholder]="t('admin.audit.entity')" [value]="list.filter().entity ?? ''" (valueChange)="list.setFilter({ entity: $event || null })">
             <dw-option value="" [label]="t('common.all')" />
-            @for (entity of entities; track entity) { <dw-option [value]="entity" [label]="entity" /> }
+            @for (entity of entities; track entity) { <dw-option [value]="entity" [label]="entity | dwTerm: 'terms.entities'" /> }
           </dw-select>
           <dw-date class="date" [placeholder]="t('period.from')" [ngModel]="list.filter().from ?? ''" (ngModelChange)="list.setFilter({ from: $event || null })" />
           <dw-date class="date" [placeholder]="t('period.to')" [ngModel]="list.filter().to ?? ''" (ngModelChange)="list.setFilter({ to: $event || null })" />
@@ -55,9 +55,9 @@ interface AuditFilter {
           [pageSize]="list.perPage()" [trackBy]="track" [clickable]="true" emptyIcon="history" [emptyTitle]="t('admin.audit.emptyTitle')"
           (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="selected.set($event)" (retry)="list.reload()">
           <ng-template dwCell="when" let-e><span class="dw-nowrap">{{ e.occurred_at | dwDate: 'datetime' }}</span></ng-template>
-          <ng-template dwCell="actor" let-e>{{ e.actor?.name ?? t('admin.audit.system') }}<div class="dw-faint">{{ e.source }}@if (e.ip_address) { · {{ e.ip_address }} }</div></ng-template>
-          <ng-template dwCell="event" let-e>{{ eventLabel(e.event, t) }}</ng-template>
-          <ng-template dwCell="entity" let-e>{{ e.entity }}<div class="dw-faint dw-code">{{ e.object }}</div></ng-template>
+          <ng-template dwCell="actor" let-e>{{ e.actor?.name ?? t('admin.audit.system') }}<div class="dw-faint">{{ e.source | dwTerm: 'terms.sources' }}</div></ng-template>
+          <ng-template dwCell="event" let-e>{{ e.event | dwTerm: 'terms.events' }}</ng-template>
+          <ng-template dwCell="entity" let-e>{{ e.entity | dwTerm: 'terms.entities' }}</ng-template>
           <ng-template dwCell="changes" let-e>
             @if (changes(e).length > 0) { <span class="keys"><strong>{{ changes(e).length }}</strong> · {{ summary(e) }}</span> } @else { — }
           </ng-template>
@@ -69,15 +69,16 @@ interface AuditFilter {
           <dl class="dw-facts">
             <dt>{{ t('admin.audit.when') }}</dt><dd>{{ e.occurred_at | dwDate: 'datetime' }}</dd>
             <dt>{{ t('admin.audit.actor') }}</dt><dd>{{ e.actor?.name ?? t('admin.audit.system') }}</dd>
-            <dt>{{ t('admin.audit.event') }}</dt><dd>{{ eventLabel(e.event, t) }}</dd>
-            <dt>{{ t('admin.audit.entity') }}</dt><dd>{{ e.entity }}<div class="dw-faint dw-code">{{ e.object }}</div></dd>
-            <dt>{{ t('admin.audit.source') }}</dt><dd>{{ e.source }}@if (e.ip_address) { · {{ e.ip_address }} }</dd>
+            <dt>{{ t('admin.audit.event') }}</dt><dd>{{ e.event | dwTerm: 'terms.events' }}</dd>
+            <dt>{{ t('admin.audit.entity') }}</dt><dd>{{ e.entity | dwTerm: 'terms.entities' }}</dd>
+            @if (e.object) { <dt>{{ t('admin.audit.reference') }}</dt><dd class="dw-code">{{ e.object }}</dd> }
+            <dt>{{ t('admin.audit.source') }}</dt><dd>{{ e.source | dwTerm: 'terms.sources' }}@if (e.ip_address) { · {{ e.ip_address }} }</dd>
           </dl>
           <h3 class="dw-label">{{ t('admin.audit.changes') }}</h3>
           @if (changes(e).length > 0) {
             <table class="dw-table diff">
               <thead><tr><th></th><th>{{ t('admin.audit.before') }}</th><th>{{ t('admin.audit.after') }}</th></tr></thead>
-              <tbody>@for (change of changes(e); track change.key) { <tr><th scope="row">{{ change.key }}</th><td>{{ change.before }}</td><td>{{ change.after }}</td></tr> }</tbody>
+              <tbody>@for (change of changes(e); track change.key) { <tr><th scope="row">{{ change.key | dwTerm: 'terms.fields' }}</th><td>{{ change.before }}</td><td>{{ change.after }}</td></tr> }</tbody>
             </table>
           } @else { <p class="dw-faint">—</p> }
         }
@@ -112,10 +113,6 @@ export class AuditPage {
     { key: 'changes', header: 'admin.audit.changes', hideBelow: 900 },
   ];
 
-  /** Standard events are translated; business events (accreditation_approved…) keep their technical name. */
-  protected eventLabel(event: string, t: (key: string) => string): string {
-    return this.events.includes(event) ? t(`admin.audit.events.${event}`) : event;
-  }
 
   protected changes(entry: AuditEntry): { key: string; before: string; after: string }[] {
     const show = (value: unknown): string => (value === null || value === undefined ? '—' : typeof value === 'object' ? JSON.stringify(value) : String(value));
@@ -125,7 +122,7 @@ export class AuditPage {
   }
 
   protected summary(entry: AuditEntry): string {
-    return this.changes(entry).map((change) => change.key).join(', ');
+    return this.changes(entry).map((change) => change.key.replace(/_/g, ' ')).join(', ');
   }
 }
 
@@ -395,7 +392,7 @@ export class SubscriptionPage {
 
 /** Company details. What identifies the contracting party (legal name, tax ID, country) is shown but not editable. */
 @Component({
-  imports: [ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, StateComponent, IconComponent, ButtonDirective, InputText, ...FIELD],
+  imports: [CountryPipe, ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, StateComponent, IconComponent, ButtonDirective, InputText, ...FIELD],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -409,7 +406,7 @@ export class SubscriptionPage {
                 <dl class="dw-facts">
                   <dt>{{ t('fields.legalName') }}</dt><dd>{{ c.legal_name }}</dd>
                   <dt>{{ t('fields.taxId') }}</dt><dd class="dw-mono">{{ c.tax_id ?? '—' }}</dd>
-                  <dt>{{ t('fields.country') }}</dt><dd>{{ c.country }} · {{ c.currency_code }}</dd>
+                  <dt>{{ t('fields.country') }}</dt><dd>{{ c.country | dwCountry }} · {{ c.currency_code }}</dd>
                 </dl>
                 <p class="dw-faint">{{ t('admin.company.identityHint') }}</p>
 

@@ -13,7 +13,7 @@ import { StockResponse, StockRow, StockThreshold, Zone } from '../../core/api/mo
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe, KgPipe, NumberPipe } from '../../core/format/pipes';
+import { CodePipe, DatePipe, KgPipe, NumberPipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { KpiComponent, PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
@@ -136,7 +136,7 @@ export class ThresholdDialog {
  */
 @Component({
   imports: [
-    RouterLink, TranslocoDirective, KpiComponent, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, NumberPipe, IconComponent, ButtonDirective, ...SELECT, MenuComponent,
+    CodePipe, RouterLink, TranslocoDirective, KpiComponent, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, NumberPipe, IconComponent, ButtonDirective, ...SELECT, MenuComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -189,7 +189,7 @@ export class ThresholdDialog {
                                 <td>{{ row.waste_type_name }} @if (row.is_hazardous) { <dw-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</dw-icon> }</td>
                                 <td class="dw-num">{{ t('dashboard.lots', { count: row.lots }) }}</td>
                                 <td class="dw-num strong">{{ row.quantity_kg | dwKg }}</td>
-                                <td class="dw-num dw-faint">@if (row.unit && row.unit !== 'kg' && row.quantity_in_unit) { {{ row.quantity_in_unit | dwNumber: 2 }} {{ row.unit }} }</td>
+                                <td class="dw-num dw-faint">@if (row.unit && row.unit !== 'kg' && row.quantity_in_unit) { {{ row.quantity_in_unit | dwNumber: 2 }} {{ row.unit | dwCode: 'unit' }} }</td>
                                 <td class="dw-faint">@if (+row.awaiting_pickup_kg > 0) { {{ t('stock.awaiting') }} {{ row.awaiting_pickup_kg | dwKg }} }</td>
                                 <td class="dw-faint">{{ t('stock.oldest') }} : {{ row.oldest_lot_at | dwDate }}</td>
                               </tr>

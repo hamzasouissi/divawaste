@@ -249,7 +249,9 @@ export class PickupDetailPage implements OnInit {
       case 'submit':
         return this.call(this.api.post(`${base}/submit`), 'pickups.done.submitted');
       case 'complete':
-        return this.call(this.api.post(`${base}/complete`), 'pickups.done.completed');
+        // Closing ends the trail of every lot of the pickup: it is asked once more.
+        return (await this.confirm.ask({ title: text('pickups.completeConfirm'), message: text('pickups.completeHint'), confirmLabel: text('pickups.actions.complete') }))
+          ? this.call(this.api.post(`${base}/complete`), 'pickups.done.completed') : undefined;
       case 'manifest':
         return this.call(this.api.post(`${base}/manifests`), 'pickups.done.manifest');
       case 'cancel': {
