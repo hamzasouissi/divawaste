@@ -498,6 +498,15 @@ export interface Subscription {
   plans: { code: string; name: Localized; billing_model: string; is_trial: boolean }[];
 }
 
+/** A colour offered on lots and waste types: a default of the platform, or one the company added. */
+export interface Color {
+  code: string;
+  name: Localized;
+  hex_color: string | null;
+  is_custom: boolean;
+  is_active: boolean;
+}
+
 export interface Reference {
   zone_types: { code: string; name: Localized; is_waste_storage: boolean }[];
   packaging_types: { code: string; name: Localized }[];

@@ -14,6 +14,7 @@ import { Session } from '../core/auth/session';
 import { Toast } from '../core/feedback/toast';
 import { DatePipe } from '../core/format/pipes';
 import { IconComponent } from '../ui/icon';
+import { LanguageComponent } from '../ui/language';
 import { MenuAction, MenuComponent } from '../ui/menu';
 import { navigationFor } from './navigation';
 
@@ -26,7 +27,7 @@ const RAIL_KEY = 'dw.nav.collapsed';
  */
 @Component({
   selector: 'dw-app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Badge, TranslocoDirective, DatePipe, IconComponent, ButtonDirective, MenuComponent, Tooltip, Popover],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Badge, TranslocoDirective, DatePipe, IconComponent, ButtonDirective, MenuComponent, Tooltip, Popover, LanguageComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[class.rail]': 'collapsed()', '[class.platform]': "session.audience() === 'platform'" },
   template: `
@@ -123,6 +124,8 @@ const RAIL_KEY = 'dw.nav.collapsed';
               <a routerLink="/account/notifications" class="notif-all" (click)="notif.hide()">{{ t('notifications.all') }}</a>
             </p-popover>
           }
+
+          <dw-language />
 
           <button type="button" class="user" (click)="userMenu.open($event, accountActions())" aria-haspopup="menu">
             <span class="avatar" aria-hidden="true">{{ initials() }}</span>

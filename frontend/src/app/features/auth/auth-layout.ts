@@ -2,9 +2,11 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 
+import { LanguageComponent } from '../../ui/language';
+
 /** Frame of the public screens: sign-in, registration, password and invitation flows. */
 @Component({
-  imports: [RouterOutlet, TranslocoDirective],
+  imports: [RouterOutlet, TranslocoDirective, LanguageComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -20,7 +22,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
         </div>
         <p class="legal">© Diva Software</p>
       </aside>
-      <main class="form"><div class="card"><router-outlet /></div></main>
+      <main class="form"><dw-language class="language" /><div class="card"><router-outlet /></div></main>
     </ng-container>
   `,
   styles: `
@@ -30,7 +32,8 @@ import { TranslocoDirective } from '@jsverse/transloco';
     .pitch { font-size: 24px; line-height: 32px; font-weight: 600; color: #fff; letter-spacing: -0.01em; max-width: 22ch; margin-block-end: var(--dw-4); }
     ul { margin: 0; padding-inline-start: 18px; display: grid; gap: 8px; font-size: 14px; }
     .legal { font-size: 12px; color: #7f9390; }
-    .form { display: grid; place-items: center; padding: var(--dw-5); background: var(--dw-surface); }
+    .form { position: relative; display: grid; place-items: center; padding: var(--dw-7) var(--dw-5) var(--dw-5); background: var(--dw-surface); }
+    .language { position: absolute; inset-block-start: var(--dw-4); inset-inline-end: var(--dw-4); }
     .card { width: min(100%, 560px); }
     @media (max-width: 900px) {
       :host { grid-template-columns: minmax(0, 1fr); }

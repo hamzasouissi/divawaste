@@ -29,6 +29,17 @@ interface RegistrationOptions {
 
 const PROVIDER_ROLES = ['collector', 'transporter', 'recycler', 'eliminator'] as const;
 
+/** Field name shown in front of a refusal of the server, so the summary says where to look. */
+const FIELD_LABELS: Record<string, string> = {
+  'company.legal_name': 'fields.legalName', 'company.tax_id': 'fields.taxId', 'company.country': 'fields.country', 'company.city': 'fields.city',
+  'company.phone': 'fields.phone', 'company.activities': 'auth.register.activities', 'contact.first_name': 'fields.firstName',
+  'contact.last_name': 'fields.lastName', 'contact.email': 'auth.email', 'contact.phone': 'fields.phone', 'contact.password': 'auth.password',
+  plan: 'auth.register.plan', 'provider.roles': 'providers.roles', 'provider.service_area': 'providers.serviceArea',
+  'provider.accreditations.*.type': 'providers.accreditationType', 'provider.accreditations.*.reference_number': 'providers.reference',
+  'provider.accreditations.*.valid_from': 'providers.validFrom', 'provider.accreditations.*.expires_on': 'providers.expiresOn',
+  'provider.accreditations.*.file': 'providers.accreditationFile',
+};
+
 /**
  * M0-01 / M0-03 / M0-05 / M0-10: one form for both kinds of account. A provider attaches its accreditations
  * (PDF); an industrial declares its textile activities and chooses a formula. The account is usable once the
@@ -156,7 +167,8 @@ const PROVIDER_ROLES = ['collector', 'transporter', 'recycler', 'eliminator'] as
               }
 
               <div class="legal">
-                <dw-checkbox formControlName="accept">{{ t('auth.acceptLegal', { documents: legalTitles() }) }}</dw-checkbox>
+                <dw-checkbox formControlName="accept" [class.missing]="acceptMissing()">{{ t('auth.acceptLegal', { documents: legalTitles() }) }}</dw-checkbox>
+                @if (acceptMissing()) { <p class="field-error" role="alert">{{ t('auth.register.missing.accept') }}</p> }
                 <details>
                   <summary>{{ t('auth.register.readLegal') }}</summary>
                   @for (doc of legalDocuments(); track doc.type) {
@@ -164,6 +176,13 @@ const PROVIDER_ROLES = ['collector', 'transporter', 'recycler', 'eliminator'] as
                   }
                 </details>
               </div>
+
+              @if (problems().length > 0) {
+                <div class="problems" role="alert">
+                  <strong>{{ t('auth.register.problems') }}</strong>
+                  <ul>@for (problem of problems(); track problem) { <li>{{ problem }}</li> }</ul>
+                </div>
+              }
 
               <div class="dw-form-actions">
                 <button pButton type="submit" class="submit" [disabled]="busy() || !form.controls.accept.value">{{ busy() ? t('common.wait') : t('auth.register.submit') }}</button>
@@ -185,6 +204,8 @@ const PROVIDER_ROLES = ['collector', 'transporter', 'recycler', 'eliminator'] as
     .file-pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
     .field-error { grid-column: 1 / -1; color: var(--dw-danger); font-size: 12px; }
     .add { justify-self: start; }
+    .problems { margin-block: var(--dw-3); padding: var(--dw-3) var(--dw-4); border: 1px solid var(--dw-danger); border-radius: var(--dw-radius); background: var(--dw-danger-soft, #fdecea); font-size: 13px; }
+    .problems ul { margin: 6px 0 0; padding-inline-start: 18px; display: grid; gap: 2px; }
     .legal { margin-block: var(--dw-4) var(--dw-2); display: grid; gap: var(--dw-2); }
     details { font-size: 13px; }
     details article { padding: var(--dw-3); margin-block-start: var(--dw-2); background: var(--dw-surface-2); border-radius: var(--dw-radius); max-height: 220px; overflow: auto; }
@@ -207,6 +228,9 @@ export class RegisterPage {
   protected readonly files = signal<(File | null)[]>([null]);
   protected readonly fileErrors = signal<Record<number, string>>({});
   private readonly serverErrors = signal<Record<string, string[]>>({});
+  /** What stops the registration, in words: nothing is refused without saying why. */
+  protected readonly problems = signal<string[]>([]);
+  protected readonly acceptMissing = signal(false);
 
   protected readonly form = this.fb.group({
     company_type: this.fb.control<'industrial' | 'provider'>('industrial'),
@@ -243,7 +267,16 @@ export class RegisterPage {
   protected readonly legalTitles = computed(() => this.legalDocuments().map((doc) => doc.title).join(', '));
 
   constructor() {
-    this.form.controls.company_type.valueChanges.subscribe((value) => this.type.set(value));
+    this.form.controls.company_type.valueChanges.subscribe((value) => {
+      this.type.set(value);
+      // The fields of the other account type leave the page, and their "required" rule with them. Their controls
+      // must be checked again, otherwise they stay marked invalid and block a form whose visible fields are all filled.
+      setTimeout(() => {
+        this.form.controls.company.controls.activities.updateValueAndValidity();
+        this.form.controls.provider.controls.roles.updateValueAndValidity();
+        this.form.controls.plan.updateValueAndValidity();
+      });
+    });
     this.form.controls.company.controls.country.valueChanges.subscribe((value) => this.country.set(value));
     this.load();
   }
@@ -281,11 +314,24 @@ export class RegisterPage {
     const provider = value.company_type === 'provider';
     this.serverErrors.set({});
     this.fileErrors.set({});
+    this.problems.set([]);
+    this.acceptMissing.set(!value.accept);
 
     const missingFiles = provider ? this.files().map((file, index) => (file ? null : index)).filter((index): index is number => index !== null) : [];
-    if (this.form.controls.company.invalid || this.form.controls.contact.invalid || (provider && (this.accreditations.invalid || value.provider.roles.length === 0)) || (!provider && value.company.activities.length === 0) || missingFiles.length > 0) {
+    const company = this.form.controls.company.controls;
+    const missing = [
+      // Only the fields this kind of account fills in: activities belong to manufacturers and are checked below.
+      company.legal_name.invalid || company.country.invalid || company.tax_id.invalid || company.city.invalid || company.phone.invalid || this.form.controls.contact.invalid ? 'fields' : null,
+      provider && value.provider.roles.length === 0 ? 'roles' : null,
+      provider && this.accreditations.invalid ? 'accreditations' : null,
+      missingFiles.length > 0 ? 'files' : null,
+      !provider && value.company.activities.length === 0 ? 'activities' : null,
+      !value.accept ? 'accept' : null,
+    ].filter((key): key is string => key !== null);
+    if (missing.length > 0) {
       this.form.markAllAsTouched();
       this.fileErrors.set(Object.fromEntries(missingFiles.map((index) => [index, this.toast.describe(new ApiError(422, 'FILE_REQUIRED', null, {}, null))])));
+      this.problems.set(missing.map((key) => this.toast.text('auth.register.missing.' + key)));
       this.toast.info('common.formInvalid');
 
       return;
@@ -311,6 +357,12 @@ export class RegisterPage {
         this.serverErrors.set(error.errors);
         this.fileErrors.set(Object.fromEntries(Object.entries(error.errors).filter(([key]) => key.endsWith('.file')).map(([key, messages]) => [Number(key.split('.')[2]), messages[0]])));
         this.toast.applyValidation(this.form, error);
+        // Every refusal of the server is listed, including the ones that have no field of their own on the form.
+        this.problems.set([...new Set(Object.entries(error.errors).map(([path, messages]) => {
+          const label = FIELD_LABELS[path.replace(/\.\d+\./, '.*.')];
+
+          return label ? `${this.toast.text(label)} : ${messages[0]}` : messages[0];
+        }))]);
         this.toast.info('common.formInvalid');
       } else {
         this.toast.error(error);

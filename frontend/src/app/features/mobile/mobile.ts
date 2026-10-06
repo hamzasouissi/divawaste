@@ -15,6 +15,7 @@ import { StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
 import { QrScannerComponent } from './qr-scanner';
 import { IconComponent } from '../../ui/icon';
+import { LanguageComponent } from '../../ui/language';
 
 /** Shared look of the workshop screens: one column, very large targets (gloves), no dense tables. */
 const MOBILE_STYLES = `
@@ -589,7 +590,7 @@ export class MobileLoadingPage {
  * the desktop menu, so the sign-out lives here, at the size of every other workshop action.
  */
 @Component({
-  imports: [RouterLink, TranslocoDirective, IconComponent],
+  imports: [RouterLink, TranslocoDirective, IconComponent, LanguageComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -600,6 +601,7 @@ export class MobileLoadingPage {
       <dl>
         <div><dt>{{ t('mobile.account.user') }}</dt><dd>{{ name }}<small>{{ me?.email }}</small></dd></div>
         <div><dt>{{ t('mobile.account.company') }}</dt><dd>{{ company }}</dd></div>
+        <div><dt>{{ t('fields.language') }}</dt><dd><dw-language class="large" /></dd></div>
       </dl>
 
       @if (offline.pending() > 0) {
