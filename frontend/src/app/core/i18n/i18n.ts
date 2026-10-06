@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { DOCUMENT, Injectable, effect, inject, signal } from '@angular/core';
+import { DOCUMENT, Injectable, computed, effect, inject, signal } from '@angular/core';
 import { Translation, TranslocoLoader, TranslocoService } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
@@ -16,6 +16,21 @@ export const AVAILABLE_LANGUAGES = ['fr', 'en'];
 
 /** The language chosen on this device, kept between visits. */
 const STORAGE_KEY = 'dw.language';
+/** Language of the generated documents when it differs from the screen ("auto" = same as the screen). */
+const DOCUMENTS_KEY = 'dw.document-language';
+
+function rememberedDocuments(value?: string): string {
+  try {
+    if (value !== undefined) {
+      localStorage.setItem(DOCUMENTS_KEY, value);
+    }
+    const stored = localStorage.getItem(DOCUMENTS_KEY);
+
+    return stored !== null && AVAILABLE_LANGUAGES.includes(stored) ? stored : 'auto';
+  } catch {
+    return 'auto';
+  }
+}
 
 function remembered(value?: string): string | null {
   try {
@@ -53,6 +68,10 @@ export class Locale {
   readonly available = LANGUAGES.filter((language) => AVAILABLE_LANGUAGES.includes(language.code));
   /** What the user picked explicitly on this device, if anything. */
   readonly chosen = signal(remembered());
+  /** Preference for generated documents (PDF, Excel): "auto" follows the screen, or a fixed language. */
+  readonly documentsChoice = signal(rememberedDocuments());
+  /** The language documents are produced in right now. */
+  readonly documents = computed(() => (this.documentsChoice() === 'auto' ? this.lang() : this.documentsChoice()));
 
   constructor() {
     const initial = this.chosen();
@@ -77,6 +96,11 @@ export class Locale {
     if (AVAILABLE_LANGUAGES.includes(lang)) {
       this.transloco.setActiveLang(lang);
     }
+  }
+
+  /** Documents in a fixed language, or "auto" to follow the screen. */
+  chooseDocuments(lang: string): void {
+    this.documentsChoice.set(rememberedDocuments(lang === 'auto' || AVAILABLE_LANGUAGES.includes(lang) ? lang : 'auto'));
   }
 
   /** The user picks a language: applied at once and remembered on this device. */

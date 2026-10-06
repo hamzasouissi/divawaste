@@ -397,7 +397,7 @@ export interface GeneratedReport {
   report_type: 'waste_register' | 'rse_summary' | 'economic_balance';
   format: 'pdf' | 'xlsx';
   status: 'queued' | 'processing' | 'completed' | 'failed' | 'expired';
-  parameters: { from?: string; to?: string; site?: string | null };
+  parameters: { from?: string; to?: string; site?: string | null; lang?: string };
   downloadable: boolean;
   error_message: string | null;
   created_at: string;

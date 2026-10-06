@@ -38,6 +38,13 @@ import { SELECT } from '../../ui/select';
                 @for (language of locale.available; track language.code) { <dw-option [value]="language.code" [label]="language.label" /> }
               </dw-select>
             </dw-field>
+            <dw-field [label]="t('account.documentLanguage')">
+              <dw-select formControlName="documents">
+                <dw-option value="auto" [label]="t('account.documentLanguageAuto')" />
+                @for (language of locale.available; track language.code) { <dw-option [value]="language.code" [label]="language.label" /> }
+              </dw-select>
+              <small dwHint>{{ t('account.documentLanguageHint') }}</small>
+            </dw-field>
           </div>
           <div class="dw-form-actions"><button pButton type="submit" [disabled]="busy()">{{ t('common.save') }}</button></div>
         </div>
@@ -59,6 +66,7 @@ export class ProfilePage {
     last_name: [this.me?.last_name ?? '', [Validators.required, Validators.maxLength(100)]],
     phone: [this.me?.phone ?? ''],
     locale: [this.locale.lang()],
+    documents: [this.locale.documentsChoice()],
   });
 
   protected async save(): Promise<void> {
@@ -69,9 +77,10 @@ export class ProfilePage {
     }
     this.busy.set(true);
     try {
-      const value = this.form.getRawValue();
+      const { documents, ...value } = this.form.getRawValue();
       await firstValueFrom(this.api.put('me', { ...value, phone: value.phone || null }));
       this.locale.choose(value.locale);
+      this.locale.chooseDocuments(documents);
       await this.session.reload();
       this.toast.success('common.saved');
     } catch (error) {

@@ -1004,7 +1004,8 @@
     "productionHint": "Number of pieces produced per site and per month: needed for the \"waste per piece produced\" indicator.",
     "month": "Month",
     "pieces": "Pieces produced",
-    "productionSaved": "Production saved."
+    "productionSaved": "Production saved.",
+    "language": "Language"
   },
   "admin": {
     "users": {
@@ -1137,7 +1138,10 @@
       "enabled": "Two-factor authentication enabled.",
       "disabled": "Two-factor authentication disabled.",
       "disableConfirm": "Disable two-factor authentication?"
-    }
+    },
+    "documentLanguage": "Language of generated documents",
+    "documentLanguageAuto": "Same as the screen",
+    "documentLanguageHint": "Labels, tracking slips, declarations, reports and invoices (PDF and Excel)."
   },
   "provider": {
     "pickups": {

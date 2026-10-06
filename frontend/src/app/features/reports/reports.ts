@@ -54,6 +54,11 @@ interface Volume {
                   <dw-option value="pdf" label="PDF" /><dw-option value="xlsx" label="Excel" />
                 </dw-select>
               </dw-field>
+              <dw-field class="format" [label]="t('reports.language')">
+                <dw-select [ngModel]="language()" (ngModelChange)="language.set($event)">
+                  @for (item of locale.available; track item.code) { <dw-option [value]="item.code" [label]="item.label" /> }
+                </dw-select>
+              </dw-field>
               <div class="dw-field period">
                 <span class="dw-field-label">{{ t('period.label') }}</span>
                 <dw-period-filter [value]="period()" (valueChange)="period.set($event)" permission="reports.export" />
@@ -68,7 +73,7 @@ interface Volume {
             [pageSize]="list.perPage()" emptyIcon="summarize" [emptyTitle]="t('reports.emptyTitle')" [emptyHint]="t('reports.emptyHint')"
             (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (retry)="list.reload()">
             <ng-template dwCell="type" let-r>{{ t('reports.types.' + r.report_type) }}<div class="dw-faint">{{ r.parameters.from | dwDate }} → {{ r.parameters.to | dwDate }}</div></ng-template>
-            <ng-template dwCell="format" let-r>{{ r.format === 'xlsx' ? 'Excel' : 'PDF' }}</ng-template>
+            <ng-template dwCell="format" let-r>{{ r.format === 'xlsx' ? 'Excel' : 'PDF' }}@if (r.parameters.lang) { <span class="dw-faint"> · {{ r.parameters.lang.toUpperCase() }}</span> }</ng-template>
             <ng-template dwCell="requested" let-r>{{ r.created_at | dwDate: 'datetime' }}</ng-template>
             <ng-template dwCell="expires" let-r>{{ r.expires_at | dwDate }}</ng-template>
             <ng-template dwCell="status" let-r><dw-status kind="report" [value]="r.status" /></ng-template>
@@ -124,7 +129,7 @@ interface Volume {
 })
 export class ReportsPage {
   private readonly api = inject(Api);
-  private readonly locale = inject(Locale);
+  protected readonly locale = inject(Locale);
   private readonly session = inject(Session);
   private readonly toast = inject(Toast);
 
@@ -132,6 +137,8 @@ export class ReportsPage {
   protected readonly types: GeneratedReport['report_type'][] = ['rse_summary', 'waste_register', 'economic_balance'];
   protected readonly type = signal<GeneratedReport['report_type']>('rse_summary');
   protected readonly format = signal<'pdf' | 'xlsx'>('pdf');
+  /** Language of the document: the user's own by default, changeable for this report. */
+  protected readonly language = signal(this.locale.documents());
   protected readonly period = signal<Period>(presetPeriod('year'));
   protected readonly busy = signal(false);
   protected polling = false;
@@ -185,7 +192,7 @@ export class ReportsPage {
   protected async generate(): Promise<void> {
     this.busy.set(true);
     try {
-      await firstValueFrom(this.api.post('reports', { report_type: this.type(), format: this.format(), ...this.period() }));
+      await firstValueFrom(this.api.post('reports', { report_type: this.type(), format: this.format(), lang: this.language(), ...this.period() }));
       this.toast.success('reports.queued');
       this.list.setPage(1, this.list.perPage());
     } catch (error) {
