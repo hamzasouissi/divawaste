@@ -5,9 +5,10 @@ import { TranslocoService } from '@jsverse/transloco';
 import { catchError, throwError } from 'rxjs';
 
 import { ApiError } from '../api/api';
+import { Locale } from '../i18n/i18n';
 import { Session } from './session';
 
-/** Every API call is a JSON call of the cookie session, in the user's language. */
+/** Every API call is a JSON call of the cookie session, in the user's language; generated documents may use another one. */
 export const apiRequestInterceptor: HttpInterceptorFn = (request, next) => {
   if (!request.url.startsWith('/api/') && !request.url.startsWith('/sanctum/')) {
     return next(request);
@@ -16,7 +17,7 @@ export const apiRequestInterceptor: HttpInterceptorFn = (request, next) => {
   return next(
     request.clone({
       withCredentials: true,
-      setHeaders: { Accept: 'application/json', 'Accept-Language': inject(TranslocoService).getActiveLang() },
+      setHeaders: { Accept: 'application/json', 'Accept-Language': inject(TranslocoService).getActiveLang(), 'X-Document-Language': inject(Locale).documents() },
     }),
   );
 };

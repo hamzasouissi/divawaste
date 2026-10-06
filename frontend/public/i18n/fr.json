@@ -1004,7 +1004,8 @@
     "productionHint": "Nombre de pièces produites par site et par mois : nécessaire à l'indicateur « déchets par pièce produite ».",
     "month": "Mois",
     "pieces": "Pièces produites",
-    "productionSaved": "Production enregistrée."
+    "productionSaved": "Production enregistrée.",
+    "language": "Langue"
   },
   "admin": {
     "users": {
@@ -1137,7 +1138,10 @@
       "enabled": "Double authentification activée.",
       "disabled": "Double authentification désactivée.",
       "disableConfirm": "Désactiver la double authentification ?"
-    }
+    },
+    "documentLanguage": "Langue des documents générés",
+    "documentLanguageAuto": "Identique à l'écran",
+    "documentLanguageHint": "Étiquettes, bordereaux, déclarations, rapports et factures (PDF et Excel)."
   },
   "provider": {
     "pickups": {
