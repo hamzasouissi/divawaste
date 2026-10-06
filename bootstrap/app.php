@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Common\Http\Middleware\AssignRequestId;
+use App\Modules\Common\Http\Middleware\UseRequestLanguage;
 use App\Modules\Common\Http\ProblemDetails;
 use App\Modules\Tenancy\Http\Middleware\EstablishTenantContext;
 use Illuminate\Foundation\Application;
@@ -17,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(AssignRequestId::class);
+        // French or English, as chosen on the screen (Accept-Language).
+        $middleware->prepend(UseRequestLanguage::class);
         // Web SPA: cookie session + CSRF for requests coming from the configured front-end origins (cahier §5).
         $middleware->statefulApi();
         // The workshop app replays its offline queue with its device bearer token, sent without cookies (it must

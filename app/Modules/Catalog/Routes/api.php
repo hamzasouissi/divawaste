@@ -4,6 +4,7 @@ use App\Modules\Catalog\Actions\CreateWasteType;
 use App\Modules\Catalog\Models\WasteType;
 use App\Modules\Catalog\Requests\StoreWasteTypeRequest;
 use App\Modules\Catalog\Resources\WasteTypeResource;
+use App\Modules\Catalog\Support\Colors;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Identity\Authorization\AccessResolver;
@@ -12,6 +13,7 @@ use App\Modules\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -45,11 +47,13 @@ Route::middleware(['auth:sanctum', 'tenant:active,pending_approval'])->group(fun
             'units' => $localized(DB::table('units')->orderBy('id')->get(['code', 'name', 'symbol', 'dimension'])),
             'waste_families' => $active('waste_families', ['code', 'name', 'is_textile'], ['is_textile']),
             'materials' => $active('materials', ['code', 'name', 'material_class']),
-            'color_families' => $active('color_families', ['code', 'name', 'hex_color']),
+            // The defaults of the platform and the colours this company added.
+            'color_families' => $localized(Colors::visibleTo($context->companyId())->where('is_active', true)
+                ->orderByRaw('company_id is not null')->orderBy('sort_order')->orderBy('id')->get(['code', 'name', 'hex_color'])),
             'treatment_channels' => $active('treatment_channels', ['code', 'name', 'is_valorization', 'is_landfill', 'hierarchy_rank'], ['is_valorization', 'is_landfill']),
             'regulatory_waste_codes' => $localized(DB::table('regulatory_waste_codes')->where('code_system', $codeSystem)->where('is_selectable', true)
                 ->orderBy('code')->get(['code', 'label', 'is_hazardous']), ['is_hazardous']),
-        ]])->header('Cache-Control', 'private, max-age=300');
+        ]])->header('Cache-Control', 'private, no-store');
     })->name('reference.index');
 });
 
@@ -107,7 +111,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
             'description' => ['nullable', 'string', 'max:1000'],
             'unit' => ['required', 'string', Rule::exists('units', 'code')],
             'packaging_type' => ['nullable', 'string', $reference('packaging_types')],
-            'color_family' => ['nullable', 'string', $reference('color_families')],
+            'color_family' => ['nullable', 'string', Colors::rule($wasteType->company_id)],
             'treatment_channel' => ['nullable', 'string', $reference('treatment_channels')],
             'default_grammage_gsm' => ['nullable', 'decimal:0,2', 'gt:0'],
             'default_composition' => ['nullable', 'array'],
@@ -153,6 +157,64 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
 
         return new WasteTypeResource($wasteType);
     })->name('waste-types.activate');
+
+    /*
+     * Colours work like waste types: the defaults of the platform, plus the ones the company adds for itself.
+     * A default colour cannot be changed; a company colour is renamed or withdrawn, never deleted (lots keep it).
+     */
+    $colorData = fn (stdClass $row) => [
+        'code' => $row->code, 'name' => json_decode((string) $row->name, true), 'hex_color' => $row->hex_color,
+        'is_custom' => $row->company_id !== null, 'is_active' => (bool) $row->is_active,
+    ];
+    $colorRules = ['name' => ['required', 'string', 'max:60'], 'hex_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/']];
+    // The same name twice in one list would make the choice ambiguous for the operator.
+    $colorNameTaken = fn (int $companyId, string $name, ?int $exceptId = null) => Colors::visibleTo($companyId)->where('is_active', true)
+        ->when($exceptId !== null, fn ($query) => $query->where('id', '!=', $exceptId))->get(['name'])
+        ->contains(fn (stdClass $row) => in_array(mb_strtolower($name), array_map(mb_strtolower(...), array_values((array) json_decode((string) $row->name, true))), true));
+
+    Route::get('colors', function (Request $request, TenantContext $context) use ($allow, $colorData) {
+        $allow($request, 'waste_types.view');
+
+        return response()->json(['data' => Colors::visibleTo($context->companyId())
+            ->orderByRaw('company_id is not null')->orderBy('sort_order')->orderBy('id')->get()->map($colorData)]);
+    })->name('colors.index');
+
+    Route::post('colors', function (Request $request, TenantContext $context) use ($allow, $colorData, $colorRules, $colorNameTaken) {
+        $allow($request, 'waste_types.manage');
+        $input = $request->validate($colorRules);
+        $name = trim($input['name']);
+        if ($colorNameTaken($context->companyId(), $name)) {
+            throw ValidationException::withMessages(['name' => [__('validation.custom.color.taken')]]);
+        }
+
+        $id = DB::table('color_families')->insertGetId([
+            'company_id' => $context->companyId(), 'code' => 'c_'.Str::lower((string) Str::ulid()),
+            'name' => json_encode(['fr' => $name, 'en' => $name], JSON_UNESCAPED_UNICODE), 'hex_color' => isset($input['hex_color']) ? strtoupper($input['hex_color']) : null,
+            'sort_order' => 1000, 'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        return response()->json(['data' => $colorData(DB::table('color_families')->where('id', $id)->firstOrFail())], 201);
+    })->name('colors.store');
+
+    Route::put('colors/{code}', function (Request $request, string $code, TenantContext $context) use ($allow, $colorData, $colorRules, $colorNameTaken) {
+        $allow($request, 'waste_types.manage');
+        // Only the company's own colours: a default one, or another company's, answers "not found".
+        $color = DB::table('color_families')->where('code', $code)->where('company_id', $context->companyId())->first();
+        abort_if($color === null, 404);
+        $input = $request->validate($colorRules + ['is_active' => ['sometimes', 'boolean']]);
+        $name = trim($input['name']);
+        if (($input['is_active'] ?? true) && $colorNameTaken($context->companyId(), $name, (int) $color->id)) {
+            throw ValidationException::withMessages(['name' => [__('validation.custom.color.taken')]]);
+        }
+
+        DB::table('color_families')->where('id', $color->id)->update([
+            'name' => json_encode(['fr' => $name, 'en' => $name], JSON_UNESCAPED_UNICODE),
+            'hex_color' => isset($input['hex_color']) ? strtoupper($input['hex_color']) : null,
+            'is_active' => (bool) ($input['is_active'] ?? $color->is_active), 'updated_at' => now(),
+        ]);
+
+        return response()->json(['data' => $colorData(DB::table('color_families')->where('id', $color->id)->firstOrFail())]);
+    })->name('colors.update');
 });
 
 /*

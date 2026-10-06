@@ -95,7 +95,7 @@ Account `sami@capbon.test`.
 | 2 | Filter Statut "Créé" + "Stocké", then type "Chutes de coupe" | Filters turn green; "Réinitialiser 2"; list reduced |
 | 3 | **Réinitialiser** → **Nouveau lot**: site, zone, type, weight `42,5` → **Créer** | Lot page opens, status Créé, history "Lot créé" |
 | 4 | **Repeser** → `41` → save | Weight 41 kg; history shows the old and new weight |
-| 5 | **Scinder** → `20` and `21` → confirm | Two new lots; the original is closed |
+| 5 | **Fractionner** → `20` and `21` → confirm | Two new lots; the original is closed |
 | 6 | Lots: tick two lots of the same site, type and class (Créé or Stocké) → **Regrouper** → zone → confirm | One new lot whose weight is the sum |
 | 7 | **Stock** | Total, by site and zone; the new lots are counted |
 | 8 | **Ajouter un seuil**: site, type "Chutes de coupe", maximum `100` → save | Line "Seuil dépassé" in red; a notification in the bell |
