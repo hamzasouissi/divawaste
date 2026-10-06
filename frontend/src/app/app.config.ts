@@ -1,12 +1,13 @@
 import { provideHttpClient, withInterceptors, withXsrfConfiguration } from '@angular/common/http';
 import { ApplicationConfig, isDevMode, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from '@angular/core';
-import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
+import { TitleStrategy, provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
 import { provideServiceWorker } from '@angular/service-worker';
 import { provideTransloco } from '@jsverse/transloco';
 
 import { routes } from './app.routes';
 import { apiErrorInterceptor, apiRequestInterceptor } from './core/auth/interceptors';
 import { AVAILABLE_LANGUAGES, TranslationLoader } from './core/i18n/i18n';
+import { PageTitle } from './core/i18n/page-title';
 import { provideDivaWasteUi } from './ui/theme';
 
 export const appConfig: ApplicationConfig = {
@@ -14,6 +15,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideZonelessChangeDetection(),
     provideRouter(routes, withComponentInputBinding(), withInMemoryScrolling({ scrollPositionRestoration: 'enabled' })),
+    { provide: TitleStrategy, useExisting: PageTitle },
     provideHttpClient(
       withInterceptors([apiRequestInterceptor, apiErrorInterceptor]),
       // Laravel sets XSRF-TOKEN; Angular echoes it on every state-changing same-origin request.

@@ -5,14 +5,31 @@ import { Observable } from 'rxjs';
 
 import { Localized } from '../api/models';
 
-/** Languages of the product. French ships in V1; English and Arabic (right-to-left) are V2 (cahier §1). */
+/** Languages of the product. French and English are available; Arabic (right-to-left) is prepared for later (cahier §1). */
 export const LANGUAGES = [
   { code: 'fr', label: 'Français', dir: 'ltr', locale: 'fr-TN' },
   { code: 'en', label: 'English', dir: 'ltr', locale: 'en-GB' },
   { code: 'ar', label: 'العربية', dir: 'rtl', locale: 'ar-TN' },
 ] as const;
 
-export const AVAILABLE_LANGUAGES = ['fr'];
+export const AVAILABLE_LANGUAGES = ['fr', 'en'];
+
+/** The language chosen on this device, kept between visits. */
+const STORAGE_KEY = 'dw.language';
+
+function remembered(value?: string): string | null {
+  try {
+    if (value !== undefined) {
+      localStorage.setItem(STORAGE_KEY, value);
+    }
+    const stored = localStorage.getItem(STORAGE_KEY);
+
+    return stored !== null && AVAILABLE_LANGUAGES.includes(stored) ? stored : null;
+  } catch {
+    // Private browsing: the choice simply does not survive a reload.
+    return null;
+  }
+}
 
 @Injectable({ providedIn: 'root' })
 export class TranslationLoader implements TranslocoLoader {
@@ -33,8 +50,15 @@ export class Locale {
   private readonly document = inject(DOCUMENT);
 
   readonly lang = signal(this.transloco.getActiveLang());
+  readonly available = LANGUAGES.filter((language) => AVAILABLE_LANGUAGES.includes(language.code));
+  /** What the user picked explicitly on this device, if anything. */
+  readonly chosen = signal(remembered());
 
   constructor() {
+    const initial = this.chosen();
+    if (initial !== null && initial !== this.transloco.getActiveLang()) {
+      this.transloco.setActiveLang(initial);
+    }
     this.transloco.langChanges$.subscribe((lang) => this.lang.set(lang));
     effect(() => {
       const language = this.definition();
@@ -48,8 +72,17 @@ export class Locale {
     return this.definition().locale;
   }
 
+  /** Applies a language without recording it as the user's own choice (language of the profile). */
   use(lang: string): void {
     if (AVAILABLE_LANGUAGES.includes(lang)) {
+      this.transloco.setActiveLang(lang);
+    }
+  }
+
+  /** The user picks a language: applied at once and remembered on this device. */
+  choose(lang: string): void {
+    if (AVAILABLE_LANGUAGES.includes(lang)) {
+      this.chosen.set(remembered(lang));
       this.transloco.setActiveLang(lang);
     }
   }

@@ -8,6 +8,7 @@ import { InputText } from 'primeng/inputtext';
 import { Api, openBlob } from '../../core/api/api';
 import { GeneratedReport } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
+import { Locale } from '../../core/i18n/i18n';
 import { Toast } from '../../core/feedback/toast';
 import { DatePipe } from '../../core/format/pipes';
 import { Column, TABLE } from '../../ui/data-table';
@@ -53,8 +54,11 @@ interface Volume {
                   <dw-option value="pdf" label="PDF" /><dw-option value="xlsx" label="Excel" />
                 </dw-select>
               </dw-field>
-              <dw-period-filter [value]="period()" (valueChange)="period.set($event)" permission="reports.export" />
-              <button pButton type="button" [disabled]="busy()" (click)="generate()"><dw-icon>play_arrow</dw-icon>{{ t('reports.new') }}</button>
+              <div class="dw-field period">
+                <span class="dw-field-label">{{ t('period.label') }}</span>
+                <dw-period-filter [value]="period()" (valueChange)="period.set($event)" permission="reports.export" />
+              </div>
+              <button pButton type="button" class="go" [disabled]="busy()" (click)="generate()"><dw-icon>play_arrow</dw-icon>{{ t('reports.new') }}</button>
             </div>
           </section>
         }
@@ -108,8 +112,9 @@ interface Volume {
     </ng-container>
   `,
   styles: `
-    .generate { display: flex; align-items: center; gap: var(--dw-2) var(--dw-3); flex-wrap: wrap; }
+    .generate { display: flex; align-items: flex-end; gap: var(--dw-3); flex-wrap: wrap; }
     .type { width: 300px; } .format { width: 120px; } .year { width: 120px; }
+    .generate .go { min-height: var(--dw-control); }
     .scroll { overflow-x: auto; }
     .volumes thead th { text-align: end; } .volumes thead th:first-child { text-align: start; }
     .volumes tbody th[scope='row'] { text-align: start; font-weight: 500; padding: 4px var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); white-space: nowrap; }
@@ -119,6 +124,7 @@ interface Volume {
 })
 export class ReportsPage {
   private readonly api = inject(Api);
+  private readonly locale = inject(Locale);
   private readonly session = inject(Session);
   private readonly toast = inject(Toast);
 
@@ -152,7 +158,7 @@ export class ReportsPage {
     return Array.from({ length: 12 }, (_, index) => {
       const key = `${this.year()}-${String(index + 1).padStart(2, '0')}`;
 
-      return { key, label: new Intl.DateTimeFormat('fr', { month: 'short' }).format(new Date(this.year(), index, 1)), future: key > current };
+      return { key, label: new Intl.DateTimeFormat(this.locale.intl, { month: 'short' }).format(new Date(this.year(), index, 1)), future: key > current };
     });
   });
 

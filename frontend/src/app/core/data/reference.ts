@@ -46,6 +46,11 @@ export class ReferenceData {
     return this.zones$.get(site) as Observable<Zone[]>;
   }
 
+  /** After the company adds, renames or withdraws one of its colours. */
+  refreshVocabulary(): void {
+    this.vocabulary$ = null;
+  }
+
   refreshWasteTypes(): void {
     this.types$ = null;
   }

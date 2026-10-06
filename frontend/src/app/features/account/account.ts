@@ -10,6 +10,7 @@ import { InputText } from 'primeng/inputtext';
 import { Api } from '../../core/api/api';
 import { AppNotification, OnboardingState } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
+import { Locale } from '../../core/i18n/i18n';
 import { Toast } from '../../core/feedback/toast';
 import { DatePipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
@@ -33,7 +34,9 @@ import { SELECT } from '../../ui/select';
             <dw-field [label]="t('fields.lastName')"><input pInputText formControlName="last_name" autocomplete="family-name" /></dw-field>
             <dw-field [label]="t('fields.phone')"><input pInputText type="tel" formControlName="phone" autocomplete="tel" /></dw-field>
             <dw-field [label]="t('fields.language')">
-              <dw-select formControlName="locale"><dw-option value="fr" label="Français" /></dw-select>
+              <dw-select formControlName="locale">
+                @for (language of locale.available; track language.code) { <dw-option [value]="language.code" [label]="language.label" /> }
+              </dw-select>
             </dw-field>
           </div>
           <div class="dw-form-actions"><button pButton type="submit" [disabled]="busy()">{{ t('common.save') }}</button></div>
@@ -45,17 +48,17 @@ import { SELECT } from '../../ui/select';
 })
 export class ProfilePage {
   protected readonly session = inject(Session);
+  protected readonly locale = inject(Locale);
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
 
   protected readonly busy = signal(false);
   private readonly me = this.session.me();
-  // Only French ships in the MVP; the other languages appear here when their translation file exists (NFR i18n).
   protected readonly form = inject(FormBuilder).nonNullable.group({
     first_name: [this.me?.first_name ?? '', [Validators.required, Validators.maxLength(100)]],
     last_name: [this.me?.last_name ?? '', [Validators.required, Validators.maxLength(100)]],
     phone: [this.me?.phone ?? ''],
-    locale: ['fr'],
+    locale: [this.locale.lang()],
   });
 
   protected async save(): Promise<void> {
@@ -68,6 +71,7 @@ export class ProfilePage {
     try {
       const value = this.form.getRawValue();
       await firstValueFrom(this.api.put('me', { ...value, phone: value.phone || null }));
+      this.locale.choose(value.locale);
       await this.session.reload();
       this.toast.success('common.saved');
     } catch (error) {

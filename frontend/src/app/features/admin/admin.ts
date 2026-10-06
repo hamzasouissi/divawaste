@@ -292,6 +292,9 @@ export class DeclarePaymentDialog {
     .requested { padding: 8px 12px; border-radius: var(--dw-radius); background: var(--dw-info-soft); color: var(--dw-info); }
     .change { border-block-start: 1px solid var(--dw-line-soft); margin-block-start: var(--dw-3); padding-block-start: var(--dw-3); display: grid; gap: var(--dw-2); }
     .change dw-field { width: 260px; } .change dw-field.sites { width: 150px; }
+    /* Labelled fields and buttons share one baseline: the buttons line up with the inputs, not with the labels. */
+    .change .dw-row { align-items: flex-end; }
+    .change .dw-row > button { min-height: var(--dw-control); }
   `,
 })
 export class SubscriptionPage {
