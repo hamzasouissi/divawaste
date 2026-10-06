@@ -4,6 +4,7 @@ namespace App\Modules\Reporting\Support;
 
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Models\StoredFile;
+use App\Modules\Common\Support\DocumentLanguage;
 use App\Modules\Documents\Support\WasteRegister;
 use App\Modules\Tenancy\Models\Company;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -30,10 +31,20 @@ final class ReportBuilder
     public function __construct(private readonly WasteRegister $register, private readonly WasteStatistics $statistics) {}
 
     /**
-     * @param  array{from: string, to: string, site_ids?: ?list<int>}  $parameters
+     * @param  array{from: string, to: string, site_ids?: ?list<int>, lang?: ?string}  $parameters
      * @return array{content: string, filename: string, mime: string}
      */
     public function build(string $type, string $format, array $parameters, Company $company): array
+    {
+        // In the language asked for when the report was requested; a queue worker has no language of its own.
+        return DocumentLanguage::during(DocumentLanguage::supported($parameters['lang'] ?? $company->default_locale), fn () => $this->render($type, $format, $parameters, $company));
+    }
+
+    /**
+     * @param  array{from: string, to: string, site_ids?: ?list<int>, lang?: ?string}  $parameters
+     * @return array{content: string, filename: string, mime: string}
+     */
+    private function render(string $type, string $format, array $parameters, Company $company): array
     {
         $from = Carbon::parse($parameters['from'])->startOfDay();
         $to = Carbon::parse($parameters['to'])->startOfDay();
@@ -52,8 +63,8 @@ final class ReportBuilder
             $rows = $query->get()->map(fn (object $row) => WasteRegister::exportLine($row, $company->timezone))->all();
 
             return $format === 'xlsx'
-                ? $this->xlsx($filename, $title, WasteRegister::HEADINGS, $rows)
-                : $this->pdf($filename, 'pdf.register', $context + ['headings' => WasteRegister::HEADINGS, 'rows' => $rows]);
+                ? $this->xlsx($filename, $title, WasteRegister::headings(), $rows)
+                : $this->pdf($filename, 'pdf.register', $context + ['headings' => WasteRegister::headings(), 'rows' => $rows]);
         }
 
         $data = $this->statistics->dashboard($from, $to, $siteIds);
@@ -63,16 +74,16 @@ final class ReportBuilder
         }
 
         return $type === 'economic_balance'
-            ? $this->xlsx($filename, $title, ['Mois', 'Déchets évacués (kg)', 'Bilan net ('.$company->currency_code.')'],
+            ? $this->xlsx($filename, $title, [__('documents.report.month'), __('documents.report.xlsx.evacuated_kg'), __('documents.report.xlsx.net_balance', ['currency' => $company->currency_code])],
                 array_map(fn (array $m) => [$m['month'], (float) $m['evacuated_kg'], (float) $m['net_balance']], $data['by_month']))
-            : $this->xlsx($filename, $title, ['Rubrique', 'Libellé', 'Quantité (kg)', 'Lots'], [
-                ...array_map(fn (array $r) => ['Type de déchet', $r['name'], (float) $r['kg'], $r['lots']], $data['by_waste_type']),
-                ...array_map(fn (array $r) => ['Site', $r['name'], (float) $r['kg'], $r['lots']], $data['by_site']),
-                ...array_map(fn (array $r) => ['Filière', $r['channel'] ?? 'Non déclarée', (float) $r['kg'], null], $data['by_channel']),
-                ...array_map(fn (array $r) => ['Mois — généré', $r['month'], (float) $r['generated_kg'], null], $data['by_month']),
-                ['Indicateur', 'Taux de valorisation (%)', $data['totals']['recovery_rate_pct'] === null ? null : (float) $data['totals']['recovery_rate_pct'], null],
-                ['Indicateur', 'Part enfouie (%)', $data['totals']['landfill_share_pct'] === null ? null : (float) $data['totals']['landfill_share_pct'], null],
-                ['Indicateur', 'kg de déchets par pièce produite', $data['totals']['kg_per_piece'] === null ? null : (float) $data['totals']['kg_per_piece'], null],
+            : $this->xlsx($filename, $title, [__('documents.report.xlsx.rubric'), __('documents.report.xlsx.label'), __('documents.report.xlsx.quantity_kg'), __('documents.report.lots')], [
+                ...array_map(fn (array $r) => [__('documents.report.xlsx.waste_type'), $r['name'], (float) $r['kg'], $r['lots']], $data['by_waste_type']),
+                ...array_map(fn (array $r) => [__('documents.report.site'), $r['name'], (float) $r['kg'], $r['lots']], $data['by_site']),
+                ...array_map(fn (array $r) => [__('documents.report.channel'), $r['channel'] === null ? __('documents.report.xlsx.channel_undeclared') : __('exports.channel.'.$r['channel']), (float) $r['kg'], null], $data['by_channel']),
+                ...array_map(fn (array $r) => [__('documents.report.xlsx.month_generated'), $r['month'], (float) $r['generated_kg'], null], $data['by_month']),
+                [__('documents.report.xlsx.indicator'), __('documents.report.xlsx.recovery_rate'), $data['totals']['recovery_rate_pct'] === null ? null : (float) $data['totals']['recovery_rate_pct'], null],
+                [__('documents.report.xlsx.indicator'), __('documents.report.xlsx.landfill_share'), $data['totals']['landfill_share_pct'] === null ? null : (float) $data['totals']['landfill_share_pct'], null],
+                [__('documents.report.xlsx.indicator'), __('documents.report.xlsx.kg_per_piece'), $data['totals']['kg_per_piece'] === null ? null : (float) $data['totals']['kg_per_piece'], null],
             ]);
     }
 

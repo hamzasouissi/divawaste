@@ -279,6 +279,18 @@ Larastan 3.12 (PHPStan 2.2), level 5, on `app`, `config`, `database`, `routes` a
 models declare their casts in `casts()` (`parseModelCastsMethod`), and one stub corrects Sanctum's PHPDoc, which says
 the current token is always a personal access token although a cookie session carries another type.
 
+## Languages
+
+French and English. Screen texts: `frontend/public/i18n/fr.json` and `en.json` (`npm run i18n` checks every key in both).
+Server messages and emails: `lang/fr` and `lang/en`; the API answers in the language sent in `Accept-Language`.
+Generated documents (PDF, Excel): `lang/<code>/documents.php` and `exports.php`, rendered in the language of the
+request, or the one given by `?lang=` (one document) or the `X-Document-Language` header (the user's preference).
+A report keeps the language it was requested in (`parameters.lang`), since a queue worker has none of its own.
+`DocumentLanguageTest` fails if the two languages do not define the same texts.
+
+To add a language: add its code to `UseRequestLanguage::SUPPORTED` and `AVAILABLE_LANGUAGES`, then provide
+`lang/<code>/*.php` and `public/i18n/<code>.json`.
+
 ## Workshop application: signing out
 
 An operator who only has the workshop application never sees the desktop menu. On `/m`:

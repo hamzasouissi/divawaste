@@ -11,6 +11,7 @@ use App\Modules\Billing\Models\Payment;
 use App\Modules\Billing\Requests\DeclareBankTransferRequest;
 use App\Modules\Billing\Resources\PaymentResource;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
+use App\Modules\Common\Support\DocumentLanguage;
 use App\Modules\Notifications\Actions\NotifyUsers;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\TenantContext;
@@ -109,9 +110,9 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($invoiceDa
         $allow($request, 'invoices.view');
         abort_if($invoice->isDraft(), 404);
 
-        return response(Pdf::loadView('pdf.invoice', [
+        return response(DocumentLanguage::during(DocumentLanguage::of($request), fn () => Pdf::loadView('pdf.invoice', [
             'invoice' => $invoice, 'items' => InvoiceItem::query()->where('invoice_id', $invoice->id)->orderBy('sort_order')->orderBy('id')->get(),
-        ])->setPaper('a4')->output(), 200, [
+        ])->setPaper('a4')->output()), 200, [
             'Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.$invoice->invoice_number.'.pdf"', 'Cache-Control' => 'private, no-store',
         ]);
     })->name('invoices.pdf');

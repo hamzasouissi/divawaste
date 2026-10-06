@@ -121,8 +121,10 @@ the account in `.env.demo`, run `demo.ps1 mailtest <your address>`, then registe
 SSO · RFID · connected scales · production link (M3) · marketplace · CO₂ avoided · brand portal · public API with
 keys · card payment · SMS / WhatsApp · native mobile applications · Arabic.
 
-English was added on 6 October 2026 (FR / EN switch on every screen, saved to the user's profile). Generated PDF and
-Excel documents (labels, tracking slips, reports, invoices) remain in French.
+English was added on 6 October 2026 (FR / EN switch on every screen, saved to the user's profile). Generated documents
+(label, register, tracking slip, declaration, reports, invoice — PDF and Excel) are produced in the user's language;
+"Langue des documents générés" in the profile fixes another one, and the reports page offers the choice per report.
+The English wording of regulatory documents is a translation, not an official form.
 
 ### NON-BLOCKING POLISH
 

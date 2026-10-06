@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
+use App\Modules\Common\Support\DocumentLanguage;
 use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Sites\Actions\EvaluateStockThresholds;
 use App\Modules\Sites\Models\Zone;
@@ -126,12 +127,12 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     // M2-02: thermal label, 100 × 50 mm.
     Route::get('lots/{lot}/label', function (Request $request, WasteLot $lot) {
         abort_unless($request->user()->can('lots.print_label', $lot->site_id), 403);
-        $pdf = LotLabel::render($lot);
+        $pdf = DocumentLanguage::during(DocumentLanguage::of($request), fn () => LotLabel::render($lot));
         LotLabel::recordPrint($lot, $request->user()->id);
 
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="etiquette-'.$lot->lot_number.'.pdf"',
+            'Content-Disposition' => 'inline; filename="label-'.$lot->lot_number.'.pdf"',
             'Cache-Control' => 'private, no-store',
         ]);
     })->name('lots.label');

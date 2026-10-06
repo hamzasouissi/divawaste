@@ -1,9 +1,10 @@
+@use('App\Modules\Common\Support\DocumentLanguage', 'Doc')
 @php
-    $party = fn (array $p) => e($p['legal_name'] ?? '').'<br>'.(($p['tax_id'] ?? null) ? 'Matricule fiscal : '.e($p['tax_id']).'<br>' : '').e($p['address'] ?? '').(($p['phone'] ?? null) ? '<br>Tél. '.e($p['phone']) : '');
-    $kg = fn ($value) => $value === null ? '—' : number_format((float) $value, 3, ',', ' ').' kg';
+    $party = fn (array $p) => e($p['legal_name'] ?? '').'<br>'.(($p['tax_id'] ?? null) ? e(__('documents.tax_id').__('documents.colon')).e($p['tax_id']).'<br>' : '').e($p['address'] ?? '').(($p['phone'] ?? null) ? '<br>'.e(__('documents.phone')).' '.e($p['phone']) : '');
+    $kg = fn ($value) => $value === null ? '—' : Doc::number($value).' kg';
 @endphp
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ app()->getLocale() }}">
 <head>
     <meta charset="utf-8">
     @include('pdf.partials.head')
@@ -18,28 +19,28 @@
 <body>
 <table class="head">
     <tr>
-        <td><h1>Bordereau de suivi des déchets dangereux</h1>
-            <div class="meta">N° {{ $payload['manifest_number'] }} · Enlèvement {{ $payload['pickup_number'] }} du {{ \Illuminate\Support\Carbon::parse($payload['pickup_date'])->format('d/m/Y') }}</div></td>
-        <td class="company">@unless ($complete)<span class="draft">EN COURS DE SIGNATURE</span>@endunless</td>
+        <td><h1>{{ __('documents.manifest.title') }}</h1>
+            <div class="meta">{{ __('documents.manifest.meta', ['number' => $payload['manifest_number'], 'pickup' => $payload['pickup_number'], 'date' => \Illuminate\Support\Carbon::parse($payload['pickup_date'])->format('d/m/Y')]) }}</div></td>
+        <td class="company">@unless ($complete)<span class="draft">{{ __('documents.manifest.signing') }}</span>@endunless</td>
     </tr>
 </table>
 
 <table class="cols">
     <tr>
-        <td><strong>1. Producteur</strong><br>{!! $party($payload['producer']) !!}<br>Site : {{ $payload['producer']['site'] ?? '' }} — {{ $payload['producer']['site_address'] ?? '' }}</td>
-        <td><strong>2. Transporteur</strong><br>{!! $party($payload['transporter']) !!}</td>
-        <td><strong>3. Destinataire</strong><br>{!! $party($payload['receiver']) !!}</td>
+        <td><strong>{{ __('documents.manifest.producer') }}</strong><br>{!! $party($payload['producer']) !!}<br>{{ __('documents.manifest.site') }}{{ __('documents.colon') }}{{ $payload['producer']['site'] ?? '' }} — {{ $payload['producer']['site_address'] ?? '' }}</td>
+        <td><strong>{{ __('documents.manifest.transporter') }}</strong><br>{!! $party($payload['transporter']) !!}</td>
+        <td><strong>{{ __('documents.manifest.receiver') }}</strong><br>{!! $party($payload['receiver']) !!}</td>
     </tr>
 </table>
 
 <div class="box">
-    <h3>Déchet</h3>
-    Code : <strong>{{ $payload['waste_code'] }}</strong> — {{ $payload['waste_label'] }}<br>
-    Désignation : {{ $payload['waste_type'] }} · Nombre de colis : {{ $payload['package_count'] }} · Poids au départ : <strong>{{ $kg($payload['declared_weight_kg']) }}</strong>
+    <h3>{{ __('documents.manifest.waste') }}</h3>
+    {{ __('documents.manifest.code') }}{{ __('documents.colon') }}<strong>{{ $payload['waste_code'] }}</strong> — {{ $payload['waste_label'] }}<br>
+    {{ __('documents.manifest.designation') }}{{ __('documents.colon') }}{{ $payload['waste_type'] }} · {{ __('documents.manifest.packages') }}{{ __('documents.colon') }}{{ $payload['package_count'] }} · {{ __('documents.manifest.departure_weight') }}{{ __('documents.colon') }}<strong>{{ $kg($payload['declared_weight_kg']) }}</strong>
 </div>
 
 <table class="data">
-    <thead><tr><th>N° de lot</th><th class="num">Poids au départ</th><th class="num">Poids reçu</th></tr></thead>
+    <thead><tr><th>{{ __('documents.manifest.lot_number') }}</th><th class="num">{{ __('documents.manifest.departure_weight') }}</th><th class="num">{{ __('documents.manifest.received_weight') }}</th></tr></thead>
     <tbody>
     @foreach ($payload['lots'] as $lot)
         <tr><td>{{ $lot['lot_number'] }}</td><td class="num">{{ $kg($lot['weight_kg']) }}</td><td class="num">{{ $kg($lot['received_weight_kg']) }}</td></tr>
@@ -47,20 +48,20 @@
     </tbody>
 </table>
 
-<h2>Signatures électroniques</h2>
+<h2>{{ __('documents.manifest.signatures') }}</h2>
 <table class="data">
-    <thead><tr><th>Intervenant</th><th>Signataire</th><th>Date</th><th>Empreinte du contenu signé (SHA-256)</th></tr></thead>
+    <thead><tr><th>{{ __('documents.manifest.party') }}</th><th>{{ __('documents.manifest.signer') }}</th><th>{{ __('documents.manifest.date') }}</th><th>{{ __('documents.manifest.hash') }}</th></tr></thead>
     <tbody>
     @foreach ($signatures as $signature)
         <tr>
             <td>{{ __('exports.signer.'.$signature->signer_party) }}</td>
-            <td>{{ $signature->status === 'signed' ? trim($signature->first_name.' '.$signature->last_name) : 'En attente' }}</td>
+            <td>{{ $signature->status === 'signed' ? trim($signature->first_name.' '.$signature->last_name) : __('documents.manifest.pending') }}</td>
             <td>{{ $signature->signed_at ? \Illuminate\Support\Carbon::parse($signature->signed_at, 'UTC')->timezone($timezone)->format('d/m/Y H:i') : '—' }}</td>
             <td style="font-family: DejaVu Sans Mono, monospace; font-size: 6pt;">{{ $signature->signed_payload_hash ?? '—' }}</td>
         </tr>
     @endforeach
     </tbody>
 </table>
-<p class="note">Chaque signature est apposée par un utilisateur authentifié après confirmation de son mot de passe ; la date, l'adresse IP et l'empreinte du contenu signé sont conservées.</p>
+<p class="note">{{ __('documents.manifest.note') }}</p>
 </body>
 </html>

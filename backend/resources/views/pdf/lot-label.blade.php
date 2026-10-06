@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ app()->getLocale() }}">
 <head>
     <meta charset="utf-8">
     <style>
@@ -32,13 +32,13 @@
             <div class="company">{{ \Illuminate\Support\Str::limit($company, 34, '…') }}</div>
             <div class="number">{{ $lot->lot_number }}</div>
             <div class="type">{{ \Illuminate\Support\Str::limit($lot->wasteType->name, 40, '…') }}</div>
-            <div class="weight">{{ rtrim(rtrim(number_format((float) $lot->net_weight_kg, 3, ',', ' '), '0'), ',') }} kg</div>
+            <div class="weight">{{ \App\Modules\Common\Support\DocumentLanguage::trimmed($lot->net_weight_kg) }} kg</div>
             <div class="line">{{ $lot->site->code }} · {{ \Illuminate\Support\Str::limit($lot->zone->name, 26, '…') }} · {{ $lot->generated_at->timezone($timezone)->format('d/m/Y H:i') }}</div>
             @if ($lot->composition_label)
                 <div class="line">{{ \Illuminate\Support\Str::limit($lot->composition_label, 40, '…') }}</div>
             @endif
             @if ($lot->is_hazardous)
-                <div class="hazard">DÉCHET DANGEREUX</div>
+                <div class="hazard">{{ __('documents.label.hazardous') }}</div>
             @endif
         </td>
     </tr>

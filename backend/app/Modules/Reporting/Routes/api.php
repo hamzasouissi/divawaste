@@ -1,6 +1,8 @@
 <?php
 
+use App\Modules\Common\Http\Middleware\UseRequestLanguage;
 use App\Modules\Common\Models\StoredFile;
+use App\Modules\Common\Support\DocumentLanguage;
 use App\Modules\Common\Support\FileStorage;
 use App\Modules\Documents\Support\WasteRegister;
 use App\Modules\Identity\Authorization\AccessResolver;
@@ -117,13 +119,15 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         $input = $request->validate([
             'report_type' => ['required', Rule::in(ReportBuilder::TYPES)],
             'format' => ['required', Rule::in(ReportBuilder::FORMATS)],
+            // Language of the document: the user's by default, another one on request.
+            'lang' => ['nullable', Rule::in(UseRequestLanguage::SUPPORTED)],
         ]);
         [$from, $to, $siteIds, $site] = $scope($request, $input['report_type'] === 'waste_register' ? 'documents.view' : 'reports.export');
         abort_unless($request->user()->can('reports.export'), 403);
 
         $report = GeneratedReport::query()->create([
             'report_type' => $input['report_type'], 'format' => $input['format'], 'status' => 'queued',
-            'parameters' => ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'site' => $site, 'site_ids' => $siteIds],
+            'parameters' => ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'site' => $site, 'site_ids' => $siteIds, 'lang' => DocumentLanguage::of($request)],
             'requested_by_user_id' => $request->user()->id, 'expires_at' => now()->addDays(30),
         ]);
         GenerateReport::dispatch($report->company_id, $report->id);
