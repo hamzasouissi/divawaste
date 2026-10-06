@@ -3,9 +3,11 @@
 namespace App\Modules\Waste\Requests;
 
 use App\Modules\Catalog\Models\WasteType;
+use App\Modules\Catalog\Support\Colors;
 use App\Modules\Sites\Models\Site;
 use App\Modules\Sites\Models\Zone;
 use App\Modules\Tenancy\Rules\TenantExists;
+use App\Modules\Tenancy\TenantContext;
 use App\Modules\Waste\DTOs\CreateWasteLotData;
 use App\Modules\Waste\Rules\ValidComposition;
 use Illuminate\Foundation\Http\FormRequest;
@@ -51,7 +53,7 @@ class StoreWasteLotRequest extends FormRequest
             'packaging_type' => ['nullable', 'string', $ref('packaging_types')],
             'quantity' => ['nullable', 'decimal:0,3', 'gt:0', 'required_with:unit'],
             'unit' => ['nullable', 'string', Rule::exists('units', 'code')],
-            'color_family' => ['nullable', 'string', $ref('color_families')],
+            'color_family' => ['nullable', 'string', Colors::rule(app(TenantContext::class)->companyId())],
             'color_label' => ['nullable', 'string', 'max:100'],
             'grammage_gsm' => ['nullable', 'decimal:0,2', 'gt:0'],
             'composition' => ['nullable', 'array', new ValidComposition],

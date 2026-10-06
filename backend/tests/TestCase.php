@@ -13,6 +13,13 @@ abstract class TestCase extends BaseTestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // The application always says which language its screen is in; French is the default of the product.
+        $this->withHeader('Accept-Language', 'fr');
+    }
+
     /**
      * migrate:fresh costs minutes of DDL on MariaDB, so the schema is rebuilt only when the migration files
      * changed, the schema is incomplete, or a previous run left committed rows behind. TEST_DB_FRESH=1 forces it.

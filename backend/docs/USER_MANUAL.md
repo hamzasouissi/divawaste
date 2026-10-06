@@ -276,7 +276,7 @@ Identification, QR label, full history (who, when, from the web or the workshop 
 |---|---|---|
 | Mettre en stock / Déplacer | Créé, Stocké | Moves the lot to a zone; status Stocké |
 | Repeser | Créé, Stocké | Corrects the weight (the old value stays in the history) |
-| Scinder | Créé, Stocké | Splits into several lots; a difference above 2 % needs a comment |
+| Fractionner | Créé, Stocké | Splits into several lots; a difference above 2 % needs a comment |
 | Imprimer l'étiquette | always | 100 × 50 mm QR label |
 
 ### Stock — `/stock`

@@ -119,7 +119,10 @@ the account in `.env.demo`, run `demo.ps1 mailtest <your address>`, then registe
 ### V2 (out of the MVP by the cahier)
 
 SSO · RFID · connected scales · production link (M3) · marketplace · CO₂ avoided · brand portal · public API with
-keys · card payment · SMS / WhatsApp · native mobile applications · English and Arabic.
+keys · card payment · SMS / WhatsApp · native mobile applications · Arabic.
+
+English was added on 6 October 2026 (FR / EN switch on every screen, saved to the user's profile). Generated PDF and
+Excel documents (labels, tracking slips, reports, invoices) remain in French.
 
 ### NON-BLOCKING POLISH
 

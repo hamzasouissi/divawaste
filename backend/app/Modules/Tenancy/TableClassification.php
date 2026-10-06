@@ -32,11 +32,11 @@ final class TableClassification
     ];
 
     /** company_id NULL = platform row */
-    public const MIXED = ['roles', 'stored_files', 'notifications', 'notification_logs', 'audit_logs'];
+    public const MIXED = ['roles', 'stored_files', 'notifications', 'notification_logs', 'audit_logs', 'color_families'];
 
     public const GLOBAL = [
         'currencies', 'countries', 'tax_rates', 'textile_activities', 'legal_documents', 'zone_types',
-        'packaging_types', 'units', 'waste_families', 'materials', 'color_families', 'treatment_channels',
+        'packaging_types', 'units', 'waste_families', 'materials', 'treatment_channels',
         'regulatory_waste_codes', 'waste_catalog_items', 'accreditation_types', 'subscription_plans',
         'subscription_plan_prices', 'permissions', 'role_has_permissions',
     ];

@@ -3,6 +3,7 @@
 namespace App\Modules\Catalog\Requests;
 
 use App\Modules\Catalog\DTOs\CreateWasteTypeData;
+use App\Modules\Catalog\Support\Colors;
 use App\Modules\Tenancy\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\DB;
@@ -37,7 +38,7 @@ class StoreWasteTypeRequest extends FormRequest
             'is_hazardous' => ['sometimes', 'boolean'],
             'unit' => ['nullable', 'string', Rule::exists('units', 'code')],
             'packaging_type' => ['nullable', 'string', $reference('packaging_types')],
-            'color_family' => ['nullable', 'string', $reference('color_families')],
+            'color_family' => ['nullable', 'string', Colors::rule($companyId)],
             'default_grammage_gsm' => ['nullable', 'decimal:0,2', 'gt:0'],
             'treatment_channel' => ['nullable', 'string', $reference('treatment_channels')],
             'default_composition' => ['nullable', 'array', 'min:1'],
