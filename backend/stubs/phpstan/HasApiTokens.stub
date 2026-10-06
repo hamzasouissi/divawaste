@@ -1,0 +1,28 @@
+<?php
+
+namespace Laravel\Sanctum\Contracts;
+
+interface HasAbilities {}
+
+namespace Laravel\Sanctum;
+
+use Illuminate\Database\Eloquent\Model;
+use Laravel\Sanctum\Contracts\HasAbilities;
+
+class PersonalAccessToken extends Model implements HasAbilities {}
+
+class TransientToken implements HasAbilities {}
+
+/**
+ * Sanctum documents currentAccessToken() as always returning the personal access token. With the cookie session of
+ * the web application it returns a TransientToken, and null before authentication: the code must keep testing it.
+ *
+ * @template TToken of HasAbilities = PersonalAccessToken
+ */
+trait HasApiTokens
+{
+    /**
+     * @return TToken|TransientToken|null
+     */
+    public function currentAccessToken();
+}
