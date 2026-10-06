@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Common\Models\StoredFile;
+use App\Modules\Common\Support\DocumentLanguage;
 use App\Modules\Common\Support\FileStorage;
 use App\Modules\Documents\Actions\DeclarationWorkflow;
 use App\Modules\Documents\Actions\ManifestWorkflow;
@@ -139,7 +140,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::get('manifests/{manifest}/pdf', function (Request $request, HazardousWasteManifest $manifest, ManifestWorkflow $workflow) use ($canRead, $pdf) {
         $canRead($request, $manifest->site_id);
 
-        return $pdf($workflow->pdf($manifest), $manifest->manifest_number);
+        return $pdf(DocumentLanguage::during(DocumentLanguage::of($request), fn () => $workflow->pdf($manifest)), $manifest->manifest_number);
     })->name('manifests.pdf');
 
     Route::post('manifests/{manifest}/sign', function (Request $request, HazardousWasteManifest $manifest, ManifestWorkflow $workflow) use ($isProvider) {
@@ -198,19 +199,24 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         abort_unless($request->user()->can('declarations.prepare', $declaration->site_id), 403);
         $name = "declaration-{$declaration->reporting_year}";
 
+        $language = DocumentLanguage::of($request);
         if ($request->validate(['format' => ['required', Rule::in(['pdf', 'xlsx'])]])['format'] === 'pdf') {
-            return $pdf($workflow->pdf($declaration), $name);
+            return $pdf(DocumentLanguage::during($language, fn () => $workflow->pdf($declaration)), $name);
         }
+        // The spreadsheet is written in the same language as the PDF.
+        app()->setLocale($language);
+        $yesNo = fn (bool $value) => __($value ? 'documents.yes' : 'documents.no');
 
         $rows = [
-            ...array_map(fn (array $row) => ['Produit', $row['regulatory_code'], $row['waste_type'], $row['is_hazardous'] ? 'Oui' : 'Non', null, null, (float) $row['kg']], $declaration->data['produced'] ?? []),
-            ...array_map(fn (array $row) => ['Évacué', $row['regulatory_code'], $row['waste_type'], $row['is_hazardous'] ? 'Oui' : 'Non', $row['provider'], $row['channel'], (float) $row['kg']], $declaration->data['evacuated'] ?? []),
+            ...array_map(fn (array $row) => [__('documents.declaration.rubric_produced'), $row['regulatory_code'], $row['waste_type'], $yesNo((bool) $row['is_hazardous']), null, null, (float) $row['kg']], $declaration->data['produced'] ?? []),
+            ...array_map(fn (array $row) => [__('documents.declaration.rubric_evacuated'), $row['regulatory_code'], $row['waste_type'], $yesNo((bool) $row['is_hazardous']), $row['provider'], $row['channel'] ? __('exports.channel.'.$row['channel']) : __('documents.declaration.channel_undeclared'), (float) $row['kg']], $declaration->data['evacuated'] ?? []),
         ];
 
-        return response(Excel::raw(new ArrayExport("Déclaration {$declaration->reporting_year}",
-            ['Rubrique', 'Code déchet', 'Désignation', 'Dangereux', 'Destinataire', 'Filière', 'Quantité (kg)'], $rows), ExcelFormat::XLSX), 200, [
-                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'Content-Disposition' => 'attachment; filename="'.$name.'.xlsx"', 'Cache-Control' => 'private, no-store',
-            ]);
+        return response(Excel::raw(new ArrayExport(__('documents.declaration.sheet', ['year' => $declaration->reporting_year]),
+            [__('documents.declaration.rubric'), __('documents.declaration.waste_code'), __('documents.declaration.designation'), __('documents.declaration.hazardous'),
+                __('documents.declaration.receiver'), __('documents.declaration.channel'), __('documents.declaration.quantity')], $rows), ExcelFormat::XLSX), 200, [
+                    'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'Content-Disposition' => 'attachment; filename="'.$name.'.xlsx"', 'Cache-Control' => 'private, no-store',
+                ]);
     })->name('declarations.export');
 });

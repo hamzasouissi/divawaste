@@ -14,10 +14,15 @@ use Illuminate\Support\Facades\DB;
  */
 final class WasteRegister
 {
-    public const HEADINGS = [
-        'Date', 'N° de lot', 'Site', 'Zone', 'Type de déchet', 'Code déchet', 'Dangereux', 'Poids (kg)', 'Origine', 'Statut',
-        'N° enlèvement', 'Date d\'enlèvement', 'Prestataire', 'Poids reçu (kg)', 'Filière',
-    ];
+    /**
+     * Column titles of the exported register, in the language of the document.
+     *
+     * @return list<string>
+     */
+    public static function headings(): array
+    {
+        return array_values((array) __('documents.register.headings'));
+    }
 
     public function __construct(private readonly TenantContext $context) {}
 
@@ -80,7 +85,7 @@ final class WasteRegister
 
         return [
             $date($row->generated_at), $row->lot_number, $row->site, $row->zone, $row->waste_type, $row->regulatory_code,
-            $row->is_hazardous ? 'Oui' : 'Non', (float) $row->net_weight_kg, __('exports.origin.'.$row->origin_type), __('exports.lot_status.'.$row->status),
+            __($row->is_hazardous ? 'documents.yes' : 'documents.no'), (float) $row->net_weight_kg, __('exports.origin.'.$row->origin_type), __('exports.lot_status.'.$row->status),
             $row->pickup_number, $date($row->collected_at), $row->provider,
             $row->received_weight_kg === null ? null : (float) $row->received_weight_kg,
             $row->channel_name === null ? null : (json_decode((string) $row->channel_name, true)['fr'] ?? $row->channel),

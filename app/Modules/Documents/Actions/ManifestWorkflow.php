@@ -168,6 +168,9 @@ final class ManifestWorkflow
     public function pdf(HazardousWasteManifest $manifest): string
     {
         $payload = $this->payload($manifest);
+        // The official label of the waste code is shown in the language of the document; the signed content is not changed.
+        $label = json_decode((string) DB::table('regulatory_waste_codes')->where('code', $payload['waste_code'])->value('label'), true);
+        $payload['waste_label'] = $label[app()->getLocale()] ?? $payload['waste_label'];
         $signatures = DB::table('document_signatures as s')->leftJoin('users as u', 'u.id', '=', 's.signer_user_id')
             ->where('s.document_id', $manifest->document_id)->orderBy('s.sequence')
             ->get(['s.signer_party', 's.status', 's.signed_at', 's.signed_payload_hash', 'u.first_name', 'u.last_name']);

@@ -2,7 +2,7 @@
 
 // Libellés des documents générés (PDF, Excel).
 return [
-    'origin' => ['created' => 'Production', 'split' => 'Scission', 'grouping' => 'Regroupement'],
+    'origin' => ['created' => 'Production', 'split' => 'Fractionnement', 'grouping' => 'Regroupement'],
     'lot_status' => [
         'created' => 'Créé', 'stored' => 'Stocké', 'awaiting_pickup' => 'En attente d\'enlèvement',
         'collected' => 'Enlevé', 'treated' => 'Traité', 'closed' => 'Clôturé',

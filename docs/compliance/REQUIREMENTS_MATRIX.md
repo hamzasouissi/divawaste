@@ -114,7 +114,7 @@ Nothing in the product uses mock data.
 | Mobile PWA | 🟡 | installable manifest, service worker in production build, Dexie outbox, ZXing | iOS home-screen icon needs PNG files (only SVG provided). Not tried on a real device or with gloves |
 | Ergonomics | 🟡 | responsive tables and forms checked at 1440 and 390 px | No session with real users yet |
 | Accessibility | 🟡 | labels, focus order, status never by colour alone, keyboard-activable rows | No audit with a screen reader |
-| i18n | ✅ | Transloco, one file per language, every key checked in each language by `npm run i18n`, logical CSS properties, `dir` switch | French and English ship (switch on every screen, saved to the profile; the API answers validation messages in the same language). Generated PDF / Excel documents stay in French. Arabic (right-to-left) is prepared, not translated |
+| i18n | ✅ | Transloco, one file per language, every key checked in each language by `npm run i18n`, logical CSS properties, `dir` switch | French and English ship (switch on every screen, saved to the profile; the API answers validation messages in the same language). Generated PDF / Excel documents follow the user's language, or the one chosen in the profile or per report. Arabic (right-to-left) is prepared, not translated |
 | Traceability | ✅ | no force delete on lots; regulated documents have no delete route | |
 
 ## Stack conformance (cahier §5)

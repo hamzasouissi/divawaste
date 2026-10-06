@@ -1,5 +1,6 @@
+@use('App\Modules\Common\Support\DocumentLanguage', 'Doc')
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ app()->getLocale() }}">
 <head><meta charset="utf-8">@include('pdf.partials.head')</head>
 <body>
 @include('pdf.partials.header')
@@ -15,15 +16,15 @@
     @forelse ($rows as $row)
         <tr>
             @foreach ($row as $index => $cell)
-                <td class="{{ in_array($index, [7, 13], true) ? 'num' : '' }}">{{ is_float($cell) ? number_format($cell, 3, ',', ' ') : $cell }}</td>
+                <td class="{{ in_array($index, [7, 13], true) ? 'num' : '' }}">{{ is_float($cell) ? Doc::number($cell) : $cell }}</td>
             @endforeach
         </tr>
     @empty
-        <tr><td colspan="{{ count($headings) }}">Aucun lot sur la période.</td></tr>
+        <tr><td colspan="{{ count($headings) }}">{{ __('documents.register.empty') }}</td></tr>
     @endforelse
     </tbody>
 </table>
-<p class="note">{{ count($rows) }} lot(s) — poids total : {{ number_format(array_sum(array_column($rows, 7)), 3, ',', ' ') }} kg.
-    Registre généré automatiquement à partir des lots enregistrés ; aucune ligne n'est saisie manuellement.</p>
+<p class="note">{{ __('documents.register.summary', ['count' => count($rows), 'kg' => Doc::number(array_sum(array_column($rows, 7)))]) }}
+    {{ __('documents.register.note') }}</p>
 </body>
 </html>

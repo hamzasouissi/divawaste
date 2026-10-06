@@ -21,7 +21,7 @@ class GeneratedReportResource extends JsonResource
             'report_type' => $this->report_type,
             'format' => $this->format,
             'status' => $this->status,
-            'parameters' => array_intersect_key($this->parameters ?? [], array_flip(['from', 'to', 'site'])),
+            'parameters' => array_intersect_key($this->parameters ?? [], array_flip(['from', 'to', 'site', 'lang'])),
             'downloadable' => $this->status === 'completed' && $this->stored_file_id !== null && ($this->expires_at === null || $this->expires_at->isFuture()),
             'error_message' => $this->error_message,
             'completed_at' => $this->completed_at?->toIso8601ZuluString(),

@@ -69,7 +69,7 @@ final class DeclarationWorkflow
             $file = $this->files->storeContent($this->pdf($declaration), "{$reference}.pdf", 'application/pdf', $company, 'declarations', $actor->id, now()->addYears(10));
 
             $document = Document::query()->create([
-                'document_type' => DocumentType::AnnualDeclaration, 'title' => "Déclaration annuelle {$declaration->reporting_year}", 'reference_number' => $reference,
+                'document_type' => DocumentType::AnnualDeclaration, 'title' => __('documents.declaration.short_title', ['year' => $declaration->reporting_year]), 'reference_number' => $reference,
                 'status' => DocumentStatus::Draft, 'is_regulatory' => true, 'site_id' => $declaration->site_id,
                 'period_start' => "{$declaration->reporting_year}-01-01", 'period_end' => "{$declaration->reporting_year}-12-31",
                 'uploaded_by_company_id' => $company->id, 'stored_file_id' => $file->id, 'checksum_sha256' => $file->checksum_sha256, 'source_snapshot' => $declaration->data,
@@ -88,7 +88,7 @@ final class DeclarationWorkflow
         return Pdf::loadView('pdf.declaration', [
             'declaration' => $declaration, 'data' => $declaration->data, 'logo' => null,
             'company' => Company::query()->findOrFail($declaration->company_id),
-            'title' => "Déclaration annuelle des déchets {$declaration->reporting_year}",
+            'title' => __('documents.declaration.title', ['year' => $declaration->reporting_year]),
             'generatedAt' => now()->timezone((string) DB::table('companies')->where('id', $declaration->company_id)->value('timezone')),
         ])->setPaper('a4', 'landscape')->output();
     }
