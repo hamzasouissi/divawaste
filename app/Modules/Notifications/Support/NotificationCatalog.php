@@ -23,6 +23,8 @@ final class NotificationCatalog
         'accreditation.expiring_soon' => ['mail' => true],
         'accreditation.expired' => ['mail' => true],
         'accreditation.reviewed' => ['mail' => true],
+        'authorization.usage_high' => ['mail' => true],
+        'authorization.expiring_soon' => ['mail' => true],
         'document.signature_requested' => ['mail' => true],
         'document.signed_copy_requested' => ['mail' => false],
         'document.certificate_uploaded' => ['mail' => false],

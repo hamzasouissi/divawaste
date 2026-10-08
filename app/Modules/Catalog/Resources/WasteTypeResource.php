@@ -28,6 +28,8 @@ class WasteTypeResource extends JsonResource
             'waste_family' => $codes->code('waste_families', $this->waste_family_id),
             'regulatory_code' => $codes->code('regulatory_waste_codes', $this->regulatory_waste_code_id),
             'is_hazardous' => $this->is_hazardous,
+            // This waste only leaves the site under an authorisation (declaration signed by customs) that still has room.
+            'requires_authorization' => $this->requires_authorization,
             // M1-05: weights are stored in kg; the unit is how this type is usually counted.
             'unit' => $codes->code('units', $this->default_unit_id),
             'packaging_type' => $codes->code('packaging_types', $this->default_packaging_type_id),

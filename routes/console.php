@@ -4,9 +4,11 @@ use App\Modules\Billing\Actions\ManageSubscription;
 use App\Modules\Common\Docs\ApiRoutes;
 use App\Modules\Common\Docs\DemoData;
 use App\Modules\Identity\Models\User;
+use App\Modules\Notifications\Actions\NotifyUsers;
 use App\Modules\Notifications\Support\EmailLog;
 use App\Modules\Providers\Actions\AlertExpiringAccreditations;
 use Database\Seeders\DemoSeeder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -25,6 +27,31 @@ Artisan::command('accreditations:alert', function (AlertExpiringAccreditations $
 })->purpose('M4-02: alert providers and their partners 30 days before an accreditation expires, and at expiry');
 
 Schedule::command('accreditations:alert')->dailyAt('06:00')->withoutOverlapping()->onOneServer();
+
+Artisan::command('authorizations:alert', function (NotifyUsers $notify) {
+    $today = now()->startOfDay();
+    $sent = 0;
+    foreach ([30 => 'notified_30d_at', 7 => 'notified_7d_at'] as $days => $flag) {
+        $rows = DB::table('waste_authorizations as a')->join('waste_types as t', 't.id', '=', 'a.waste_type_id')
+            ->where('a.is_active', true)->whereNull("a.{$flag}")->whereDate('a.valid_until', '>=', $today)->whereDate('a.valid_until', '<=', $today->copy()->addDays($days))
+            // Nothing to say when a later authorisation for the same waste already takes over.
+            ->whereNotExists(fn ($query) => $query->from('waste_authorizations as newer')->whereColumn('newer.company_id', 'a.company_id')
+                ->whereColumn('newer.waste_type_id', 'a.waste_type_id')->where('newer.is_active', true)->whereColumn('newer.valid_until', '>', 'a.valid_until'))
+            ->get(['a.id', 'a.company_id', 'a.reference', 'a.valid_until', 't.name']);
+        foreach ($rows as $row) {
+            $until = Carbon::parse($row->valid_until);
+            $notify->toCompanyPermission((int) $row->company_id, 'pickups.request', 'authorization.expiring_soon', [
+                'reference' => $row->reference, 'waste_type' => $row->name, 'date' => $until->format('d/m/Y'), 'days' => max(0, (int) $today->diffInDays($until, false)),
+            ], '/compliance/authorizations');
+            // Flag set per row, after its notification: a crash in the middle never loses an alert.
+            DB::table('waste_authorizations')->where('id', $row->id)->update([$flag => now()]);
+            $sent++;
+        }
+    }
+    $this->info("Authorisations: {$sent} alert(s).");
+})->purpose('Alert 30 and 7 days before a waste authorisation ends, unless a later one already takes over');
+
+Schedule::command('authorizations:alert')->dailyAt('06:10')->withoutOverlapping()->onOneServer();
 
 Artisan::command('subscriptions:run', function (ManageSubscription $subscriptions) {
     $this->info('Subscriptions: '.json_encode($subscriptions->runDaily()));

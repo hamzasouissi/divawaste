@@ -36,6 +36,7 @@ class StoreWasteTypeRequest extends FormRequest
             // Code must belong to the company country's nomenclature (TN, MA, EU_LOW).
             'regulatory_code' => ['nullable', 'string', Rule::exists('regulatory_waste_codes', 'code')->where('code_system', $codeSystem)->where('is_selectable', true)],
             'is_hazardous' => ['sometimes', 'boolean'],
+            'requires_authorization' => ['sometimes', 'boolean'],
             'unit' => ['nullable', 'string', Rule::exists('units', 'code')],
             'packaging_type' => ['nullable', 'string', $reference('packaging_types')],
             'color_family' => ['nullable', 'string', Colors::rule($companyId)],

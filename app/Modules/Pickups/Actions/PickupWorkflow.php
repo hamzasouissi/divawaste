@@ -4,6 +4,7 @@ namespace App\Modules\Pickups\Actions;
 
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Support\NumberSequence;
+use App\Modules\Documents\Support\AuthorizationQuota;
 use App\Modules\Identity\Models\User;
 use App\Modules\Pickups\Enums\PickupStatus;
 use App\Modules\Pickups\Models\Pickup;
@@ -25,7 +26,7 @@ final class PickupWorkflow
 {
     private const DEFAULT_VARIANCE_THRESHOLD = '5.00';
 
-    public function __construct(private readonly TenantContext $context, private readonly TransitionLot $lots) {}
+    public function __construct(private readonly TenantContext $context, private readonly TransitionLot $lots, private readonly AuthorizationQuota $authorizations) {}
 
     /**
      * The receiver and the transporter are each a company of the platform or a partner without an account.
@@ -68,6 +69,8 @@ final class PickupWorkflow
     {
         return $this->step($pickup, [PickupStatus::Draft], PickupStatus::Requested, function (Pickup $pickup) use ($actor) {
             $this->assertEligible($pickup);
+            // Waste that needs an authorisation is requested only if one covers it; the request holds its share.
+            $this->authorizations->reserve($pickup);
             foreach ($this->lines($pickup) as $line) {
                 $this->lots->handle(WasteLot::query()->findOrFail($line->waste_lot_id), LotStatus::AwaitingPickup, $actor);
             }
@@ -80,6 +83,8 @@ final class PickupWorkflow
         return $this->step($pickup, [PickupStatus::Requested], PickupStatus::Confirmed, function (Pickup $p) use ($confirmedDate, $actor) {
             $p->forceFill(['confirmed_date' => $confirmedDate, 'confirmed_at' => now(), 'confirmed_by_user_id' => $actor->id]);
             $this->assertEligible($p);
+            // The confirmed date may fall outside the period of the authorisation held at request time.
+            $this->authorizations->reserve($p);
         });
     }
 
@@ -315,6 +320,9 @@ final class PickupWorkflow
             throw new BusinessRuleViolation('TRANSPORTER_REQUIRED', "{$receiver->legal_name} does not transport waste: choose a transporter.");
         }
         foreach (array_filter([$receiver, $transporter]) as $partner) {
+            if ($partner->linked_company_id !== null) {
+                throw new BusinessRuleViolation('PARTNER_HAS_ACCOUNT', "{$partner->legal_name} now has an account on the platform: choose it among the providers of the platform.");
+            }
             $expired = $partner->accreditation_expires_on !== null && $partner->accreditation_expires_on->lt($date);
             $missing = $hazardous && ($partner->accreditation_reference === null || ! $partner->covers_hazardous);
             if (! $partner->is_active || $expired || $missing) {

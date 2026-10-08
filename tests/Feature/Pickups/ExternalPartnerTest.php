@@ -4,6 +4,7 @@ namespace Tests\Feature\Pickups;
 
 use App\Modules\Catalog\Models\WasteType;
 use App\Modules\Identity\Models\User;
+use App\Modules\Providers\Models\ProviderProfile;
 use App\Modules\Sites\Models\Site;
 use App\Modules\Sites\Models\Zone;
 use App\Modules\Tenancy\Models\Company;
@@ -161,6 +162,36 @@ class ExternalPartnerTest extends TestCase
             'provider_company_id' => $provider->id, 'status' => 'requested', 'requested_date' => now()->toDateString(), 'currency_code' => 'TND',
             'created_at' => now(), 'updated_at' => now()]);
         $this->client()->postJson('/api/v1/pickups/01HZZZZZZZZZZZZZZZZZZZZZZZ/confirm', ['confirmed_date' => now()->toDateString()])->assertForbidden();
+    }
+
+    public function test_a_partner_that_opens_an_account_is_tied_to_it(): void
+    {
+        $partner = $this->partner(['legal_name' => 'Recyclo SARL', 'roles' => ['recycler', 'transporter'], 'tax_id' => '1234 567a']);
+        $this->assertNull($partner['suggested_company']);
+        $lot = $this->lot('50', hazardous: false);
+        $draft = $this->client()->postJson('/api/v1/pickups', ['site' => $this->site->ulid, 'external_provider' => $partner['ulid'],
+            'requested_date' => now()->toDateString(), 'lots' => [$lot['ulid']]])->assertCreated()->json('data.ulid');
+
+        // The partner registers on the platform with the same tax ID and publishes its profile: it is suggested.
+        $provider = $this->makeCompany('provider');
+        $provider->forceFill(['tax_id' => '1234567A'])->save();
+        $unpublished = $this->makeCompany('provider');
+        $this->client()->postJson("/api/v1/external-partners/{$partner['ulid']}/link", ['provider' => $provider->ulid])->assertUnprocessable();
+        $this->tenant()->runAs($provider, fn () => ProviderProfile::query()->create(['is_recycler' => true, 'is_published' => true, 'published_at' => now()]));
+        $this->client()->getJson('/api/v1/external-partners')->assertOk()->assertJsonPath('data.0.suggested_company.ulid', $provider->ulid);
+        $this->client()->postJson("/api/v1/external-partners/{$partner['ulid']}/link", ['provider' => $unpublished->ulid])->assertUnprocessable();
+
+        // Tying them makes the provider a partner of the platform; the record without an account is no longer usable.
+        $this->client()->postJson("/api/v1/external-partners/{$partner['ulid']}/link", ['provider' => $provider->ulid])->assertOk()
+            ->assertJsonPath('data.linked_company.legal_name', $provider->legal_name)->assertJsonPath('data.suggested_company', null);
+        $this->assertSame('active', DB::table('provider_partnerships')->where('company_id', $this->company->id)->where('provider_company_id', $provider->id)->value('status'));
+        $this->client()->postJson("/api/v1/external-partners/{$partner['ulid']}/link", ['provider' => $provider->ulid])->assertConflict()->assertJsonPath('code', 'PARTNER_ALREADY_LINKED');
+        $this->client()->postJson('/api/v1/pickups', ['site' => $this->site->ulid, 'external_provider' => $partner['ulid'],
+            'requested_date' => now()->toDateString(), 'lots' => [$lot['ulid']]])->assertUnprocessable()->assertJsonStructure(['errors' => ['external_provider']]);
+        $this->client()->postJson("/api/v1/pickups/{$draft}/submit")->assertConflict()->assertJsonPath('code', 'PARTNER_HAS_ACCOUNT');
+
+        // History is untouched: the draft still names the partner as it was recorded.
+        $this->client()->getJson("/api/v1/pickups/{$draft}")->assertOk()->assertJsonPath('data.provider.legal_name', 'Recyclo SARL')->assertJsonPath('data.provider.external', true);
     }
 
     /**

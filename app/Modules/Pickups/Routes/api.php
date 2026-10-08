@@ -96,10 +96,10 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'site' => ['required', 'string', new TenantExists(Site::class)],
             // The receiver: a provider of the platform, or a partner without an account. Exactly one of the two.
             'provider' => ['required_without:external_provider', 'prohibits:external_provider', 'nullable', 'string', Rule::exists('companies', 'ulid')->where('company_type', 'provider')],
-            'external_provider' => ['nullable', 'string', new TenantExists(ExternalPartner::class, fn ($q) => $q->where('is_active', true))],
+            'external_provider' => ['nullable', 'string', new TenantExists(ExternalPartner::class, fn ($q) => $q->where('is_active', true)->whereNull('linked_company_id'))],
             // The transporter, when it is not the receiver itself.
             'transporter' => ['nullable', 'prohibits:external_transporter', 'string', Rule::exists('companies', 'ulid')->where('company_type', 'provider')],
-            'external_transporter' => ['nullable', 'string', new TenantExists(ExternalPartner::class, fn ($q) => $q->where('is_active', true))],
+            'external_transporter' => ['nullable', 'string', new TenantExists(ExternalPartner::class, fn ($q) => $q->where('is_active', true)->whereNull('linked_company_id'))],
             'requested_date' => ['required', 'date', 'after_or_equal:today'],
             'lots' => ['required', 'array', 'min:1', 'max:500'],
             'lots.*' => ['required', 'string', new TenantExists(WasteLot::class)],

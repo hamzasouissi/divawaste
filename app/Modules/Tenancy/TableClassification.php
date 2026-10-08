@@ -21,6 +21,7 @@ final class TableClassification
         'provider_profiles', 'provider_accepted_wastes', 'provider_accreditations', 'provider_partnerships',
         // Owned by the industrial: partners that have no account on the platform.
         'external_partners',
+        'waste_authorizations', 'waste_authorization_limits',
         // Party-shared: owner company_id + provider/transporter columns.
         'pickups', 'pickup_lots',
         'documents',

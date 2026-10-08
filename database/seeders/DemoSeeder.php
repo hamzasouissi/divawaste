@@ -11,6 +11,7 @@ use App\Modules\Catalog\Actions\CreateWasteType;
 use App\Modules\Catalog\DTOs\CreateWasteTypeData;
 use App\Modules\Common\Support\FileStorage;
 use App\Modules\Documents\Actions\ManifestWorkflow;
+use App\Modules\Documents\Models\WasteAuthorization;
 use App\Modules\Identity\Models\Role;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Models\UserRoleAssignment;
@@ -251,6 +252,14 @@ class DemoSeeder extends Seeder
                     composition: $code === 'CHUTES' ? [['material' => 'CO', 'pct' => '65.00'], ['material' => 'PES', 'pct' => '35.00']] : null), $amira);
             }
             ProviderPartnership::query()->create(['provider_company_id' => $provider->id, 'status' => 'active', 'started_at' => now()->subMonths(4), 'created_by_user_id' => $amira->id]);
+            // Garment rejects come from fabric imported under a customs regime: they only leave under an authorisation.
+            $types['REBUTS']->forceFill(['requires_authorization' => true])->save();
+            $authorization = WasteAuthorization::query()->create(['waste_type_id' => $types['REBUTS']->id, 'reference' => 'DOUANE-2026-0187',
+                'issued_on' => now()->subMonths(4)->toDateString(), 'valid_from' => now()->subMonths(4)->toDateString(), 'valid_until' => now()->addDays(24)->toDateString(),
+                'max_kg' => 1500, 'alert_pct' => 80, 'notes' => 'Déclaration de sortie des rebuts — régime de perfectionnement actif.', 'created_by_user_id' => $amira->id]);
+            DB::table('waste_authorization_limits')->insert(['company_id' => $authorization->company_id, 'waste_authorization_id' => $authorization->id,
+                'packaging_type_id' => DB::table('packaging_types')->where('code', 'bale')->value('id'), 'max_count' => 60, 'created_at' => now(), 'updated_at' => now()]);
+
             // Two partners without an account: the company records the stages of their pickups and they sign on paper.
             ExternalPartner::query()->create(['legal_name' => 'Transports Ben Salah', 'tax_id' => '1187452K', 'address_line1' => 'Route de Tunis km 4', 'postal_code' => '8000',
                 'city' => 'Nabeul', 'phone' => '+216 72 000 111', 'contact_name' => 'Ali Ben Salah', 'is_transporter' => true, 'created_by_user_id' => $amira->id]);

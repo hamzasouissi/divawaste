@@ -20,7 +20,7 @@ class WasteType extends Model
     use HasPublicUlid;
     use SoftDeletes;
 
-    protected $attributes = ['is_hazardous' => false, 'is_active' => true];
+    protected $attributes = ['is_hazardous' => false, 'requires_authorization' => false, 'is_active' => true];
 
     protected $fillable = [
         'ulid', 'waste_catalog_item_id', 'code', 'name', 'description', 'waste_family_id', 'regulatory_waste_code_id',
@@ -33,6 +33,7 @@ class WasteType extends Model
     {
         return [
             'is_hazardous' => 'boolean',
+            'requires_authorization' => 'boolean',
             'is_active' => 'boolean',
             'default_grammage_gsm' => 'decimal:2',
             'default_composition' => 'array',

@@ -210,6 +210,11 @@ covers hazardous waste. Such a partner is visible to your company only; the plat
 authorisation. For its pickups you record the stages yourself and it signs the tracking slip by hand. A partner
 you stop using is switched off ("Utilisé" unticked), never deleted.
 
+When such a partner later opens an account on the platform and publishes its profile with the **same tax ID**, its
+line says so and offers **Associer à ce compte**. The provider then becomes one of your platform partners: the next
+pickups are sent to it through the platform and it signs itself. Pickups already recorded do not change, and the
+record without an account can no longer be chosen.
+
 **Prestataires de la plateforme**: directory of approved providers: activities, description, area, channels,
 contact, accreditations with their validity. Filters: search, channel, "Mes partenaires uniquement", "Agréés déchets dangereux".
 **Ajouter à mes partenaires** makes a provider selectable in your pickup requests. A provider whose accreditation
@@ -397,6 +402,30 @@ with who signed and when, status. **Signer** asks for your password (this is the
 
 ![Sign with password](screenshots/compliance/03-manifest-sign.png)
 ![Signed](screenshots/compliance/04-manifest-signed.png)
+
+### Autorisations — `/compliance/authorizations`
+
+*View: waste_types.view. Change: waste_types.manage.*
+
+![Authorisations](screenshots/compliance/05-authorizations.png)
+
+Some waste only leaves the site under an authorisation (a declaration signed by customs). Tick **"Ce déchet ne sort
+du site que sous autorisation"** on the waste types concerned (Types de déchets), then record each authorisation
+here with **Nouvelle autorisation**: waste type, reference, period, and the **allowed quantity written as the
+document states it** — a maximum weight, a maximum number of lots, and/or a number of lots per packaging
+("60 balles"). Mixed packagings add up as for a storage zone, and when several limits are given the most used one
+counts. The signed document can be attached.
+
+Each line shows how much is used and what is left. Usage is counted from the pickups: a pickup holds its share
+as soon as it is **requested**, and gives it back if it is cancelled or refused.
+
+A pickup containing such waste is **refused** when no authorisation covers it on the pickup date, or when the one
+that does has not enough room left — the request form says so before sending, and shows what the pickup will leave
+("utilisée à 20 % après cet enlèvement"). Record a new authorisation to continue. You are told when one reaches its
+alert level (80 % by default) and 30 and 7 days before it ends.
+
+Once pickups draw on an authorisation, its waste type, period and quantities are frozen; the reference, the notes,
+the alert level and its withdrawal ("En vigueur" unticked) can still change. Nothing is deleted.
 
 ### Déclarations annuelles — `/compliance/declarations`
 

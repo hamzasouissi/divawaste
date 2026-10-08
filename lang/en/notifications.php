@@ -26,6 +26,10 @@ return [
         'expired' => ['title' => 'Accreditation expired — :provider', 'body' => 'Accreditation :reference of :provider expired on :date. This provider can no longer be selected until it is renewed.'],
         'reviewed' => ['title' => 'Accreditation :reference: :status', 'body' => 'Your accreditation :reference was reviewed by the platform. Decision: :status.'],
     ],
+    'authorization' => [
+        'usage_high' => ['title' => 'Authorisation :reference almost used up', 'body' => 'Authorisation :reference (:waste_type) is :pct % used. Plan a new one: without it, the next pickups will be blocked.'],
+        'expiring_soon' => ['title' => 'Authorisation :reference ends on :date', 'body' => 'Authorisation :reference (:waste_type) ends on :date, in :days day(s). Without a new one, pickups of this waste will be blocked.'],
+    ],
     'document' => [
         'signature_requested' => ['title' => 'Tracking slip :number to sign', 'body' => 'Tracking slip :number is waiting for your signature.'],
         'signed_copy_requested' => ['title' => 'Tracking slip :number: signed copy to attach', 'body' => 'Every party has signed tracking slip :number. Attach the scan of the copy signed by hand to close it.'],
