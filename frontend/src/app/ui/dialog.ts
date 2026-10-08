@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, Directive, Injectable, Type, inject
 import { TranslocoDirective } from '@jsverse/transloco';
 import { ButtonDirective } from 'primeng/button';
 import { DialogService, DynamicDialogConfig, DynamicDialogRef } from 'primeng/dynamicdialog';
-import { Observable, take } from 'rxjs';
+import { Observable, of, take } from 'rxjs';
 
 import { IconComponent } from './icon';
 
@@ -36,9 +36,10 @@ export class Dialogs {
       resizable: false,
       focusOnShow: true,
       styleClass: 'dw-dialog',
-    }) as DynamicDialogRef;
+    }) as DynamicDialogRef | null;
 
-    return { afterClosed: () => ref.onClose.pipe(take(1)) as Observable<R | undefined> };
+    // PrimeNG opens a given dialog once: a second request while it is open (a double click) gives no reference.
+    return { afterClosed: () => (ref ? ref.onClose.pipe(take(1)) : of(undefined)) as Observable<R | undefined> };
   }
 }
 

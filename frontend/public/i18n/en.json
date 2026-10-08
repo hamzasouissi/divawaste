@@ -320,7 +320,8 @@
       "pending_transporter_signature": "Awaiting transporter signature",
       "pending_receiver_signature": "Awaiting receiver signature",
       "completed": "Signed",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "pending_signed_copy": "Signed copy to attach"
     },
     "declaration": {
       "draft": "Draft",
@@ -819,20 +820,23 @@
     "create": {
       "title": "New pickup request",
       "site": "1. Site and lots to collect",
-      "provider": "2. Provider and date",
+      "provider": "2. Receiver, transporter and date",
       "selectLots": "Select the lots",
       "selected": "{{count}} lot(s) — {{kg}}",
       "noLots": "No lot available on this site.",
-      "hazardousWarning": "The selection contains hazardous waste: only a provider accredited for hazardous waste can be chosen.",
+      "hazardousWarning": "The selection contains hazardous waste: only a receiver authorised for hazardous waste can be chosen.",
       "notSelectable": {
         "no_valid_accreditation": "Accreditation expired or missing",
-        "not_a_partner": "Not a partner"
+        "not_a_partner": "Not a partner",
+        "not_a_receiver": "Transporter only"
       },
       "saveDraft": "Save the draft",
-      "send": "Send to the provider"
+      "send": "Send the request",
+      "noReceiver": "No receiver available. Add a partner in",
+      "transporterRequired": "This receiver does not transport: choose a transporter."
     },
     "actions": {
-      "submit": "Send to the provider",
+      "submit": "Send the request",
       "cancel": "Cancel the pickup",
       "collect": "Record the loading",
       "acknowledge": "Acknowledge the variance",
@@ -842,7 +846,7 @@
       "refuse": "Refuse",
       "receive": "Record the reception",
       "treat": "Declare the treatment",
-      "manifest": "Draw up the tracking slip",
+      "manifest": "Issue the tracking slips",
       "certificate": "Upload a certificate"
     },
     "cancelReason": "Reason for the cancellation",
@@ -880,7 +884,7 @@
     "varianceBanner": "Weight received {{received}} for {{departure}} at departure, a variance of {{pct}} %.",
     "varianceAck": "Variance acknowledged: {{comment}}",
     "done": {
-      "submitted": "Request sent to the provider.",
+      "submitted": "Request sent.",
       "cancelled": "Pickup cancelled.",
       "collected": "Loading recorded.",
       "acknowledged": "Variance acknowledged.",
@@ -890,7 +894,7 @@
       "refused": "Request refused.",
       "received": "Reception recorded.",
       "treated": "Treatment declared.",
-      "manifest": "Tracking slip drawn up.",
+      "manifest": "Slips issued.",
       "certificate": "Certificate uploaded."
     },
     "documents": "Documents",
@@ -901,11 +905,15 @@
     },
     "certificateFile": "File (PDF, JPEG or PNG, 20 MB maximum)",
     "completeConfirm": "Close the pickup?",
-    "completeHint": "The lots move to the status \"Closed\": weights, channels and prices can no longer be changed."
+    "completeHint": "The lots move to the status \"Closed\": weights, channels and prices can no longer be changed.",
+    "receiver": "Receiver",
+    "transporter": "Transporter",
+    "receiverTransports": "The receiver carries the waste",
+    "onBehalf": "{{name}} has no account: record its answer, the reception and the treatment of the lots yourself."
   },
   "providers": {
     "title": "Providers",
-    "subtitle": "Directory of accredited collectors, transporters and recyclers.",
+    "subtitle": "Your partners without an account and the directory of approved collectors, transporters and recyclers.",
     "roles": "Activities",
     "role": {
       "collector": "Collector",
@@ -937,7 +945,8 @@
     "partnered": "Provider added to your partners.",
     "unpartnered": "Partnership ended.",
     "minQuantity": "Minimum quantity (kg)",
-    "family": "Waste family"
+    "family": "Waste family",
+    "directory": "Providers on the platform"
   },
   "compliance": {
     "register": {
@@ -950,8 +959,8 @@
       "emptyTitle": "No lot over the period"
     },
     "manifests": {
-      "title": "Hazardous waste tracking slips",
-      "subtitle": "Pre-filled from the pickup and signed electronically by each party.",
+      "title": "Waste tracking slips",
+      "subtitle": "One slip per waste collected, hazardous or not. Pre-filled from the pickup and signed by each party: electronically, or by hand on the printed slip.",
       "number": "Slip no.",
       "waste": "Waste",
       "packages": "Packages",
@@ -967,7 +976,29 @@
       "signedBy": "Signed by {{name}} on {{date}}",
       "pdf": "Open the PDF",
       "emptyTitle": "No tracking slip",
-      "emptyHint": "A tracking slip is drawn up from a pickup containing hazardous waste."
+      "emptyHint": "Slips are issued when a pickup is loaded.",
+      "method": "Signature method",
+      "methods": {
+        "electronic": "Electronic",
+        "paper": "By hand"
+      },
+      "methodHints": {
+        "electronic": "I sign now with my password.",
+        "paper": "The printed slip was signed by hand."
+      },
+      "externalHint": "This party has no account. Print the slip, have it signed by hand, then type here who signed and when.",
+      "signerName": "Name of the signatory",
+      "signedOn": "Date of signature",
+      "record": "Record the signature",
+      "recordMessage": "You certify that the slip was signed by hand by this person. Confirm with your password.",
+      "recorded": "Signature recorded.",
+      "signedOnPaper": "Signed by hand by {{name}} on {{date}}",
+      "waitingPaper": "Handwritten signature expected",
+      "attachCopy": "Attach the signed copy",
+      "copyTitle": "Signed copy of slip {{number}}",
+      "copyHint": "Every party has signed, at least one by hand. Attach the scan of the slip carrying the signatures: it closes the slip and becomes the archived document.",
+      "copyFile": "Choose the file (PDF, JPG or PNG)",
+      "copyAttached": "Signed copy attached. Slip closed."
     },
     "declarations": {
       "title": "Annual declarations",
@@ -1807,5 +1838,22 @@
     "Types de déchets": "Waste types",
     "Utilisateurs": "Users",
     "Virements": "Transfers"
+  },
+  "partners": {
+    "title": "Partners without an account",
+    "subtitle": "Transporters and receivers that do not use the platform. You record the stages of their pickups yourself, and they sign the slip by hand.",
+    "new": "Add a partner",
+    "edit": "Edit the partner",
+    "intro": "This partner is visible to your company only. The platform does not check its authorisation: you remain responsible for it.",
+    "legalName": "Legal name",
+    "roles": "Activities",
+    "accreditation": "Authorisation no.",
+    "accreditationHint": "Required to hand over hazardous waste.",
+    "noAccreditation": "Not given",
+    "coversHazardous": "Authorised for hazardous waste",
+    "inUse": "In use",
+    "noAccount": "No account",
+    "empty": "No partner without an account. Add a transporter or a receiver that does not use the platform.",
+    "saved": "Partner saved."
   }
 }

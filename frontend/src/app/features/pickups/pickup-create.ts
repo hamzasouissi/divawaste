@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 
 import { Api } from '../../core/api/api';
-import { DirectoryProvider, Lot, Pickup } from '../../core/api/models';
+import { DirectoryProvider, ExternalPartner, Lot, Pickup } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
 import { DatePipe, KgPipe } from '../../core/format/pipes';
@@ -25,7 +25,9 @@ function today(): string {
 }
 
 /**
- * M4-03: a pickup request in one screen — the lots on the left, the provider and the date on the right.
+ * M4-03: a pickup request in one screen — the lots on the left, the receiver, the transporter and the date on the
+ * right. The receiver is a provider of the platform or a partner without an account; the transporter is the receiver
+ * itself unless another one is chosen.
  * A provider that cannot be chosen (no valid accreditation, not a partner, or not approved for hazardous waste
  * when the selection needs it) is shown with the reason instead of being hidden (M4-02).
  */
@@ -75,7 +77,7 @@ function today(): string {
 
             <div class="providers" role="radiogroup" [attr.aria-label]="t('pickups.provider')">
               @for (item of providers(); track item.ulid) {
-                <button type="button" role="radio" class="provider" [attr.aria-checked]="provider() === item.ulid" [class.on]="provider() === item.ulid" [disabled]="!choosable(item)" (click)="provider.set(item.ulid)">
+                <button type="button" role="radio" class="provider" [attr.aria-checked]="provider() === 'c:' + item.ulid" [class.on]="provider() === 'c:' + item.ulid" [disabled]="!choosable(item)" (click)="choose('c:' + item.ulid)">
                   <span class="name">{{ item.legal_name }}</span>
                   <span class="dw-faint">{{ item.city }} · {{ item.channels.length > 0 ? channelNames(item, t) : '—' }}</span>
                   @if (!choosable(item)) {
@@ -84,10 +86,26 @@ function today(): string {
                     <dw-status kind="accreditation" value="expiring" [label]="t('providers.daysLeft', { days: item.accreditations[0].days_left })" />
                   }
                 </button>
-              } @empty {
-                <p class="dw-muted">{{ t('providers.emptyHint') }} <a routerLink="/providers">{{ t('nav.providers') }}</a></p>
+              }
+              @for (item of receivers(); track item.ulid) {
+                <button type="button" role="radio" class="provider" [attr.aria-checked]="provider() === 'x:' + item.ulid" [class.on]="provider() === 'x:' + item.ulid" [disabled]="blocked(item) !== null" (click)="choose('x:' + item.ulid)">
+                  <span class="name">{{ item.legal_name }} <dw-status kind="member" value="suspended" tone="neutral" [label]="t('partners.noAccount')" /></span>
+                  <span class="dw-faint">{{ item.city }} · @for (role of item.roles; track role; let last = $last) { {{ t('providers.role.' + role) }}@if (!last) { , } }</span>
+                  @if (blocked(item); as reason) { <dw-status kind="accreditation" value="expired" [label]="t('pickups.create.notSelectable.' + reason)" /> }
+                </button>
+              }
+              @if (providers().length === 0 && receivers().length === 0) {
+                <p class="dw-muted">{{ t('pickups.create.noReceiver') }} <a routerLink="/providers">{{ t('nav.providers') }}</a></p>
               }
             </div>
+
+            <dw-field [label]="t('pickups.transporter')">
+              <dw-select [ngModel]="transporter()" (ngModelChange)="transporter.set($event)">
+                <dw-option value="" [label]="t('pickups.receiverTransports')" />
+                @for (item of transporters(); track item.key) { <dw-option [value]="item.key" [label]="item.label" /> }
+              </dw-select>
+              @if (transporterRequired()) { <small dwError>{{ t('pickups.create.transporterRequired') }}</small> }
+            </dw-field>
 
             <dw-field [label]="t('pickups.requestedDate')">
               <dw-date [ngModel]="date()" (ngModelChange)="date.set($event)" [min]="minDate" required />
@@ -131,7 +149,13 @@ export class PickupCreatePage {
   protected readonly lotsError = signal<unknown>(null);
   protected readonly selected = signal<string[]>([]);
   protected readonly providers = signal<DirectoryProvider[]>([]);
+  private readonly externals = signal<ExternalPartner[]>([]);
+  /** Partners without an account that may receive waste. */
+  protected readonly receivers = computed(() => this.externals().filter((partner) => partner.roles.some((role) => role !== 'transporter')));
+  /** The chosen receiver: `c:` + a provider of the platform, or `x:` + a partner without an account. */
   protected readonly provider = signal('');
+  /** The chosen transporter, written the same way; empty = the receiver transports. */
+  protected readonly transporter = signal('');
   protected readonly date = signal(today());
   protected readonly busy = signal(false);
 
@@ -139,15 +163,50 @@ export class PickupCreatePage {
   protected readonly selectedKg = computed(() => this.chosen().reduce((sum, lot) => sum + Number(lot.net_weight_kg), 0));
   protected readonly hazardous = computed(() => this.chosen().some((lot) => lot.is_hazardous));
   protected readonly allSelected = computed(() => this.lots().length > 0 && this.selected().length === this.lots().length);
-  protected readonly ready = computed(() => {
-    const provider = this.providers().find((item) => item.ulid === this.provider());
+  /** Whoever may carry the waste, other than the receiver already chosen. */
+  protected readonly transporters = computed(() => [
+    ...this.providers().filter((item) => item.roles.includes('transporter') && this.choosable(item)).map((item) => ({ key: `c:${item.ulid}`, label: item.legal_name })),
+    ...this.externals().filter((item) => item.roles.includes('transporter') && this.blocked(item, false) === null)
+      .map((item) => ({ key: `x:${item.ulid}`, label: `${item.legal_name} — ${this.toast.text('partners.noAccount')}` })),
+  ].filter((item) => item.key !== this.provider()));
+  /** A partner that only recycles or eliminates cannot come and fetch the waste. */
+  protected readonly transporterRequired = computed(() => {
+    const receiver = this.externals().find((item) => `x:${item.ulid}` === this.provider());
 
-    return this.selected().length > 0 && provider !== undefined && this.choosable(provider) && this.date() >= this.minDate;
+    return receiver !== undefined && !receiver.roles.includes('transporter') && this.transporter() === '';
+  });
+  protected readonly ready = computed(() => {
+    const provider = this.providers().find((item) => `c:${item.ulid}` === this.provider());
+    const partner = this.receivers().find((item) => `x:${item.ulid}` === this.provider());
+    const receiver = provider !== undefined ? this.choosable(provider) : partner !== undefined && this.blocked(partner) === null;
+
+    return this.selected().length > 0 && receiver && !this.transporterRequired() && this.date() >= this.minDate;
   });
 
   constructor() {
     this.loadLots();
     this.api.get<DirectoryProvider[]>('providers/directory', { filter: { partners_only: true } }).subscribe({ next: (providers) => this.providers.set(providers), error: (error: unknown) => this.toast.error(error) });
+    this.api.get<ExternalPartner[]>('external-partners').subscribe({ next: (partners) => this.externals.set(partners), error: (error: unknown) => this.toast.error(error) });
+  }
+
+  protected choose(key: string): void {
+    this.provider.set(key);
+    if (this.transporter() === key) {
+      this.transporter.set('');
+    }
+  }
+
+  /**
+   * Why a partner without an account cannot be chosen, or null. Nobody reviews its authorisation on the platform:
+   * for hazardous waste the company must at least have recorded one, valid today.
+   */
+  protected blocked(partner: ExternalPartner, asReceiver = true): 'no_valid_accreditation' | 'not_a_receiver' | null {
+    if (asReceiver && !partner.roles.some((role) => role !== 'transporter')) {
+      return 'not_a_receiver';
+    }
+    const expired = partner.accreditation_expires_on !== null && partner.accreditation_expires_on < this.minDate;
+
+    return expired || (this.hazardous() && !(partner.accreditation_reference && partner.covers_hazardous)) ? 'no_valid_accreditation' : null;
   }
 
   protected selectSite(site: string): void {
@@ -194,7 +253,12 @@ export class PickupCreatePage {
   protected async save(send: boolean): Promise<void> {
     this.busy.set(true);
     try {
-      const pickup = await firstValueFrom(this.api.post<Pickup>('pickups', { site: this.site(), provider: this.provider(), requested_date: this.date(), lots: this.selected() }));
+      const party = (key: string, kind: 'c' | 'x'): string | null => (key.startsWith(`${kind}:`) ? key.slice(2) : null);
+      const pickup = await firstValueFrom(this.api.post<Pickup>('pickups', {
+        site: this.site(), requested_date: this.date(), lots: this.selected(),
+        provider: party(this.provider(), 'c'), external_provider: party(this.provider(), 'x'),
+        transporter: party(this.transporter(), 'c'), external_transporter: party(this.transporter(), 'x'),
+      }));
       if (send) {
         // If sending fails (provider no longer eligible…), the draft exists: the user lands on it with the reason.
         await firstValueFrom(this.api.post(`pickups/${pickup.ulid}/submit`)).then(() => this.toast.success('pickups.done.submitted'), (error: unknown) => this.toast.error(error));

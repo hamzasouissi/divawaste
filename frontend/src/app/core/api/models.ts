@@ -266,8 +266,10 @@ export interface Pickup {
   pickup_number: string;
   status: PickupStatus;
   company: { ulid: string; legal_name: string } | null;
-  provider: { ulid: string; legal_name: string } | null;
-  transporter: { ulid: string; legal_name: string } | null;
+  /** The receiver. `external`: a partner without an account — the industrial records each stage itself. */
+  provider: { ulid: string; legal_name: string; external?: boolean } | null;
+  /** The transporter when it is not the receiver. */
+  transporter: { ulid: string; legal_name: string; external?: boolean } | null;
   site: { ulid: string; code: string; name: string; address_line1: string | null; city: string | null } | null;
   requested_date: string;
   confirmed_date: string | null;
@@ -320,6 +322,25 @@ export interface DirectoryProvider {
   partnership: { ulid: string; status: string } | null;
   selectable: boolean;
   blocked_reason: 'no_valid_accreditation' | 'not_a_partner' | null;
+}
+
+/** A transporter or a receiver without an account on the platform, recorded by the company for its own use. */
+export interface ExternalPartner {
+  ulid: string;
+  legal_name: string;
+  tax_id: string | null;
+  address_line1: string | null;
+  postal_code: string | null;
+  city: string | null;
+  phone: string | null;
+  email: string | null;
+  contact_name: string | null;
+  roles: ('transporter' | 'recycler' | 'eliminator')[];
+  accreditation_reference: string | null;
+  accreditation_expires_on: string | null;
+  covers_hazardous: boolean;
+  notes: string | null;
+  is_active: boolean;
 }
 
 export interface Dashboard {
@@ -383,9 +404,11 @@ export interface DocumentRecord {
 export interface Manifest {
   ulid: string;
   manifest_number: string;
-  status: 'draft' | 'pending_producer_signature' | 'pending_transporter_signature' | 'pending_receiver_signature' | 'completed' | 'cancelled';
+  /** `pending_signed_copy`: everyone has signed, at least one by hand; the scan of the signed slip is still to attach. */
+  status: 'draft' | 'pending_producer_signature' | 'pending_transporter_signature' | 'pending_receiver_signature' | 'pending_signed_copy' | 'completed' | 'cancelled';
   pickup: { ulid: string; pickup_number: string } | null;
   regulatory_code: string | null;
+  is_hazardous: boolean;
   waste_type: string | null;
   package_count: number | null;
   declared_weight_kg: string | null;
@@ -393,8 +416,23 @@ export interface Manifest {
   producer: Record<string, string | null>;
   transporter: Record<string, string | null>;
   receiver: Record<string, string | null>;
-  signatures: { party: 'producer' | 'transporter' | 'receiver'; sequence: number; status: string; company: { ulid: string; legal_name: string }; signed_by: string | null; signed_at: string | null }[];
+  signatures: {
+    party: 'producer' | 'transporter' | 'receiver';
+    sequence: number;
+    status: string;
+    company: { ulid: string | null; legal_name: string | null };
+    /** A partner without an account: it can only sign by hand. */
+    external: boolean;
+    method: 'electronic' | 'paper' | null;
+    signed_by: string | null;
+    /** For a handwritten signature: the user who typed it in. */
+    recorded_by: string | null;
+    signed_at: string | null;
+  }[];
+  /** The company expected to act next: the signer, or the owner of the slip for a partner without an account. */
   awaiting_company: string | null;
+  awaiting_party: 'producer' | 'transporter' | 'receiver' | null;
+  awaiting_external: boolean;
   created_at: string;
 }
 
