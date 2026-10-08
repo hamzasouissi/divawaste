@@ -4,6 +4,7 @@ namespace App\Modules\Waste\Requests;
 
 use App\Modules\Catalog\Models\WasteType;
 use App\Modules\Catalog\Support\Colors;
+use App\Modules\Production\Support\LotOrigin;
 use App\Modules\Sites\Models\Site;
 use App\Modules\Sites\Models\Zone;
 use App\Modules\Tenancy\Rules\TenantExists;
@@ -62,7 +63,7 @@ class StoreWasteLotRequest extends FormRequest
             'extra_attributes' => ['nullable', 'array'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'generated_at' => ['nullable', 'date', 'before_or_equal:now'],
-        ];
+        ] + LotOrigin::rules();
     }
 
     public function toData(): CreateWasteLotData
@@ -102,6 +103,10 @@ class StoreWasteLotRequest extends FormRequest
             generatedAt: $v('generated_at'),
             deviceId: $deviceId,
             source: $source,
+            productionOrder: $v('production_order'),
+            productionStep: $v('production_step'),
+            rawMaterial: $v('raw_material'),
+            rawMaterialBatch: $v('raw_material_batch'),
         );
     }
 }

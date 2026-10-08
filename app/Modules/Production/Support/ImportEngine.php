@@ -39,7 +39,7 @@ final class ImportEngine
         'clients' => ['code' => ['text', false], 'name' => ['text', true], 'country_code' => ['text', false], 'contact_name' => ['text', false], 'email' => ['text', false], 'phone' => ['text', false]],
         'suppliers' => ['code' => ['text', false], 'name' => ['text', true], 'country_code' => ['text', false], 'contact_name' => ['text', false], 'email' => ['text', false], 'phone' => ['text', false]],
         'materials' => ['reference' => ['text', true], 'name' => ['text', false], 'supplier' => ['text', false], 'unit' => ['text', false], 'color_label' => ['text', false],
-            'grammage_gsm' => ['decimal', false], 'batch_number' => ['text', false], 'received_on' => ['date', false], 'batch_quantity' => ['decimal', false]],
+            'grammage_gsm' => ['decimal', false], 'width_cm' => ['decimal', false], 'batch_number' => ['text', false], 'received_on' => ['date', false], 'batch_quantity' => ['decimal', false]],
         'articles' => ['reference' => ['text', true], 'name' => ['text', false], 'family' => ['text', false], 'client' => ['text', false], 'material' => ['text', false], 'quantity_per_piece' => ['decimal', false]],
         'orders' => ['order_number' => ['text', true], 'client' => ['text', true], 'article' => ['text', true], 'quantity' => ['integer', true], 'ordered_on' => ['date', false], 'due_on' => ['date', false]],
         'manufacturing_orders' => ['order_number' => ['text', true], 'article' => ['text', true], 'quantity_planned' => ['integer', true], 'quantity_produced' => ['integer', false],
@@ -76,6 +76,7 @@ final class ImportEngine
         'unit' => ['unite', 'unit', 'um'],
         'color_label' => ['couleur', 'coloris', 'color', 'colour', 'pantone'],
         'grammage_gsm' => ['grammage', 'gsm', 'g m2', 'poids'],
+        'width_cm' => ['laize', 'largeur', 'width', 'laize cm', 'largeur cm'],
         'family' => ['famille', 'family', 'categorie', 'category', 'type'],
         'country_code' => ['pays', 'country', 'code pays'],
         'contact_name' => ['contact', 'interlocuteur', 'contact name'],
@@ -225,7 +226,7 @@ final class ImportEngine
             'name' => $v['name'] ?? ($existing === null ? $v['reference'] : null),
             'production_supplier_id' => $v['supplier'] === null ? null : $this->party(ProductionSupplier::class, $v['supplier'], 'suppliers', $also),
             'unit_id' => $unit === null && $existing !== null ? null : DB::table('units')->where('code', $unit ?? 'm')->value('id'),
-            'color_label' => $v['color_label'], 'grammage_gsm' => $v['grammage_gsm'],
+            'color_label' => $v['color_label'], 'grammage_gsm' => $v['grammage_gsm'], 'width_cm' => $v['width_cm'],
         ], fn ($value) => $value !== null));
 
         if ($v['batch_number'] !== null) {

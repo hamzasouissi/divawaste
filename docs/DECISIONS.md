@@ -59,12 +59,18 @@ Seeded by `ProvisionalReferenceSeeder`, clearly separated from the stable refere
 | F26 | Production is a reference to attribute waste (clients, suppliers, materials and received batches, articles with consumption per piece, orders, OFs with stages per site and real consumption), not an ERP: no planning, purchasing, stock or prices | The factories already run an ERP for those; duplicating it would be large and always behind. The import feeds this reference from it |
 | F27 | The import maps the columns of any file to the information needed, checks every line before writing, skips lines in error, creates on the way what a line points to, and is idempotent | No fixed template to conform to: each ERP exports differently. Re-importing a corrected file must be safe |
 | F28 | New permissions `production.view`, `production.manage`, `production.stats.view`. An existing role receives a permission that is new in a version only if its default matrix includes it; roles edited by hand keep their edits | Clients and volumes are commercially sensitive. `php artisan db:seed --class=AuthorizationSeeder --force` must be run on upgrade |
+| F29 | A lot's stage is deduced from the type of its zone, its material from the OF when the OF has a single one; the operator only chooses the OF | One tap on the floor. A lot created without an OF still knows its stage, which is what makes the estimate possible |
+| F30 | Statistics keep measured (lot names its OF) and estimated (lot only says its stage; shared between the OFs at that stage, site and day, by pieces done) apart; what cannot be attributed is reported, not guessed | Sewing-line waste often cannot be tied to one OF. An estimate shown as a measurement would be a false precision |
+| F31 | The waste rate is waste ÷ consumed material in kg; metres are converted with the fabric's width and weight, otherwise no rate is shown | Waste is weighed, fabric is measured in metres: without width and weight the two cannot be compared |
+| F32 | Pieces produced per site and month follow the finished OFs (month of the end, site of the last stage); a manual entry always wins | The dashboard's kg per piece stays right without retyping; the person who typed a figure knows better than a rule |
 | F15 | Only French ships; the language switch, English and Arabic files and right-to-left were prepared, not delivered | Cahier §1: other languages are V2. All texts are already in translation files |
 
 ## Not done
 
 - **Personal data export and erasure** (non-functional requirement). No endpoint. Open.
 - Performance and volume measurements at the cahier's targets.
+- Production statistics as scheduled PDF reports (they exist on screen and as an Excel export), and a production tab on the dashboard.
+- Correcting the origin of a lot from the lot page (the API exists: `PUT lots/{lot}/origin`; no button yet).
 - Tests on real devices: thermal printer for the label, phones for the camera scan, use with gloves.
 - English and Arabic translations.
 - `notification_logs` and `waste_daily_stats` tables exist in the schema and are not used.

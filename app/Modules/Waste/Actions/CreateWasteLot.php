@@ -5,6 +5,7 @@ namespace App\Modules\Waste\Actions;
 use App\Modules\Catalog\Models\WasteType;
 use App\Modules\Common\Support\NumberSequence;
 use App\Modules\Identity\Models\User;
+use App\Modules\Production\Support\LotOrigin;
 use App\Modules\Sites\Models\Site;
 use App\Modules\Sites\Models\Zone;
 use App\Modules\Tenancy\TenantContext;
@@ -20,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class CreateWasteLot
 {
-    public function __construct(private readonly TenantContext $context) {}
+    public function __construct(private readonly TenantContext $context, private readonly LotOrigin $origin) {}
 
     public function handle(CreateWasteLotData $data, User $actor): WasteLot
     {
@@ -30,8 +31,12 @@ final class CreateWasteLot
             $type = WasteType::query()->where('ulid', $data->wasteTypeUlid)
                 ->firstOrFail(['id', 'is_hazardous', 'regulatory_waste_code_id', 'default_packaging_type_id', 'default_color_family_id', 'default_grammage_gsm', 'default_composition']);
             $year = now()->format('Y');
+            $origin = $this->origin->resolve(['production_order' => $data->productionOrder, 'production_step' => $data->productionStep,
+                'raw_material' => $data->rawMaterial, 'raw_material_batch' => $data->rawMaterialBatch], (int) $site->id, (int) $zoneId);
+            // What the lot is made of comes from its raw material when it has one, before the defaults of the waste type.
+            $material = $this->origin->fromMaterial($origin['raw_material_id']);
 
-            $lot = WasteLot::query()->create([
+            $lot = WasteLot::query()->create($origin + [
                 'ulid' => $data->ulid,
                 'lot_number' => NumberSequence::next($this->context->companyId(), 'lot', "L-{$year}-", $year),
                 'site_id' => $site->id,
@@ -45,9 +50,9 @@ final class CreateWasteLot
                 'net_weight_kg' => $data->netWeightKg,
                 'quantity' => $data->quantity,
                 'unit_id' => $this->ref('units', $data->unit),
-                'color_family_id' => $this->ref('color_families', $data->colorFamily) ?? $type->default_color_family_id,
-                'color_label' => $data->colorLabel,
-                'grammage_gsm' => $data->grammageGsm ?? $type->default_grammage_gsm,
+                'color_family_id' => $this->ref('color_families', $data->colorFamily) ?? $material['color_family_id'] ?? $type->default_color_family_id,
+                'color_label' => $data->colorLabel ?? $material['color_label'] ?? null,
+                'grammage_gsm' => $data->grammageGsm ?? $material['grammage_gsm'] ?? $type->default_grammage_gsm,
                 'extra_attributes' => $data->extraAttributes,
                 'notes' => $data->notes,
                 'generated_at' => $data->generatedAt ?? now(),
@@ -55,7 +60,7 @@ final class CreateWasteLot
                 'created_device_id' => $data->deviceId,
             ]);
 
-            LotComposition::apply($lot, $data->composition ?? $type->default_composition ?? []);
+            LotComposition::apply($lot, $data->composition ?? $material['composition'] ?? $type->default_composition ?? []);
             LotTag::query()->create(['waste_lot_id' => $lot->id, 'tag_type' => 'qr', 'tag_value' => $data->tagValue ?? $lot->ulid,
                 'assigned_at' => now(), 'assigned_by_user_id' => $actor->id]);
             WasteLotEvent::record($lot, 'created', [

@@ -16,4 +16,10 @@ return [
         'incineration' => 'Incineration', 'other_treatment' => 'Other treatment', 'landfill' => 'Landfill',
     ],
     'signer' => ['producer' => 'Producer', 'transporter' => 'Transporter', 'receiver' => 'Receiver'],
+    'production' => [
+        'sheet' => 'Production statistics', 'by_order' => 'By manufacturing order', 'by_client' => 'By client', 'by_article' => 'By article', 'by_step' => 'By stage',
+        'by_material' => 'By raw material', 'by_supplier' => 'By supplier', 'unattributed' => 'Not attributed',
+        'columns' => ['section' => 'Section', 'label' => 'Label', 'detail' => 'Detail', 'lots' => 'Lots', 'measured_kg' => 'Measured (kg)', 'estimated_kg' => 'Estimated (kg)',
+            'total_kg' => 'Total (kg)', 'pieces' => 'Pieces', 'g_per_piece' => 'g per piece', 'consumed_kg' => 'Material consumed (kg)', 'waste_rate_pct' => 'Waste rate (%)', 'net_amount' => 'Balance'],
+    ],
 ];

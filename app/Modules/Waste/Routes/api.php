@@ -3,6 +3,9 @@
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Support\DocumentLanguage;
 use App\Modules\Identity\Authorization\AccessResolver;
+use App\Modules\Production\Models\ProductionOrder;
+use App\Modules\Production\Models\RawMaterial;
+use App\Modules\Production\Support\LotOrigin;
 use App\Modules\Sites\Actions\EvaluateStockThresholds;
 use App\Modules\Sites\Models\Zone;
 use App\Modules\Tenancy\Rules\TenantExists;
@@ -40,6 +43,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'filter.from' => ['nullable', 'date'],
             'filter.to' => ['nullable', 'date', 'after_or_equal:filter.from'],
             'filter.search' => ['nullable', 'string', 'max:64'],
+            'filter.production_order' => ['nullable', 'string', 'ulid'],
+            'filter.raw_material' => ['nullable', 'string', 'ulid'],
             'sort' => ['nullable', Rule::in(['generated_at', '-generated_at', 'net_weight_kg', '-net_weight_kg', 'lot_number', '-lot_number'])],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
@@ -56,6 +61,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             ->when(isset($filter['hazardous']), fn ($query) => $query->where('is_hazardous', (bool) $filter['hazardous']))
             ->when($filter['from'] ?? null, fn ($query, $value) => $query->where('generated_at', '>=', $value))
             ->when($filter['to'] ?? null, fn ($query, $value) => $query->where('generated_at', '<', now()->parse($value)->addDay()->startOfDay()))
+            ->when($filter['production_order'] ?? null, fn ($query, $value) => $query->whereIn('production_order_id', ProductionOrder::query()->select('id')->where('ulid', strtoupper($value))))
+            ->when($filter['raw_material'] ?? null, fn ($query, $value) => $query->whereIn('raw_material_id', RawMaterial::query()->select('id')->where('ulid', strtoupper($value))))
             // Lot numbers are searched by prefix so the (company_id, lot_number) index is used.
             ->when($filter['search'] ?? null, fn ($query, $value) => $query->where('lot_number', 'like', addcslashes(strtoupper($value), '%_\\').'%'))
             ->orderBy(ltrim($sort, '-'), str_starts_with($sort, '-') ? 'desc' : 'asc')->orderByDesc('id')
@@ -105,6 +112,16 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     })->name('lots.show');
 
     // M2-05: every status change and movement, with the time and the person.
+    // Where the lot comes from in production can be given, or corrected, after it was created: the operator on the
+    // floor does not always know the OF. Its weight, type and trail do not change.
+    Route::put('lots/{lot}/origin', function (Request $request, WasteLot $lot, LotOrigin $origin) {
+        abort_unless($request->user()->can('lots.update', $lot->site_id), 403);
+        $input = $request->validate(LotOrigin::rules());
+        $lot->forceFill($origin->resolve($input, (int) $lot->site_id, (int) $lot->zone_id) + ['updated_by_user_id' => $request->user()->id])->save();
+
+        return new WasteLotResource($lot);
+    })->name('lots.origin');
+
     Route::get('lots/{lot}/events', function (Request $request, WasteLot $lot) {
         abort_unless($request->user()->can('lots.view', $lot->site_id), 403);
 

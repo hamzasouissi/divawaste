@@ -18,10 +18,10 @@ class RawMaterial extends Model
     use BelongsToCompany;
     use HasPublicUlid;
 
-    protected $fillable = ['ulid', 'reference', 'name', 'production_supplier_id', 'unit_id', 'color_family_id', 'color_label', 'grammage_gsm', 'composition', 'notes', 'is_active'];
+    protected $fillable = ['ulid', 'reference', 'name', 'production_supplier_id', 'unit_id', 'color_family_id', 'color_label', 'grammage_gsm', 'width_cm', 'composition', 'notes', 'is_active'];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean', 'composition' => 'array', 'grammage_gsm' => 'decimal:2'];
+        return ['is_active' => 'boolean', 'composition' => 'array', 'grammage_gsm' => 'decimal:2', 'width_cm' => 'decimal:2'];
     }
 }

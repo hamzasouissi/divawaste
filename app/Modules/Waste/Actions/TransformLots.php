@@ -5,6 +5,7 @@ namespace App\Modules\Waste\Actions;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Support\NumberSequence;
 use App\Modules\Identity\Models\User;
+use App\Modules\Production\Support\LotOrigin;
 use App\Modules\Sites\Models\Zone;
 use App\Modules\Tenancy\TenantContext;
 use App\Modules\Waste\DTOs\GroupWasteLotsData;
@@ -49,7 +50,7 @@ final class TransformLots
             foreach ($data->outputs as $output) {
                 $zoneId = $output['zone'] === null ? $lot->zone_id
                     : Zone::query()->where('ulid', $output['zone'])->where('site_id', $lot->site_id)->valueOrFail('id');
-                $child = $this->derive($lot, 'split', (string) $output['net_weight_kg'], (int) $zoneId, $actor, $composition);
+                $child = $this->derive($lot, 'split', (string) $output['net_weight_kg'], (int) $zoneId, $actor, $composition, $lot->only(LotOrigin::FIELDS));
                 $this->link($operation, $lot, $child, 'split', (string) $output['net_weight_kg'], $actor);
                 $outputs[] = $child;
             }
@@ -80,7 +81,12 @@ final class TransformLots
             $total = $inputs->reduce(fn ($sum, WasteLot $l) => bcadd($sum, (string) $l->net_weight_kg, 3), '0');
             $operation = $this->operation('grouping', $first->site_id, $total, $total, $data->notes, $actor);
 
-            $group = $this->derive($first, 'grouping', $total, $zoneId, $actor, LotComposition::weightedAverage($inputs->all(), $total));
+            // The group keeps an origin only where every lot agrees: two OFs in one bale is no longer "this OF".
+            $origin = [];
+            foreach (LotOrigin::FIELDS as $field) {
+                $origin[$field] = $inputs->pluck($field)->unique()->count() === 1 ? $first->getAttribute($field) : null;
+            }
+            $group = $this->derive($first, 'grouping', $total, $zoneId, $actor, LotComposition::weightedAverage($inputs->all(), $total), $origin);
             $group = $this->transition->handle($group, LotStatus::Stored, $actor);
 
             foreach ($inputs as $input) {
@@ -109,18 +115,19 @@ final class TransformLots
 
     /**
      * @param  list<array{material: string, pct: string}>  $composition
+     * @param  array<string, int|null>  $origin  production origin of the new lot (OF, stage, material, delivery)
      */
-    private function derive(WasteLot $template, string $origin, string $netKg, int $zoneId, User $actor, array $composition): WasteLot
+    private function derive(WasteLot $template, string $originType, string $netKg, int $zoneId, User $actor, array $composition, array $origin): WasteLot
     {
         $year = now()->format('Y');
         $lot = WasteLot::query()->create([
             'lot_number' => NumberSequence::next($this->context->companyId(), 'lot', "L-{$year}-", $year),
-            'origin_type' => $origin,
+            'origin_type' => $originType,
             'net_weight_kg' => $netKg,
             'zone_id' => $zoneId,
             'generated_at' => now(),
             'created_by_user_id' => $actor->id,
-        ] + $template->only(['site_id', 'waste_type_id', 'packaging_type_id', 'is_hazardous', 'regulatory_waste_code_id',
+        ] + $origin + $template->only(['site_id', 'waste_type_id', 'packaging_type_id', 'is_hazardous', 'regulatory_waste_code_id',
             'color_family_id', 'color_label', 'grammage_gsm', 'extra_attributes']));
 
         LotComposition::apply($lot, $composition);

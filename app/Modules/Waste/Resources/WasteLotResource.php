@@ -3,6 +3,7 @@
 namespace App\Modules\Waste\Resources;
 
 use App\Modules\Common\Support\ReferenceCodes;
+use App\Modules\Production\Support\LotOrigin;
 use App\Modules\Waste\Models\WasteLot;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -45,6 +46,8 @@ class WasteLotResource extends JsonResource
             'grammage_gsm' => $this->grammage_gsm,
             'composition_label' => $this->composition_label,
             'notes' => $this->notes,
+            // Where the waste comes from in production: OF, order, client, article, stage, raw material, supplier (null when unknown).
+            'origin' => app(LotOrigin::class)->describe($this->resource),
             'qr' => $this->activeQrTag?->tag_value,
             'label_print_count' => (int) ($this->activeQrTag->print_count ?? 0),
             'version' => $this->version,
