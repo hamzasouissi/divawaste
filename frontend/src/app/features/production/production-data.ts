@@ -45,6 +45,8 @@ export interface RawMaterial {
   color_family: string | null;
   color_label: string | null;
   grammage_gsm: string | null;
+  /** Usable width of a fabric: with its weight per m², metres consumed become kilograms. */
+  width_cm: string | null;
   composition: { material: string; pct: string }[];
   notes: string | null;
   is_active: boolean;

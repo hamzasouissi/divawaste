@@ -5,7 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 
 import { Api, ApiError, openBlob } from '../../core/api/api';
-import { Lot, Pickup, Site, WasteType, Zone } from '../../core/api/models';
+import { Lot, OpenOrder, Pickup, Site, WasteType, Zone } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
 import { DatePipe, KgPipe } from '../../core/format/pipes';
@@ -19,6 +19,14 @@ import { LanguageComponent } from '../../ui/language';
 import { zoneMismatch } from '../../ui/zone-fill';
 
 /** Shared look of the workshop screens: one column, very large targets (gloves), no dense tables. */
+function readLastOrder(): string | null {
+  try {
+    return localStorage.getItem(LAST_OF);
+  } catch {
+    return null;
+  }
+}
+
 const MOBILE_STYLES = `
   :host { display: grid; gap: var(--dw-4); }
   .title { font-size: 22px; line-height: 28px; font-weight: 600; }
@@ -26,6 +34,7 @@ const MOBILE_STYLES = `
     background: var(--dw-surface); border: 2px solid var(--dw-line); border-radius: 14px; font-size: 18px; font-weight: 600; }
   .tile.other { border-style: dashed; color: var(--dw-ink-2); }
   .elsewhere { display: block; font-size: 13px; font-weight: 400; color: var(--dw-warning); }
+  .elsewhere.plain { color: var(--dw-ink-2); }
   .tile:active { background: var(--dw-primary-soft); border-color: var(--dw-primary); }
   .tile:focus-visible { outline: 3px solid var(--dw-primary); outline-offset: 2px; }
   .tile.primary { background: var(--dw-primary); border-color: var(--dw-primary); color: #fff; min-height: 88px; font-size: 20px; }
@@ -146,11 +155,14 @@ export class MobileHomePage {
   protected readonly recent = computed(() => this.offline.operations().filter((operation) => operation.type === 'lot.create').slice(0, 6));
 }
 
-type Step = 'site' | 'zone' | 'type' | 'weight' | 'done';
+type Step = 'site' | 'zone' | 'of' | 'type' | 'weight' | 'done';
+const LAST_OF = 'dw.workshop.lastOf';
 
 /**
  * M2-01: site → zone → waste type → weight, one decision per screen, no keyboard until the weight (entered on
  * a large on-screen keypad). Works identically offline: the lot is stored on the device and sent later.
+ * When the site has open manufacturing orders, one more screen asks which one the waste comes from — the last one
+ * used is offered first, and "no OF" is always possible. Everything else about the origin is deduced by the server.
  */
 @Component({
   imports: [RouterLink, TranslocoDirective, StatusComponent, IconComponent, ButtonDirective],
@@ -164,6 +176,7 @@ type Step = 'site' | 'zone' | 'type' | 'weight' | 'done';
           <nav class="crumbs" [attr.aria-label]="t('mobile.newLot')">
             @if (sites().length > 1) { <button type="button" (click)="go('site')" [disabled]="!site()">{{ site()?.name ?? t('mobile.step.site') }}</button> }
             <button type="button" (click)="go('zone')" [disabled]="!zone()">{{ zone()?.name ?? t('mobile.step.zone') }}</button>
+            @if (orders().length > 0) { <button type="button" (click)="go('of')" [disabled]="!zone()">{{ order()?.order_number ?? t('mobile.step.of') }}</button> }
             <button type="button" (click)="go('type')" [disabled]="!type()">{{ type()?.name ?? t('mobile.step.type') }}</button>
           </nav>
         }
@@ -176,6 +189,15 @@ type Step = 'site' | 'zone' | 'type' | 'weight' | 'done';
           @case ('zone') {
             <h1 class="title">{{ t('mobile.chooseZone') }}</h1>
             <div class="grid">@for (item of site()?.zones ?? []; track item.ulid) { <button type="button" class="tile" (click)="pickZone(item)">{{ item.name }}</button> }</div>
+          }
+          @case ('of') {
+            <h1 class="title">{{ t('mobile.chooseOf') }}</h1>
+            <div class="grid">
+              <button type="button" class="tile other" (click)="pickOrder(null)">{{ t('mobile.noOf') }}</button>
+              @for (item of orders(); track item.ulid) {
+                <button type="button" class="tile" (click)="pickOrder(item)"><span class="dw-spacer">{{ item.order_number }} <small class="elsewhere plain">{{ item.article.reference }} — {{ item.article.name }}</small></span></button>
+              }
+            </div>
           }
           @case ('type') {
             <h1 class="title">{{ t('mobile.chooseType') }}</h1>
@@ -253,6 +275,16 @@ export class MobileNewLotPage {
   /** The types the chosen zone is meant for come first; the others stay available, marked as such. */
   protected readonly orderedTypes = computed(() => [...this.types()].sort((a, b) => Number(this.fits(b)) - Number(this.fits(a))));
   protected readonly type = signal<WasteType | null>(null);
+  protected readonly order = signal<OpenOrder | null>(null);
+  /** Open manufacturing orders that come to the chosen site, the last one used first. */
+  protected readonly orders = computed(() => {
+    const site = this.site()?.ulid;
+    const last = this.lastOrder();
+
+    return (this.offline.bootstrap()?.manufacturing_orders ?? []).filter((item) => item.steps.length === 0 || item.steps.some((step) => step.site === site))
+      .sort((a, b) => Number(b.ulid === last) - Number(a.ulid === last));
+  });
+  private readonly lastOrder = signal(readLastOrder());
   protected readonly weight = signal('');
   protected readonly step = signal<Step>('site');
   protected readonly busy = signal(false);
@@ -293,6 +325,20 @@ export class MobileNewLotPage {
 
   protected pickZone(zone: Zone): void {
     this.zone.set(zone);
+    this.order.set(null);
+    this.step.set(this.orders().length > 0 ? 'of' : 'type');
+  }
+
+  protected pickOrder(order: OpenOrder | null): void {
+    this.order.set(order);
+    if (order) {
+      this.lastOrder.set(order.ulid);
+      try {
+        localStorage.setItem(LAST_OF, order.ulid);
+      } catch {
+        // Private browsing: the order is simply not remembered.
+      }
+    }
     this.step.set('type');
   }
 
@@ -325,8 +371,8 @@ export class MobileNewLotPage {
     }
     this.busy.set(true);
     const operation = await this.offline.createLot(
-      { site: site.ulid, zone: zone.ulid, waste_type: type.ulid, net_weight_kg: this.weight().replace(',', '.') },
-      `${type.name} — ${this.weight()} kg — ${zone.name}`,
+      { site: site.ulid, zone: zone.ulid, waste_type: type.ulid, net_weight_kg: this.weight().replace(',', '.'), production_order: this.order()?.ulid ?? null },
+      `${type.name} — ${this.weight()} kg — ${zone.name}${this.order() ? ` — ${this.order()?.order_number}` : ''}`,
     );
     navigator.vibrate?.(80);
     this.operationId.set(operation.id);

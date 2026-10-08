@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { ulid } from 'ulid';
 
 import { Api } from '../api/api';
-import { Lot, Site, WasteType } from '../api/models';
+import { Lot, OpenOrder, Site, WasteType } from '../api/models';
 
 export type OperationStatus = 'pending' | 'synced' | 'failed' | 'conflict';
 
@@ -30,6 +30,8 @@ export interface Bootstrap {
   server_time: string;
   sites: Site[];
   waste_types: WasteType[];
+  /** Open manufacturing orders of these sites (absent on data saved before they existed). */
+  manufacturing_orders?: OpenOrder[];
 }
 
 interface Meta {
@@ -151,7 +153,7 @@ export class Offline {
   }
 
   /** Records a lot created at the workshop. Returns at once; the lot number arrives with the synchronisation. */
-  async createLot(input: { site: string; zone: string; waste_type: string; net_weight_kg: string }, summary: string): Promise<Operation> {
+  async createLot(input: { site: string; zone: string; waste_type: string; net_weight_kg: string; production_order?: string | null }, summary: string): Promise<Operation> {
     const operation = await this.enqueue('lot.create', { ...input, ulid: ulid() }, summary);
     operation.entity = operation.payload['ulid'] as string;
     await this.db.operations.put(operation);

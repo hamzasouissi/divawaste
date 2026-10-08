@@ -168,7 +168,8 @@
     "orders": "Commandes",
     "productionCatalog": "Matières et articles",
     "productionPartners": "Clients et fournisseurs",
-    "productionImport": "Import"
+    "productionImport": "Import",
+    "productionStats": "Statistiques"
   },
   "auth": {
     "pitch": "Tracer, valoriser et déclarer vos déchets textiles.",
@@ -723,7 +724,13 @@
     "zoneMismatch": {
       "type": "Cette zone n'est pas prévue pour ce type de déchet. Vous pouvez tout de même continuer.",
       "color": "Cette zone n'est pas prévue pour cette couleur. Vous pouvez tout de même continuer."
-    }
+    },
+    "production": "Origine en production",
+    "productionOrder": "Ordre de fabrication",
+    "noProductionOrder": "Sans OF",
+    "productionOrderHint": "Facultatif. L'étape est déduite de la zone, la matière de l'OF.",
+    "rawMaterial": "Matière première",
+    "materialOfOrder": "Celle de l'OF"
   },
   "stock": {
     "title": "Stock de déchets",
@@ -1490,7 +1497,8 @@
       "site": "Site",
       "zone": "Zone",
       "type": "Type de déchet",
-      "weight": "Poids"
+      "weight": "Poids",
+      "of": "OF"
     },
     "chooseSite": "Sur quel site ?",
     "chooseZone": "Dans quelle zone ?",
@@ -1526,7 +1534,9 @@
       "missing": "{{count}} lot(s) non scanné(s) resteront en stock.",
       "none": "Aucun enlèvement confirmé à charger."
     },
-    "notForZone": "Non prévu dans cette zone"
+    "notForZone": "Non prévu dans cette zone",
+    "chooseOf": "Pour quel OF ?",
+    "noOf": "Sans OF"
   },
   "validation": {
     "required": "Ce champ est obligatoire.",
@@ -1876,7 +1886,8 @@
     "Matières et articles": "Matières et articles",
     "Commandes": "Commandes",
     "Ordres de fabrication": "Ordres de fabrication",
-    "Import": "Import"
+    "Import": "Import",
+    "Statistiques de production": "Statistiques de production"
   },
   "partners": {
     "title": "Partenaires sans compte",
@@ -1974,7 +1985,9 @@
       "batches": "Lots reçus",
       "batchesHint": "Chaque livraison de la matière. Un déchet ou une consommation peut ensuite désigner le lot exact.",
       "batchNumber": "N° de lot",
-      "receivedOn": "Reçu le"
+      "receivedOn": "Reçu le",
+      "width": "Laize (cm)",
+      "widthHint": "Avec le grammage, permet de convertir les mètres consommés en kg et de calculer le taux de chute."
     },
     "articles": {
       "title": "Articles",
@@ -2074,6 +2087,36 @@
         "materials": "Référence, fournisseur, unité, et les lots reçus.",
         "clients": "Nom, code, contact.",
         "suppliers": "Nom, code, contact."
+      }
+    },
+    "stats": {
+      "title": "Statistiques de production",
+      "subtitle": "D'où viennent les déchets de la période : par OF, client, article, étape, matière et fournisseur.",
+      "export": "Exporter (Excel)",
+      "waste": "Déchets générés",
+      "measured": "Mesuré",
+      "measuredHint": "lots rattachés à un OF",
+      "estimated": "Estimé",
+      "estimatedHint": "lots répartis d'après leur étape",
+      "unattributed": "Non attribué",
+      "perPiece": "Par pièce",
+      "pieces": "{{count}} pièces produites",
+      "piecesShort": "Pièces",
+      "noPieces": "quantité produite non renseignée",
+      "lots": "Lots",
+      "total": "Total",
+      "rate": "Taux de chute",
+      "rateHint": "Part de la matière consommée devenue déchet. Calculé quand la consommation de l'OF est connue en kg, ou en mètres avec la laize et le grammage de la matière.",
+      "balance": "Bilan",
+      "empty": "Aucun déchet rattaché sur la période.",
+      "method": "Méthode : « mesuré » = le lot désigne son OF. « Estimé » (≈, hachuré) = le lot n'indique que son étape ; son poids est réparti entre les OF présents à cette étape, sur ce site, ce jour-là, au prorata des pièces réalisées. « Non attribué » = le lot n'indique rien, ou aucun OF n'était à son étape. Seuls les lots créés sont comptés (pas ceux issus d'un fractionnement ou d'un regroupement). Cliquez un OF ou une matière pour voir ses lots.",
+      "sections": {
+        "by_order": "OF",
+        "by_client": "Clients",
+        "by_article": "Articles",
+        "by_step": "Étapes",
+        "by_material": "Matières",
+        "by_supplier": "Fournisseurs"
       }
     }
   }

@@ -168,7 +168,8 @@
     "orders": "Orders",
     "productionCatalog": "Materials and articles",
     "productionPartners": "Clients and suppliers",
-    "productionImport": "Import"
+    "productionImport": "Import",
+    "productionStats": "Statistics"
   },
   "auth": {
     "pitch": "Trace, recover and declare your textile waste.",
@@ -723,7 +724,13 @@
     "zoneMismatch": {
       "type": "This zone is not meant for this waste type. You can still continue.",
       "color": "This zone is not meant for this colour. You can still continue."
-    }
+    },
+    "production": "Origin in production",
+    "productionOrder": "Manufacturing order",
+    "noProductionOrder": "No manufacturing order",
+    "productionOrderHint": "Optional. The stage is deduced from the zone, the material from the order.",
+    "rawMaterial": "Raw material",
+    "materialOfOrder": "The one of the order"
   },
   "stock": {
     "title": "Waste stock",
@@ -1490,7 +1497,8 @@
       "site": "Site",
       "zone": "Zone",
       "type": "Waste type",
-      "weight": "Weight"
+      "weight": "Weight",
+      "of": "Order"
     },
     "chooseSite": "Which site?",
     "chooseZone": "Which zone?",
@@ -1526,7 +1534,9 @@
       "missing": "{{count}} unscanned lot(s) will stay in stock.",
       "none": "No confirmed pickup to load."
     },
-    "notForZone": "Not planned in this zone"
+    "notForZone": "Not planned in this zone",
+    "chooseOf": "For which manufacturing order?",
+    "noOf": "No manufacturing order"
   },
   "validation": {
     "required": "This field is required.",
@@ -1876,7 +1886,8 @@
     "Matières et articles": "Materials and articles",
     "Commandes": "Orders",
     "Ordres de fabrication": "Manufacturing orders",
-    "Import": "Import"
+    "Import": "Import",
+    "Statistiques de production": "Production statistics"
   },
   "partners": {
     "title": "Partners without an account",
@@ -1974,7 +1985,9 @@
       "batches": "Received batches",
       "batchesHint": "Each delivery of the material. A waste or a consumption can then point to the exact batch.",
       "batchNumber": "Batch no.",
-      "receivedOn": "Received on"
+      "receivedOn": "Received on",
+      "width": "Width (cm)",
+      "widthHint": "With the weight per m², converts metres consumed into kg and gives the waste rate."
     },
     "articles": {
       "title": "Articles",
@@ -2074,6 +2087,36 @@
         "materials": "Reference, supplier, unit, and the batches received.",
         "clients": "Name, code, contact.",
         "suppliers": "Name, code, contact."
+      }
+    },
+    "stats": {
+      "title": "Production statistics",
+      "subtitle": "Where the waste of the period comes from: by manufacturing order, client, article, stage, material and supplier.",
+      "export": "Export (Excel)",
+      "waste": "Waste generated",
+      "measured": "Measured",
+      "measuredHint": "lots attached to an order",
+      "estimated": "Estimated",
+      "estimatedHint": "lots shared according to their stage",
+      "unattributed": "Not attributed",
+      "perPiece": "Per piece",
+      "pieces": "{{count}} pieces produced",
+      "piecesShort": "Pieces",
+      "noPieces": "produced quantity not given",
+      "lots": "Lots",
+      "total": "Total",
+      "rate": "Waste rate",
+      "rateHint": "Share of the consumed material that became waste. Calculated when the consumption of the order is known in kg, or in metres with the width and weight of the material.",
+      "balance": "Balance",
+      "empty": "No attributed waste over the period.",
+      "method": "Method: \"measured\" = the lot names its manufacturing order. \"Estimated\" (≈, hatched) = the lot only says its stage; its weight is shared between the orders at that stage, on that site, that day, in proportion to the pieces done. \"Not attributed\" = the lot says nothing, or no order was at its stage. Only created lots are counted (not those from a split or a grouping). Click an order or a material to see its lots.",
+      "sections": {
+        "by_order": "Orders",
+        "by_client": "Clients",
+        "by_article": "Articles",
+        "by_step": "Stages",
+        "by_material": "Materials",
+        "by_supplier": "Suppliers"
       }
     }
   }
