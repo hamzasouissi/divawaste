@@ -71,6 +71,8 @@ class ReferenceDataSeeder extends Seeder
             ['code' => 'm3', 'name' => $this->t('Mètre cube', 'Cubic metre'), 'symbol' => 'm³', 'dimension' => 'volume', 'factor_to_base' => '1', 'is_base' => true],
             ['code' => 'l', 'name' => $this->t('Litre', 'Litre'), 'symbol' => 'l', 'dimension' => 'volume', 'factor_to_base' => '0.001', 'is_base' => false],
             ['code' => 'piece', 'name' => $this->t('Pièce', 'Piece'), 'symbol' => 'pc', 'dimension' => 'count', 'factor_to_base' => '1', 'is_base' => true],
+            // Raw materials (fabric) are counted in metres; waste never is.
+            ['code' => 'm', 'name' => $this->t('Mètre', 'Metre'), 'symbol' => 'm', 'dimension' => 'length', 'factor_to_base' => '1', 'is_base' => true],
         ]);
 
         $this->upsert('waste_families', 'code', $this->vocabulary([

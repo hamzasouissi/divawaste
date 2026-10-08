@@ -364,8 +364,54 @@ closing.
 Other actions on a pickup: **Saisir les prix** (per line: sale or cost, per kg / per tonne / flat),
 **Déposer un certificat**, **Clôturer**, **Annuler l'enlèvement**.
 
-## 6. Compliance
+## Production — clients, materials, orders and manufacturing orders
 
+*View: production.view. Change and import: production.manage.*
+
+Optional. It exists to say **where each waste comes from**: which manufacturing order (OF), order, client, raw
+material and supplier. It is not an ERP: no planning, purchasing, stock or prices. A company that does not use it
+keeps working exactly as before. Nothing is deleted here: what is no longer used is switched off or closed.
+
+![Manufacturing orders](screenshots/production/01-manufacturing-orders.png)
+
+- **Clients et fournisseurs** — `/production/partners`: code, name, country, contact.
+- **Matières et articles** — `/production/catalog`:
+  - a **matière première** has a reference, a supplier, a unit (metre, kilogram or piece), a colour or Pantone
+    reference, a composition (must total 100 %) and its **lots reçus** (deliveries: batch number, date, quantity);
+  - an **article** has a reference, a family, a client, and its **consommation par pièce** of each material.
+- **Commandes** — `/production/orders`: number, client, dates, status, and the articles ordered with quantities.
+- **Ordres de fabrication** — `/production/manufacturing-orders`: number, article (one of the order's when an order is
+  chosen), planned and produced quantities, dates, status, then:
+  - **Étapes**: the stages the OF goes through, **each on its own site** (cut on one site, sewn on another), with
+    the pieces done at each. The stages offered are the platform's (coupe, confection, lavage, teinture, finition,
+    contrôle qualité, emballage) plus the ones the company adds;
+  - **Matières consommées**: what the OF really consumed, optionally from which received batch. The form shows
+    the expected quantity (planned quantity × consumption per piece) next to the real one, in red when it is above.
+
+![Manufacturing order](screenshots/production/02-manufacturing-order.png)
+
+### Import — `/production/import`
+
+Any Excel or CSV file can be imported; its columns need no particular names or order.
+
+![Import](screenshots/production/03-import.png)
+
+1. Choose what the file contains (manufacturing orders, orders, articles, raw materials, clients, suppliers) and
+   the file. Its first line must be the headings. **Télécharger un modèle vide** gives a file with the expected
+   headings for who has no export to start from.
+2. For each piece of information, check the column the application proposes (guessed from the headings, with an
+   example value next to it) and correct it. Information marked * must have a column.
+3. **Vérifier sans importer** reads every line and writes nothing: it says how many lines would be created or
+   updated, and lists each line in error with its line number in the file and the reason.
+4. **Importer** writes the valid lines. Lines in error are skipped; fix them in the file and import it again —
+   what is already imported is recognised (by code, reference or number) and not duplicated.
+
+What a line points to is created when it does not exist: importing manufacturing orders creates the client, the
+order and the article they name, so one flat export of an ERP is enough. Several lines of the same OF add its
+stages (one per line, with its site) and its consumptions. Dates are read as `JJ/MM/AAAA` or `AAAA-MM-JJ`, numbers
+with a comma or a point; semicolon-separated CSV files are accepted.
+
+## 6. Compliance
 ### Registre des déchets — `/compliance/register`
 
 *Permission: documents.view.* The chronological register required by regulation, built automatically from the

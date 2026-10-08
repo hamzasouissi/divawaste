@@ -77,6 +77,10 @@ final class PermissionCatalog
             'reports.view' => [self::S, $ind],
             'reports.export' => [self::S, $ind],
             'production_volumes.manage' => [self::S, $ind],
+            // Clients, suppliers, articles, orders, manufacturing orders: who may read them, change them, and read their statistics.
+            'production.view' => [self::C, $ind],
+            'production.manage' => [self::C, $ind],
+            'production.stats.view' => [self::C, $ind],
             'sync_conflicts.resolve' => [self::S, $ind],
             'provider.profile.manage' => [self::C, $prv],
             'provider.accreditations.manage' => [self::C, $prv],

@@ -32,8 +32,9 @@ class AuthorizationSeeder extends Seeder
     {
         DB::transaction(function () {
             $order = 0;
+            $added = [];
             foreach (PermissionCatalog::permissions() as $name => [$scope, $audience]) {
-                Permission::query()->updateOrCreate(
+                $added[] = Permission::query()->updateOrCreate(
                     ['name' => $name, 'guard_name' => 'web'],
                     [
                         'module' => strtok($name, '.'),
@@ -44,6 +45,8 @@ class AuthorizationSeeder extends Seeder
                     ],
                 );
             }
+            // Permissions that did not exist before this run (a new version of the application).
+            $added = array_values(array_map(fn (Permission $permission) => $permission->name, array_filter($added, fn (Permission $permission) => $permission->wasRecentlyCreated)));
 
             foreach (PermissionCatalog::systemRoles() as $name => [$audience, $permissions]) {
                 $role = Role::query()->whereNull('company_id')->where('name', $name)->where('guard_name', 'web')->first();
@@ -57,9 +60,14 @@ class AuthorizationSeeder extends Seeder
                         'is_system' => true,
                     ]);
                     $role->syncPermissions($permissions);
-                } elseif (isset(self::ROLE_LABELS[$name])) {
-                    // Labels are wording, not rights: they follow the code on every run (the matrix does not).
-                    $role->forceFill(['label' => self::ROLE_LABELS[$name]])->save();
+                } else {
+                    // An existing role keeps the matrix its administrators edited; it only receives the permissions
+                    // that are new in this version and that its default matrix includes.
+                    $role->givePermissionTo(array_values(array_intersect($added, $permissions)));
+                    if (isset(self::ROLE_LABELS[$name])) {
+                        // Labels are wording, not rights: they follow the code on every run (the matrix does not).
+                        $role->forceFill(['label' => self::ROLE_LABELS[$name]])->save();
+                    }
                 }
             }
         });
