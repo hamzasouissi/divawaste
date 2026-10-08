@@ -18,6 +18,8 @@ return [
     ],
     'signer' => ['producer' => 'Producteur', 'transporter' => 'Transporteur', 'receiver' => 'Destinataire'],
     'production' => [
+        'measured' => 'Mesuré', 'estimated' => 'Estimé',
+        'method' => 'Mesuré : le lot désigne son ordre de fabrication. Estimé (≈) : le lot n\'indique que son étape ; son poids est réparti entre les ordres présents à cette étape, sur ce site, ce jour-là, au prorata des pièces réalisées. Non attribué : le lot n\'indique rien, ou aucun ordre n\'était à son étape. Le taux de chute est la part de la matière consommée devenue déchet.',
         'sheet' => 'Statistiques de production', 'by_order' => 'Par ordre de fabrication', 'by_client' => 'Par client', 'by_article' => 'Par article', 'by_step' => 'Par étape',
         'by_material' => 'Par matière première', 'by_supplier' => 'Par fournisseur', 'unattributed' => 'Non attribué',
         'columns' => ['section' => 'Rubrique', 'label' => 'Libellé', 'detail' => 'Détail', 'lots' => 'Lots', 'measured_kg' => 'Mesuré (kg)', 'estimated_kg' => 'Estimé (kg)',

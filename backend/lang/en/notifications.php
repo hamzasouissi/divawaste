@@ -3,12 +3,12 @@
 return [
     'stock' => [
         'threshold_warning' => [
-            'title' => 'Stock threshold almost reached — :site',
-            'body' => 'Waste stock is at :quantity_kg kg for a threshold of :max_quantity_kg kg (:site).',
+            'title' => 'Stock limit almost reached — :site',
+            'body' => 'Waste stock is at :quantity_kg kg for a limit of :max_quantity_kg kg (:site).',
         ],
         'threshold_exceeded' => [
-            'title' => 'Stock threshold exceeded — :site',
-            'body' => 'Waste stock is at :quantity_kg kg, above the :max_quantity_kg kg threshold (:site). Plan a pickup.',
+            'title' => 'Stock limit exceeded — :site',
+            'body' => 'Waste stock is at :quantity_kg kg, above the :max_quantity_kg kg limit (:site). Plan a pickup.',
         ],
     ],
     'pickup' => [

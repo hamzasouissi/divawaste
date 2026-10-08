@@ -64,11 +64,18 @@ final class ProductionStats
         // Each lot becomes one share (measured) or several (estimated): [order, stage, material, kg, measured, lots, amount].
         $shares = [];
         $unattributed = ['kg' => '0', 'lots' => 0];
+        $monthly = [];
+        $addMonth = function (string $month, string $kind, string $kg) use (&$monthly): void {
+            $monthly[$month] ??= ['month' => $month, 'measured_kg' => '0', 'estimated_kg' => '0', 'unattributed_kg' => '0'];
+            $monthly[$month][$kind] = bcadd($monthly[$month][$kind], $kg, 3);
+        };
         foreach ($lots as $lot) {
+            $month = substr((string) $lot->generated_at, 0, 7);
             $kg = (string) $lot->net_weight_kg;
             $amount = (string) ($amounts[$lot->id] ?? '0');
             if ($lot->production_order_id !== null) {
                 $shares[] = [(int) $lot->production_order_id, $lot->production_step_id, $lot->raw_material_id, $kg, true, 1, $amount];
+                $addMonth($month, 'measured_kg', $kg);
 
                 continue;
             }
@@ -78,9 +85,11 @@ final class ProductionStats
                 $unattributed = ['kg' => bcadd($unattributed['kg'], $kg, 3), 'lots' => $unattributed['lots'] + 1];
                 // Still known by its stage and its material, when it says them.
                 $shares[] = [null, $lot->production_step_id, $lot->raw_material_id, $kg, false, 1, $amount];
+                $addMonth($month, 'unattributed_kg', $kg);
 
                 continue;
             }
+            $addMonth($month, 'estimated_kg', $kg);
             foreach ($candidates as $orderId => $pieces) {
                 $part = $pieces / $weight;
                 $shares[] = [$orderId, $lot->production_step_id, $lot->raw_material_id ?? ($singleMaterial[$orderId] ?? null),
@@ -138,6 +147,7 @@ final class ProductionStats
 
         return [
             'period' => ['from' => $from, 'to' => $to],
+            'monthly' => array_values(collect($monthly)->sortKeys()->all()),
             'totals' => [
                 'waste_kg' => $total, 'measured_kg' => $measured, 'estimated_kg' => $estimated, 'unattributed_kg' => $unattributed['kg'], 'unattributed_lots' => $unattributed['lots'],
                 'lots' => $lots->count(), 'orders' => count($byOrder), 'pieces' => $pieces > 0 ? $pieces : null,

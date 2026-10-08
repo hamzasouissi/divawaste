@@ -89,6 +89,10 @@ class ProductionStatsTest extends TestCase
         $this->assertSame(['Denim Mills' => '60.000'], collect($stats['by_supplier'])->pluck('total_kg', 'label')->all());
         $this->assertSame(['cutting' => '70.000'], collect($stats['by_step'])->pluck('total_kg', 'key')->all());
 
+        // Month by month, the three kinds stay apart.
+        $this->assertSame(['measured_kg' => '30.000', 'estimated_kg' => '40.000', 'unattributed_kg' => '7.000'], array_diff_key($stats['monthly'][0], ['month' => true]));
+        $this->assertStringStartsWith('%PDF-', $this->client()->get('/api/v1/production/stats/pdf?from='.now()->subDays(5)->toDateString().'&to='.now()->toDateString())->assertOk()->getContent());
+
         // The same figures as a spreadsheet; the list of the lots behind a figure.
         $this->client()->get('/api/v1/production/stats/export?from='.now()->subDays(5)->toDateString().'&to='.now()->toDateString())->assertOk()
             ->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

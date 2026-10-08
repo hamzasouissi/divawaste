@@ -89,6 +89,10 @@ The first three steps, done for real by a new client: a site, its zones, a waste
 
 ## 3. Common elements of every screen
 
+- **Aide sur cette page**: most pages open with a blue box that explains, in a few sentences, what the page shows and
+  how to use it. "Masquer" hides it; "Aide sur cette page" brings it back. The choice is remembered per page on the device.
+- **Scrollbars** are wide and solid, with a visible track, on every list and on the page itself.
+
 - **Navigation** on the left, grouped (Pilotage, Opérations, Conformité, Référentiel, Administration, Atelier). You
   only see what your role allows. The double arrow at the bottom folds it to icons.
 - **Top bar**: where you are, the notification bell, your name (profile, security, sign out).
@@ -213,7 +217,8 @@ you stop using is switched off ("Utilisé" unticked), never deleted.
 When such a partner later opens an account on the platform and publishes its profile with the **same tax ID**, its
 line says so and offers **Associer à ce compte**. The provider then becomes one of your platform partners: the next
 pickups are sent to it through the platform and it signs itself. Pickups already recorded do not change, and the
-record without an account can no longer be chosen.
+record without an account can no longer be chosen. When the tax IDs do not match, **Associer à un compte** lets you
+choose the provider yourself in the directory.
 
 **Prestataires de la plateforme**: directory of approved providers: activities, description, area, channels,
 contact, accreditations with their validity. Filters: search, channel, "Mes partenaires uniquement", "Agréés déchets dangereux".
@@ -303,14 +308,21 @@ Identification, QR label, full history (who, when, from the web or the workshop 
 
 ![Stock](screenshots/manager/05-stock.png)
 
-Computed live from the lots on site. Figures: total, part already in a pickup request, thresholds exceeded or
-close. Then, per site and zone, the weight by waste type, the number of lots, what is waiting for pickup and the
+Computed live from the lots on site. Figures: total, part already in a pickup request, limits exceeded or
+close (with the number of active limits, or "aucune limite définie"). Then, per site and zone, the weight by waste type, the number of lots, what is waiting for pickup and the
 date of the oldest lot. For a zone with a capacity: a bar, the percentage and what still fits ("Reste : 3 × Balle ou
 7 × Sac · 880 kg"). "lot(s) non compté(s)" are lots without packaging, or with a packaging the capacity does not
 mention: they are not in the percentage. "lot(s) hors affectation" are lots of a type or colour the zone is not meant for.
 
-**Seuils d'alerte**: maximum quantity for a site / zone / waste type; a notification is sent at 80 % and when
-exceeded. "Ajouter un seuil", or "…" on a line to edit or delete.
+Each zone says its **capacité** (the bar) or, when none is set, "Capacité non définie" with a link to define it on
+the site page. Each line has a **Limite** column: the most precise limit that covers it, with a bar, the
+percentage, what it measures ("64 kg / 100 kg") and, when the limit is wider than the line, what it covers ("toute la
+zone", "ce type sur tout le site", "tout le site"). A line that nothing watches says "Aucune limite" and offers
+**Définir**, which opens the form already set on that zone and that waste type.
+
+**Limites de stock** (called "seuils" before): a maximum weight for a site, a zone or a waste type; a notification is
+sent when the stock reaches the alert percentage of the limit, and another when it is exceeded. "Ajouter une
+limite", or "…" on a line to edit or delete.
 
 **Demander un enlèvement** goes to the pickup request.
 
@@ -404,7 +416,10 @@ batch) it is made of. All of it is optional, and most of it is deduced:
 
 The lot page shows the whole chain under **Origine en production**: OF, stage, article, client, order, material,
 batch, supplier. A split keeps the origin; a grouping keeps it only where all its lots agree. The origin of a lot
-can be given or corrected afterwards (permission `lots.update`).
+can be given or corrected afterwards with **Origine** on the lot page (permission `lots.update`).
+
+In the workshop application, **Scanner la fiche de l'OF** reads the bar code or QR code printed on the OF sheet
+(it must contain the OF number) instead of picking the OF in the list.
 
 ### Statistiques — `/production/stats`
 
@@ -413,8 +428,9 @@ can be given or corrected afterwards (permission `lots.update`).
 ![Production statistics](screenshots/production/04-stats.png)
 
 For a period (and a site): the waste generated, then six tables — by OF, client, article, stage, raw material and
-supplier — with lots, weight, pieces, grams per piece, waste rate and money balance. **Exporter (Excel)** gives the
-same figures. Click an OF or a material to list its lots.
+supplier — with lots, weight, pieces, grams per piece, waste rate and money balance, then the evolution month by
+month. **PDF** and **Exporter (Excel)** give the same figures. The dashboard shows the five orders that produced
+the most waste, with a link to this page. Click an OF or a material to list its lots.
 
 Two kinds of figures are always shown apart:
 

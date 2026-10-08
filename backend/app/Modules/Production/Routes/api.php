@@ -2,6 +2,7 @@
 
 use App\Modules\Catalog\Support\Colors;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
+use App\Modules\Common\Support\DocumentLanguage;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Production\Models\Article;
@@ -19,6 +20,7 @@ use App\Modules\Reporting\Support\ArrayExport;
 use App\Modules\Sites\Models\Site;
 use App\Modules\Tenancy\Rules\TenantExists;
 use App\Modules\Tenancy\TenantContext;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -405,6 +407,18 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
     };
 
     Route::get('stats', fn (Request $request, ProductionStats $stats) => ['data' => $stats->compute(...$statsInput($request))])->name('production.stats');
+
+    // The same figures as a document, in the language of the user or the one asked for.
+    Route::get('stats/pdf', function (Request $request, ProductionStats $stats, TenantContext $context) use ($statsInput) {
+        [$from, $to, $siteId] = $statsInput($request);
+        $company = DB::table('companies')->where('id', $context->companyId())->first(['legal_name', 'timezone']);
+        $content = DocumentLanguage::during(DocumentLanguage::of($request), fn () => Pdf::loadView('pdf.production-stats', [
+            'stats' => $stats->compute($from, $to, $siteId), 'company' => $company->legal_name, 'timezone' => (string) $company->timezone,
+            'site' => $siteId === null ? null : DB::table('sites')->where('id', $siteId)->value('name'),
+        ])->setPaper('a4', 'landscape')->output());
+
+        return response($content, 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="production-'.$from.'-'.$to.'.pdf"', 'Cache-Control' => 'private, no-store']);
+    })->name('production.stats.pdf');
 
     Route::get('stats/export', function (Request $request, ProductionStats $stats) use ($statsInput) {
         $data = $stats->compute(...$statsInput($request));
