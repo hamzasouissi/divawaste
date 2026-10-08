@@ -52,7 +52,7 @@ class StoreWasteLotRequest extends FormRequest
             'tare_weight_kg' => ['nullable', 'decimal:0,3', 'gte:0', 'lte:999999'],
             'packaging_type' => ['nullable', 'string', $ref('packaging_types')],
             'quantity' => ['nullable', 'decimal:0,3', 'gt:0', 'required_with:unit'],
-            'unit' => ['nullable', 'string', Rule::exists('units', 'code')],
+            'unit' => ['nullable', 'string', Rule::exists('units', 'code')->whereNot('dimension', 'length')],
             'color_family' => ['nullable', 'string', Colors::rule(app(TenantContext::class)->companyId())],
             'color_label' => ['nullable', 'string', 'max:100'],
             'grammage_gsm' => ['nullable', 'decimal:0,2', 'gt:0'],

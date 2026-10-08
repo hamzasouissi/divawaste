@@ -22,6 +22,8 @@ final class TableClassification
         // Owned by the industrial: partners that have no account on the platform.
         'external_partners',
         'waste_authorizations', 'waste_authorization_limits',
+        'production_clients', 'production_suppliers', 'raw_materials', 'raw_material_batches', 'articles', 'article_materials',
+        'customer_orders', 'customer_order_lines', 'production_orders', 'production_order_steps', 'production_order_consumptions',
         // Party-shared: owner company_id + provider/transporter columns.
         'pickups', 'pickup_lots',
         'documents',
@@ -36,7 +38,7 @@ final class TableClassification
     ];
 
     /** company_id NULL = platform row */
-    public const MIXED = ['roles', 'stored_files', 'notifications', 'notification_logs', 'audit_logs', 'color_families'];
+    public const MIXED = ['roles', 'stored_files', 'notifications', 'notification_logs', 'audit_logs', 'color_families', 'production_steps'];
 
     public const GLOBAL = [
         'currencies', 'countries', 'tax_rates', 'textile_activities', 'legal_documents', 'zone_types',

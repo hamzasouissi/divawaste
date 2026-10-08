@@ -16,6 +16,12 @@ use App\Modules\Identity\Models\Role;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Models\UserRoleAssignment;
 use App\Modules\Pickups\Actions\PickupWorkflow;
+use App\Modules\Production\Models\Article;
+use App\Modules\Production\Models\CustomerOrder;
+use App\Modules\Production\Models\ProductionClient;
+use App\Modules\Production\Models\ProductionOrder;
+use App\Modules\Production\Models\ProductionSupplier;
+use App\Modules\Production\Models\RawMaterial;
 use App\Modules\Providers\Models\ExternalPartner;
 use App\Modules\Providers\Models\ProviderAcceptedWaste;
 use App\Modules\Providers\Models\ProviderAccreditation;
@@ -34,6 +40,7 @@ use App\Modules\Waste\DTOs\CreateWasteLotData;
 use App\Modules\Waste\Models\WasteLot;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -260,6 +267,9 @@ class DemoSeeder extends Seeder
             DB::table('waste_authorization_limits')->insert(['company_id' => $authorization->company_id, 'waste_authorization_id' => $authorization->id,
                 'packaging_type_id' => DB::table('packaging_types')->where('code', 'bale')->value('id'), 'max_count' => 60, 'created_at' => now(), 'updated_at' => now()]);
 
+            // Production reference: two clients, two suppliers, their materials and articles, orders and manufacturing orders.
+            $this->production($sites);
+
             // Two partners without an account: the company records the stages of their pickups and they sign on paper.
             ExternalPartner::query()->create(['legal_name' => 'Transports Ben Salah', 'tax_id' => '1187452K', 'address_line1' => 'Route de Tunis km 4', 'postal_code' => '8000',
                 'city' => 'Nabeul', 'phone' => '+216 72 000 111', 'contact_name' => 'Ali Ben Salah', 'is_transporter' => true, 'created_by_user_id' => $amira->id]);
@@ -365,5 +375,70 @@ class DemoSeeder extends Seeder
         });
 
         $this->platformStory($context, $company, $user, $role, $staff, $trial);
+    }
+
+    /**
+     * A small production chain, so the production screens and the origin of the waste are not empty: an OF cut on one
+     * site and sewn on another, what it consumed against what was expected, and an OF not started yet.
+     *
+     * @param  array<string, Site>  $sites
+     */
+    private function production(array $sites): void
+    {
+        $unit = fn (string $code) => DB::table('units')->where('code', $code)->value('id');
+        $step = fn (string $code) => DB::table('production_steps')->where('code', $code)->value('id');
+        $levant = ProductionClient::query()->create(['code' => 'LEVANT', 'name' => 'Levant Denim', 'country_code' => 'FR', 'contact_name' => 'Claire Morel', 'email' => 'achats@levant-denim.test']);
+        $nordic = ProductionClient::query()->create(['code' => 'NORDIC', 'name' => 'Nordic Wear', 'country_code' => 'SE', 'contact_name' => 'Erik Lund']);
+        $mills = ProductionSupplier::query()->create(['code' => 'DMILLS', 'name' => 'Denim Mills', 'country_code' => 'TR']);
+        $sahel = ProductionSupplier::query()->create(['code' => 'TISSAHEL', 'name' => 'Tissages du Sahel', 'country_code' => 'TN']);
+
+        $denim = RawMaterial::query()->create(['reference' => 'DEN-12OZ', 'name' => 'Denim 12 oz stretch', 'production_supplier_id' => $mills->id, 'unit_id' => $unit('m'),
+            'color_label' => '19-4052 TCX', 'grammage_gsm' => 407, 'composition' => [['material' => 'CO', 'pct' => '98.00'], ['material' => 'EL', 'pct' => '2.00']]]);
+        $poplin = RawMaterial::query()->create(['reference' => 'POP-110', 'name' => 'Popeline 110 g', 'production_supplier_id' => $sahel->id, 'unit_id' => $unit('m'),
+            'color_label' => 'Blanc optique', 'grammage_gsm' => 110, 'composition' => [['material' => 'CO', 'pct' => '100.00']]]);
+        $batch = fn (RawMaterial $material, string $number, int $daysAgo, int $metres) => DB::table('raw_material_batches')->insertGetId(['ulid' => strtoupper((string) Str::ulid()),
+            'company_id' => $material->getAttribute('company_id'), 'raw_material_id' => $material->id, 'batch_number' => $number, 'received_on' => now()->subDays($daysAgo)->toDateString(),
+            'quantity' => $metres, 'created_at' => now(), 'updated_at' => now()]);
+        $roll = $batch($denim, 'R-0412', 60, 3200);
+        $batch($denim, 'R-0455', 20, 2400);
+        $bolt = $batch($poplin, 'P-2231', 45, 2600);
+
+        $jean = Article::query()->create(['reference' => 'JEAN-501', 'name' => 'Jean droit 5 poches', 'family' => 'Jean', 'production_client_id' => $levant->id]);
+        $shirt = Article::query()->create(['reference' => 'CHEM-220', 'name' => 'Chemise popeline', 'family' => 'Chemise', 'production_client_id' => $nordic->id]);
+        foreach ([[$jean, $denim, '1.3500'], [$shirt, $poplin, '1.6000']] as [$article, $material, $perPiece]) {
+            DB::table('article_materials')->insert(['company_id' => $article->getAttribute('company_id'), 'article_id' => $article->id, 'raw_material_id' => $material->id,
+                'quantity_per_piece' => $perPiece, 'created_at' => now(), 'updated_at' => now()]);
+        }
+
+        $order = function (string $number, ProductionClient $client, Article $article, int $quantity, int $daysAgo, string $status) {
+            $order = CustomerOrder::query()->create(['order_number' => $number, 'production_client_id' => $client->id, 'ordered_on' => now()->subDays($daysAgo)->toDateString(),
+                'due_on' => now()->subDays($daysAgo)->addDays(75)->toDateString(), 'status' => $status]);
+            DB::table('customer_order_lines')->insert(['company_id' => $order->getAttribute('company_id'), 'customer_order_id' => $order->id, 'article_id' => $article->id, 'quantity' => $quantity,
+                'created_at' => now(), 'updated_at' => now()]);
+
+            return $order;
+        };
+        $jeans = $order('CMD-2026-088', $levant, $jean, 2400, 70, 'in_progress');
+        $shirts = $order('CMD-2026-091', $nordic, $shirt, 1500, 55, 'completed');
+
+        $of = function (string $number, Article $article, CustomerOrder $order, int $planned, ?int $produced, ?int $startedDaysAgo, ?int $finishedDaysAgo, array $steps, array $consumed) use ($step) {
+            $of = ProductionOrder::query()->create(['order_number' => $number, 'article_id' => $article->id, 'customer_order_id' => $order->id, 'quantity_planned' => $planned,
+                'quantity_produced' => $produced, 'started_on' => $startedDaysAgo === null ? null : now()->subDays($startedDaysAgo)->toDateString(),
+                'finished_on' => $finishedDaysAgo === null ? null : now()->subDays($finishedDaysAgo)->toDateString(),
+                'status' => $finishedDaysAgo !== null ? 'completed' : ($startedDaysAgo !== null ? 'in_progress' : 'planned')]);
+            $base = ['company_id' => $of->getAttribute('company_id'), 'production_order_id' => $of->id, 'created_at' => now(), 'updated_at' => now()];
+            foreach ($steps as $index => [$code, $site, $pieces]) {
+                DB::table('production_order_steps')->insert($base + ['production_step_id' => $step($code), 'site_id' => $site->id, 'sequence' => $index + 1, 'pieces_done' => $pieces]);
+            }
+            foreach ($consumed as [$material, $batchId, $quantity]) {
+                DB::table('production_order_consumptions')->insert($base + ['raw_material_id' => $material->id, 'raw_material_batch_id' => $batchId, 'quantity' => $quantity]);
+            }
+        };
+        $nabeul = $sites['NAB'];
+        $other = collect($sites)->first(fn (Site $site) => $site->id !== $nabeul->id) ?? $nabeul;
+        // Cut in Nabeul, sewn on the other site: 1 200 planned × 1.35 m = 1 620 m expected, 1 705 m consumed.
+        $of('OF-2026-014', $jean, $jeans, 1200, 1160, 40, null, [['cutting', $nabeul, 1200], ['sewing', $other, 1160], ['washing', $other, 1100]], [[$denim, $roll, 1705]]);
+        $of('OF-2026-015', $jean, $jeans, 1200, null, null, null, [['cutting', $nabeul, null], ['sewing', $other, null]], []);
+        $of('OF-2026-016', $shirt, $shirts, 1500, 1480, 50, 12, [['cutting', $nabeul, 1500], ['sewing', $nabeul, 1480], ['finishing', $nabeul, 1480]], [[$poplin, $bolt, 2460]]);
     }
 }

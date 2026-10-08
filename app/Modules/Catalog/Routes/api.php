@@ -44,7 +44,9 @@ Route::middleware(['auth:sanctum', 'tenant:active,pending_approval'])->group(fun
         return response()->json(['data' => [
             'zone_types' => $active('zone_types', ['code', 'name', 'is_waste_storage'], ['is_waste_storage']),
             'packaging_types' => $active('packaging_types', ['code', 'name', 'default_tare_kg']),
-            'units' => $localized(DB::table('units')->orderBy('id')->get(['code', 'name', 'symbol', 'dimension'])),
+            // Units a waste is counted in. Metres are for raw materials only.
+            'units' => $localized(DB::table('units')->where('dimension', '!=', 'length')->orderBy('id')->get(['code', 'name', 'symbol', 'dimension'])),
+            'material_units' => $localized(DB::table('units')->whereIn('code', ['m', 'kg', 'piece'])->orderByRaw("FIELD(code, 'm', 'kg', 'piece')")->get(['code', 'name', 'symbol'])),
             'waste_families' => $active('waste_families', ['code', 'name', 'is_textile'], ['is_textile']),
             'materials' => $active('materials', ['code', 'name', 'material_class']),
             // The defaults of the platform and the colours this company added.
@@ -115,7 +117,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
             'name' => ['required', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:1000'],
             'requires_authorization' => ['sometimes', 'boolean'],
-            'unit' => ['required', 'string', Rule::exists('units', 'code')],
+            'unit' => ['required', 'string', Rule::exists('units', 'code')->whereNot('dimension', 'length')],
             'packaging_type' => ['nullable', 'string', $reference('packaging_types')],
             'color_family' => ['nullable', 'string', Colors::rule($wasteType->company_id)],
             'treatment_channel' => ['nullable', 'string', $reference('treatment_channels')],
