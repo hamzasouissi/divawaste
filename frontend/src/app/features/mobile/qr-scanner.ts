@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, OnDestroy, afterNextRender, output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, OnDestroy, afterNextRender, booleanAttribute, input, output, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslocoDirective } from '@jsverse/transloco';
 import type { IScannerControls } from '@zxing/browser';
@@ -52,6 +52,8 @@ import { IconComponent } from '../../ui/icon';
 })
 export class QrScannerComponent implements OnDestroy {
   readonly scanned = output<string>();
+  /** Also read the bar codes printed on production sheets (Code 128, Code 39, EAN…), not only QR codes. */
+  readonly barcodes = input(false, { transform: booleanAttribute });
 
   protected readonly manual = signal(false);
   protected readonly typed = signal('');
@@ -89,8 +91,8 @@ export class QrScannerComponent implements OnDestroy {
     }
     try {
       // Loaded on demand: the decoder is only needed on the scanning screens.
-      const { BrowserQRCodeReader } = await import('@zxing/browser');
-      this.controls = await new BrowserQRCodeReader().decodeFromConstraints({ video: { facingMode: { ideal: 'environment' } }, audio: false }, element, (result) => {
+      const { BrowserQRCodeReader, BrowserMultiFormatReader } = await import('@zxing/browser');
+      this.controls = await (this.barcodes() ? new BrowserMultiFormatReader() : new BrowserQRCodeReader()).decodeFromConstraints({ video: { facingMode: { ideal: 'environment' } }, audio: false }, element, (result) => {
         const text = result?.getText();
         const now = Date.now();
         if (text && (text !== this.last.text || now - this.last.at > 2000)) {

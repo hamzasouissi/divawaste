@@ -22,6 +22,7 @@ import { IconComponent } from '../../ui/icon';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { SELECT } from '../../ui/select';
 import { StateComponent } from '../../ui/state';
+import { HelpComponent } from '../../ui/help';
 
 const DECIMAL = Validators.pattern(/^\d+([.,]\d{1,3})?$/);
 
@@ -195,13 +196,14 @@ export class AuthorizationDialog {
  * pickups have used and what is left; a pickup of a waste type that needs one is refused when nothing covers it.
  */
 @Component({
-  imports: [TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, ButtonDirective, IconComponent, DatePipe, KgPipe, CodePipe],
+  imports: [HelpComponent, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, ButtonDirective, IconComponent, DatePipe, KgPipe, CodePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('authorizations.title')" [subtitle]="t('authorizations.subtitle')">
         @if (canManage) { <button pButton type="button" (click)="edit(null)"><dw-icon>add</dw-icon>{{ t('authorizations.new') }}</button> }
       </dw-page-header>
+      <dw-help topic="authorizations" />
 
       <dw-state [loading]="loading()" [error]="error()" [empty]="rows().length === 0" icon="verified" [emptyTitle]="t('authorizations.emptyTitle')" [emptyHint]="t('authorizations.emptyHint')" (retry)="load()">
         <div class="dw-panel">

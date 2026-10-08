@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
@@ -19,6 +19,7 @@ import { KpiComponent, PageHeaderComponent, StatusComponent } from '../../ui/pag
 import { StateComponent } from '../../ui/state';
 import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
 import { FIELD } from '../../ui/field';
+import { HelpComponent } from '../../ui/help';
 import { IconComponent } from '../../ui/icon';
 import { MenuAction, MenuComponent } from '../../ui/menu';
 import { SELECT } from '../../ui/select';
@@ -31,18 +32,36 @@ interface SiteGroup {
   zones: { zone: string; name: string; total: number; fill: ZoneFill; rows: StockRow[] }[];
 }
 
+/** The limit that watches a line of stock, with what it currently measures. */
+interface AppliedLimit {
+  limit: StockThreshold;
+  quantity: number;
+  max: number;
+  pct: number;
+  level: 'warning' | 'exceeded' | null;
+  /** What the limit covers, when it is wider than the line: the whole zone, this type on the whole site, the whole site. */
+  scope: 'zone' | 'siteType' | 'site' | null;
+}
+
+interface LimitDialogData {
+  limit: StockThreshold | null;
+  /** A new limit opened from a line of stock starts on that line. */
+  prefill?: { site: string; zone: string; waste_type: string };
+}
+
 @Component({
   imports: [ReactiveFormsModule, TranslocoDirective, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS, ToggleSwitch],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <dw-dialog-title>{{ t(data ? 'stock.editThreshold' : 'stock.addThreshold') }}</dw-dialog-title>
+      <dw-dialog-title>{{ t(data.limit ? 'stock.editThreshold' : 'stock.addThreshold') }}</dw-dialog-title>
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <div class="dw-dialog-body">
+          <p class="dw-muted intro">{{ t('stock.limitIntro') }}</p>
           <div class="dw-form">
-            @if (!data) {
+            @if (!data.limit) {
               <dw-field class="dw-span-2" [label]="t('fields.site')">
-                <dw-select formControlName="site" required (valueChange)="loadZones($any($event))">
+                <dw-select formControlName="site" required>
                   @for (site of sites; track site.ulid) { <dw-option [value]="site.ulid" [label]="site.name" /> }
                 </dw-select>
               </dw-field>
@@ -61,9 +80,13 @@ interface SiteGroup {
             }
             <dw-field [label]="t('stock.max')">
               <input pInputText formControlName="max_quantity_kg" inputmode="decimal" required />
+              <small dwHint>{{ t('stock.maxHint') }}</small>
             </dw-field>
-            <dw-field [label]="t('stock.warningPct')"><input pInputText type="number" formControlName="warning_pct" min="1" max="100" required /></dw-field>
-            @if (data) { <div class="dw-switch dw-span-2"><p-toggleswitch formControlName="is_active" inputId="threshold-active" /><label for="threshold-active">{{ t('common.active') }}</label></div> }
+            <dw-field [label]="t('stock.warningPct')">
+              <input pInputText type="number" formControlName="warning_pct" min="1" max="100" required />
+              <small dwHint>{{ t('stock.warningHint') }}</small>
+            </dw-field>
+            @if (data.limit) { <div class="dw-switch dw-span-2"><p-toggleswitch formControlName="is_active" inputId="threshold-active" /><label for="threshold-active">{{ t('common.active') }}</label></div> }
           </div>
         </div>
         <div class="dw-dialog-foot">
@@ -73,10 +96,10 @@ interface SiteGroup {
       </form>
     </ng-container>
   `,
-  styles: '.dw-dialog-body { min-width: min(520px, 82vw); }',
+  styles: '.dw-dialog-body { inline-size: min(560px, 82vw); } .intro { margin: 0 0 var(--dw-3); font-size: 13px; }',
 })
 export class ThresholdDialog {
-  protected readonly data = dialogData<StockThreshold | null>();
+  protected readonly data = dialogData<LimitDialogData>();
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
   private readonly reference = inject(ReferenceData);
@@ -87,23 +110,24 @@ export class ThresholdDialog {
   protected readonly zones = signal<Zone[]>([]);
   protected readonly busy = signal(false);
   protected readonly form = inject(FormBuilder).nonNullable.group({
-    site: [this.sites[0]?.ulid ?? ''],
-    zone: [''],
-    waste_type: [''],
-    max_quantity_kg: [this.data?.max_quantity_kg ?? '', [Validators.required, Validators.pattern(/^\d+([.,]\d{1,3})?$/)]],
-    warning_pct: [this.data?.warning_pct ?? 90, [Validators.required, Validators.min(1), Validators.max(100)]],
-    is_active: [this.data?.is_active ?? true],
+    site: [this.data.prefill?.site ?? this.sites[0]?.ulid ?? ''],
+    zone: [this.data.prefill?.zone ?? ''],
+    waste_type: [this.data.prefill?.waste_type ?? ''],
+    max_quantity_kg: [this.data.limit?.max_quantity_kg ?? '', [Validators.required, Validators.pattern(/^\d+([.,]\d{1,3})?$/)]],
+    warning_pct: [this.data.limit?.warning_pct ?? 90, [Validators.required, Validators.min(1), Validators.max(100)]],
+    is_active: [this.data.limit?.is_active ?? true],
   });
 
   constructor() {
-    if (!this.data && this.form.controls.site.value) {
-      this.loadZones(this.form.controls.site.value);
+    const site = this.form.controls.site.value;
+    if (!this.data.limit && site) {
+      this.reference.zones(site).subscribe((zones) => this.zones.set(zones));
     }
-  }
-
-  protected loadZones(site: string): void {
-    this.form.controls.zone.setValue('');
-    this.reference.zones(site).subscribe((zones) => this.zones.set(zones));
+    // Another site has other zones: the zone chosen for the previous one no longer means anything.
+    this.form.controls.site.valueChanges.pipe(takeUntilDestroyed()).subscribe((next) => {
+      this.form.controls.zone.setValue('');
+      this.reference.zones(next).subscribe((zones) => this.zones.set(zones));
+    });
   }
 
   protected async submit(): Promise<void> {
@@ -116,8 +140,8 @@ export class ThresholdDialog {
     const value = this.form.getRawValue();
     const max = value.max_quantity_kg.replace(',', '.');
     try {
-      await firstValueFrom(this.data
-        ? this.api.put(`stock-thresholds/${this.data.ulid}`, { max_quantity_kg: max, warning_pct: value.warning_pct, is_active: value.is_active })
+      await firstValueFrom(this.data.limit
+        ? this.api.put(`stock-thresholds/${this.data.limit.ulid}`, { max_quantity_kg: max, warning_pct: value.warning_pct, is_active: value.is_active })
         : this.api.post('stock-thresholds', { site: value.site, zone: value.zone || null, waste_type: value.waste_type || null, max_quantity_kg: max, warning_pct: value.warning_pct }));
       this.toast.success('stock.thresholdSaved');
       this.ref.close(true);
@@ -132,12 +156,14 @@ export class ThresholdDialog {
 }
 
 /**
- * M2-07: what is on each site right now, by zone and by waste type, with how full each storage area is and the
- * state of every alert threshold. Nothing is stored: the API sums the lots present on site at each request.
+ * M2-07: what is on each site right now, by zone and by waste type. Two things watch the stock and both are shown on
+ * the lines they concern: the capacity of a zone (how full the place is) and the limits (a maximum weight for a site,
+ * a zone or a waste type). When none is defined, the page says so and offers to define one — an absent limit must
+ * not look like "everything is fine". Nothing is stored: the API sums the lots present on site at each request.
  */
 @Component({
   imports: [
-    CodePipe, RouterLink, TranslocoDirective, ZoneFillComponent, KpiComponent, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, NumberPipe, IconComponent, ButtonDirective, ...SELECT, MenuComponent,
+    CodePipe, RouterLink, TranslocoDirective, ZoneFillComponent, HelpComponent, KpiComponent, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, NumberPipe, IconComponent, ButtonDirective, ...SELECT, MenuComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -154,6 +180,7 @@ export class ThresholdDialog {
           <a pButton routerLink="/pickups/new"><dw-icon>local_shipping</dw-icon>{{ t('stock.requestPickup') }}</a>
         }
       </dw-page-header>
+      <dw-help topic="stock" />
 
       <dw-state [loading]="loading()" [error]="error()" (retry)="load()">
         @if (stock(); as s) {
@@ -161,7 +188,7 @@ export class ThresholdDialog {
             <div class="dw-stats">
               <dw-kpi [label]="t('stock.total')" [value]="s.meta.total_kg | dwKg: 'auto'" [hint]="s.meta.generated_at | dwDate: 'datetime'" />
               <dw-kpi [label]="t('stock.awaiting')" [value]="awaiting() | dwKg: 'auto'" />
-              <dw-kpi [label]="t('status.alert.exceeded')" [value]="exceeded()" [tone]="exceeded() > 0 ? 'danger' : 'neutral'" />
+              <dw-kpi [label]="t('status.alert.exceeded')" [value]="exceeded()" [tone]="exceeded() > 0 ? 'danger' : 'neutral'" [hint]="limitsHint(t)" />
               <dw-kpi [label]="t('status.alert.warning')" [value]="warnings()" [tone]="warnings() > 0 ? 'warning' : 'neutral'" />
             </div>
 
@@ -175,22 +202,46 @@ export class ThresholdDialog {
                         <div class="zone-head">
                           <span class="dw-h3">{{ zone.name }}</span>
                           <span class="dw-muted">{{ zone.total | dwKg }}</span>
+                          <span class="what">{{ t('stock.capacity') }}</span>
                           <dw-zone-fill [fill]="zone.fill" />
+                          @if (zone.fill.pct === null) {
+                            <span class="none"><dw-icon aria-hidden="true">info</dw-icon>{{ t('stock.noCapacity') }}</span>
+                            @if (session.can('zones.manage', group.site)) { <a class="define" [routerLink]="['/sites', group.site]">{{ t('stock.defineCapacity') }}</a> }
+                          }
                         </div>
-                        <table>
-                          <tbody>
-                            @for (row of zone.rows; track row.waste_type) {
-                              <tr>
-                                <td>{{ row.waste_type_name }} @if (row.is_hazardous) { <dw-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</dw-icon> }</td>
-                                <td class="dw-num">{{ t('dashboard.lots', { count: row.lots }) }}</td>
-                                <td class="dw-num strong">{{ row.quantity_kg | dwKg }}</td>
-                                <td class="dw-num dw-faint">@if (row.unit && row.unit !== 'kg' && row.quantity_in_unit) { {{ row.quantity_in_unit | dwNumber: 2 }} {{ row.unit | dwCode: 'unit' }} }</td>
-                                <td class="dw-faint">@if (+row.awaiting_pickup_kg > 0) { {{ t('stock.awaiting') }} {{ row.awaiting_pickup_kg | dwKg }} }</td>
-                                <td class="dw-faint">{{ t('stock.oldest') }} : {{ row.oldest_lot_at | dwDate }}</td>
-                              </tr>
-                            }
-                          </tbody>
-                        </table>
+                        <div class="scroll">
+                          <table>
+                            <thead>
+                              <tr><th>{{ t('fields.wasteType') }}</th><th class="dw-num">{{ t('production.stats.lots') }}</th><th class="dw-num">{{ t('fields.weight') }}</th>
+                                <th>{{ t('stock.waiting') }}</th><th>{{ t('stock.oldest') }}</th><th>{{ t('stock.limit') }}</th></tr>
+                            </thead>
+                            <tbody>
+                              @for (row of zone.rows; track row.waste_type) {
+                                <tr>
+                                  <td>{{ row.waste_type_name }} @if (row.is_hazardous) { <dw-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</dw-icon> }</td>
+                                  <td class="dw-num">{{ row.lots }}</td>
+                                  <td class="dw-num strong">{{ row.quantity_kg | dwKg }}
+                                    @if (row.unit && row.unit !== 'kg' && row.quantity_in_unit) { <div class="dw-faint">{{ row.quantity_in_unit | dwNumber: 2 }} {{ row.unit | dwCode: 'unit' }}</div> }</td>
+                                  <td class="dw-faint">{{ +row.awaiting_pickup_kg > 0 ? (row.awaiting_pickup_kg | dwKg) : '—' }}</td>
+                                  <td class="dw-faint">{{ row.oldest_lot_at | dwDate }}</td>
+                                  <td>
+                                    @if (limitFor(row); as applied) {
+                                      <div class="limit">
+                                        <span class="meter" role="meter" [attr.aria-label]="t('stock.limit')" [attr.aria-valuenow]="applied.pct" aria-valuemin="0" aria-valuemax="100"><span class="bar" [class]="applied.level ?? 'ok'" [style.inline-size.%]="applied.pct"></span></span>
+                                        <strong>{{ applied.pct }} %</strong>
+                                        @if (applied.level) { <dw-status kind="alert" [value]="applied.level" /> }
+                                      </div>
+                                      <div class="dw-faint">{{ applied.quantity | dwKg }} / {{ applied.max | dwKg }}@if (applied.scope) { — {{ t('stock.scope.' + applied.scope) }} }</div>
+                                    } @else {
+                                      <span class="none"><dw-icon aria-hidden="true">info</dw-icon>{{ t('stock.noLimit') }}</span>
+                                      @if (session.can('stock.thresholds.manage', row.site)) { <button type="button" class="define" (click)="define(row)">{{ t('stock.defineLimit') }}</button> }
+                                    }
+                                  </td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     }
                   </section>
@@ -200,30 +251,38 @@ export class ThresholdDialog {
 
             <section class="dw-panel">
               <div class="dw-panel-head">
-                <h2 class="dw-h2">{{ t('stock.thresholds') }}</h2><span class="dw-spacer"></span>
+                <div class="dw-spacer"><h2 class="dw-h2">{{ t('stock.thresholds') }}</h2><p class="dw-muted sub">{{ t('stock.limitsHint') }}</p></div>
                 @if (canManage) { <button pButton severity="secondary" outlined type="button" (click)="editThreshold(null)"><dw-icon>add</dw-icon>{{ t('stock.addThreshold') }}</button> }
               </div>
               @if (thresholds().length === 0) {
-                <p class="dw-panel-body dw-muted">{{ t('stock.noThreshold') }}</p>
+                <p class="dw-panel-body none block"><dw-icon aria-hidden="true">info</dw-icon>{{ t('stock.noThreshold') }}</p>
               } @else {
-                <table class="dw-table thresholds">
-                  <thead><tr><th>{{ t('fields.site') }}</th><th>{{ t('fields.zone') }}</th><th>{{ t('fields.wasteType') }}</th><th class="dw-num">{{ t('stock.current') }}</th><th class="dw-num">{{ t('stock.max') }}</th><th>{{ t('fields.status') }}</th><th></th></tr></thead>
-                  <tbody>
-                    @for (threshold of thresholds(); track threshold.ulid) {
-                      <tr [class.off]="!threshold.is_active">
-                        <td>{{ threshold.site_name }}</td><td>{{ threshold.zone_name ?? t('stock.anyZone') }}</td><td>{{ threshold.waste_type_name ?? t('stock.anyType') }}</td>
-                        <td class="dw-num">{{ current(threshold.ulid)?.quantity_kg | dwKg }}</td>
-                        <td class="dw-num">{{ threshold.max_quantity_kg | dwKg }} <span class="dw-faint">({{ threshold.warning_pct }} %)</span></td>
-                        <td>@if (!threshold.is_active) { <dw-status kind="member" value="suspended" [label]="t('common.inactive')" tone="neutral" /> } @else { <dw-status kind="alert" [value]="current(threshold.ulid)?.alert_level ?? 'ok'" /> }</td>
-                        <td class="dw-num">
-                          @if (session.can('stock.thresholds.manage', threshold.site)) {
-                            <button pButton text rounded severity="secondary" size="small" class="dw-icon-btn" type="button" (click)="menu.open($event, thresholdActions(threshold))" [attr.aria-label]="t('common.actions')" aria-haspopup="menu"><dw-icon>more_horiz</dw-icon></button>
-                          }
-                        </td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
+                <div class="scroll">
+                  <table class="dw-table thresholds">
+                    <thead><tr><th>{{ t('fields.site') }}</th><th>{{ t('fields.zone') }}</th><th>{{ t('fields.wasteType') }}</th><th>{{ t('stock.usage') }}</th><th class="dw-num">{{ t('stock.max') }}</th><th>{{ t('fields.status') }}</th><th></th></tr></thead>
+                    <tbody>
+                      @for (threshold of thresholds(); track threshold.ulid) {
+                        <tr [class.off]="!threshold.is_active">
+                          <td>{{ threshold.site_name }}</td><td>{{ threshold.zone_name ?? t('stock.anyZone') }}</td><td>{{ threshold.waste_type_name ?? t('stock.anyType') }}</td>
+                          <td>
+                            <div class="limit">
+                              <span class="meter" role="meter" [attr.aria-label]="t('stock.usage')" [attr.aria-valuenow]="usage(threshold)" aria-valuemin="0" aria-valuemax="100"><span class="bar" [class]="current(threshold.ulid)?.alert_level ?? 'ok'" [style.inline-size.%]="usage(threshold)"></span></span>
+                              <strong>{{ usage(threshold) }} %</strong>
+                            </div>
+                            <div class="dw-faint">{{ current(threshold.ulid)?.quantity_kg | dwKg }}</div>
+                          </td>
+                          <td class="dw-num">{{ threshold.max_quantity_kg | dwKg }} <div class="dw-faint">{{ t('stock.warnAt', { pct: threshold.warning_pct }) }}</div></td>
+                          <td>@if (!threshold.is_active) { <dw-status kind="member" value="suspended" [label]="t('common.inactive')" tone="neutral" /> } @else { <dw-status kind="alert" [value]="current(threshold.ulid)?.alert_level ?? 'ok'" /> }</td>
+                          <td class="dw-num">
+                            @if (session.can('stock.thresholds.manage', threshold.site)) {
+                              <button pButton text rounded severity="secondary" size="small" class="dw-icon-btn" type="button" (click)="menu.open($event, thresholdActions(threshold))" [attr.aria-label]="t('common.actions')" aria-haspopup="menu"><dw-icon>more_horiz</dw-icon></button>
+                            }
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
               }
             </section>
           </div>
@@ -236,16 +295,28 @@ export class ThresholdDialog {
     .site { width: 220px; }
     .zone { padding: var(--dw-3) var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); }
     .zone:last-child { border-block-end: 0; }
-    .zone-head { display: flex; align-items: center; gap: var(--dw-3); flex-wrap: wrap; margin-block-end: 6px; }
+    .zone-head { display: flex; align-items: center; gap: var(--dw-2) var(--dw-3); flex-wrap: wrap; margin-block-end: 6px; }
+    .what { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dw-ink-3); margin-inline-start: var(--dw-3); }
+    .scroll { overflow-x: auto; }
     /* Fixed layout: the columns line up from one zone to the next, although each zone has its own table. */
-    table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
-    td { padding: 5px 8px; overflow: hidden; text-overflow: ellipsis; }
-    .zone td:nth-child(1) { padding-inline-start: 0; width: 28%; } .zone td:nth-child(2) { width: 9%; } .zone td:nth-child(3) { width: 11%; }
-    .zone td:nth-child(4) { width: 10%; } .zone td:nth-child(5) { width: 22%; } .zone td:nth-child(6) { width: 20%; }
-    .thresholds { table-layout: auto; }
+    .zone table { width: 100%; min-inline-size: 720px; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+    .zone th { padding: 4px 8px; text-align: start; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dw-ink-3); border-block-end: 1px solid var(--dw-line-soft); }
+    .zone th.dw-num { text-align: end; }
+    .zone td { padding: 7px 8px; vertical-align: top; }
+    .zone th:nth-child(1), .zone td:nth-child(1) { padding-inline-start: 0; width: 24%; } .zone th:nth-child(2) { width: 8%; } .zone th:nth-child(3) { width: 13%; }
+    .zone th:nth-child(4) { width: 13%; } .zone th:nth-child(5) { width: 14%; } .zone th:nth-child(6) { width: 28%; }
     .strong { font-weight: 600; }
     .hazard { font-size: 15px; width: 15px; height: 15px; color: var(--dw-warning); vertical-align: -2px; }
-    .thresholds td { overflow: visible; }
+    .limit { display: flex; align-items: center; gap: var(--dw-2); }
+    .meter { flex: 0 0 110px; height: 8px; border-radius: 4px; background: var(--dw-line-soft); overflow: hidden; }
+    .bar { display: block; height: 100%; max-inline-size: 100%; background: var(--dw-success); }
+    .bar.warning { background: #d68a00; } .bar.exceeded { background: var(--dw-danger); }
+    .none { display: inline-flex; align-items: center; gap: 4px; color: var(--dw-ink-2); font-size: 12.5px; }
+    .none dw-icon { font-size: 15px; color: var(--dw-ink-3); }
+    .none.block { display: flex; }
+    .define { all: unset; cursor: pointer; margin-inline-start: 6px; color: var(--dw-primary); font-size: 12.5px; font-weight: 600; text-decoration: underline; }
+    .define:focus-visible { outline: 2px solid var(--dw-primary); outline-offset: 2px; }
+    .sub { margin: 2px 0 0; font-size: 13px; max-inline-size: 760px; }
     .thresholds tr.off td { color: var(--dw-ink-3); }
   `,
 })
@@ -309,8 +380,48 @@ export class StockPage {
     });
   }
 
+  /** Under the "limit exceeded" figure: zero means little when no limit exists. */
+  protected limitsHint(t: (key: string, params?: Record<string, unknown>) => string): string {
+    const active = this.thresholds().filter((item) => item.is_active).length;
+
+    return active === 0 ? t('stock.noLimitDefined') : t('stock.limitsWatching', { count: active });
+  }
+
   protected current(ulid: string): StockResponse['thresholds'][number] | undefined {
     return this.stock()?.thresholds.find((item) => item.ulid === ulid);
+  }
+
+  protected usage(limit: StockThreshold): number {
+    const max = Number(limit.max_quantity_kg);
+
+    return max > 0 ? Math.round((Number(this.current(limit.ulid)?.quantity_kg ?? 0) / max) * 100) : 0;
+  }
+
+  /**
+   * The limit that watches a line: the most precise one among those that cover it (this zone and this type, then the
+   * zone, then the type on the site, then the site). It is shown with what it measures, which may be more than the line.
+   */
+  protected limitFor(row: StockRow): AppliedLimit | null {
+    const covering = this.thresholds().filter((item) => item.is_active && item.site === row.site && (item.zone === null || item.zone === row.zone) && (item.waste_type === null || item.waste_type === row.waste_type));
+    const precision = (item: StockThreshold): number => (item.zone ? 2 : 0) + (item.waste_type ? 1 : 0);
+    const limit = covering.sort((a, b) => precision(b) - precision(a))[0];
+    if (!limit) {
+      return null;
+    }
+    const state = this.current(limit.ulid);
+    const quantity = Number(state?.quantity_kg ?? 0);
+    const max = Number(limit.max_quantity_kg);
+
+    return {
+      limit, quantity, max, pct: max > 0 ? Math.round((quantity / max) * 100) : 0, level: state?.alert_level ?? null,
+      scope: limit.zone && limit.waste_type ? null : limit.zone ? 'zone' : limit.waste_type ? 'siteType' : 'site',
+    };
+  }
+
+  /** A new limit for exactly this line: this zone and this waste type. */
+  protected define(row: StockRow): void {
+    this.dialog.open<ThresholdDialog, LimitDialogData, boolean>(ThresholdDialog, { data: { limit: null, prefill: { site: row.site, zone: row.zone, waste_type: row.waste_type } } })
+      .afterClosed().subscribe((saved) => saved && this.load());
   }
 
   protected thresholdActions(threshold: StockThreshold): MenuAction[] {
@@ -321,7 +432,7 @@ export class StockPage {
   }
 
   protected editThreshold(threshold: StockThreshold | null): void {
-    this.dialog.open<ThresholdDialog, StockThreshold | null, boolean>(ThresholdDialog, { data: threshold }).afterClosed().subscribe((saved) => saved && this.load());
+    this.dialog.open<ThresholdDialog, LimitDialogData, boolean>(ThresholdDialog, { data: { limit: threshold } }).afterClosed().subscribe((saved) => saved && this.load());
   }
 
   protected async removeThreshold(threshold: StockThreshold): Promise<void> {

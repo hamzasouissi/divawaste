@@ -26,6 +26,7 @@ import { IconComponent } from '../../ui/icon';
 import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
 import { ZoneFillComponent } from '../../ui/zone-fill';
+import { HelpComponent } from '../../ui/help';
 
 const DIALOG = [ReactiveFormsModule, TranslocoDirective] as const;
 const DECIMAL = Validators.pattern(/^\d+([.,]\d{1,3})?$/);
@@ -252,13 +253,14 @@ export class ZoneDialog {
 
 /** M1-01: the company's sites. */
 @Component({
-  imports: [TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, KgPipe, IconComponent, ButtonDirective, CheckboxComponent, FilterBarComponent],
+  imports: [HelpComponent, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, KgPipe, IconComponent, ButtonDirective, CheckboxComponent, FilterBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('sites.title')" [subtitle]="t('sites.subtitle')">
         @if (canManage) { <button pButton type="button" (click)="create()"><dw-icon>add</dw-icon>{{ t('sites.new') }}</button> }
       </dw-page-header>
+      <dw-help topic="sites" />
       <div class="dw-panel">
         <dw-filter-bar [active]="(search() ? 1 : 0) + (inactive() ? 1 : 0)" (cleared)="search.set(''); inactive.set(false); list.reload()">
           <dw-search [placeholder]="t('common.search')" [query]="search()" (queryChange)="search.set($event); list.reload()" />
@@ -309,7 +311,7 @@ export class SitesPage {
 
 /** A site and its zones. Zones holding waste cannot be closed; nothing is ever deleted (traceability). */
 @Component({
-  imports: [TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KgPipe, CodePipe, LocalizedPipe, IconComponent, ButtonDirective, ZoneFillComponent],
+  imports: [HelpComponent, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KgPipe, CodePipe, LocalizedPipe, IconComponent, ButtonDirective, ZoneFillComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -322,6 +324,7 @@ export class SitesPage {
               <button pButton severity="secondary" outlined type="button" (click)="edit()"><dw-icon>edit</dw-icon>{{ t('common.edit') }}</button>
             }
           </dw-page-header>
+          <dw-help topic="zones" />
 
           <div class="dw-stack">
             <section class="dw-panel dw-panel-body">

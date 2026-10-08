@@ -21,6 +21,7 @@ import { ListStore } from '../../ui/list-store';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { SearchComponent } from '../../ui/search';
 import { Party, blankToNull } from './production-data';
+import { HelpComponent } from '../../ui/help';
 
 type Kind = 'clients' | 'suppliers';
 
@@ -146,11 +147,12 @@ export class PartyListComponent {
 
 /** Who the company produces for, and who supplies its raw materials. */
 @Component({
-  imports: [TranslocoDirective, PageHeaderComponent, PartyListComponent, Tabs, TabList, Tab, TabPanels, TabPanel],
+  imports: [HelpComponent, TranslocoDirective, PageHeaderComponent, PartyListComponent, Tabs, TabList, Tab, TabPanels, TabPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('production.partners.title')" [subtitle]="t('production.partners.subtitle')" />
+      <dw-help topic="productionPartners" />
       <div class="dw-panel">
         <p-tabs [value]="0" [lazy]="true">
           <p-tablist><p-tab [value]="0">{{ t('production.clients.title') }}</p-tab><p-tab [value]="1">{{ t('production.suppliers.title') }}</p-tab></p-tablist>

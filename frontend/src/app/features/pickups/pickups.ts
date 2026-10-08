@@ -15,6 +15,7 @@ import { CheckboxComponent } from '../../ui/checkbox';
 import { IconComponent } from '../../ui/icon';
 import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
+import { HelpComponent } from '../../ui/help';
 
 interface PickupFilter {
   status?: PickupStatus[];
@@ -29,6 +30,7 @@ interface PickupFilter {
  */
 @Component({
   imports: [
+    HelpComponent,
     RouterLink, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, DatePipe, KgPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -37,6 +39,7 @@ interface PickupFilter {
       <dw-page-header [title]="t(provider ? 'provider.pickups.title' : 'pickups.title')" [subtitle]="t(provider ? 'provider.pickups.subtitle' : 'pickups.subtitle')">
         @if (!provider && canRequest) { <a pButton routerLink="/pickups/new"><dw-icon>add</dw-icon>{{ t('pickups.new') }}</a> }
       </dw-page-header>
+      <dw-help topic="pickups" />
 
       <div class="dw-panel">
         <dw-filter-bar [active]="list.activeCount()" (cleared)="list.resetFilter()">

@@ -19,6 +19,7 @@ import { IconComponent } from '../../ui/icon';
 import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
 import { ExternalPartnersComponent } from './external-partners';
+import { HelpComponent } from '../../ui/help';
 
 interface DirectoryFilter {
   search: string;
@@ -33,12 +34,14 @@ interface DirectoryFilter {
  */
 @Component({
   imports: [
+    HelpComponent,
     TranslocoDirective, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent, ExternalPartnersComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('providers.title')" [subtitle]="t('providers.subtitle')" />
+      <dw-help topic="providers" />
 
       <dw-external-partners (linked)="load()" />
       <h2 class="dw-h2 directory">{{ t('providers.directory') }}</h2>

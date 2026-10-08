@@ -22,6 +22,7 @@ import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { SearchComponent } from '../../ui/search';
 import { SELECT } from '../../ui/select';
 import { CustomerOrder, DECIMAL, ManufacturingOrder, OfStatus, OrderStatus, ProductionLists, blankToNull, decimal } from './production-data';
+import { HelpComponent } from '../../ui/help';
 
 const ORDER_STATUSES: OrderStatus[] = ['open', 'in_progress', 'completed', 'cancelled'];
 const OF_STATUSES: OfStatus[] = ['planned', 'in_progress', 'completed', 'cancelled'];
@@ -137,13 +138,14 @@ export class OrderDialog {
 
 /** The orders of the clients. */
 @Component({
-  imports: [TranslocoDirective, PageHeaderComponent, ...TABLE, StatusComponent, SearchComponent, FilterBarComponent, ButtonDirective, IconComponent, DatePipe, NumberPipe, ...SELECT],
+  imports: [HelpComponent, TranslocoDirective, PageHeaderComponent, ...TABLE, StatusComponent, SearchComponent, FilterBarComponent, ButtonDirective, IconComponent, DatePipe, NumberPipe, ...SELECT],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('production.orders.title')" [subtitle]="t('production.orders.subtitle')">
         @if (canManage) { <button pButton type="button" (click)="edit(null)"><dw-icon>add</dw-icon>{{ t('production.orders.new') }}</button> }
       </dw-page-header>
+      <dw-help topic="productionOrders" />
       <div class="dw-panel">
         <dw-filter-bar [active]="(search() ? 1 : 0) + (status() ? 1 : 0)" (cleared)="search.set(''); status.set(''); list.reload()">
           <dw-search [placeholder]="t('production.orders.number')" [query]="search()" (queryChange)="search.set($event); list.reload()" />
@@ -389,13 +391,14 @@ export class ManufacturingOrderDialog {
 
 /** The manufacturing orders (OF), with where each one stands. */
 @Component({
-  imports: [TranslocoDirective, PageHeaderComponent, ...TABLE, StatusComponent, SearchComponent, FilterBarComponent, ButtonDirective, IconComponent, DatePipe, NumberPipe, LocalizedPipe, ...SELECT],
+  imports: [HelpComponent, TranslocoDirective, PageHeaderComponent, ...TABLE, StatusComponent, SearchComponent, FilterBarComponent, ButtonDirective, IconComponent, DatePipe, NumberPipe, LocalizedPipe, ...SELECT],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('production.of.title')" [subtitle]="t('production.of.subtitle')">
         @if (canManage) { <button pButton type="button" (click)="edit(null)"><dw-icon>add</dw-icon>{{ t('production.of.new') }}</button> }
       </dw-page-header>
+      <dw-help topic="manufacturingOrders" />
       <div class="dw-panel">
         <dw-filter-bar [active]="(search() ? 1 : 0) + (status() ? 1 : 0) + (site() ? 1 : 0)" (cleared)="search.set(''); status.set(''); site.set(''); list.reload()">
           <dw-search [placeholder]="t('production.of.number')" [query]="search()" (queryChange)="search.set($event); list.reload()" />

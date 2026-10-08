@@ -183,6 +183,91 @@ export interface LotActionData {
   lot: Lot;
 }
 
+/**
+ * Where the lot comes from in production, given or corrected after it was created: the operator on the floor does not
+ * always know the OF. Left empty, the stage is deduced from the zone and the material from the OF.
+ */
+@Component({
+  imports: [...DIALOG, LocalizedPipe, ButtonDirective, ...FIELD, ...SELECT, ...DIALOG_PARTS],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <ng-container *transloco="let t">
+      <dw-dialog-title>{{ t('lots.editOrigin') }} — {{ data.lot.lot_number }}</dw-dialog-title>
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div class="dw-dialog-body">
+          <p class="dw-muted">{{ t('lots.originHint') }}</p>
+          <dw-field [label]="t('lots.productionOrder')">
+            <dw-select formControlName="production_order">
+              <dw-option [value]="null" [label]="t('lots.noProductionOrder')" />
+              @for (order of orders(); track order.ulid) { <dw-option [value]="order.ulid" [label]="order.order_number + ' — ' + order.article.reference" /> }
+            </dw-select>
+          </dw-field>
+          <dw-field [label]="t('production.of.step')">
+            <dw-select formControlName="production_step">
+              <dw-option [value]="null" [label]="t('lots.stepOfZone')" />
+              @for (step of steps(); track step.code) { <dw-option [value]="step.code" [label]="step.name | dwLocalized" /> }
+            </dw-select>
+          </dw-field>
+          <dw-field [label]="t('lots.rawMaterial')">
+            <dw-select formControlName="raw_material">
+              <dw-option [value]="null" [label]="t('lots.materialOfOrder')" />
+              @for (material of materials(); track material.ulid) { <dw-option [value]="material.ulid" [label]="material.reference + ' — ' + material.name" /> }
+            </dw-select>
+          </dw-field>
+        </div>
+        <div class="dw-dialog-foot">
+          <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+          <button pButton type="submit" [disabled]="busy()">{{ t('common.save') }}</button>
+        </div>
+      </form>
+    </ng-container>
+  `,
+  styles: '.dw-dialog-body { display: grid; gap: var(--dw-3); inline-size: min(480px, 86vw); } .dw-muted { margin: 0; font-size: 13px; }',
+})
+export class LotOriginDialog {
+  protected readonly data = dialogData<LotActionData>();
+  private readonly api = inject(Api);
+  private readonly toast = inject(Toast);
+  private readonly ref = inject(DialogRef);
+
+  private readonly origin = this.data.lot.origin ?? null;
+  private readonly openOrders = toSignal(this.api.get<OpenOrder[]>('production/open-orders').pipe(catchError(() => of([] as OpenOrder[]))), { initialValue: [] });
+  protected readonly steps = toSignal(this.api.get<{ code: string; name: Record<string, string>; is_active: boolean }[]>('production/steps').pipe(catchError(() => of([]))), { initialValue: [] });
+  protected readonly busy = signal(false);
+  protected readonly form = inject(FormBuilder).group({
+    production_order: [this.origin?.production_order?.ulid ?? null],
+    production_step: [this.origin?.step?.code ?? null],
+    raw_material: [this.origin?.raw_material?.ulid ?? null],
+  });
+  private readonly chosen = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
+  /** The open orders, and the one the lot already names even if it is finished since. */
+  protected readonly orders = computed(() => {
+    const current = this.origin?.production_order;
+    const open = this.openOrders();
+
+    return current && !open.some((order) => order.ulid === current.ulid)
+      ? [{ ulid: current.ulid, order_number: current.order_number, article: this.origin?.article ?? { reference: '', name: '' }, steps: [], materials: [] } as OpenOrder, ...open] : open;
+  });
+  protected readonly materials = computed(() => {
+    const ofOrder = this.openOrders().find((order) => order.ulid === this.chosen().production_order)?.materials ?? [];
+    const current = this.origin?.raw_material;
+
+    return current && !ofOrder.some((material) => material.ulid === current.ulid) ? [current, ...ofOrder] : ofOrder;
+  });
+
+  protected async submit(): Promise<void> {
+    this.busy.set(true);
+    try {
+      this.ref.close(await firstValueFrom(this.api.put<Lot>(`lots/${this.data.lot.ulid}/origin`, this.form.getRawValue())));
+      this.toast.success('common.saved');
+    } catch (error) {
+      this.toast.error(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+}
+
 /** Move a lot to a zone of its site (storing it if it was only created). */
 @Component({
   imports: [...DIALOG, ButtonDirective, ...FIELD, ...SELECT, ...DIALOG_PARTS],

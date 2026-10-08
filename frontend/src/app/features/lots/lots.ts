@@ -19,6 +19,7 @@ import { Dialogs } from '../../ui/dialog';
 import { IconComponent } from '../../ui/icon';
 import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
+import { HelpComponent } from '../../ui/help';
 
 interface LotFilter {
   status?: LotStatus[];
@@ -36,6 +37,7 @@ const STATUSES: LotStatus[] = ['created', 'stored', 'awaiting_pickup', 'collecte
  */
 @Component({
   imports: [
+    HelpComponent,
     TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, DatePipe, KgPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -49,6 +51,7 @@ const STATUSES: LotStatus[] = ['created', 'stored', 'awaiting_pickup', 'collecte
           <button pButton type="button" (click)="create()"><dw-icon>add</dw-icon>{{ t('lots.new') }}</button>
         }
       </dw-page-header>
+      <dw-help topic="lots" />
 
       <div class="dw-panel">
         <dw-filter-bar [active]="list.activeCount()" (cleared)="list.resetFilter()">
