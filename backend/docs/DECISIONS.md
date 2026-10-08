@@ -46,6 +46,9 @@ Seeded by `ProvisionalReferenceSeeder`, clearly separated from the stable refere
 | F12 | Lockout: 5 failed sign-ins → 15 minutes, with an email to the account owner | The cahier gives the count, not the duration |
 | F13 | Generated reports are private to the user who requested them and expire after 30 days | They are built with that user's site rights |
 | F14 | Company legal name, tax ID and country are changed by the platform only | They identify the contracting party on invoices and regulatory documents |
+| F16 | Zone capacity is counted in lots per packaging ("40 bales, or 100 bags"); shares add up; an optional weight limit is a second ceiling. A lot whose packaging the zone does not mention is reported, not converted | Storage room depends on volume, not weight, and people know how many bales fit, not how many m³. No guessed conversion |
+| F17 | The waste types and colours a zone is reserved for are a warning, never a refusal | An operator on the floor must never be blocked from recording a lot |
+| F18 | Pantone: a reference typed by the company on its own colours; the Pantone library is not bundled | The library is proprietary; bundling it needs a licence |
 | F15 | Only French ships; the language switch, English and Arabic files and right-to-left were prepared, not delivered | Cahier §1: other languages are V2. All texts are already in translation files |
 
 ## Not done

@@ -1,5 +1,7 @@
 <?php
 
+use App\Modules\Catalog\Models\WasteType;
+use App\Modules\Catalog\Support\Colors;
 use App\Modules\Catalog\Support\UnitConversion;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Support\ReferenceCodes;
@@ -17,6 +19,8 @@ use App\Modules\Sites\Resources\SiteResource;
 use App\Modules\Sites\Resources\StockThresholdResource;
 use App\Modules\Sites\Resources\ZoneResource;
 use App\Modules\Sites\Support\StockQuery;
+use App\Modules\Sites\Support\ZoneOrganisation;
+use App\Modules\Tenancy\Rules\TenantExists;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -92,28 +96,48 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         'code' => ['required', 'string', 'max:20', 'alpha_dash',
             Rule::unique('zones', 'code')->where('company_id', $site->company_id)->where('site_id', $site->id)->ignore($zone?->id)],
         'name' => ['required', 'string', 'max:150'],
-        'zone_type' => ['required', 'string', Rule::exists('zone_types', 'code')->where('is_active', true)],
+        // Optional: a zone may simply have a name.
+        'zone_type' => ['nullable', 'string', Rule::exists('zone_types', 'code')->where('is_active', true)],
         'capacity_kg' => ['nullable', 'decimal:0,3', 'min:0'],
         'capacity_m3' => ['nullable', 'decimal:0,3', 'min:0'],
         'capacity_alert_pct' => ['nullable', 'integer', 'between:1,100'],
+        // How many lots of each packaging the zone holds when it contains only that packaging.
+        'capacities' => ['sometimes', 'array', 'max:30'],
+        'capacities.*.packaging_type' => ['required', 'string', 'distinct', Rule::exists('packaging_types', 'code')->where('is_active', true)],
+        'capacities.*.max_count' => ['required', 'integer', 'between:1,100000'],
+        // What the zone is meant for. Empty = anything; a lot that does not match is reported, never refused.
+        'accepted_waste_types' => ['sometimes', 'array', 'max:200'],
+        'accepted_waste_types.*' => ['string', 'distinct', new TenantExists(WasteType::class)],
+        'accepted_colors' => ['sometimes', 'array', 'max:200'],
+        'accepted_colors.*' => ['string', 'distinct', Colors::rule($site->company_id)],
     ];
     $zoneAttributes = function (array $input) {
-        $type = DB::table('zone_types')->where('code', $input['zone_type'])->first(['id', 'is_waste_storage']);
+        $type = isset($input['zone_type']) ? DB::table('zone_types')->where('code', $input['zone_type'])->first(['id', 'is_waste_storage']) : null;
 
-        return ['zone_type_id' => $type->id, 'is_waste_storage' => (bool) $type->is_waste_storage, 'capacity_alert_pct' => $input['capacity_alert_pct'] ?? 90]
-            + array_diff_key($input, ['zone_type' => true, 'capacity_alert_pct' => true]);
+        return ['zone_type_id' => $type?->id, 'is_waste_storage' => (bool) $type?->is_waste_storage, 'capacity_alert_pct' => $input['capacity_alert_pct'] ?? 90]
+            + array_intersect_key($input, ['code' => true, 'name' => true, 'capacity_kg' => true, 'capacity_m3' => true]);
     };
 
-    Route::post('sites/{site}/zones', function (Request $request, Site $site) use ($allow, $zoneRules, $zoneAttributes) {
+    Route::post('sites/{site}/zones', function (Request $request, Site $site, ZoneOrganisation $organisation) use ($allow, $zoneRules, $zoneAttributes) {
         $allow($request, 'zones.manage', $site->id);
+        $input = $request->validate($zoneRules($site));
+        $zone = DB::transaction(function () use ($site, $input, $zoneAttributes, $organisation) {
+            $zone = $site->zones()->create($zoneAttributes($input));
+            $organisation->sync($zone, $input);
 
-        return (new ZoneResource($site->zones()->create($zoneAttributes($request->validate($zoneRules($site))))))
-            ->response()->setStatusCode(201);
+            return $zone;
+        });
+
+        return (new ZoneResource($zone))->response()->setStatusCode(201);
     })->name('zones.store');
 
-    Route::put('zones/{zone}', function (Request $request, Zone $zone) use ($allow, $zoneRules, $zoneAttributes) {
+    Route::put('zones/{zone}', function (Request $request, Zone $zone, ZoneOrganisation $organisation) use ($allow, $zoneRules, $zoneAttributes) {
         $allow($request, 'zones.manage', $zone->site_id);
-        $zone->update($zoneAttributes($request->validate($zoneRules(Site::query()->findOrFail($zone->site_id), $zone))));
+        $input = $request->validate($zoneRules(Site::query()->findOrFail($zone->site_id), $zone));
+        DB::transaction(function () use ($zone, $input, $zoneAttributes, $organisation) {
+            $zone->update($zoneAttributes($input));
+            $organisation->sync($zone, $input);
+        });
 
         return new ZoneResource($zone);
     })->name('zones.update');
@@ -138,7 +162,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     /*
      * M2-07: real-time stock by site, zone and waste type, with zone capacity and threshold state.
      */
-    Route::get('stock', function (Request $request, AccessResolver $access, StockQuery $stock, ReferenceCodes $codes) {
+    Route::get('stock', function (Request $request, AccessResolver $access, StockQuery $stock, ReferenceCodes $codes, ZoneOrganisation $organisation) {
         $siteIds = $access->siteIdsFor($request->user(), 'stock.view');
         abort_if($siteIds === [], 403);
         $filter = $request->validate([
@@ -166,12 +190,14 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
                 DB::raw('MIN(l.generated_at) as oldest_lot_at'),
             ]);
 
-        $zoneTotals = $rows->groupBy('zone_id')->map(fn ($group) => $group->reduce(fn ($sum, $row) => bcadd($sum, (string) $row->quantity_kg, 3), '0'));
+        // How full each zone is, counted on everything it holds whatever the filters applied to the rows.
+        $fills = $rows->unique('zone_id')->mapWithKeys(fn ($row) => [$row->zone_id => $organisation->fill(
+            (int) $row->site_id, (int) $row->zone_id, $row->capacity_kg === null ? null : (string) $row->capacity_kg, (int) $row->capacity_alert_pct)]);
         $thresholds = StockThreshold::query()->where('is_active', true)->when($siteIds !== null, fn ($query) => $query->whereIn('site_id', $siteIds))
             ->get(['ulid', 'site_id', 'zone_id', 'waste_type_id', 'max_quantity_kg', 'warning_pct']);
 
         return response()->json([
-            'data' => $rows->map(function ($row) use ($zoneTotals, $codes) {
+            'data' => $rows->map(function ($row) use ($fills, $codes) {
                 $capacity = $row->capacity_kg === null || bccomp((string) $row->capacity_kg, '0', 3) === 0 ? null : (string) $row->capacity_kg;
                 $unit = $codes->code('units', $row->default_unit_id);
 
@@ -183,10 +209,10 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
                     'waste_type' => $row->waste_type, 'waste_type_name' => $row->waste_type_name, 'is_hazardous' => (bool) $row->is_hazardous,
                     'quantity_kg' => (string) $row->quantity_kg, 'awaiting_pickup_kg' => (string) $row->awaiting_pickup_kg, 'lots' => (int) $row->lots,
                     'oldest_lot_at' => $row->oldest_lot_at,
-                    'zone_quantity_kg' => $zoneTotals[$row->zone_id],
+                    'zone_quantity_kg' => $fills[$row->zone_id]['quantity_kg'],
                     'zone_capacity_kg' => $capacity,
-                    'zone_alert_level' => $capacity === null ? null
-                        : EvaluateStockThresholds::level($zoneTotals[$row->zone_id], $capacity, (int) $row->capacity_alert_pct)?->value,
+                    'zone_alert_level' => $fills[$row->zone_id]['alert_level'],
+                    'zone_fill' => $fills[$row->zone_id],
                 ];
             }),
             // Each threshold with the stock it currently measures, whatever the filters applied to the rows.

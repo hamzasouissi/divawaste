@@ -49,7 +49,7 @@ Route::middleware(['auth:sanctum', 'tenant:active,pending_approval'])->group(fun
             'materials' => $active('materials', ['code', 'name', 'material_class']),
             // The defaults of the platform and the colours this company added.
             'color_families' => $localized(Colors::visibleTo($context->companyId())->where('is_active', true)
-                ->orderByRaw('company_id is not null')->orderBy('sort_order')->orderBy('id')->get(['code', 'name', 'hex_color'])),
+                ->orderByRaw('company_id is not null')->orderBy('sort_order')->orderBy('id')->get(['code', 'name', 'hex_color', 'pantone_reference'])),
             'treatment_channels' => $active('treatment_channels', ['code', 'name', 'is_valorization', 'is_landfill', 'hierarchy_rank'], ['is_valorization', 'is_landfill']),
             'regulatory_waste_codes' => $localized(DB::table('regulatory_waste_codes')->where('code_system', $codeSystem)->where('is_selectable', true)
                 ->orderBy('code')->get(['code', 'label', 'is_hazardous']), ['is_hazardous']),
@@ -164,9 +164,14 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
      */
     $colorData = fn (stdClass $row) => [
         'code' => $row->code, 'name' => json_decode((string) $row->name, true), 'hex_color' => $row->hex_color,
+        'pantone_reference' => $row->pantone_reference,
         'is_custom' => $row->company_id !== null, 'is_active' => (bool) $row->is_active,
     ];
-    $colorRules = ['name' => ['required', 'string', 'max:60'], 'hex_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/']];
+    $colorRules = [
+        'name' => ['required', 'string', 'max:60'], 'hex_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+        // Typed by the company (for example "19-4052 TCX"); the Pantone library itself is not part of the application.
+        'pantone_reference' => ['nullable', 'string', 'max:40'],
+    ];
     // The same name twice in one list would make the choice ambiguous for the operator.
     $colorNameTaken = fn (int $companyId, string $name, ?int $exceptId = null) => Colors::visibleTo($companyId)->where('is_active', true)
         ->when($exceptId !== null, fn ($query) => $query->where('id', '!=', $exceptId))->get(['name'])
@@ -190,7 +195,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
         $id = DB::table('color_families')->insertGetId([
             'company_id' => $context->companyId(), 'code' => 'c_'.Str::lower((string) Str::ulid()),
             'name' => json_encode(['fr' => $name, 'en' => $name], JSON_UNESCAPED_UNICODE), 'hex_color' => isset($input['hex_color']) ? strtoupper($input['hex_color']) : null,
-            'sort_order' => 1000, 'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
+            'pantone_reference' => isset($input['pantone_reference']) ? trim($input['pantone_reference']) : null, 'sort_order' => 1000, 'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
         ]);
 
         return response()->json(['data' => $colorData(DB::table('color_families')->where('id', $id)->firstOrFail())], 201);
@@ -210,6 +215,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
         DB::table('color_families')->where('id', $color->id)->update([
             'name' => json_encode(['fr' => $name, 'en' => $name], JSON_UNESCAPED_UNICODE),
             'hex_color' => isset($input['hex_color']) ? strtoupper($input['hex_color']) : null,
+            'pantone_reference' => isset($input['pantone_reference']) ? trim($input['pantone_reference']) : null,
             'is_active' => (bool) ($input['is_active'] ?? $color->is_active), 'updated_at' => now(),
         ]);
 
