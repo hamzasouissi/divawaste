@@ -28,6 +28,7 @@ return [
     ],
     'document' => [
         'signature_requested' => ['title' => 'Tracking slip :number to sign', 'body' => 'Tracking slip :number is waiting for your signature.'],
+        'signed_copy_requested' => ['title' => 'Tracking slip :number: signed copy to attach', 'body' => 'Every party has signed tracking slip :number. Attach the scan of the copy signed by hand to close it.'],
         'certificate_uploaded' => ['title' => 'Certificate uploaded for pickup :number', 'body' => ':provider uploaded a certificate for pickup :number.'],
     ],
     'report' => [

@@ -39,8 +39,10 @@ class PickupResource extends JsonResource
             'pickup_number' => $this->pickup_number,
             'status' => $this->status,
             'company' => $parties->company($this->company_id),
-            'provider' => $parties->company($this->provider_company_id),
-            'transporter' => $parties->company($this->transporter_company_id),
+            // The receiver, then the transporter when it is someone else. `external` marks a partner without an account:
+            // the industrial then records each stage itself.
+            'provider' => $parties->company($this->provider_company_id) ?? $parties->external($this->external_provider_id),
+            'transporter' => $parties->company($this->transporter_company_id) ?? $parties->external($this->external_transporter_id),
             'site' => $parties->site($this->site_id),
             'requested_date' => $this->requested_date->toDateString(),
             'confirmed_date' => $this->confirmed_date?->toDateString(),

@@ -24,6 +24,7 @@ final class NotificationCatalog
         'accreditation.expired' => ['mail' => true],
         'accreditation.reviewed' => ['mail' => true],
         'document.signature_requested' => ['mail' => true],
+        'document.signed_copy_requested' => ['mail' => false],
         'document.certificate_uploaded' => ['mail' => false],
         'report.ready' => ['mail' => false],
         'report.failed' => ['mail' => false],

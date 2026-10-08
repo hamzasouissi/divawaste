@@ -65,6 +65,10 @@ return [
             'title' => 'Bordereau :number à signer',
             'body' => 'Le bordereau de suivi :number attend votre signature.',
         ],
+        'signed_copy_requested' => [
+            'title' => 'Bordereau :number : exemplaire signé à joindre',
+            'body' => 'Toutes les parties ont signé le bordereau :number. Joignez le scan de l\'exemplaire signé à la main pour le clôturer.',
+        ],
         'certificate_uploaded' => [
             'title' => 'Certificat déposé pour l\'enlèvement :number',
             'body' => ':provider a déposé un certificat pour l\'enlèvement :number.',

@@ -6,6 +6,7 @@ use App\Modules\Common\Models\StoredFile;
 use App\Modules\Common\Support\FileStorage;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Notifications\Actions\NotifyUsers;
+use App\Modules\Providers\Models\ExternalPartner;
 use App\Modules\Providers\Models\ProviderAcceptedWaste;
 use App\Modules\Providers\Models\ProviderAccreditation;
 use App\Modules\Providers\Models\ProviderPartnership;
@@ -93,6 +94,65 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
 
         return response()->json(['data' => ['ulid' => $partnership->ulid, 'status' => $partnership->status]]);
     })->name('provider-partnerships.update');
+
+    /*
+     * Partners without an account on the platform: a transporter or a receiver the company records itself.
+     */
+    $partnerData = fn (ExternalPartner $partner) => [
+        'ulid' => $partner->ulid, 'legal_name' => $partner->legal_name, 'tax_id' => $partner->tax_id,
+        'address_line1' => $partner->address_line1, 'postal_code' => $partner->postal_code, 'city' => $partner->city,
+        'phone' => $partner->phone, 'email' => $partner->email, 'contact_name' => $partner->contact_name,
+        'roles' => array_keys(array_filter(['transporter' => $partner->is_transporter, 'recycler' => $partner->is_recycler, 'eliminator' => $partner->is_eliminator])),
+        'accreditation_reference' => $partner->accreditation_reference,
+        'accreditation_expires_on' => $partner->accreditation_expires_on?->toDateString(),
+        'covers_hazardous' => $partner->covers_hazardous, 'notes' => $partner->notes, 'is_active' => $partner->is_active,
+    ];
+    $partnerAttributes = function (Request $request) {
+        $input = $request->validate([
+            'legal_name' => ['required', 'string', 'max:191'],
+            'tax_id' => ['nullable', 'string', 'max:40'],
+            'address_line1' => ['nullable', 'string', 'max:191'],
+            'postal_code' => ['nullable', 'string', 'max:20'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'email' => ['nullable', 'email', 'max:191'],
+            'contact_name' => ['nullable', 'string', 'max:150'],
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => ['string', 'distinct', Rule::in(['transporter', 'recycler', 'eliminator'])],
+            'accreditation_reference' => ['nullable', 'string', 'max:100'],
+            'accreditation_expires_on' => ['nullable', 'date'],
+            'covers_hazardous' => ['sometimes', 'boolean'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'is_active' => ['sometimes', 'boolean'],
+        ]);
+        $roles = $input['roles'];
+
+        return ['is_transporter' => in_array('transporter', $roles, true), 'is_recycler' => in_array('recycler', $roles, true),
+            'is_eliminator' => in_array('eliminator', $roles, true), 'covers_hazardous' => (bool) ($input['covers_hazardous'] ?? false)]
+            + array_diff_key($input, ['roles' => true]);
+    };
+
+    Route::get('external-partners', function (Request $request) use ($allow, $partnerData) {
+        $allow($request, 'providers.view');
+
+        return ['data' => ExternalPartner::query()
+            ->when(! $request->boolean('with_inactive'), fn ($query) => $query->where('is_active', true))
+            ->orderBy('legal_name')->get()->map($partnerData)];
+    })->name('external-partners.index');
+
+    Route::post('external-partners', function (Request $request) use ($allow, $partnerData, $partnerAttributes) {
+        $allow($request, 'providers.partnerships.manage');
+
+        return response()->json(['data' => $partnerData(ExternalPartner::query()->create($partnerAttributes($request) + ['created_by_user_id' => $request->user()->id]))], 201);
+    })->name('external-partners.store');
+
+    // Never deleted: pickups and slips keep pointing to it. A partner the company stops using is deactivated.
+    Route::put('external-partners/{partner}', function (Request $request, ExternalPartner $partner) use ($allow, $partnerData, $partnerAttributes) {
+        $allow($request, 'providers.partnerships.manage');
+        $partner->update($partnerAttributes($request));
+
+        return response()->json(['data' => $partnerData($partner)]);
+    })->name('external-partners.update');
 
     /*
      * Provider side: its own profile, accepted waste and accreditations.

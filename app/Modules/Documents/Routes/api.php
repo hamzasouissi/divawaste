@@ -145,13 +145,29 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
     Route::post('manifests/{manifest}/sign', function (Request $request, HazardousWasteManifest $manifest, ManifestWorkflow $workflow) use ($isProvider) {
         abort_unless($isProvider() ? $request->user()->can('provider.manifests.sign') : $request->user()->can('documents.sign', $manifest->site_id), 403);
-        // Signing is a deliberate act: the signer proves his identity again.
-        if (! Hash::check((string) $request->validate(['password' => ['required', 'string']])['password'], $request->user()->getAuthPassword())) {
+        $input = $request->validate([
+            // 'paper': the party signed by hand on the printed slip; who signed and when is typed in.
+            'method' => ['sometimes', Rule::in(['electronic', 'paper'])],
+            'password' => ['required', 'string'],
+            'signer_name' => ['required_if:method,paper', 'nullable', 'string', 'max:150'],
+            'signed_on' => ['required_if:method,paper', 'nullable', 'date', 'before_or_equal:today'],
+        ]);
+        // Signing, or recording a signature, is a deliberate act: the user proves his identity again.
+        if (! Hash::check((string) $input['password'], $request->user()->getAuthPassword())) {
             throw ValidationException::withMessages(['password' => [__('auth.password')]]);
         }
+        $paper = ($input['method'] ?? 'electronic') === 'paper' ? ['signer_name' => trim((string) $input['signer_name']), 'signed_on' => (string) $input['signed_on']] : null;
 
-        return new HazardousWasteManifestResource($workflow->sign($manifest, $request->user(), $request));
+        return new HazardousWasteManifestResource($workflow->sign($manifest, $request->user(), $request, $paper));
     })->name('manifests.sign')->middleware('throttle:10,1');
+
+    // The scan of the slip signed by hand: it closes a slip that carries at least one handwritten signature.
+    Route::post('manifests/{manifest}/signed-copy', function (Request $request, HazardousWasteManifest $manifest, ManifestWorkflow $workflow) use ($isProvider) {
+        abort_unless(! $isProvider() && $request->user()->can('documents.sign', $manifest->site_id), 403);
+        $file = $request->validate(['file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240']])['file'];
+
+        return new HazardousWasteManifestResource($workflow->attachSignedCopy($manifest, $file, $request->user()));
+    })->name('manifests.signed-copy');
 
     /*
      * M5-03: annual declarations.

@@ -108,12 +108,13 @@ final class DeclarationWorkflow
             ->groupBy('rc.code', 't.name', 'l.is_hazardous')
             ->get(['rc.code', 't.name', 'l.is_hazardous', DB::raw('SUM(l.net_weight_kg) as kg'), DB::raw('COUNT(*) as lots')]);
 
-        $evacuated = DB::table('pickup_lots as pl')->join('pickups as p', 'p.id', '=', 'pl.pickup_id')->join('companies as c', 'c.id', '=', 'p.provider_company_id')
+        $evacuated = DB::table('pickup_lots as pl')->join('pickups as p', 'p.id', '=', 'pl.pickup_id')
+            ->leftJoin('companies as c', 'c.id', '=', 'p.provider_company_id')->leftJoin('external_partners as xp', 'xp.id', '=', 'p.external_provider_id')
             ->leftJoin('treatment_channels as ch', 'ch.id', '=', 'pl.actual_treatment_channel_id')
             ->where('p.company_id', $site->company_id)->where('p.site_id', $site->id)->whereIn('pl.line_status', ['loaded', 'received', 'treated'])
             ->where('p.collected_at', '>=', $start)->where('p.collected_at', '<', $end)
-            ->groupBy('pl.regulatory_code_snapshot', 'pl.waste_type_label_snapshot', 'pl.is_hazardous', 'c.legal_name', 'ch.code')
-            ->get(['pl.regulatory_code_snapshot as code', 'pl.waste_type_label_snapshot as name', 'pl.is_hazardous', 'c.legal_name as provider', 'ch.code as channel',
+            ->groupBy('pl.regulatory_code_snapshot', 'pl.waste_type_label_snapshot', 'pl.is_hazardous', 'c.legal_name', 'xp.legal_name', 'ch.code')
+            ->get(['pl.regulatory_code_snapshot as code', 'pl.waste_type_label_snapshot as name', 'pl.is_hazardous', DB::raw('COALESCE(c.legal_name, xp.legal_name) as provider'), 'ch.code as channel',
                 DB::raw('SUM(COALESCE(pl.received_weight_kg, pl.departure_weight_kg)) as kg')]);
 
         // Still on site when the year ended: produced before the end and neither removed nor absorbed by a split/grouping before it.

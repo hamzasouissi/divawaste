@@ -91,9 +91,10 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         $lineage = fn (string $mine, string $other) => DB::table('waste_lot_lineage as g')->join('waste_lots as l', 'l.id', '=', "g.{$other}")
             ->where("g.{$mine}", $lot->id)->orderBy('g.id')
             ->get(['l.ulid', 'l.lot_number', 'l.status', 'g.relation_type', 'g.quantity_kg']);
-        $pickup = DB::table('pickup_lots as pl')->join('pickups as p', 'p.id', '=', 'pl.pickup_id')->join('companies as c', 'c.id', '=', 'p.provider_company_id')
+        $pickup = DB::table('pickup_lots as pl')->join('pickups as p', 'p.id', '=', 'pl.pickup_id')
+            ->leftJoin('companies as c', 'c.id', '=', 'p.provider_company_id')->leftJoin('external_partners as xp', 'xp.id', '=', 'p.external_provider_id')
             ->where('pl.waste_lot_id', $lot->id)->orderByDesc('pl.id')
-            ->first(['p.ulid', 'p.pickup_number', 'p.status', 'c.legal_name as provider', 'pl.line_status', 'pl.departure_weight_kg', 'pl.received_weight_kg']);
+            ->first(['p.ulid', 'p.pickup_number', 'p.status', DB::raw('COALESCE(c.legal_name, xp.legal_name) as provider'), 'pl.line_status', 'pl.departure_weight_kg', 'pl.received_weight_kg']);
 
         return (new WasteLotResource($lot))->additional(['meta' => [
             'composition' => $materials,

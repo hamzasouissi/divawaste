@@ -37,7 +37,7 @@ final class WasteRegister
             // The line of the pickup that actually took the lot (a refused or cancelled pickup leaves no exit).
             ->leftJoin('pickup_lots as pl', fn ($join) => $join->on('pl.waste_lot_id', '=', 'l.id')->whereIn('pl.line_status', ['loaded', 'received', 'treated']))
             ->leftJoin('pickups as p', 'p.id', '=', 'pl.pickup_id')
-            ->leftJoin('companies as pc', 'pc.id', '=', 'p.provider_company_id')
+            ->leftJoin('companies as pc', 'pc.id', '=', 'p.provider_company_id')->leftJoin('external_partners as xp', 'xp.id', '=', 'p.external_provider_id')
             ->leftJoin('treatment_channels as ch', 'ch.id', '=', 'pl.actual_treatment_channel_id')
             ->where('l.company_id', $this->context->companyId())->whereNull('l.deleted_at')
             ->where('l.generated_at', '>=', $from)->where('l.generated_at', '<', $to->copy()->addDay()->startOfDay())
@@ -45,7 +45,7 @@ final class WasteRegister
             ->when($hazardous !== null, fn (Builder $query) => $query->where('l.is_hazardous', $hazardous))
             ->orderBy('l.generated_at')->orderBy('l.id')
             ->select(['l.ulid', 'l.generated_at', 'l.lot_number', 's.name as site', 'z.name as zone', 't.name as waste_type', 'rc.code as regulatory_code',
-                'l.is_hazardous', 'l.net_weight_kg', 'l.origin_type', 'l.status', 'p.pickup_number', 'p.collected_at', 'pc.legal_name as provider',
+                'l.is_hazardous', 'l.net_weight_kg', 'l.origin_type', 'l.status', 'p.pickup_number', 'p.collected_at', DB::raw('COALESCE(pc.legal_name, xp.legal_name) as provider'),
                 'pl.received_weight_kg', 'ch.code as channel', 'ch.name as channel_name']);
     }
 

@@ -47,7 +47,8 @@ return [
     ],
 
     'manifest' => [
-        'title' => 'Hazardous waste tracking slip',
+        'title' => 'Waste tracking slip',
+        'title_hazardous' => 'Hazardous waste tracking slip',
         'meta' => 'No. :number · Pickup :pickup of :date',
         'signing' => 'BEING SIGNED',
         'producer' => '1. Producer',
@@ -61,13 +62,20 @@ return [
         'departure_weight' => 'Weight at departure',
         'received_weight' => 'Weight received',
         'lot_number' => 'Lot no.',
-        'signatures' => 'Electronic signatures',
+        'signatures' => 'Signatures',
+        'method' => 'Method',
+        'electronic' => 'Electronic',
+        'paper' => 'Handwritten',
+        'by_hand' => 'Signature and stamp',
+        'by_hand_name' => 'Name',
+        'by_hand_date' => 'Date',
+        'no_code' => 'no code',
         'party' => 'Party',
         'signer' => 'Signatory',
         'date' => 'Date',
         'hash' => 'Fingerprint of the signed content (SHA-256)',
         'pending' => 'Pending',
-        'note' => 'Each signature is made by an authenticated user after confirming their password; the date, the IP address and the fingerprint of the signed content are kept.',
+        'note' => 'Electronic signature: made by an authenticated user after confirming their password; the date, the IP address and the fingerprint of the signed content are kept. Handwritten signature: made by hand in the box above; the signed copy is scanned and archived.',
     ],
 
     'declaration' => [
