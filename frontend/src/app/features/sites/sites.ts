@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, input, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom, map } from 'rxjs';
@@ -12,7 +12,7 @@ import { Localized, Site, Zone } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
-import { KgPipe, LocalizedPipe } from '../../core/format/pipes';
+import { CodePipe, KgPipe, LocalizedPipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { Column, TABLE } from '../../ui/data-table';
 import { ListStore } from '../../ui/list-store';
@@ -25,6 +25,7 @@ import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
 import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
+import { ZoneFillComponent } from '../../ui/zone-fill';
 
 const DIALOG = [ReactiveFormsModule, TranslocoDirective] as const;
 const DECIMAL = Validators.pattern(/^\d+([.,]\d{1,3})?$/);
@@ -115,7 +116,7 @@ interface ZoneDialogData {
 }
 
 @Component({
-  imports: [...DIALOG, LocalizedPipe, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS],
+  imports: [...DIALOG, LocalizedPipe, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -127,13 +128,46 @@ interface ZoneDialogData {
               <input pInputText formControlName="code" maxlength="20" required />
             </dw-field>
             <dw-field [label]="t('sites.zoneType')">
-              <dw-select formControlName="zone_type" required>
+              <dw-select formControlName="zone_type">
+                <dw-option value="" [label]="t('sites.noZoneType')" />
                 @for (type of vocabulary()?.zone_types ?? []; track type.code) { <dw-option [value]="type.code" [label]="type.name | dwLocalized" /> }
               </dw-select>
             </dw-field>
             <dw-field class="dw-span-2" [label]="t('fields.name')"><input pInputText formControlName="name" maxlength="150" required /></dw-field>
-            <dw-field [label]="t('fields.capacityKg')"><input pInputText formControlName="capacity_kg" inputmode="decimal" /></dw-field>
+
+            <section class="dw-span-2 part">
+              <h3 class="dw-h3">{{ t('sites.capacity') }}</h3>
+              <p class="dw-muted">{{ t('sites.capacityHint') }}</p>
+              @for (line of capacities.controls; track line; let i = $index) {
+                <div class="line" [formGroup]="line">
+                  <dw-select formControlName="packaging_type" [ariaLabel]="t('lots.packaging')" [placeholder]="t('lots.packaging')">
+                    @for (packaging of vocabulary()?.packaging_types ?? []; track packaging.code) {
+                      <dw-option [value]="packaging.code" [label]="packaging.name | dwLocalized" [disabled]="taken(packaging.code, i)" />
+                    }
+                  </dw-select>
+                  <input pInputText type="number" formControlName="max_count" min="1" max="100000" [attr.aria-label]="t('sites.maxLots')" [placeholder]="t('sites.maxLots')" />
+                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="capacities.removeAt(i)" [attr.aria-label]="t('common.remove')"><dw-icon>close</dw-icon></button>
+                </div>
+              }
+              <button pButton text type="button" class="add" (click)="addCapacity()"><dw-icon>add</dw-icon>{{ t('sites.addCapacity') }}</button>
+            </section>
+            <dw-field [label]="t('sites.capacityKgLimit')"><input pInputText formControlName="capacity_kg" inputmode="decimal" /></dw-field>
             <dw-field [label]="t('sites.alertPct')"><input pInputText type="number" formControlName="capacity_alert_pct" min="1" max="100" /></dw-field>
+
+            <section class="dw-span-2 part">
+              <h3 class="dw-h3">{{ t('sites.reservedFor') }}</h3>
+              <p class="dw-muted">{{ t('sites.reservedHint') }}</p>
+            </section>
+            <dw-field [label]="t('sites.acceptedTypes')">
+              <dw-select formControlName="accepted_waste_types" multiple clearable [placeholder]="t('sites.anyType')">
+                @for (type of types(); track type.ulid) { <dw-option [value]="type.ulid" [label]="type.name" /> }
+              </dw-select>
+            </dw-field>
+            <dw-field [label]="t('sites.acceptedColors')">
+              <dw-select formControlName="accepted_colors" multiple clearable [placeholder]="t('sites.anyColor')">
+                @for (color of vocabulary()?.color_families ?? []; track color.code) { <dw-option [value]="color.code" [label]="color.name | dwLocalized" /> }
+              </dw-select>
+            </dw-field>
           </div>
         </div>
         <div class="dw-dialog-foot">
@@ -143,7 +177,13 @@ interface ZoneDialogData {
       </form>
     </ng-container>
   `,
-  styles: '.dw-dialog-body { min-width: min(520px, 82vw); }',
+  styles: `
+    .dw-dialog-body { inline-size: min(640px, 82vw); }
+    .part { display: grid; gap: var(--dw-2); margin-block-start: var(--dw-2); }
+    .part p { margin: 0; font-size: 13px; }
+    .line { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: var(--dw-2); align-items: center; }
+    .add { justify-self: start; }
+  `,
 })
 export class ZoneDialog {
   protected readonly data = dialogData<ZoneDialogData>();
@@ -152,15 +192,39 @@ export class ZoneDialog {
   private readonly reference = inject(ReferenceData);
   private readonly ref = inject(DialogRef);
 
+  private readonly fb = inject(FormBuilder);
+
   protected readonly vocabulary = toSignal(this.reference.vocabulary());
+  protected readonly types = toSignal(this.reference.wasteTypes(), { initialValue: [] });
   protected readonly busy = signal(false);
-  protected readonly form = inject(FormBuilder).nonNullable.group({
+  /** "This zone holds 40 bales, or 100 bags": one line per packaging. */
+  protected readonly capacities = this.fb.array((this.data.zone?.capacities ?? []).map((line) => this.capacityLine(line.packaging_type, line.max_count)));
+  protected readonly form = this.fb.nonNullable.group({
     code: [this.data.zone?.code ?? '', [Validators.required, Validators.pattern(/^[A-Za-z0-9_-]+$/)]],
     name: [this.data.zone?.name ?? '', Validators.required],
-    zone_type: [this.data.zone?.zone_type ?? '', Validators.required],
+    zone_type: [this.data.zone?.zone_type ?? ''],
     capacity_kg: [this.data.zone?.capacity_kg ?? '', DECIMAL],
     capacity_alert_pct: [this.data.zone?.capacity_alert_pct ?? 90, [Validators.min(1), Validators.max(100)]],
+    accepted_waste_types: [this.data.zone?.accepted_waste_types ?? []],
+    accepted_colors: [this.data.zone?.accepted_colors ?? []],
+    capacities: this.capacities,
   });
+
+  private capacityLine(packaging = '', count: number | null = null): FormGroup {
+    return this.fb.nonNullable.group({
+      packaging_type: [packaging, Validators.required],
+      max_count: [count, [Validators.required, Validators.min(1), Validators.max(100000)]],
+    });
+  }
+
+  protected addCapacity(): void {
+    this.capacities.push(this.capacityLine());
+  }
+
+  /** A packaging already used on another line cannot be chosen twice. */
+  protected taken(code: string, index: number): boolean {
+    return this.capacities.controls.some((line, i) => i !== index && line.value.packaging_type === code);
+  }
 
   protected async submit(): Promise<void> {
     if (this.form.invalid) {
@@ -170,7 +234,7 @@ export class ZoneDialog {
     }
     this.busy.set(true);
     const value = this.form.getRawValue();
-    const body = { ...value, capacity_kg: num(value.capacity_kg) };
+    const body = { ...value, zone_type: value.zone_type || null, capacity_kg: num(value.capacity_kg) };
     try {
       const zone = await firstValueFrom(this.data.zone ? this.api.put<Zone>(`zones/${this.data.zone.ulid}`, body) : this.api.post<Zone>(`sites/${this.data.site.ulid}/zones`, body));
       this.reference.refreshZones(this.data.site.ulid);
@@ -245,7 +309,7 @@ export class SitesPage {
 
 /** A site and its zones. Zones holding waste cannot be closed; nothing is ever deleted (traceability). */
 @Component({
-  imports: [TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KgPipe, LocalizedPipe, IconComponent, ButtonDirective],
+  imports: [TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KgPipe, CodePipe, LocalizedPipe, IconComponent, ButtonDirective, ZoneFillComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -275,14 +339,29 @@ export class SitesPage {
                 @if (canManageZones()) { <button pButton severity="secondary" outlined type="button" (click)="editZone(null)"><dw-icon>add</dw-icon>{{ t('sites.addZone') }}</button> }
               </div>
               <table class="dw-table">
-                <thead><tr><th>{{ t('fields.code') }}</th><th>{{ t('fields.name') }}</th><th>{{ t('sites.zoneType') }}</th><th class="dw-num">{{ t('fields.capacityKg') }}</th><th>{{ t('fields.status') }}</th><th></th></tr></thead>
+                <thead><tr><th>{{ t('fields.code') }}</th><th>{{ t('fields.name') }}</th><th>{{ t('sites.capacity') }}</th><th>{{ t('stock.zoneFill') }}</th><th>{{ t('sites.reservedFor') }}</th><th>{{ t('fields.status') }}</th><th></th></tr></thead>
                 <tbody>
                   @for (zone of s.zones ?? []; track zone.ulid) {
                     <tr [class.off]="!zone.is_active">
                       <td class="dw-mono">{{ zone.code }}</td>
-                      <td>{{ zone.name }} @if (zone.is_waste_storage) { <dw-status kind="lot" value="stored" [label]="t('sites.storage')" /> }</td>
-                      <td>{{ zoneType(zone.zone_type) | dwLocalized: (zone.zone_type ?? '—') }}</td>
-                      <td class="dw-num">{{ zone.capacity_kg | dwKg: 'auto' }}</td>
+                      <td>
+                        {{ zone.name }} @if (zone.is_waste_storage) { <dw-status kind="lot" value="stored" [label]="t('sites.storage')" /> }
+                        @if (zone.zone_type) { <div class="dw-faint">{{ zoneType(zone.zone_type) | dwLocalized: zone.zone_type }}</div> }
+                      </td>
+                      <td>
+                        @for (line of zone.capacities; track line.packaging_type) { <div>{{ line.max_count }} × {{ line.packaging_type | dwCode: 'packaging' }}</div> }
+                        @if (hasWeightLimit(zone)) { <div>{{ zone.capacity_kg | dwKg: 'auto' }}</div> }
+                        @if (zone.capacities.length === 0 && !hasWeightLimit(zone)) { <span class="dw-faint">{{ t('sites.noLimit') }}</span> }
+                      </td>
+                      <td><dw-zone-fill [fill]="zone.fill" [details]="false" [placeholder]="zone.fill.lots > 0 ? t('dashboard.lots', { count: zone.fill.lots }) : '—'" /></td>
+                      <td>
+                        @if (zone.accepted_waste_types.length === 0 && zone.accepted_colors.length === 0) {
+                          <span class="dw-faint">{{ t('sites.anything') }}</span>
+                        } @else {
+                          @if (zone.accepted_waste_types.length > 0) { <div>{{ typeNames(zone.accepted_waste_types) }}</div> }
+                          @if (zone.accepted_colors.length > 0) { <div class="dw-faint">@for (color of zone.accepted_colors; track color; let last = $last) { {{ color | dwCode: 'color' }}@if (!last) { , } }</div> }
+                        }
+                      </td>
                       <td><dw-status kind="member" [value]="zone.is_active ? 'active' : 'suspended'" [label]="t(zone.is_active ? 'common.active' : 'common.inactive')" /></td>
                       <td class="dw-num">
                         @if (canManageZones()) {
@@ -317,6 +396,7 @@ export class SiteDetailPage implements OnInit {
   protected readonly loading = signal(true);
   protected readonly error = signal<unknown>(null);
   protected readonly canManage = this.session.can('sites.manage');
+  private readonly typeNameByUlid = toSignal(this.reference.wasteTypes().pipe(map((types) => new Map(types.map((type) => [type.ulid, type.name])))));
   private readonly zoneTypes = toSignal(this.reference.vocabulary().pipe(map((vocabulary) => new Map(vocabulary.zone_types.map((type) => [type.code, type.name])))));
 
   ngOnInit(): void {
@@ -326,6 +406,19 @@ export class SiteDetailPage implements OnInit {
   /** "Confection" rather than the stored code "sewing". */
   protected zoneType(code: string | null): Localized | null {
     return (code && this.zoneTypes()?.get(code)) || null;
+  }
+
+  protected hasWeightLimit(zone: Zone): boolean {
+    return Number(zone.capacity_kg ?? 0) > 0;
+  }
+
+  /** Names of the waste types a zone is meant for; a type that is no longer active is counted, not named. */
+  protected typeNames(ulids: string[]): string {
+    const names = this.typeNameByUlid();
+    const known = ulids.map((ulid) => names?.get(ulid)).filter((name): name is string => Boolean(name));
+    const others = ulids.length - known.length;
+
+    return [...known, ...(others > 0 ? [`+${others}`] : [])].join(', ');
   }
 
   protected canManageZones(): boolean {

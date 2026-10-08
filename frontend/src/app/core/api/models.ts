@@ -67,6 +67,22 @@ export interface Access {
   sites: AccessSite[];
 }
 
+/** How full a zone is: counted from the lots it holds, never stored. */
+export interface ZoneFill {
+  /** null when the zone has no limit at all. */
+  pct: number | null;
+  weight_pct: number | null;
+  count_pct: number | null;
+  /** Lots whose packaging the zone says nothing about (or that have none): they are not in the percentage. */
+  uncounted: number;
+  remaining: { kg: string | null; counts: Record<string, number> };
+  quantity_kg: string;
+  lots: number;
+  /** Lots of a waste type or colour the zone is not meant for. */
+  misplaced: number;
+  alert_level: 'warning' | 'exceeded' | null;
+}
+
 export interface Zone {
   ulid: string;
   code: string;
@@ -77,6 +93,12 @@ export interface Zone {
   capacity_alert_pct: number;
   is_waste_storage: boolean;
   is_active: boolean;
+  /** "This zone holds 40 bales, or 100 bags". */
+  capacities: { packaging_type: string; max_count: number }[];
+  /** Empty = the zone accepts anything. */
+  accepted_waste_types: string[];
+  accepted_colors: string[];
+  fill: ZoneFill;
 }
 
 export interface Site {
@@ -193,6 +215,7 @@ export interface StockRow {
   zone_quantity_kg: string;
   zone_capacity_kg: string | null;
   zone_alert_level: 'warning' | 'exceeded' | null;
+  zone_fill: ZoneFill;
 }
 
 export interface StockResponse {
@@ -503,6 +526,8 @@ export interface Color {
   code: string;
   name: Localized;
   hex_color: string | null;
+  /** Typed by the company, e.g. "19-4052 TCX". */
+  pantone_reference: string | null;
   is_custom: boolean;
   is_active: boolean;
 }
@@ -513,7 +538,7 @@ export interface Reference {
   units: { code: string; name: Localized; symbol: string }[];
   waste_families: { code: string; name: Localized }[];
   materials: { code: string; name: Localized }[];
-  color_families: { code: string; name: Localized; hex_color: string | null }[];
+  color_families: { code: string; name: Localized; hex_color: string | null; pantone_reference: string | null }[];
   treatment_channels: { code: string; name: Localized; is_valorization: boolean; is_landfill: boolean }[];
   regulatory_waste_codes: { code: string; label: Localized; is_hazardous: boolean }[];
 }

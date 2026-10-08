@@ -19,6 +19,7 @@ import { DIALOG_PARTS, DialogRef, dialogData } from '../../ui/dialog';
 import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
 import { SELECT } from '../../ui/select';
+import { zoneMismatch } from '../../ui/zone-fill';
 
 const DIALOG = [ReactiveFormsModule, TranslocoDirective] as const;
 const WEIGHT = [Validators.required, Validators.min(0), Validators.max(999999), Validators.pattern(/^\d+([.,]\d{1,3})?$/)];
@@ -46,6 +47,7 @@ const decimal = (value: string | number): string => String(value).replace(',', '
               <dw-select formControlName="zone" required>
                 @for (zone of zones(); track zone.ulid) { <dw-option [value]="zone.ulid" [label]="zone.name" /> }
               </dw-select>
+              @if (mismatch(); as why) { <small dwHint class="mismatch">{{ t('lots.zoneMismatch.' + why) }}</small> }
             </dw-field>
             <dw-field class="dw-span-2" [label]="t('fields.wasteType')">
               <dw-select formControlName="waste_type" required>
@@ -66,7 +68,9 @@ const decimal = (value: string | number): string => String(value).replace(',', '
             <dw-field [label]="t('lots.color')">
               <dw-select formControlName="color_family">
                 <dw-option [value]="null" label="—" />
-                @for (color of vocabulary()?.color_families ?? []; track color.code) { <dw-option [value]="color.code" [label]="color.name | dwLocalized" /> }
+                @for (color of vocabulary()?.color_families ?? []; track color.code) {
+                  <dw-option [value]="color.code" [label]="(color.name | dwLocalized) + (color.pantone_reference ? ' — Pantone ' + color.pantone_reference : '')" />
+                }
               </dw-select>
             </dw-field>
             <dw-field [label]="t('lots.grammage')"><input pInputText formControlName="grammage_gsm" inputmode="decimal" /></dw-field>
@@ -80,7 +84,7 @@ const decimal = (value: string | number): string => String(value).replace(',', '
       </form>
     </ng-container>
   `,
-  styles: '.dw-dialog-body { min-width: min(620px, 82vw); }',
+  styles: '.dw-dialog-body { min-width: min(620px, 82vw); } .mismatch { color: var(--dw-warning); }',
 })
 export class CreateLotDialog {
   private readonly api = inject(Api);
@@ -105,6 +109,14 @@ export class CreateLotDialog {
     color_family: [null as string | null],
     grammage_gsm: [''],
     notes: [''],
+  });
+
+  private readonly chosen = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
+  /** A warning, never a refusal: the operator may have a good reason to put the lot there. */
+  protected readonly mismatch = computed(() => {
+    const value = this.chosen();
+
+    return zoneMismatch(this.zones().find((zone) => zone.ulid === value.zone), value.waste_type || null, value.color_family ?? null);
   });
 
   constructor() {
@@ -161,6 +173,7 @@ export interface LotActionData {
           <dw-select [formControl]="zone" required>
             @for (item of zones(); track item.ulid) { <dw-option [value]="item.ulid" [label]="item.name" /> }
           </dw-select>
+          @if (mismatch(); as why) { <small dwHint class="mismatch">{{ t('lots.zoneMismatch.' + why) }}</small> }
         </dw-field>
       </div>
       <div class="dw-dialog-foot">
@@ -169,7 +182,7 @@ export interface LotActionData {
       </div>
     </ng-container>
   `,
-  styles: '.dw-dialog-body { min-width: min(420px, 80vw); }',
+  styles: '.dw-dialog-body { min-width: min(420px, 80vw); } .mismatch { color: var(--dw-warning); }',
 })
 export class StoreLotDialog {
   protected readonly data = dialogData<LotActionData>();
@@ -180,6 +193,8 @@ export class StoreLotDialog {
   protected readonly zones = toSignal(inject(ReferenceData).zones(this.data.lot.site?.ulid ?? ''), { initialValue: [] });
   protected readonly zone = inject(FormBuilder).nonNullable.control(this.data.lot.zone?.ulid ?? '', Validators.required);
   protected readonly busy = signal(false);
+  private readonly target = toSignal(this.zone.valueChanges, { initialValue: this.zone.value });
+  protected readonly mismatch = computed(() => zoneMismatch(this.zones().find((item) => item.ulid === this.target()), this.data.lot.waste_type?.ulid ?? null, this.data.lot.color_family));
 
   protected async submit(): Promise<void> {
     this.busy.set(true);
