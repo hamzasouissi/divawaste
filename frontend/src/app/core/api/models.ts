@@ -620,6 +620,8 @@ export interface Reference {
   zone_types: { code: string; name: Localized; is_waste_storage: boolean }[];
   packaging_types: { code: string; name: Localized }[];
   units: { code: string; name: Localized; symbol: string }[];
+  /** How a raw material is counted: metres, kilograms or pieces. */
+  material_units: { code: string; name: Localized; symbol: string }[];
   waste_families: { code: string; name: Localized }[];
   materials: { code: string; name: Localized }[];
   color_families: { code: string; name: Localized; hex_color: string | null; pantone_reference: string | null }[];
