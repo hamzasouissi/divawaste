@@ -9,6 +9,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Notifications\Channels\LoggedMailChannel;
 use App\Modules\Pickups\Support\PartyDirectory;
 use App\Modules\Sites\Models\Site;
+use App\Modules\Sites\Support\ZoneOrganisation;
 use App\Modules\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -31,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
         // Reset for every request and every queued job.
         $this->app->scoped(TenantContext::class);
         $this->app->scoped(ReferenceCodes::class);
+        $this->app->scoped(ZoneOrganisation::class);
         $this->app->scoped(PartyDirectory::class);
 
         // Every notification email leaves a trace (notification_logs): sent or failed, and through which transport.

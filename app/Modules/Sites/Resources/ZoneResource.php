@@ -4,6 +4,7 @@ namespace App\Modules\Sites\Resources;
 
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Sites\Models\Zone;
+use App\Modules\Sites\Support\ZoneOrganisation;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -17,6 +18,9 @@ class ZoneResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $organisation = app(ZoneOrganisation::class);
+        $rules = $organisation->of($this->id);
+
         return [
             'ulid' => $this->ulid,
             'code' => $this->code,
@@ -27,6 +31,10 @@ class ZoneResource extends JsonResource
             'capacity_alert_pct' => $this->capacity_alert_pct,
             'is_waste_storage' => $this->is_waste_storage,
             'is_active' => $this->is_active,
+            'capacities' => $rules['capacities'],
+            'accepted_waste_types' => $rules['accepted_waste_types'],
+            'accepted_colors' => $rules['accepted_colors'],
+            'fill' => $organisation->fill($this->site_id, $this->id, $this->capacity_kg, $this->capacity_alert_pct),
         ];
     }
 }

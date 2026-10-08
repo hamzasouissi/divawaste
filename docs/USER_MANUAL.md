@@ -146,9 +146,17 @@ Click a site to manage its zones:
 ![Zones of a site](screenshots/client/04-site-zones.png)
 ![New zone](screenshots/client/05-zone-dialog.png)
 
-A zone has a code, a name, a type (cutting, sewing, dyeing, waste storage…) and an optional capacity in kg. A zone
-of type "Aire de stockage" is where lots wait for a pickup. Sites and zones are **deactivated**, never deleted:
-history keeps pointing to them.
+A zone has a code and a name. Everything else is optional:
+
+- **Type** (cutting, sewing, dyeing, waste storage…). A zone of type "Aire de stockage" is where lots wait for a pickup.
+- **Capacité**: how many lots the zone holds when it receives a single packaging — "40 balles", "100 sacs" — one line per
+  packaging. Mixed lots add up: 20 bales out of 40 and 50 bags out of 100 fill the zone. A maximum weight in kg can be
+  given as well; the higher of the two percentages is the one shown.
+- **Réservée à**: the waste types and colours the zone is meant for. A lot that does not match is **reported, never
+  refused**: a warning under the zone when the lot is created or moved, and "lot(s) hors affectation" on the stock page.
+  In the workshop application, the types planned for the chosen zone come first.
+
+Sites and zones are **deactivated**, never deleted: history keeps pointing to them.
 
 ### Utilisateurs et rôles — `/admin/users`
 
@@ -285,7 +293,9 @@ Identification, QR label, full history (who, when, from the web or the workshop 
 
 Computed live from the lots on site. Figures: total, part already in a pickup request, thresholds exceeded or
 close. Then, per site and zone, the weight by waste type, the number of lots, what is waiting for pickup and the
-date of the oldest lot. A bar shows how full a zone with a capacity is.
+date of the oldest lot. For a zone with a capacity: a bar, the percentage and what still fits ("Reste : 3 × Balle ou
+7 × Sac · 880 kg"). "lot(s) non compté(s)" are lots without packaging, or with a packaging the capacity does not
+mention: they are not in the percentage. "lot(s) hors affectation" are lots of a type or colour the zone is not meant for.
 
 **Seuils d'alerte**: maximum quantity for a site / zone / waste type; a notification is sent at 80 % and when
 exceeded. "Ajouter un seuil", or "…" on a line to edit or delete.
