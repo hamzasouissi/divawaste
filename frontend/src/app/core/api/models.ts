@@ -127,6 +127,8 @@ export interface WasteType {
   waste_family: string | null;
   regulatory_code: string | null;
   is_hazardous: boolean;
+  /** This waste only leaves the site under an authorisation (declaration signed by customs). */
+  requires_authorization: boolean;
   unit: string | null;
   packaging_type: string | null;
   color_family: string | null;
@@ -341,6 +343,50 @@ export interface ExternalPartner {
   covers_hazardous: boolean;
   notes: string | null;
   is_active: boolean;
+  /** The account the partner opened later; new pickups then go through the platform. */
+  linked_company: { ulid: string; legal_name: string } | null;
+  /** A provider of the platform with the same tax ID: probably this partner. */
+  suggested_company: { ulid: string; legal_name: string } | null;
+}
+
+/** How much of an authorisation the pickups have used; counted from them, never stored. */
+export interface AuthorizationUsage {
+  pct: number;
+  uncovered: boolean;
+  level: 'warning' | 'exceeded' | null;
+  used: { kg: string; lots: number; counts: Record<string, number> };
+  remaining: { kg: string | null; lots: number | null; counts: Record<string, number> };
+}
+
+/** Authorisation to have a waste type leave the site: a period and an allowed quantity. */
+export interface WasteAuthorization {
+  ulid: string;
+  reference: string;
+  waste_type: { ulid: string; name: string };
+  issued_on: string | null;
+  valid_from: string;
+  valid_until: string;
+  max_kg: string | null;
+  max_lots: number | null;
+  limits: { packaging_type: string; max_count: number }[];
+  alert_pct: number;
+  notes: string | null;
+  is_active: boolean;
+  has_file: boolean;
+  state: 'upcoming' | 'valid' | 'ended' | 'withdrawn';
+  /** Pickups draw on it: its waste type, period and quantities can no longer change. */
+  in_use: boolean;
+  usage: AuthorizationUsage;
+}
+
+/** Whether a selection of lots would be covered on a date. `reason` null = covered. */
+export interface AuthorizationCheck {
+  waste_type: string;
+  reference: string | null;
+  valid_until: string | null;
+  reason: 'missing' | 'exceeded' | 'packaging' | null;
+  before_pct: number | null;
+  after_pct: number | null;
 }
 
 export interface Dashboard {

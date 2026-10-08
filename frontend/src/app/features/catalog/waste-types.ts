@@ -141,6 +141,7 @@ const num = (value: string | null): string | null => (!value || value.trim() ===
               </dw-field>
               <dw-checkbox formControlName="is_hazardous">{{ t('common.hazardous') }}</dw-checkbox>
             }
+            <dw-checkbox class="dw-span-2" formControlName="requires_authorization">{{ t('wasteTypes.requiresAuthorization') }}</dw-checkbox>
             <dw-field [label]="t('wasteTypes.unit')">
               <dw-select formControlName="unit" required>
                 @for (unit of vocabulary()?.units ?? []; track unit.code) { <dw-option [value]="unit.code" [label]="(unit.name | dwLocalized) + ' (' + unit.symbol + ')'" /> }
@@ -219,6 +220,7 @@ export class WasteTypeDialog {
     waste_family: [this.data?.waste_family ?? '', Validators.required],
     regulatory_code: [this.data?.regulatory_code ?? null as string | null],
     is_hazardous: [this.data?.is_hazardous ?? false],
+    requires_authorization: [this.data?.requires_authorization ?? false],
     unit: [this.data?.unit ?? 'kg', Validators.required],
     treatment_channel: [this.data?.treatment_channel ?? null as string | null],
     packaging_type: [this.data?.packaging_type ?? null as string | null],
@@ -306,7 +308,7 @@ export class WasteTypeDialog {
                 [clickable]="canManage" [emptyTitle]="t('wasteTypes.emptyTitle')" [emptyHint]="t('wasteTypes.emptyHint')" emptyIcon="category"
                 (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="edit($event)" (retry)="list.reload()">
                 <ng-template dwCell="code" let-type><span class="dw-mono">{{ type.code }}</span></ng-template>
-                <ng-template dwCell="name" let-type>{{ type.name }} @if (type.is_hazardous) { <dw-status kind="alert" value="warning" [label]="t('common.hazardous')" /> }</ng-template>
+                <ng-template dwCell="name" let-type>{{ type.name }} @if (type.is_hazardous) { <dw-status kind="alert" value="warning" [label]="t('common.hazardous')" /> } @if (type.requires_authorization) { <dw-status kind="member" value="suspended" tone="neutral" [label]="t('wasteTypes.underAuthorization')" /> }</ng-template>
                 <ng-template dwCell="regulatory" let-type><span class="dw-mono">{{ type.regulatory_code ?? '—' }}</span></ng-template>
                 <ng-template dwCell="channel" let-type>{{ type.treatment_channel ? t('channels.' + type.treatment_channel) : '—' }}</ng-template>
                 <ng-template dwCell="composition" let-type>

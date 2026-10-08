@@ -15,6 +15,7 @@ export const INDUSTRIAL_ROUTES: Routes = [
   { path: 'providers', canActivate: [permissionGuard('providers.view')], loadComponent: () => import('./providers/providers').then((m) => m.ProvidersPage), title: 'Prestataires — DivaWaste' },
   { path: 'compliance/register', canActivate: [permissionGuard('documents.view')], loadComponent: () => import('./compliance/compliance').then((m) => m.RegisterPage), title: 'Registre — DivaWaste' },
   { path: 'compliance/manifests', canActivate: [permissionGuard('documents.view')], loadComponent: () => import('./compliance/compliance').then((m) => m.ManifestsPage), title: 'Bordereaux — DivaWaste' },
+  { path: 'compliance/authorizations', canActivate: [permissionGuard('waste_types.view')], loadComponent: () => import('./compliance/authorizations').then((m) => m.AuthorizationsPage), title: 'Autorisations — DivaWaste' },
   { path: 'compliance/declarations', canActivate: [permissionGuard('declarations.prepare')], loadComponent: () => import('./compliance/compliance').then((m) => m.DeclarationsPage), title: 'Déclarations — DivaWaste' },
   { path: 'compliance/documents', canActivate: [permissionGuard('documents.view')], loadComponent: () => import('./compliance/compliance').then((m) => m.DocumentsPage), title: 'Documents — DivaWaste' },
   { path: 'reports', canActivate: [permissionGuard('reports.view')], loadComponent: () => import('./reports/reports').then((m) => m.ReportsPage), title: 'Rapports — DivaWaste' },
