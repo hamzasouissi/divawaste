@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property string $ulid
  * @property CarbonImmutable|null $accreditation_expires_on
+ * @property int|null $linked_company_id
  */
 class ExternalPartner extends Model
 {

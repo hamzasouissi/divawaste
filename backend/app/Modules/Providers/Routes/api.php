@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 $accreditationData = fn (stdClass $row) => [
     'ulid' => $row->ulid, 'type' => $row->type, 'name' => json_decode((string) $row->name, true),
@@ -98,6 +99,9 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
     /*
      * Partners without an account on the platform: a transporter or a receiver the company records itself.
      */
+    // Providers any industrial can already see in the directory: naming one here reveals nothing new.
+    $publishedProviders = fn () => DB::table('companies as c')->join('provider_profiles as p', 'p.company_id', '=', 'c.id')
+        ->where('c.company_type', CompanyType::Provider->value)->where('c.status', 'active')->where('p.is_published', true);
     $partnerData = fn (ExternalPartner $partner) => [
         'ulid' => $partner->ulid, 'legal_name' => $partner->legal_name, 'tax_id' => $partner->tax_id,
         'address_line1' => $partner->address_line1, 'postal_code' => $partner->postal_code, 'city' => $partner->city,
@@ -106,6 +110,12 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
         'accreditation_reference' => $partner->accreditation_reference,
         'accreditation_expires_on' => $partner->accreditation_expires_on?->toDateString(),
         'covers_hazardous' => $partner->covers_hazardous, 'notes' => $partner->notes, 'is_active' => $partner->is_active,
+        // Once the partner has opened an account, it is tied to it: new pickups go through the platform.
+        'linked_company' => $partner->linked_company_id === null ? null
+            : (array) DB::table('companies')->where('id', $partner->linked_company_id)->first(['ulid', 'legal_name']),
+        // A published provider with the same tax ID: probably this partner, now on the platform.
+        'suggested_company' => $partner->linked_company_id !== null || $partner->tax_id === null ? null : $publishedProviders()
+            ->whereRaw("REPLACE(UPPER(c.tax_id), ' ', '') = ?", [str_replace(' ', '', mb_strtoupper($partner->tax_id))])->first(['c.ulid', 'c.legal_name']),
     ];
     $partnerAttributes = function (Request $request) {
         $input = $request->validate([
@@ -153,6 +163,31 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
 
         return response()->json(['data' => $partnerData($partner)]);
     })->name('external-partners.update');
+
+    // The partner has opened an account: tie it to that provider. Past pickups keep the partner as it was recorded
+    // (their slips were signed by hand); the provider becomes a partner of the platform for the next ones.
+    Route::post('external-partners/{partner}/link', function (Request $request, ExternalPartner $partner) use ($allow, $partnerData, $publishedProviders) {
+        $allow($request, 'providers.partnerships.manage');
+        $ulid = strtoupper((string) $request->validate(['provider' => ['required', 'string', 'ulid']])['provider']);
+        $providerId = $publishedProviders()->where('c.ulid', $ulid)->value('c.id');
+        if ($providerId === null) {
+            throw ValidationException::withMessages(['provider' => [__('validation.exists', ['attribute' => 'provider'])]]);
+        }
+        if ($partner->linked_company_id !== null) {
+            throw new BusinessRuleViolation('PARTNER_ALREADY_LINKED', 'This partner is already tied to an account.');
+        }
+
+        DB::transaction(function () use ($partner, $providerId, $request) {
+            $partner->forceFill(['linked_company_id' => $providerId, 'linked_at' => now()])->save();
+            $partnership = ProviderPartnership::query()->firstOrCreate(['provider_company_id' => $providerId],
+                ['status' => 'active', 'started_at' => now(), 'created_by_user_id' => $request->user()->id]);
+            if ($partnership->status !== 'active') {
+                $partnership->forceFill(['status' => 'active', 'ended_at' => null])->save();
+            }
+        });
+
+        return response()->json(['data' => $partnerData($partner->refresh())]);
+    })->name('external-partners.link');
 
     /*
      * Provider side: its own profile, accepted waste and accreditations.

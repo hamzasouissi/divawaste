@@ -1,8 +1,11 @@
 <?php
 
+use App\Modules\Catalog\Models\WasteType;
+use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Models\StoredFile;
 use App\Modules\Common\Support\DocumentLanguage;
 use App\Modules\Common\Support\FileStorage;
+use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Documents\Actions\DeclarationWorkflow;
 use App\Modules\Documents\Actions\ManifestWorkflow;
 use App\Modules\Documents\Actions\UploadCertificate;
@@ -12,10 +15,12 @@ use App\Modules\Documents\Enums\HazardousWasteManifestStatus;
 use App\Modules\Documents\Models\AnnualDeclaration;
 use App\Modules\Documents\Models\Document;
 use App\Modules\Documents\Models\HazardousWasteManifest;
+use App\Modules\Documents\Models\WasteAuthorization;
 use App\Modules\Documents\Requests\UploadCertificateRequest;
 use App\Modules\Documents\Resources\AnnualDeclarationResource;
 use App\Modules\Documents\Resources\DocumentResource;
 use App\Modules\Documents\Resources\HazardousWasteManifestResource;
+use App\Modules\Documents\Support\AuthorizationQuota;
 use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Notifications\Actions\NotifyUsers;
 use App\Modules\Pickups\Models\Pickup;
@@ -23,8 +28,11 @@ use App\Modules\Reporting\Support\ArrayExport;
 use App\Modules\Sites\Models\Site;
 use App\Modules\Tenancy\Enums\CompanyType;
 use App\Modules\Tenancy\Models\Company;
+use App\Modules\Tenancy\Rules\TenantExists;
 use App\Modules\Tenancy\TenantContext;
+use App\Modules\Waste\Models\WasteLot;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
@@ -235,4 +243,141 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
                     'Content-Disposition' => 'attachment; filename="'.$name.'.xlsx"', 'Cache-Control' => 'private, no-store',
                 ]);
     })->name('declarations.export');
+});
+
+/*
+ * Authorisations to have a waste type leave the site (declaration signed by customs): a period and an allowed quantity.
+ * Only the waste types marked "requires an authorisation" are concerned; their pickups are refused without one that
+ * still has room. An authorisation is never deleted: the pickups it covered keep pointing to it.
+ */
+Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
+    $allow = fn (Request $request, string $permission) => abort_unless($request->user()->can($permission), 403);
+    $data = function (WasteAuthorization $authorization) {
+        $usage = app(AuthorizationQuota::class)->usage($authorization);
+        $codes = app(ReferenceCodes::class);
+
+        return [
+            'ulid' => $authorization->ulid, 'reference' => $authorization->reference,
+            'waste_type' => (array) DB::table('waste_types')->where('id', $authorization->waste_type_id)->first(['ulid', 'name']),
+            'issued_on' => $authorization->issued_on?->toDateString(),
+            'valid_from' => $authorization->valid_from->toDateString(), 'valid_until' => $authorization->valid_until->toDateString(),
+            'max_kg' => $authorization->max_kg, 'max_lots' => $authorization->max_lots,
+            'limits' => DB::table('waste_authorization_limits')->where('waste_authorization_id', $authorization->id)->orderBy('id')->get(['packaging_type_id', 'max_count'])
+                ->map(fn ($row) => ['packaging_type' => $codes->code('packaging_types', (int) $row->packaging_type_id), 'max_count' => (int) $row->max_count]),
+            'alert_pct' => $authorization->alert_pct, 'notes' => $authorization->notes, 'is_active' => $authorization->is_active,
+            'has_file' => $authorization->stored_file_id !== null,
+            // 'upcoming' / 'valid' / 'ended' on today's date; a withdrawn one covers nothing whatever its dates.
+            'state' => ! $authorization->is_active ? 'withdrawn' : (now()->toDateString() < $authorization->valid_from->toDateString() ? 'upcoming'
+                : (now()->toDateString() > $authorization->valid_until->toDateString() ? 'ended' : 'valid')),
+            'in_use' => DB::table('pickup_lots')->where('waste_authorization_id', $authorization->id)->exists(),
+            'usage' => $usage,
+        ];
+    };
+    $rules = [
+        'waste_type' => ['required', 'string', new TenantExists(WasteType::class, fn ($q) => $q->where('requires_authorization', true))],
+        'reference' => ['required', 'string', 'max:100'],
+        'issued_on' => ['nullable', 'date'],
+        'valid_from' => ['required', 'date'],
+        'valid_until' => ['required', 'date', 'after_or_equal:valid_from'],
+        // The allowed quantity, as the document states it. At least one of the three.
+        'max_kg' => ['nullable', 'decimal:0,3', 'gt:0', 'required_without_all:max_lots,limits'],
+        'max_lots' => ['nullable', 'integer', 'between:1,1000000'],
+        'limits' => ['nullable', 'array', 'max:30'],
+        'limits.*.packaging_type' => ['required', 'string', 'distinct', Rule::exists('packaging_types', 'code')->where('is_active', true)],
+        'limits.*.max_count' => ['required', 'integer', 'between:1,1000000'],
+        'alert_pct' => ['nullable', 'integer', 'between:1,100'],
+        'notes' => ['nullable', 'string', 'max:1000'],
+        'is_active' => ['sometimes', 'boolean'],
+    ];
+    $save = function (WasteAuthorization $authorization, array $input, ReferenceCodes $codes) {
+        $authorization->forceFill([
+            'waste_type_id' => WasteType::query()->where('ulid', strtoupper($input['waste_type']))->value('id'),
+            'reference' => trim($input['reference']), 'issued_on' => $input['issued_on'] ?? null,
+            'valid_from' => $input['valid_from'], 'valid_until' => $input['valid_until'],
+            'max_kg' => $input['max_kg'] ?? null, 'max_lots' => $input['max_lots'] ?? null,
+            'alert_pct' => $input['alert_pct'] ?? 80, 'notes' => $input['notes'] ?? null, 'is_active' => (bool) ($input['is_active'] ?? true),
+        ])->save();
+        DB::table('waste_authorization_limits')->where('waste_authorization_id', $authorization->id)->delete();
+        DB::table('waste_authorization_limits')->insert(array_map(fn (array $line) => [
+            'company_id' => $authorization->company_id, 'waste_authorization_id' => $authorization->id,
+            'packaging_type_id' => $codes->id('packaging_types', $line['packaging_type']), 'max_count' => (int) $line['max_count'],
+            'created_at' => now(), 'updated_at' => now(),
+        ], $input['limits'] ?? []));
+    };
+
+    Route::get('waste-authorizations', function (Request $request) use ($allow, $data) {
+        $allow($request, 'waste_types.view');
+
+        return ['data' => WasteAuthorization::query()->orderByDesc('valid_until')->orderByDesc('id')->get()->map($data)];
+    })->name('waste-authorizations.index');
+
+    Route::post('waste-authorizations', function (Request $request, ReferenceCodes $codes) use ($allow, $data, $rules, $save) {
+        $allow($request, 'waste_types.manage');
+        $input = $request->validate($rules);
+        $authorization = DB::transaction(function () use ($input, $save, $codes, $request) {
+            $authorization = (new WasteAuthorization)->forceFill(['created_by_user_id' => $request->user()->id]);
+            $save($authorization, $input, $codes);
+
+            return $authorization;
+        });
+
+        return response()->json(['data' => $data($authorization)], 201);
+    })->name('waste-authorizations.store');
+
+    // Once pickups draw on it, what was authorised is history: the waste type, the period and the quantities are
+    // frozen. A different authorisation is a new one. Reference, notes, alert level and withdrawal stay editable.
+    Route::put('waste-authorizations/{authorization}', function (Request $request, WasteAuthorization $authorization, ReferenceCodes $codes) use ($allow, $data, $rules, $save) {
+        $allow($request, 'waste_types.manage');
+        $input = $request->validate($rules);
+
+        if (DB::table('pickup_lots')->where('waste_authorization_id', $authorization->id)->exists()) {
+            $current = $data($authorization);
+            $same = strtoupper($input['waste_type']) === $current['waste_type']['ulid'] && $input['valid_from'] === $current['valid_from'] && $input['valid_until'] === $current['valid_until']
+                && bccomp((string) ($input['max_kg'] ?? '0'), (string) ($current['max_kg'] ?? '0'), 3) === 0 && (int) ($input['max_lots'] ?? 0) === (int) ($current['max_lots'] ?? 0)
+                && collect($input['limits'] ?? [])->map(fn ($l) => [$l['packaging_type'], (int) $l['max_count']])->sort()->values()->all()
+                    === collect($current['limits'])->map(fn ($l) => [$l['packaging_type'], $l['max_count']])->sort()->values()->all();
+            if (! $same) {
+                throw new BusinessRuleViolation('AUTHORIZATION_IN_USE', 'Pickups already draw on this authorisation: its waste type, period and quantities can no longer change. Record a new authorisation.');
+            }
+        }
+        DB::transaction(fn () => $save($authorization, $input, $codes));
+
+        return response()->json(['data' => $data($authorization->refresh())]);
+    })->name('waste-authorizations.update');
+
+    // The scan of the document signed by customs.
+    Route::post('waste-authorizations/{authorization}/file', function (Request $request, WasteAuthorization $authorization, FileStorage $files, TenantContext $context) use ($allow, $data) {
+        $allow($request, 'waste_types.manage');
+        $company = Company::query()->findOrFail($context->companyId());
+        $file = $files->store($request->validate(['file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240']])['file'],
+            $company, 'authorizations', $request->user()->id, $company->id, now()->addYears(10));
+        $authorization->forceFill(['stored_file_id' => $file->id])->save();
+
+        return response()->json(['data' => $data($authorization)]);
+    })->name('waste-authorizations.file.store');
+
+    Route::get('waste-authorizations/{authorization}/file', function (Request $request, WasteAuthorization $authorization, FileStorage $files) use ($allow) {
+        $allow($request, 'waste_types.view');
+        abort_if($authorization->stored_file_id === null, 404);
+
+        return $files->download(StoredFile::query()->findOrFail($authorization->stored_file_id), inline: true);
+    })->name('waste-authorizations.file.show');
+
+    // Before a pickup is requested: would these lots be covered on that date, and what would be left?
+    Route::post('waste-authorizations/check', function (Request $request, AuthorizationQuota $quota) {
+        abort_unless($request->user()->can('waste_types.view') || $request->user()->can('pickups.request'), 403);
+        $input = $request->validate([
+            'date' => ['required', 'date'],
+            'lots' => ['required', 'array', 'min:1', 'max:500'],
+            'lots.*' => ['required', 'string', new TenantExists(WasteLot::class)],
+        ]);
+        $lots = DB::table('waste_lots')->whereIn('ulid', array_map('strtoupper', $input['lots']))
+            ->where('company_id', app(TenantContext::class)->companyId())->get(['waste_type_id', 'packaging_type_id', 'net_weight_kg as kg']);
+
+        return ['data' => array_map(fn (array $item) => [
+            'waste_type' => $item['waste_type'], 'reference' => $item['authorization']?->reference, 'valid_until' => $item['authorization']?->valid_until->toDateString(),
+            // null = covered; 'missing', 'exceeded' or 'packaging' = the pickup would be refused.
+            'reason' => $item['reason'], 'before_pct' => $item['before_pct'], 'after_pct' => $item['after_pct'],
+        ], $quota->cover($lots, (string) $input['date']))];
+    })->name('waste-authorizations.check');
 });

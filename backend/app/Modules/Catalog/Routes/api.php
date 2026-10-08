@@ -91,9 +91,14 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
             ->paginate(min((int) $request->integer('per_page', 25), 100)));
     })->name('waste-types.index');
 
-    Route::post('waste-types', fn (StoreWasteTypeRequest $request, CreateWasteType $action) => (new WasteTypeResource(
-        $action->handle($request->toData(), $request->user())
-    ))->response()->setStatusCode(201))->name('waste-types.store');
+    Route::post('waste-types', function (StoreWasteTypeRequest $request, CreateWasteType $action) {
+        $wasteType = $action->handle($request->toData(), $request->user());
+        if ($request->boolean('requires_authorization')) {
+            $wasteType->forceFill(['requires_authorization' => true])->save();
+        }
+
+        return (new WasteTypeResource($wasteType))->response()->setStatusCode(201);
+    })->name('waste-types.store');
 
     Route::get('waste-types/{wasteType}', function (Request $request, WasteType $wasteType) use ($allow) {
         $allow($request, 'waste_types.view');
@@ -109,6 +114,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
         $input = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:1000'],
+            'requires_authorization' => ['sometimes', 'boolean'],
             'unit' => ['required', 'string', Rule::exists('units', 'code')],
             'packaging_type' => ['nullable', 'string', $reference('packaging_types')],
             'color_family' => ['nullable', 'string', Colors::rule($wasteType->company_id)],
@@ -128,6 +134,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
 
         $wasteType->forceFill([
             'name' => $input['name'], 'description' => $input['description'] ?? null,
+            'requires_authorization' => (bool) ($input['requires_authorization'] ?? $wasteType->requires_authorization),
             'default_unit_id' => $codes->id('units', $input['unit']),
             'default_packaging_type_id' => $codes->id('packaging_types', $input['packaging_type'] ?? null),
             'default_color_family_id' => $codes->id('color_families', $input['color_family'] ?? null),

@@ -60,6 +60,16 @@ return [
             'body' => 'Votre agrément :reference a été examiné par la plateforme. Décision : :status.',
         ],
     ],
+    'authorization' => [
+        'usage_high' => [
+            'title' => 'Autorisation :reference bientôt épuisée',
+            'body' => 'L\'autorisation :reference (:waste_type) est utilisée à :pct %. Prévoyez une nouvelle autorisation : sans elle, les prochains enlèvements seront bloqués.',
+        ],
+        'expiring_soon' => [
+            'title' => 'Autorisation :reference : fin de validité le :date',
+            'body' => 'L\'autorisation :reference (:waste_type) prend fin le :date, dans :days jour(s). Sans nouvelle autorisation, les enlèvements de ce déchet seront bloqués.',
+        ],
+    ],
     'document' => [
         'signature_requested' => [
             'title' => 'Bordereau :number à signer',
