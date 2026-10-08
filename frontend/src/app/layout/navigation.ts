@@ -32,6 +32,16 @@ const NAVIGATION: Record<Exclude<Audience, 'none'>, NavGroup[]> = {
       ],
     },
     {
+      label: 'nav.groups.production',
+      items: [
+        { path: '/production/manufacturing-orders', label: 'nav.manufacturingOrders', icon: 'precision_manufacturing', permissions: ['production.view'] },
+        { path: '/production/orders', label: 'nav.orders', icon: 'receipt_long', permissions: ['production.view'] },
+        { path: '/production/catalog', label: 'nav.productionCatalog', icon: 'checkroom', permissions: ['production.view'] },
+        { path: '/production/partners', label: 'nav.productionPartners', icon: 'groups', permissions: ['production.view'] },
+        { path: '/production/import', label: 'nav.productionImport', icon: 'upload_file', permissions: ['production.manage'] },
+      ],
+    },
+    {
       label: 'nav.groups.compliance',
       items: [
         { path: '/compliance/register', label: 'nav.register', icon: 'menu_book', permissions: ['documents.view'] },

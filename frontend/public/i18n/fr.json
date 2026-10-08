@@ -131,7 +131,8 @@
       "platformCustomers": "Clients et prestataires",
       "platformBilling": "Abonnements et facturation",
       "platformReference": "Référentiels",
-      "platformMonitoring": "Suivi"
+      "platformMonitoring": "Suivi",
+      "production": "Production"
     },
     "dashboard": "Tableau de bord",
     "lots": "Lots de déchets",
@@ -162,7 +163,12 @@
     "platformPlans": "Formules et tarifs",
     "platformInvoices": "Factures",
     "platformActivity": "Activité de la plateforme",
-    "authorizations": "Autorisations"
+    "authorizations": "Autorisations",
+    "manufacturingOrders": "Ordres de fabrication",
+    "orders": "Commandes",
+    "productionCatalog": "Matières et articles",
+    "productionPartners": "Clients et fournisseurs",
+    "productionImport": "Import"
   },
   "auth": {
     "pitch": "Tracer, valoriser et déclarer vos déchets textiles.",
@@ -1808,7 +1814,10 @@
     "platform.plans.manage": "Gérer les formules et tarifs",
     "platform.providers.review": "Valider un agrément",
     "platform.roles.manage": "Gérer la matrice des rôles",
-    "platform.support.view": "Consulter l'activité de la plateforme"
+    "platform.support.view": "Consulter l'activité de la plateforme",
+    "production.view": "Voir les données de production",
+    "production.manage": "Gérer et importer les données de production",
+    "production.stats.view": "Voir les statistiques de production"
   },
   "colors": {
     "title": "Couleurs",
@@ -1862,7 +1871,12 @@
     "Types de déchets": "Types de déchets",
     "Utilisateurs": "Utilisateurs",
     "Virements": "Virements",
-    "Autorisations": "Autorisations"
+    "Autorisations": "Autorisations",
+    "Clients et fournisseurs": "Clients et fournisseurs",
+    "Matières et articles": "Matières et articles",
+    "Commandes": "Commandes",
+    "Ordres de fabrication": "Ordres de fabrication",
+    "Import": "Import"
   },
   "partners": {
     "title": "Partenaires sans compte",
@@ -1917,6 +1931,150 @@
       "upcoming": "À venir",
       "ended": "Terminée",
       "withdrawn": "Retirée"
+    }
+  },
+  "production": {
+    "reference": "Référence",
+    "designation": "Désignation",
+    "country": "Pays",
+    "showInactive": "Afficher les inactifs",
+    "emptyHint": "Saisissez-les ici, ou importez-les depuis un fichier (menu Production › Import).",
+    "partners": {
+      "title": "Clients et fournisseurs",
+      "subtitle": "Pour qui vous produisez, et qui fournit vos matières premières. Ils permettent de savoir d'où vient chaque déchet."
+    },
+    "clients": {
+      "title": "Clients",
+      "one": "Client",
+      "new": "Nouveau client",
+      "edit": "Modifier le client",
+      "empty": "Aucun client"
+    },
+    "suppliers": {
+      "title": "Fournisseurs",
+      "one": "Fournisseur",
+      "new": "Nouveau fournisseur",
+      "edit": "Modifier le fournisseur",
+      "empty": "Aucun fournisseur"
+    },
+    "catalog": {
+      "title": "Matières et articles",
+      "subtitle": "Les matières premières consommées et les articles fabriqués. La composition et la couleur d'une matière sont reprises sur les déchets qui en proviennent."
+    },
+    "materials": {
+      "title": "Matières premières",
+      "one": "Matière première",
+      "new": "Nouvelle matière",
+      "edit": "Modifier la matière",
+      "empty": "Aucune matière première",
+      "unit": "Unité",
+      "colorLabel": "Coloris ou référence Pantone",
+      "addFibre": "Ajouter une fibre",
+      "total": "Le total doit faire 100 % (actuellement {{total}} %).",
+      "batches": "Lots reçus",
+      "batchesHint": "Chaque livraison de la matière. Un déchet ou une consommation peut ensuite désigner le lot exact.",
+      "batchNumber": "N° de lot",
+      "receivedOn": "Reçu le"
+    },
+    "articles": {
+      "title": "Articles",
+      "one": "Article",
+      "new": "Nouvel article",
+      "edit": "Modifier l'article",
+      "empty": "Aucun article",
+      "family": "Famille",
+      "consumption": "Consommation par pièce",
+      "consumptionHint": "Ce qu'une pièce doit consommer de chaque matière. Sert à comparer le prévu et le réel d'un OF.",
+      "perPiece": "Par pièce",
+      "addMaterial": "Ajouter une matière"
+    },
+    "orders": {
+      "title": "Commandes",
+      "subtitle": "Les commandes de vos clients : articles et quantités.",
+      "one": "Commande",
+      "new": "Nouvelle commande",
+      "edit": "Modifier la commande",
+      "empty": "Aucune commande",
+      "number": "N° de commande",
+      "orderedOn": "Date de commande",
+      "dueOn": "Livraison",
+      "lines": "Articles commandés",
+      "addLine": "Ajouter un article"
+    },
+    "orderStatus": {
+      "open": "Ouverte",
+      "in_progress": "En cours",
+      "completed": "Terminée",
+      "cancelled": "Annulée"
+    },
+    "of": {
+      "title": "Ordres de fabrication",
+      "subtitle": "Chaque OF : l'article fabriqué, ses étapes site par site et ce qu'il a consommé.",
+      "short": "OF",
+      "new": "Nouvel OF",
+      "edit": "Modifier l'OF",
+      "empty": "Aucun ordre de fabrication",
+      "number": "N° d'OF",
+      "noOrder": "Sans commande",
+      "planned": "Quantité prévue",
+      "produced": "Quantité produite",
+      "producedPlanned": "Produit / prévu",
+      "startedOn": "Début",
+      "finishedOn": "Fin",
+      "steps": "Étapes",
+      "stepsHint": "Les étapes que suit l'OF, chacune sur son site : il peut être coupé sur un site et confectionné sur un autre.",
+      "step": "Étape",
+      "piecesDone": "Pièces réalisées",
+      "addStep": "Ajouter une étape",
+      "consumption": "Matières consommées",
+      "expected": "prévu",
+      "consumed": "consommé",
+      "anyBatch": "Lot non précisé",
+      "addConsumption": "Ajouter une consommation"
+    },
+    "ofStatus": {
+      "planned": "Prévu",
+      "in_progress": "En cours",
+      "completed": "Terminé",
+      "cancelled": "Annulé"
+    },
+    "import": {
+      "title": "Import des données de production",
+      "subtitle": "Depuis n'importe quel fichier Excel ou CSV : vous indiquez dans quelle colonne se trouve chaque information.",
+      "step1": "1. Que contient le fichier ?",
+      "step2": "2. Où se trouve chaque information ?",
+      "file": "Choisir le fichier (Excel ou CSV, première ligne = titres)",
+      "template": "Télécharger un modèle vide",
+      "mappingHint": "{{lines}} ligne(s) lue(s). Vérifiez la colonne proposée pour chaque information ; les informations marquées * sont obligatoires.",
+      "noColumn": "Absente du fichier",
+      "column": "Colonne {{n}}",
+      "example": "ex. :",
+      "check": "Vérifier sans importer",
+      "run": "Importer",
+      "checkResult": "Résultat de la vérification",
+      "done": "Import terminé",
+      "wouldWrite": "Sur {{total}} ligne(s) : {{created}} à créer, {{updated}} à mettre à jour, {{unchanged}} sans changement.",
+      "wrote": "Sur {{total}} ligne(s) : {{created}} créée(s), {{updated}} mise(s) à jour, {{unchanged}} sans changement.",
+      "also": "Créés au passage :",
+      "errorsHint": "{{count}} ligne(s) en erreur : elles ne sont pas importées, les autres le sont. Corrigez-les dans le fichier puis réimportez-le : ce qui est déjà importé ne sera pas dupliqué.",
+      "line": "Ligne",
+      "problem": "Problème",
+      "targets": {
+        "manufacturing_orders": "Ordres de fabrication",
+        "orders": "Commandes",
+        "articles": "Articles",
+        "materials": "Matières premières",
+        "clients": "Clients",
+        "suppliers": "Fournisseurs"
+      },
+      "hints": {
+        "manufacturing_orders": "OF, article, quantités, étapes par site, consommations. Crée au besoin le client, la commande et l'article.",
+        "orders": "Une ligne par article commandé. Crée au besoin le client et l'article.",
+        "articles": "Référence, client, et la consommation par pièce de chaque matière.",
+        "materials": "Référence, fournisseur, unité, et les lots reçus.",
+        "clients": "Nom, code, contact.",
+        "suppliers": "Nom, code, contact."
+      }
     }
   }
 }

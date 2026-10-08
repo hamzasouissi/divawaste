@@ -131,7 +131,8 @@
       "platformCustomers": "Clients and providers",
       "platformBilling": "Subscriptions and billing",
       "platformReference": "Reference data",
-      "platformMonitoring": "Monitoring"
+      "platformMonitoring": "Monitoring",
+      "production": "Production"
     },
     "dashboard": "Dashboard",
     "lots": "Waste lots",
@@ -162,7 +163,12 @@
     "platformPlans": "Plans and prices",
     "platformInvoices": "Invoices",
     "platformActivity": "Platform activity",
-    "authorizations": "Authorisations"
+    "authorizations": "Authorisations",
+    "manufacturingOrders": "Manufacturing orders",
+    "orders": "Orders",
+    "productionCatalog": "Materials and articles",
+    "productionPartners": "Clients and suppliers",
+    "productionImport": "Import"
   },
   "auth": {
     "pitch": "Trace, recover and declare your textile waste.",
@@ -1808,7 +1814,10 @@
     "platform.plans.manage": "Manage plans and prices",
     "platform.providers.review": "Review an accreditation",
     "platform.roles.manage": "Manage the role matrix",
-    "platform.support.view": "Consult the platform activity"
+    "platform.support.view": "Consult the platform activity",
+    "production.view": "View production data",
+    "production.manage": "Manage and import production data",
+    "production.stats.view": "View production statistics"
   },
   "colors": {
     "title": "Colours",
@@ -1862,7 +1871,12 @@
     "Types de déchets": "Waste types",
     "Utilisateurs": "Users",
     "Virements": "Transfers",
-    "Autorisations": "Authorisations"
+    "Autorisations": "Authorisations",
+    "Clients et fournisseurs": "Clients and suppliers",
+    "Matières et articles": "Materials and articles",
+    "Commandes": "Orders",
+    "Ordres de fabrication": "Manufacturing orders",
+    "Import": "Import"
   },
   "partners": {
     "title": "Partners without an account",
@@ -1917,6 +1931,150 @@
       "upcoming": "Upcoming",
       "ended": "Ended",
       "withdrawn": "Withdrawn"
+    }
+  },
+  "production": {
+    "reference": "Reference",
+    "designation": "Description",
+    "country": "Country",
+    "showInactive": "Show inactive ones",
+    "emptyHint": "Enter them here, or import them from a file (Production › Import).",
+    "partners": {
+      "title": "Clients and suppliers",
+      "subtitle": "Who you produce for, and who supplies your raw materials. They tell where each waste comes from."
+    },
+    "clients": {
+      "title": "Clients",
+      "one": "Client",
+      "new": "New client",
+      "edit": "Edit the client",
+      "empty": "No client"
+    },
+    "suppliers": {
+      "title": "Suppliers",
+      "one": "Supplier",
+      "new": "New supplier",
+      "edit": "Edit the supplier",
+      "empty": "No supplier"
+    },
+    "catalog": {
+      "title": "Materials and articles",
+      "subtitle": "The raw materials consumed and the articles made. The composition and colour of a material are carried by the waste that comes from it."
+    },
+    "materials": {
+      "title": "Raw materials",
+      "one": "Raw material",
+      "new": "New material",
+      "edit": "Edit the material",
+      "empty": "No raw material",
+      "unit": "Unit",
+      "colorLabel": "Colourway or Pantone reference",
+      "addFibre": "Add a fibre",
+      "total": "The total must be 100 % (currently {{total}} %).",
+      "batches": "Received batches",
+      "batchesHint": "Each delivery of the material. A waste or a consumption can then point to the exact batch.",
+      "batchNumber": "Batch no.",
+      "receivedOn": "Received on"
+    },
+    "articles": {
+      "title": "Articles",
+      "one": "Article",
+      "new": "New article",
+      "edit": "Edit the article",
+      "empty": "No article",
+      "family": "Family",
+      "consumption": "Consumption per piece",
+      "consumptionHint": "What one piece should consume of each material. Used to compare planned and actual on a manufacturing order.",
+      "perPiece": "Per piece",
+      "addMaterial": "Add a material"
+    },
+    "orders": {
+      "title": "Orders",
+      "subtitle": "The orders of your clients: articles and quantities.",
+      "one": "Order",
+      "new": "New order",
+      "edit": "Edit the order",
+      "empty": "No order",
+      "number": "Order no.",
+      "orderedOn": "Order date",
+      "dueOn": "Delivery",
+      "lines": "Articles ordered",
+      "addLine": "Add an article"
+    },
+    "orderStatus": {
+      "open": "Open",
+      "in_progress": "In progress",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "of": {
+      "title": "Manufacturing orders",
+      "subtitle": "Each manufacturing order: the article made, its stages site by site and what it consumed.",
+      "short": "MO",
+      "new": "New manufacturing order",
+      "edit": "Edit the manufacturing order",
+      "empty": "No manufacturing order",
+      "number": "Manufacturing order no.",
+      "noOrder": "No order",
+      "planned": "Planned quantity",
+      "produced": "Produced quantity",
+      "producedPlanned": "Produced / planned",
+      "startedOn": "Start",
+      "finishedOn": "End",
+      "steps": "Stages",
+      "stepsHint": "The stages the order goes through, each on its site: it can be cut on one site and sewn on another.",
+      "step": "Stage",
+      "piecesDone": "Pieces done",
+      "addStep": "Add a stage",
+      "consumption": "Materials consumed",
+      "expected": "planned",
+      "consumed": "consumed",
+      "anyBatch": "Batch not stated",
+      "addConsumption": "Add a consumption"
+    },
+    "ofStatus": {
+      "planned": "Planned",
+      "in_progress": "In progress",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "import": {
+      "title": "Import of production data",
+      "subtitle": "From any Excel or CSV file: you say in which column each piece of information is.",
+      "step1": "1. What does the file contain?",
+      "step2": "2. Where is each piece of information?",
+      "file": "Choose the file (Excel or CSV, first line = headings)",
+      "template": "Download an empty template",
+      "mappingHint": "{{lines}} line(s) read. Check the column proposed for each piece of information; those marked * are required.",
+      "noColumn": "Not in the file",
+      "column": "Column {{n}}",
+      "example": "e.g.",
+      "check": "Check without importing",
+      "run": "Import",
+      "checkResult": "Result of the check",
+      "done": "Import finished",
+      "wouldWrite": "Out of {{total}} line(s): {{created}} to create, {{updated}} to update, {{unchanged}} unchanged.",
+      "wrote": "Out of {{total}} line(s): {{created}} created, {{updated}} updated, {{unchanged}} unchanged.",
+      "also": "Created on the way:",
+      "errorsHint": "{{count}} line(s) in error: they are not imported, the others are. Fix them in the file then import it again: what is already imported will not be duplicated.",
+      "line": "Line",
+      "problem": "Problem",
+      "targets": {
+        "manufacturing_orders": "Manufacturing orders",
+        "orders": "Orders",
+        "articles": "Articles",
+        "materials": "Raw materials",
+        "clients": "Clients",
+        "suppliers": "Suppliers"
+      },
+      "hints": {
+        "manufacturing_orders": "Order, article, quantities, stages per site, consumptions. Creates the client, the order and the article when needed.",
+        "orders": "One line per article ordered. Creates the client and the article when needed.",
+        "articles": "Reference, client, and the consumption per piece of each material.",
+        "materials": "Reference, supplier, unit, and the batches received.",
+        "clients": "Name, code, contact.",
+        "suppliers": "Name, code, contact."
+      }
     }
   }
 }
