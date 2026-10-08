@@ -318,8 +318,8 @@
       "revoked": "Révoqué"
     },
     "alert": {
-      "warning": "Seuil proche",
-      "exceeded": "Seuil dépassé",
+      "warning": "Limite bientôt atteinte",
+      "exceeded": "Limite dépassée",
       "ok": "Normal"
     },
     "manifest": {
@@ -425,7 +425,7 @@
     "SITE_HAS_STOCK": "Ce site contient encore des lots : évacuez-les avant de le fermer.",
     "ZONE_HAS_STOCK": "Cette zone contient encore des lots.",
     "WASTE_TYPE_HAS_STOCK": "Des lots de ce type sont encore en stock.",
-    "THRESHOLD_EXISTS": "Un seuil existe déjà pour ce site, cette zone et ce type.",
+    "THRESHOLD_EXISTS": "Une limite existe déjà pour ce site, cette zone et ce type.",
     "ALREADY_MEMBER": "Cette personne fait déjà partie de la société.",
     "INVITATION_PENDING": "Une invitation est déjà en attente pour cette adresse.",
     "LAST_ADMINISTRATOR": "La société doit conserver au moins un administrateur actif.",
@@ -453,8 +453,8 @@
     "inApp": "Dans l'application",
     "byMail": "Par email",
     "labels": {
-      "stock.threshold_warning": "Seuil de stock bientôt atteint",
-      "stock.threshold_exceeded": "Seuil de stock dépassé",
+      "stock.threshold_warning": "Limite de stock bientôt atteinte",
+      "stock.threshold_exceeded": "Limite de stock dépassée",
       "pickup.requested": "Nouvelle demande d'enlèvement",
       "pickup.confirmed": "Enlèvement confirmé par le prestataire",
       "pickup.refused": "Enlèvement refusé par le prestataire",
@@ -482,12 +482,12 @@
     },
     "types": {
       "stock.threshold_warning": {
-        "title": "Seuil de stock bientôt atteint — {{site}}",
-        "body": "{{quantity_kg}} kg en stock pour un seuil de {{max_quantity_kg}} kg."
+        "title": "Limite de stock bientôt atteinte — {{site}}",
+        "body": "{{quantity_kg}} kg en stock pour une limite de {{max_quantity_kg}} kg."
       },
       "stock.threshold_exceeded": {
-        "title": "Seuil de stock dépassé — {{site}}",
-        "body": "{{quantity_kg}} kg en stock pour un seuil de {{max_quantity_kg}} kg. Planifiez un enlèvement."
+        "title": "Limite de stock dépassée — {{site}}",
+        "body": "{{quantity_kg}} kg en stock pour une limite de {{max_quantity_kg}} kg. Planifiez un enlèvement."
       },
       "pickup.requested": {
         "title": "Nouvelle demande d'enlèvement {{number}}",
@@ -653,13 +653,16 @@
     "channelUndeclared": "Filière non déclarée",
     "openPickups": "Enlèvements en cours",
     "alerts": {
-      "exceeded": "{{count}} seuil(s) de stock dépassé(s)",
-      "warning": "{{count}} seuil(s) de stock bientôt atteint(s)",
+      "exceeded": "{{count}} limite(s) de stock dépassée(s)",
+      "warning": "{{count}} limite(s) de stock bientôt atteinte(s)",
       "variance": "{{count}} enlèvement(s) avec écart de poids à examiner",
       "requested": "{{count}} demande(s) d'enlèvement en attente de réponse du prestataire",
       "accreditationExpired": "Agrément expiré : {{provider}} ne peut plus être choisi",
       "accreditationExpiring": "Agrément de {{provider}} : expire dans {{days}} jour(s)"
-    }
+    },
+    "production": "Origine des déchets en production",
+    "productionHint": "Les ordres de fabrication qui ont produit le plus de déchets sur la période.",
+    "seeAll": "Tout voir"
   },
   "lots": {
     "title": "Lots de déchets",
@@ -730,7 +733,10 @@
     "noProductionOrder": "Sans OF",
     "productionOrderHint": "Facultatif. L'étape est déduite de la zone, la matière de l'OF.",
     "rawMaterial": "Matière première",
-    "materialOfOrder": "Celle de l'OF"
+    "materialOfOrder": "Celle de l'OF",
+    "editOrigin": "Origine",
+    "originHint": "D'où vient ce lot en production. Laissez vide ce que vous ne savez pas : l'étape est déduite de la zone, la matière de l'OF.",
+    "stepOfZone": "Celle de la zone"
   },
   "stock": {
     "title": "Stock de déchets",
@@ -739,25 +745,45 @@
     "awaiting": "dont en attente d'enlèvement",
     "oldest": "Lot le plus ancien",
     "zoneFill": "Remplissage de la zone",
-    "thresholds": "Seuils d'alerte",
-    "addThreshold": "Ajouter un seuil",
-    "editThreshold": "Modifier le seuil",
-    "max": "Quantité maximale (kg)",
-    "warningPct": "Alerte à (% du maximum)",
+    "thresholds": "Limites de stock",
+    "addThreshold": "Ajouter une limite",
+    "editThreshold": "Modifier la limite",
+    "max": "Limite (kg)",
+    "warningPct": "Prévenir à (% de la limite)",
     "anyZone": "Toutes les zones",
     "anyType": "Tous les types",
     "current": "Stock actuel",
     "emptyTitle": "Aucun déchet en stock",
     "emptyHint": "Le stock apparaît dès qu'un lot est créé sur un site.",
-    "noThreshold": "Aucun seuil défini. Un seuil vous alerte avant qu'une aire de stockage ne déborde.",
+    "noThreshold": "Aucune limite définie. Une limite vous alerte avant qu'une zone ou un site ne contienne trop de déchets.",
     "requestPickup": "Demander un enlèvement",
-    "thresholdSaved": "Seuil enregistré.",
-    "thresholdDeleted": "Seuil supprimé.",
+    "thresholdSaved": "Limite enregistrée.",
+    "thresholdDeleted": "Limite supprimée.",
     "remaining": "Reste :",
     "uncounted": "{{count}} lot(s) non compté(s)",
     "uncountedHint": "Ces lots n'ont pas de conditionnement, ou un conditionnement que la capacité de la zone ne prévoit pas. Ils ne sont pas dans le pourcentage.",
     "misplaced": "{{count}} lot(s) hors affectation",
-    "misplacedHint": "Le type de déchet ou la couleur de ces lots n'est pas prévu dans cette zone."
+    "misplacedHint": "Le type de déchet ou la couleur de ces lots n'est pas prévu dans cette zone.",
+    "capacity": "Capacité",
+    "noCapacity": "Capacité non définie",
+    "defineCapacity": "Définir",
+    "limit": "Limite",
+    "noLimit": "Aucune limite",
+    "defineLimit": "Définir",
+    "waiting": "En attente d'enlèvement",
+    "usage": "Utilisation",
+    "warnAt": "alerte à {{pct}} %",
+    "limitsHint": "Une limite est un poids maximal pour un site, une zone ou un type de déchet. Vous recevez une alerte à l'approche de la limite, puis une autre si elle est dépassée.",
+    "limitIntro": "Choisissez ce que la limite surveille : tout un site, une zone, un type de déchet, ou un type dans une zone. Laissez « Toutes les zones » ou « Tous les types » pour une limite plus large.",
+    "maxHint": "Poids à ne pas dépasser.",
+    "warningHint": "Vous êtes prévenu quand le stock atteint ce pourcentage de la limite.",
+    "noLimitDefined": "aucune limite définie",
+    "limitsWatching": "{{count}} limite(s) active(s)",
+    "scope": {
+      "zone": "toute la zone",
+      "siteType": "ce type sur tout le site",
+      "site": "tout le site"
+    }
   },
   "sites": {
     "title": "Sites et zones",
@@ -842,7 +868,7 @@
     "departure": "Poids au départ",
     "received": "Poids reçu",
     "variance": "Écart",
-    "varianceFlagged": "Écart de poids supérieur au seuil",
+    "varianceFlagged": "Écart de poids supérieur à la limite",
     "varianceOnly": "Avec écart de poids",
     "lots": "Lots",
     "lotsCount": "{{count}} lot(s)",
@@ -891,7 +917,7 @@
     "ackComment": "Explication de l'écart",
     "collectHint": "Cochez les lots effectivement chargés. Un lot non coché retourne en stock.",
     "loaded": "Chargé",
-    "receiveHint": "Saisissez le poids reçu pour chaque lot. Un écart supérieur au seuil est signalé à l'industriel.",
+    "receiveHint": "Saisissez le poids reçu pour chaque lot. Un écart supérieur à la limite est signalé à l'industriel.",
     "treatHint": "Indiquez la filière de traitement de chaque lot reçu.",
     "channel": "Filière",
     "priceHint": "Prix de vente (recette) ou coût d'élimination, par lot. Le montant est calculé sur le poids reçu.",
@@ -1199,14 +1225,14 @@
     },
     "company": {
       "title": "Société",
-      "subtitle": "Coordonnées, logo des rapports et seuil d'écart de poids.",
+      "subtitle": "Coordonnées, logo des rapports et limite d'écart de poids.",
       "identity": "Identité",
       "identityHint": "La raison sociale, le matricule fiscal et le pays ne se modifient que par Diva Software.",
       "logo": "Logo des rapports",
       "logoHint": "PNG ou JPEG, 2 Mo maximum. Il figure sur les rapports et exports.",
       "uploadLogo": "Choisir un logo",
       "billingEmail": "Email de facturation",
-      "varianceThreshold": "Seuil d'écart de poids à l'enlèvement (%)",
+      "varianceThreshold": "Limite d'écart de poids à l'enlèvement (%)",
       "varianceHint": "Au-delà de cet écart entre le poids au départ et le poids reçu, l'enlèvement est signalé (5 % par défaut)."
     }
   },
@@ -1536,7 +1562,10 @@
     },
     "notForZone": "Non prévu dans cette zone",
     "chooseOf": "Pour quel OF ?",
-    "noOf": "Sans OF"
+    "noOf": "Sans OF",
+    "scanOf": "Scanner la fiche de l'OF",
+    "ofList": "Choisir dans la liste",
+    "ofNotFound": "Aucun OF ouvert ne porte le numéro « {{code}} » sur ce site."
   },
   "validation": {
     "required": "Ce champ est obligatoire.",
@@ -1667,7 +1696,7 @@
       "sites": "Site",
       "zones": "Zone",
       "waste_types": "Type de déchet",
-      "stock_thresholds": "Seuil d'alerte",
+      "stock_thresholds": "Limite de stock",
       "documents": "Document",
       "hazardous_waste_manifests": "Bordereau de suivi",
       "annual_declarations": "Déclaration annuelle",
@@ -1796,7 +1825,7 @@
     "roles.manage": "Gérer les rôles personnalisés",
     "sites.manage": "Gérer les sites",
     "sites.view": "Voir les sites",
-    "stock.thresholds.manage": "Gérer les seuils d'alerte",
+    "stock.thresholds.manage": "Gérer les limites de stock",
     "stock.view": "Voir le stock",
     "subscription.manage": "Gérer l'abonnement",
     "subscription.view": "Voir l'abonnement",
@@ -1910,7 +1939,10 @@
     "linkTitle": "Associer {{name}} à son compte ?",
     "linkMessage": "{{name}} devient l'un de vos prestataires partenaires : les prochains enlèvements lui seront envoyés par la plateforme et il signera lui-même. Les enlèvements déjà enregistrés ne changent pas.",
     "linked": "Partenaire associé à son compte.",
-    "linkedTo": "Associé à {{name}}"
+    "linkedTo": "Associé à {{name}}",
+    "choose": "Associer à un compte",
+    "chooseHint": "Ce partenaire utilise maintenant la plateforme ? Choisissez son compte : les prochains enlèvements lui seront envoyés par la plateforme. Les enlèvements déjà enregistrés ne changent pas.",
+    "platformProvider": "Prestataire de la plateforme"
   },
   "authorizations": {
     "title": "Autorisations de sortie des déchets",
@@ -2117,7 +2149,80 @@
         "by_step": "Étapes",
         "by_material": "Matières",
         "by_supplier": "Fournisseurs"
-      }
+      },
+      "monthly": "Évolution mensuelle"
+    }
+  },
+  "help": {
+    "show": "Aide sur cette page",
+    "hide": "Masquer",
+    "stock": {
+      "title": "Comment lire le stock",
+      "text": "Le stock est calculé à chaque affichage à partir des lots présents sur site : rien n'est saisi ici.\nCapacité : la place disponible dans une zone, en nombre de lots par conditionnement et/ou en poids. Elle se règle sur la page du site.\nLimite : un poids maximal que vous fixez pour un site, une zone ou un type de déchet. Vous êtes prévenu avant qu'elle soit atteinte, puis quand elle est dépassée.\n« Aucune limite » ou « Capacité non définie » signifie que rien ne surveille cette ligne : cliquez « Définir » pour en ajouter une."
+    },
+    "lots": {
+      "title": "Les lots de déchets",
+      "text": "Un lot est une quantité pesée d'un seul type de déchet, avec son étiquette QR. Il est créé ici ou depuis l'application atelier.\nSon statut suit son parcours : créé, stocké, en attente d'enlèvement, enlevé, traité, clôturé.\nCliquez un lot pour voir son historique complet, son origine en production et l'enlèvement qui l'a pris.\nRien n'est jamais supprimé : un lot corrigé garde la trace de la correction."
+    },
+    "pickups": {
+      "title": "Les enlèvements",
+      "text": "Un enlèvement regroupe des lots d'un site remis à un destinataire, avec ou sans transporteur distinct.\nÉtapes : brouillon, demandé, confirmé (date fixée), enlevé (lots chargés), reçu (poids pesés à l'arrivée), clôturé.\nSi le destinataire a un compte, il répond lui-même. Sinon, vous enregistrez ses étapes sur la page de l'enlèvement.\nChaque déchet enlevé part avec son bordereau de suivi, établi automatiquement au chargement."
+    },
+    "sites": {
+      "title": "Sites et zones",
+      "text": "Un site est une usine ou un entrepôt. Chaque site est découpé en zones : ateliers, aires de stockage.\nCliquez un site pour gérer ses zones, leur capacité et ce qu'elles sont censées contenir.\nUn site ou une zone ne se supprime pas : on le désactive, et l'historique continue de le désigner."
+    },
+    "zones": {
+      "title": "Les zones de ce site",
+      "text": "Capacité : indiquez combien de lots la zone contient par conditionnement (« 40 balles », « 100 sacs ») et, si besoin, un poids maximal. Les conditionnements mélangés s'additionnent.\nRéservée à : les types de déchets et couleurs prévus dans la zone. Un lot qui ne correspond pas est signalé, jamais refusé.\nLe type de la zone (coupe, confection…) est facultatif ; il sert à savoir de quelle étape de production vient un déchet.\n« Sans limite » signifie que le remplissage de la zone n'est pas surveillé."
+    },
+    "wasteTypes": {
+      "title": "Types de déchets et couleurs",
+      "text": "Vos types de déchets viennent du catalogue de la plateforme (onglet Catalogue) ou sont créés par vous.\nLe code, la famille, le code réglementaire et le caractère dangereux ne changent plus après création : les documents s'appuient dessus.\nCochez « sous autorisation » pour un déchet qui ne peut sortir qu'avec une autorisation douanière.\nLes couleurs par défaut sont communes ; celles que vous ajoutez ne sont visibles que par votre société."
+    },
+    "providers": {
+      "title": "Prestataires et partenaires",
+      "text": "Partenaires sans compte : transporteurs et destinataires que vous enregistrez vous-même. Vous saisissez leurs étapes et ils signent à la main.\nPrestataires de la plateforme : ils ont un compte, répondent à vos demandes et signent eux-mêmes. Ajoutez-les à vos partenaires pour pouvoir les choisir.\nUn prestataire dont l'agrément a expiré ne peut pas être choisi pour un enlèvement."
+    },
+    "register": {
+      "title": "Le registre des déchets",
+      "text": "Le registre liste chaque lot produit sur la période avec sa sortie : enlèvement, destinataire, poids reçu, filière.\nIl est généré à partir des lots : aucune ligne n'est saisie à la main.\nExportez-le en PDF ou Excel pour un contrôle."
+    },
+    "manifests": {
+      "title": "Les bordereaux de suivi",
+      "text": "Chaque déchet enlevé a son bordereau, dangereux ou non, pré-rempli à partir de l'enlèvement.\nIl est signé dans l'ordre : producteur, transporteur, destinataire. Chacun signe avec son mot de passe, ou à la main sur le bordereau imprimé.\nUn intervenant sans compte signe à la main : imprimez le PDF, faites signer, puis « Enregistrer la signature ».\nDès qu'une signature est manuscrite, joignez le scan de l'exemplaire signé pour clôturer le bordereau."
+    },
+    "declarations": {
+      "title": "Les déclarations annuelles",
+      "text": "La déclaration d'un site pour une année est calculée à partir de ses lots et de ses enlèvements.\nUn projet peut être recalculé tant qu'il n'est pas validé. Une fois validée, la déclaration est figée et archivée."
+    },
+    "authorizations": {
+      "title": "Les autorisations de sortie",
+      "text": "Seuls les types de déchets marqués « sous autorisation » sont concernés (case à cocher sur le type de déchet).\nUne autorisation donne une période et une quantité : un poids, un nombre de lots, ou des lots par conditionnement.\nChaque demande d'enlèvement réserve sa part. Sans autorisation valable ou avec une quantité insuffisante, la demande est bloquée.\nVous êtes prévenu quand l'autorisation est presque épuisée et avant sa fin de validité."
+    },
+    "productionPartners": {
+      "title": "Clients et fournisseurs",
+      "text": "Les clients sont ceux pour qui vous produisez ; les fournisseurs livrent vos matières premières.\nIls servent uniquement à savoir d'où vient chaque déchet. Ce ne sont pas vos prestataires de déchets.\nVous pouvez les saisir ici ou les importer depuis un fichier (Production › Import)."
+    },
+    "productionCatalog": {
+      "title": "Matières premières et articles",
+      "text": "Une matière première porte sa composition et sa couleur : les déchets qui en proviennent les reprennent automatiquement.\nRenseignez la laize et le grammage d'un tissu pour obtenir le taux de chute de vos OF.\nUn article indique ce qu'une pièce doit consommer de chaque matière : c'est la base de la comparaison prévu / réel."
+    },
+    "productionOrders": {
+      "title": "Les commandes",
+      "text": "Une commande liste les articles demandés par un client, avec les quantités.\nLes ordres de fabrication se rattachent à une commande : c'est ce lien qui permet de dire pour quel client un déchet a été produit."
+    },
+    "manufacturingOrders": {
+      "title": "Les ordres de fabrication (OF)",
+      "text": "Un OF fabrique un article. Indiquez ses étapes et le site de chacune : un OF peut être coupé sur un site et confectionné sur un autre.\nSaisissez ce que l'OF a réellement consommé : la fiche compare avec le prévu et signale le dépassement.\nLes lots de déchets se rattachent à un OF à leur création (formulaire ou application atelier).\nLa quantité produite d'un OF terminé alimente les « déchets par pièce produite » du tableau de bord."
+    },
+    "productionStats": {
+      "title": "Comment lire ces statistiques",
+      "text": "Mesuré : le lot désigne son OF. C'est un chiffre exact.\nEstimé (≈) : le lot n'indique que son étape ; son poids est réparti entre les OF présents à cette étape ce jour-là, selon les pièces réalisées.\nNon attribué : le lot n'indique rien. Plus ce chiffre est bas, plus vos statistiques sont fiables.\nTaux de chute : part de la matière consommée devenue déchet. Il faut la consommation de l'OF en kg, ou en mètres avec laize et grammage."
+    },
+    "reports": {
+      "title": "Rapports et exports",
+      "text": "Choisissez un rapport, une période et un format : il est préparé en arrière-plan et apparaît dans la liste quand il est prêt.\nUn rapport n'est visible que par la personne qui l'a demandé et reste disponible 30 jours."
     }
   }
 }

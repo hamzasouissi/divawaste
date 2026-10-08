@@ -11,7 +11,7 @@ import { Toast } from '../../core/feedback/toast';
 import { CodePipe, DatePipe, KgPipe, LocalizedPipe, TermPipe } from '../../core/format/pipes';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
-import { LotActionData, SplitLotDialog, StoreLotDialog, WeighLotDialog } from './lot-dialogs';
+import { LotActionData, LotOriginDialog, SplitLotDialog, StoreLotDialog, WeighLotDialog } from './lot-dialogs';
 import { Dialogs } from '../../ui/dialog';
 import { IconComponent } from '../../ui/icon';
 
@@ -36,6 +36,9 @@ import { IconComponent } from '../../ui/icon';
             }
             @if (transformable() && session.can('lots.split', l.site?.ulid)) {
               <button pButton severity="secondary" outlined type="button" (click)="act('split')"><dw-icon>call_split</dw-icon>{{ t('lots.split') }}</button>
+            }
+            @if (session.can('lots.update', l.site?.ulid)) {
+              <button pButton severity="secondary" outlined type="button" (click)="act('origin')"><dw-icon>account_tree</dw-icon>{{ t('lots.editOrigin') }}</button>
             }
             @if (session.can('lots.print_label', l.site?.ulid)) {
               <button pButton type="button" (click)="print()" [disabled]="printing()"><dw-icon>print</dw-icon>{{ t('lots.printLabel') }}</button>
@@ -213,12 +216,12 @@ export class LotDetailPage implements OnInit {
     });
   }
 
-  protected act(action: 'store' | 'weigh' | 'split'): void {
+  protected act(action: 'store' | 'weigh' | 'split' | 'origin'): void {
     const lot = this.lot();
     if (!lot) {
       return;
     }
-    const component = action === 'store' ? StoreLotDialog : action === 'weigh' ? WeighLotDialog : SplitLotDialog;
+    const component = action === 'store' ? StoreLotDialog : action === 'weigh' ? WeighLotDialog : action === 'origin' ? LotOriginDialog : SplitLotDialog;
     this.dialog.open<unknown, LotActionData, Lot | Lot[]>(component, { data: { lot } }).afterClosed().subscribe((result) => result && this.load());
   }
 

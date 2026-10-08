@@ -318,8 +318,8 @@
       "revoked": "Revoked"
     },
     "alert": {
-      "warning": "Near threshold",
-      "exceeded": "Threshold exceeded",
+      "warning": "Limit nearly reached",
+      "exceeded": "Limit exceeded",
       "ok": "Normal"
     },
     "manifest": {
@@ -425,7 +425,7 @@
     "SITE_HAS_STOCK": "This site still holds lots: evacuate them before closing it.",
     "ZONE_HAS_STOCK": "This zone still holds lots.",
     "WASTE_TYPE_HAS_STOCK": "Lots of this type are still in stock.",
-    "THRESHOLD_EXISTS": "A threshold already exists for this site, zone and type.",
+    "THRESHOLD_EXISTS": "A limit already exists for this site, zone and type.",
     "ALREADY_MEMBER": "This person is already a member of the company.",
     "INVITATION_PENDING": "An invitation is already pending for this address.",
     "LAST_ADMINISTRATOR": "The company must keep at least one active administrator.",
@@ -453,8 +453,8 @@
     "inApp": "In the application",
     "byMail": "By email",
     "labels": {
-      "stock.threshold_warning": "Stock threshold nearly reached",
-      "stock.threshold_exceeded": "Stock threshold exceeded",
+      "stock.threshold_warning": "Stock limit nearly reached",
+      "stock.threshold_exceeded": "Stock limit exceeded",
       "pickup.requested": "New pickup request",
       "pickup.confirmed": "Pickup confirmed by the provider",
       "pickup.refused": "Pickup refused by the provider",
@@ -482,12 +482,12 @@
     },
     "types": {
       "stock.threshold_warning": {
-        "title": "Stock threshold nearly reached — {{site}}",
-        "body": "{{quantity_kg}} kg in stock for a threshold of {{max_quantity_kg}} kg."
+        "title": "Stock limit nearly reached — {{site}}",
+        "body": "{{quantity_kg}} kg in stock for a limit of {{max_quantity_kg}} kg."
       },
       "stock.threshold_exceeded": {
-        "title": "Stock threshold exceeded — {{site}}",
-        "body": "{{quantity_kg}} kg in stock for a threshold of {{max_quantity_kg}} kg. Plan a pickup."
+        "title": "Stock limit exceeded — {{site}}",
+        "body": "{{quantity_kg}} kg in stock for a limit of {{max_quantity_kg}} kg. Plan a pickup."
       },
       "pickup.requested": {
         "title": "New pickup request {{number}}",
@@ -653,13 +653,16 @@
     "channelUndeclared": "Channel not declared",
     "openPickups": "Pickups in progress",
     "alerts": {
-      "exceeded": "{{count}} stock threshold(s) exceeded",
-      "warning": "{{count}} stock threshold(s) nearly reached",
+      "exceeded": "{{count}} stock limit(s) exceeded",
+      "warning": "{{count}} stock limit(s) nearly reached",
       "variance": "{{count}} pickup(s) with a weight variance to review",
       "requested": "{{count}} pickup request(s) awaiting the provider's answer",
       "accreditationExpired": "Accreditation expired: {{provider}} can no longer be chosen",
       "accreditationExpiring": "Accreditation of {{provider}}: expires in {{days}} day(s)"
-    }
+    },
+    "production": "Origin of the waste in production",
+    "productionHint": "The manufacturing orders that produced the most waste over the period.",
+    "seeAll": "See all"
   },
   "lots": {
     "title": "Waste lots",
@@ -730,7 +733,10 @@
     "noProductionOrder": "No manufacturing order",
     "productionOrderHint": "Optional. The stage is deduced from the zone, the material from the order.",
     "rawMaterial": "Raw material",
-    "materialOfOrder": "The one of the order"
+    "materialOfOrder": "The one of the order",
+    "editOrigin": "Origin",
+    "originHint": "Where this lot comes from in production. Leave empty what you do not know: the stage is deduced from the zone, the material from the order.",
+    "stepOfZone": "The one of the zone"
   },
   "stock": {
     "title": "Waste stock",
@@ -739,25 +745,45 @@
     "awaiting": "of which awaiting pickup",
     "oldest": "Oldest lot",
     "zoneFill": "Zone fill level",
-    "thresholds": "Alert thresholds",
-    "addThreshold": "Add a threshold",
-    "editThreshold": "Edit the threshold",
-    "max": "Maximum quantity (kg)",
-    "warningPct": "Alert at (% of the maximum)",
+    "thresholds": "Stock limits",
+    "addThreshold": "Add a limit",
+    "editThreshold": "Edit the limit",
+    "max": "Limit (kg)",
+    "warningPct": "Warn at (% of the limit)",
     "anyZone": "All zones",
     "anyType": "All types",
     "current": "Current stock",
     "emptyTitle": "No waste in stock",
     "emptyHint": "Stock appears as soon as a lot is created on a site.",
-    "noThreshold": "No threshold defined. A threshold warns you before a storage area overflows.",
+    "noThreshold": "No limit defined. A limit warns you before a zone or a site holds too much waste.",
     "requestPickup": "Request a pickup",
-    "thresholdSaved": "Threshold saved.",
-    "thresholdDeleted": "Threshold deleted.",
+    "thresholdSaved": "Limit saved.",
+    "thresholdDeleted": "Limit deleted.",
     "remaining": "Left:",
     "uncounted": "{{count}} lot(s) not counted",
     "uncountedHint": "These lots have no packaging, or a packaging the capacity of the zone does not cover. They are not in the percentage.",
     "misplaced": "{{count}} lot(s) out of place",
-    "misplacedHint": "The waste type or the colour of these lots is not planned in this zone."
+    "misplacedHint": "The waste type or the colour of these lots is not planned in this zone.",
+    "capacity": "Capacity",
+    "noCapacity": "Capacity not defined",
+    "defineCapacity": "Define",
+    "limit": "Limit",
+    "noLimit": "No limit",
+    "defineLimit": "Define",
+    "waiting": "Awaiting pickup",
+    "usage": "Usage",
+    "warnAt": "alert at {{pct}} %",
+    "limitsHint": "A limit is a maximum weight for a site, a zone or a waste type. You get an alert when the limit is close, then another if it is exceeded.",
+    "limitIntro": "Choose what the limit watches: a whole site, a zone, a waste type, or a type in a zone. Leave \"All zones\" or \"All types\" for a wider limit.",
+    "maxHint": "Weight not to exceed.",
+    "warningHint": "You are warned when the stock reaches this percentage of the limit.",
+    "noLimitDefined": "no limit defined",
+    "limitsWatching": "{{count}} active limit(s)",
+    "scope": {
+      "zone": "whole zone",
+      "siteType": "this type on the whole site",
+      "site": "whole site"
+    }
   },
   "sites": {
     "title": "Sites and zones",
@@ -842,7 +868,7 @@
     "departure": "Weight at departure",
     "received": "Weight received",
     "variance": "Variance",
-    "varianceFlagged": "Weight variance above the threshold",
+    "varianceFlagged": "Weight variance above the limit",
     "varianceOnly": "With a weight variance",
     "lots": "Lots",
     "lotsCount": "{{count}} lot(s)",
@@ -891,7 +917,7 @@
     "ackComment": "Explanation of the variance",
     "collectHint": "Tick the lots actually loaded. An unticked lot goes back to stock.",
     "loaded": "Loaded",
-    "receiveHint": "Enter the weight received for each lot. A variance above the threshold is reported to the manufacturer.",
+    "receiveHint": "Enter the weight received for each lot. A variance above the limit is reported to the manufacturer.",
     "treatHint": "Give the treatment channel of each lot received.",
     "channel": "Channel",
     "priceHint": "Sale price (revenue) or disposal cost, per lot. The amount is calculated on the weight received.",
@@ -1199,14 +1225,14 @@
     },
     "company": {
       "title": "Company",
-      "subtitle": "Contact details, logo for reports and weight variance threshold.",
+      "subtitle": "Contact details, logo for reports and weight variance limit.",
       "identity": "Identity",
       "identityHint": "The legal name, tax ID and country can only be changed by Diva Software.",
       "logo": "Logo for reports",
       "logoHint": "PNG or JPEG, 2 MB maximum. It appears on reports and exports.",
       "uploadLogo": "Choose a logo",
       "billingEmail": "Billing email",
-      "varianceThreshold": "Weight variance threshold on pickups (%)",
+      "varianceThreshold": "Weight variance limit on pickups (%)",
       "varianceHint": "Beyond this difference between the weight at departure and the weight received, the pickup is flagged (5 % by default)."
     }
   },
@@ -1536,7 +1562,10 @@
     },
     "notForZone": "Not planned in this zone",
     "chooseOf": "For which manufacturing order?",
-    "noOf": "No manufacturing order"
+    "noOf": "No manufacturing order",
+    "scanOf": "Scan the order sheet",
+    "ofList": "Choose in the list",
+    "ofNotFound": "No open order has the number \"{{code}}\" on this site."
   },
   "validation": {
     "required": "This field is required.",
@@ -1667,7 +1696,7 @@
       "sites": "Site",
       "zones": "Zone",
       "waste_types": "Waste type",
-      "stock_thresholds": "Alert threshold",
+      "stock_thresholds": "Stock limit",
       "documents": "Document",
       "hazardous_waste_manifests": "Tracking slip",
       "annual_declarations": "Annual declaration",
@@ -1796,7 +1825,7 @@
     "roles.manage": "Manage custom roles",
     "sites.manage": "Manage the sites",
     "sites.view": "View the sites",
-    "stock.thresholds.manage": "Manage the alert thresholds",
+    "stock.thresholds.manage": "Manage the stock limits",
     "stock.view": "View the stock",
     "subscription.manage": "Manage the subscription",
     "subscription.view": "View the subscription",
@@ -1910,7 +1939,10 @@
     "linkTitle": "Tie {{name}} to its account?",
     "linkMessage": "{{name}} becomes one of your partner providers: the next pickups will be sent to it through the platform and it will sign itself. Pickups already recorded do not change.",
     "linked": "Partner tied to its account.",
-    "linkedTo": "Tied to {{name}}"
+    "linkedTo": "Tied to {{name}}",
+    "choose": "Tie to an account",
+    "chooseHint": "Does this partner now use the platform? Choose its account: the next pickups will be sent to it through the platform. Pickups already recorded do not change.",
+    "platformProvider": "Provider on the platform"
   },
   "authorizations": {
     "title": "Waste exit authorisations",
@@ -2117,7 +2149,80 @@
         "by_step": "Stages",
         "by_material": "Materials",
         "by_supplier": "Suppliers"
-      }
+      },
+      "monthly": "Monthly trend"
+    }
+  },
+  "help": {
+    "show": "Help on this page",
+    "hide": "Hide",
+    "stock": {
+      "title": "How to read the stock",
+      "text": "The stock is calculated at each display from the lots present on site: nothing is typed here.\nCapacity: the room available in a zone, as a number of lots per packaging and/or a weight. It is set on the page of the site.\nLimit: a maximum weight you set for a site, a zone or a waste type. You are warned before it is reached, then when it is exceeded.\n\"No limit\" or \"Capacity not defined\" means nothing watches this line: click \"Define\" to add one."
+    },
+    "lots": {
+      "title": "Waste lots",
+      "text": "A lot is a weighed quantity of a single waste type, with its QR label. It is created here or from the workshop application.\nIts status follows its journey: created, stored, awaiting pickup, collected, treated, closed.\nClick a lot to see its full history, its origin in production and the pickup that took it.\nNothing is ever deleted: a corrected lot keeps the trace of the correction."
+    },
+    "pickups": {
+      "title": "Pickups",
+      "text": "A pickup groups lots of one site handed to a receiver, with or without a separate transporter.\nStages: draft, requested, confirmed (date set), collected (lots loaded), received (weighed on arrival), closed.\nIf the receiver has an account, it answers itself. Otherwise you record its stages on the pickup page.\nEvery waste collected leaves with its tracking slip, issued automatically at loading."
+    },
+    "sites": {
+      "title": "Sites and zones",
+      "text": "A site is a factory or a warehouse. Each site is divided into zones: workshops, storage areas.\nClick a site to manage its zones, their capacity and what they are meant to hold.\nA site or a zone is not deleted: it is deactivated, and history keeps pointing to it."
+    },
+    "zones": {
+      "title": "The zones of this site",
+      "text": "Capacity: say how many lots the zone holds per packaging (\"40 bales\", \"100 bags\") and, if needed, a maximum weight. Mixed packagings add up.\nReserved for: the waste types and colours planned in the zone. A lot that does not match is reported, never refused.\nThe type of the zone (cutting, sewing…) is optional; it tells which production stage a waste comes from.\n\"No limit\" means the filling of the zone is not watched."
+    },
+    "wasteTypes": {
+      "title": "Waste types and colours",
+      "text": "Your waste types come from the catalogue of the platform (Catalogue tab) or are created by you.\nThe code, family, regulatory code and hazardous flag no longer change after creation: documents rely on them.\nTick \"under authorisation\" for a waste that can only leave with a customs authorisation.\nDefault colours are shared; the ones you add are visible to your company only."
+    },
+    "providers": {
+      "title": "Providers and partners",
+      "text": "Partners without an account: transporters and receivers you record yourself. You enter their stages and they sign by hand.\nProviders on the platform: they have an account, answer your requests and sign themselves. Add them to your partners to be able to choose them.\nA provider whose accreditation has expired cannot be chosen for a pickup."
+    },
+    "register": {
+      "title": "The waste register",
+      "text": "The register lists each lot produced over the period with its exit: pickup, receiver, weight received, channel.\nIt is generated from the lots: no line is typed by hand.\nExport it as PDF or Excel for an inspection."
+    },
+    "manifests": {
+      "title": "Tracking slips",
+      "text": "Every waste collected has its slip, hazardous or not, pre-filled from the pickup.\nIt is signed in order: producer, transporter, receiver. Each signs with their password, or by hand on the printed slip.\nA party without an account signs by hand: print the PDF, have it signed, then \"Record the signature\".\nAs soon as one signature is handwritten, attach the scan of the signed copy to close the slip."
+    },
+    "declarations": {
+      "title": "Annual declarations",
+      "text": "The declaration of a site for a year is calculated from its lots and pickups.\nA draft can be recalculated until it is validated. Once validated, the declaration is frozen and archived."
+    },
+    "authorizations": {
+      "title": "Exit authorisations",
+      "text": "Only waste types marked \"under authorisation\" are concerned (a checkbox on the waste type).\nAn authorisation gives a period and a quantity: a weight, a number of lots, or lots per packaging.\nEach pickup request reserves its share. Without a valid authorisation or with too little left, the request is blocked.\nYou are warned when the authorisation is almost used up and before it ends."
+    },
+    "productionPartners": {
+      "title": "Clients and suppliers",
+      "text": "Clients are those you produce for; suppliers deliver your raw materials.\nThey only serve to tell where each waste comes from. They are not your waste providers.\nEnter them here or import them from a file (Production › Import)."
+    },
+    "productionCatalog": {
+      "title": "Raw materials and articles",
+      "text": "A raw material carries its composition and colour: the waste that comes from it takes them automatically.\nFill in the width and weight of a fabric to get the waste rate of your manufacturing orders.\nAn article says what one piece should consume of each material: the basis of the planned / actual comparison."
+    },
+    "productionOrders": {
+      "title": "Orders",
+      "text": "An order lists the articles a client asks for, with quantities.\nManufacturing orders are attached to an order: that link tells for which client a waste was produced."
+    },
+    "manufacturingOrders": {
+      "title": "Manufacturing orders",
+      "text": "A manufacturing order makes an article. Give its stages and the site of each: it can be cut on one site and sewn on another.\nEnter what the order really consumed: the form compares with the plan and flags any excess.\nWaste lots are attached to an order when they are created (form or workshop application).\nThe produced quantity of a finished order feeds the \"waste per piece produced\" of the dashboard."
+    },
+    "productionStats": {
+      "title": "How to read these statistics",
+      "text": "Measured: the lot names its manufacturing order. This is an exact figure.\nEstimated (≈): the lot only says its stage; its weight is shared between the orders at that stage that day, by pieces done.\nNot attributed: the lot says nothing. The lower this figure, the more reliable your statistics.\nWaste rate: share of the consumed material that became waste. It needs the consumption in kg, or in metres with width and weight."
+    },
+    "reports": {
+      "title": "Reports and exports",
+      "text": "Choose a report, a period and a format: it is prepared in the background and appears in the list when ready.\nA report is visible only to the person who requested it and stays available for 30 days."
     }
   }
 }

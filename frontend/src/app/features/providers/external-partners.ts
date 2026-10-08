@@ -111,6 +111,57 @@ export class ExternalPartnerDialog {
   }
 }
 
+/** Tie a partner to the account it opened, when the tax IDs do not match: the provider is chosen in the directory. */
+@Component({
+  imports: [ReactiveFormsModule, TranslocoDirective, ButtonDirective, ...FIELD, ...SELECT, ...DIALOG_PARTS],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <ng-container *transloco="let t">
+      <dw-dialog-title>{{ t('partners.linkTitle', { name: data.legal_name }) }}</dw-dialog-title>
+      <div class="dw-dialog-body">
+        <p class="dw-muted">{{ t('partners.chooseHint') }}</p>
+        <dw-field [label]="t('partners.platformProvider')">
+          <dw-select [formControl]="provider" required>
+            @for (item of providers(); track item.ulid) { <dw-option [value]="item.ulid" [label]="item.legal_name + (item.city ? ' — ' + item.city : '')" /> }
+          </dw-select>
+        </dw-field>
+      </div>
+      <div class="dw-dialog-foot">
+        <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+        <button pButton type="button" [disabled]="busy() || provider.invalid" (click)="submit()">{{ t('partners.link') }}</button>
+      </div>
+    </ng-container>
+  `,
+  styles: '.dw-dialog-body { display: grid; gap: var(--dw-3); inline-size: min(480px, 86vw); } .dw-muted { margin: 0; font-size: 13px; }',
+})
+export class LinkPartnerDialog {
+  protected readonly data = dialogData<ExternalPartner>();
+  private readonly api = inject(Api);
+  private readonly toast = inject(Toast);
+  private readonly ref = inject(DialogRef);
+
+  protected readonly providers = signal<{ ulid: string; legal_name: string; city: string | null }[]>([]);
+  protected readonly provider = inject(FormBuilder).nonNullable.control('', Validators.required);
+  protected readonly busy = signal(false);
+
+  constructor() {
+    this.api.get<{ ulid: string; legal_name: string; city: string | null }[]>('providers/directory').subscribe({ next: (rows) => this.providers.set(rows), error: (error: unknown) => this.toast.error(error) });
+  }
+
+  protected async submit(): Promise<void> {
+    this.busy.set(true);
+    try {
+      await firstValueFrom(this.api.post(`external-partners/${this.data.ulid}/link`, { provider: this.provider.value }));
+      this.toast.success('partners.linked');
+      this.ref.close(true);
+    } catch (error) {
+      this.toast.error(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+}
+
 /**
  * The company's partners without an account, above the directory of the providers of the platform. For them, the
  * company fills in each stage of a pickup itself and the tracking slip is signed by hand.
@@ -153,7 +204,12 @@ export class ExternalPartnerDialog {
                     @if (partner.linked_company; as account) { <dw-status kind="accreditation" value="approved" [label]="t('partners.linkedTo', { name: account.legal_name })" /> }
                     @else { <dw-status kind="member" [value]="partner.is_active ? 'active' : 'suspended'" [label]="t(partner.is_active ? 'partners.inUse' : 'common.inactive')" /> }
                   </td>
-                  <td class="dw-num">@if (canManage && !partner.linked_company) { <button pButton text type="button" (click)="edit(partner)">{{ t('common.edit') }}</button> }</td>
+                  <td class="dw-num">
+                    @if (canManage && !partner.linked_company) {
+                      <button pButton text type="button" (click)="edit(partner)">{{ t('common.edit') }}</button>
+                      @if (!partner.suggested_company) { <button pButton text type="button" (click)="choose(partner)" [title]="t('partners.chooseHint')">{{ t('partners.choose') }}</button> }
+                    }
+                  </td>
                 </tr>
               }
             </tbody>
@@ -211,6 +267,16 @@ export class ExternalPartnersComponent {
     } catch (error) {
       this.toast.error(error);
     }
+  }
+
+  /** No tax ID in common: the user says himself which provider of the platform this partner has become. */
+  protected choose(partner: ExternalPartner): void {
+    this.dialog.open<LinkPartnerDialog, ExternalPartner, boolean>(LinkPartnerDialog, { data: partner }).afterClosed().subscribe((done) => {
+      if (done) {
+        this.load();
+        this.linked.emit();
+      }
+    });
   }
 
   private load(): void {

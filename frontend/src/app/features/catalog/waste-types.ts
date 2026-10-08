@@ -25,6 +25,7 @@ import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
 import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
+import { HelpComponent } from '../../ui/help';
 
 /** A colour of the company: its name and, optionally, the tint shown next to it. */
 @Component({
@@ -282,6 +283,7 @@ export class WasteTypeDialog {
 /** M1-02 / M1-03: the company's waste types and the reference catalogue they come from. */
 @Component({
   imports: [
+    HelpComponent,
     CodePipe, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, LocalizedPipe, IconComponent, ButtonDirective, CheckboxComponent, FilterBarComponent, Tabs, TabList, Tab, TabPanels, TabPanel,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -290,6 +292,7 @@ export class WasteTypeDialog {
       <dw-page-header [title]="t('wasteTypes.title')" [subtitle]="t('wasteTypes.subtitle')">
         @if (canManage) { <button pButton type="button" (click)="edit(null)"><dw-icon>add</dw-icon>{{ t('wasteTypes.new') }}</button> }
       </dw-page-header>
+      <dw-help topic="wasteTypes" />
 
       <div class="dw-panel">
         <p-tabs [value]="0" (valueChange)="onTab($event)">

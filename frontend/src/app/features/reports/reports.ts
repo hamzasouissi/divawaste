@@ -19,6 +19,7 @@ import { StateComponent } from '../../ui/state';
 import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
 import { SELECT } from '../../ui/select';
+import { HelpComponent } from '../../ui/help';
 
 interface Volume {
   site: string;
@@ -32,12 +33,14 @@ interface Volume {
  */
 @Component({
   imports: [
+    HelpComponent,
     FormsModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, PeriodFilterComponent, StateComponent, DatePipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('reports.title')" [subtitle]="t('reports.subtitle')" />
+      <dw-help topic="reports" />
 
       <div class="dw-stack">
         @if (canExport) {

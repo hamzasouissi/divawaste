@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { EChartsCoreOption } from 'echarts/core';
 import { forkJoin } from 'rxjs';
+import { ButtonDirective } from 'primeng/button';
 
 import { Api, Page } from '../../core/api/api';
 import { Dashboard, DirectoryProvider, OnboardingState, Pickup, StockResponse } from '../../core/api/models';
@@ -26,9 +27,14 @@ interface Attention {
  * M6-01 / M6-02. The screen answers, in order: what needs me today, how much waste we produce, where it goes,
  * what it costs or earns. Every figure comes from the API, which computes it from the lots and the pickups.
  */
+interface ProductionSummary {
+  totals: { measured_kg: string; estimated_kg: string; unattributed_kg: string };
+  by_order: { key: string; label: string; sublabel: string | null; total_kg: string; g_per_piece: number | null; waste_rate_pct: number | null }[];
+}
+
 @Component({
   imports: [
-    RouterLink, TranslocoDirective, ChartComponent, KpiComponent, PageHeaderComponent, StatusComponent, PeriodFilterComponent, StateComponent, DatePipe, KgPipe, MoneyPipe, NumberPipe, IconComponent,
+    RouterLink, TranslocoDirective, ButtonDirective, ChartComponent, KpiComponent, PageHeaderComponent, StatusComponent, PeriodFilterComponent, StateComponent, DatePipe, KgPipe, MoneyPipe, NumberPipe, IconComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -136,6 +142,31 @@ interface Attention {
               </section>
             </div>
 
+            @if (production(); as p) {
+              <section class="dw-panel">
+                <div class="dw-panel-head">
+                  <div class="dw-spacer"><h2 class="dw-h2">{{ t('dashboard.production') }}</h2><p class="dw-muted prod-sub">{{ t('dashboard.productionHint') }}</p></div>
+                  <a pButton text routerLink="/production/stats">{{ t('dashboard.seeAll') }}<dw-icon>chevron_right</dw-icon></a>
+                </div>
+                <div class="dw-panel-body prod">
+                  <div class="prod-figures">
+                    <div><span class="dw-faint">{{ t('production.stats.measured') }}</span><strong>{{ p.totals.measured_kg | dwKg: 'auto' }}</strong></div>
+                    <div><span class="dw-faint">{{ t('production.stats.estimated') }}</span><strong>{{ p.totals.estimated_kg | dwKg: 'auto' }}</strong></div>
+                    <div><span class="dw-faint">{{ t('production.stats.unattributed') }}</span><strong>{{ p.totals.unattributed_kg | dwKg: 'auto' }}</strong></div>
+                  </div>
+                  <table class="dw-table">
+                    <thead><tr><th>{{ t('production.of.short') }}</th><th class="dw-num">{{ t('production.stats.total') }}</th><th class="dw-num">{{ t('production.stats.perPiece') }}</th><th class="dw-num">{{ t('production.stats.rate') }}</th></tr></thead>
+                    <tbody>
+                      @for (row of p.by_order.slice(0, 5); track row.key) {
+                        <tr><td><strong class="dw-mono">{{ row.label }}</strong> <span class="dw-faint">{{ row.sublabel }}</span></td><td class="dw-num">{{ row.total_kg | dwKg }}</td>
+                          <td class="dw-num">{{ row.g_per_piece === null ? '—' : (row.g_per_piece | dwNumber: 1) + ' g' }}</td><td class="dw-num">{{ row.waste_rate_pct === null ? '—' : (row.waste_rate_pct | dwNumber: 1) + ' %' }}</td></tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            }
+
             <section class="dw-panel">
               <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.byType') }}</h2></div>
               <div class="dw-panel-body">
@@ -152,6 +183,9 @@ interface Attention {
     </ng-container>
   `,
   styles: `
+    .prod-sub { margin: 2px 0 0; font-size: 13px; }
+    .prod { display: grid; gap: var(--dw-3); }
+    .prod-figures { display: flex; gap: var(--dw-5); flex-wrap: wrap; } .prod-figures div { display: grid; gap: 2px; } .prod-figures strong { font-size: 18px; }
     .onboarding { display: flex; align-items: center; gap: var(--dw-3); padding: 10px var(--dw-4); margin-block-end: var(--dw-4); color: var(--dw-ink); border-color: var(--dw-primary-line); background: var(--dw-primary-soft); }
     .onboarding:hover { text-decoration: none; border-color: var(--dw-primary); }
     .onboarding dw-icon { color: var(--dw-primary); }
@@ -185,6 +219,8 @@ export class DashboardPage {
   private readonly locale = inject(Locale);
 
   protected readonly period = signal<Period>(presetPeriod('quarter'));
+  /** Waste by manufacturing order, for who may read production statistics and only when some waste names an order. */
+  protected readonly production = signal<ProductionSummary | null>(null);
   protected readonly loading = signal(true);
   protected readonly error = signal<unknown>(null);
   protected readonly data = signal<Dashboard | null>(null);
@@ -297,6 +333,10 @@ export class DashboardPage {
         this.loading.set(false);
       },
     });
+
+    if (this.session.can('production.stats.view')) {
+      this.api.get<ProductionSummary>('production/stats', { from, to, site }).subscribe({ next: (stats) => this.production.set(stats.by_order.length > 0 ? stats : null), error: () => this.production.set(null) });
+    }
 
     // Operational side panels: each is optional (the user may not hold the permission) and never blocks the figures.
     forkJoin({

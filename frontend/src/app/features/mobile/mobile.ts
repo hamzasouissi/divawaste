@@ -165,7 +165,7 @@ const LAST_OF = 'dw.workshop.lastOf';
  * used is offered first, and "no OF" is always possible. Everything else about the origin is deduced by the server.
  */
 @Component({
-  imports: [RouterLink, TranslocoDirective, StatusComponent, IconComponent, ButtonDirective],
+  imports: [RouterLink, TranslocoDirective, StatusComponent, IconComponent, ButtonDirective, QrScannerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -192,7 +192,14 @@ const LAST_OF = 'dw.workshop.lastOf';
           }
           @case ('of') {
             <h1 class="title">{{ t('mobile.chooseOf') }}</h1>
-            <div class="grid">
+            @if (scanningOrder()) {
+              <dw-qr-scanner barcodes (scanned)="scanOrder($event)" />
+              @if (unknownOrder(); as code) { <p class="problem" role="alert">{{ t('mobile.ofNotFound', { code }) }}</p> }
+              <button pButton severity="secondary" outlined type="button" class="big" (click)="scanningOrder.set(false)">{{ t('mobile.ofList') }}</button>
+            } @else {
+              <button pButton type="button" class="big" (click)="scanningOrder.set(true); unknownOrder.set(null)"><dw-icon>qr_code_scanner</dw-icon>{{ t('mobile.scanOf') }}</button>
+            }
+            <div class="grid" [hidden]="scanningOrder()">
               <button type="button" class="tile other" (click)="pickOrder(null)">{{ t('mobile.noOf') }}</button>
               @for (item of orders(); track item.ulid) {
                 <button type="button" class="tile" (click)="pickOrder(item)"><span class="dw-spacer">{{ item.order_number }} <small class="elsewhere plain">{{ item.article.reference }} — {{ item.article.name }}</small></span></button>
@@ -285,6 +292,8 @@ export class MobileNewLotPage {
       .sort((a, b) => Number(b.ulid === last) - Number(a.ulid === last));
   });
   private readonly lastOrder = signal(readLastOrder());
+  protected readonly scanningOrder = signal(false);
+  protected readonly unknownOrder = signal<string | null>(null);
   protected readonly weight = signal('');
   protected readonly step = signal<Step>('site');
   protected readonly busy = signal(false);
@@ -329,7 +338,19 @@ export class MobileNewLotPage {
     this.step.set(this.orders().length > 0 ? 'of' : 'type');
   }
 
+  /** The sheet of the OF carries its number, as a bar code or a QR code: the order with that number is chosen. */
+  protected scanOrder(code: string): void {
+    const wanted = code.trim().toUpperCase();
+    const order = this.orders().find((item) => item.order_number.toUpperCase() === wanted);
+    if (order) {
+      this.pickOrder(order);
+    } else {
+      this.unknownOrder.set(code.trim());
+    }
+  }
+
   protected pickOrder(order: OpenOrder | null): void {
+    this.scanningOrder.set(false);
     this.order.set(order);
     if (order) {
       this.lastOrder.set(order.ulid);

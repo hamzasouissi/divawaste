@@ -15,6 +15,7 @@ import { IconComponent } from '../../ui/icon';
 import { KpiComponent, PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { Period, PeriodFilterComponent, presetPeriod } from '../../ui/period';
 import { StateComponent } from '../../ui/state';
+import { HelpComponent } from '../../ui/help';
 
 interface StatRow {
   key: string;
@@ -35,6 +36,7 @@ type Section = 'by_order' | 'by_client' | 'by_article' | 'by_step' | 'by_materia
 
 interface Stats extends Record<Section, StatRow[]> {
   period: { from: string; to: string };
+  monthly: { month: string; measured_kg: string; estimated_kg: string; unattributed_kg: string }[];
   totals: {
     waste_kg: string; measured_kg: string; estimated_kg: string; unattributed_kg: string; unattributed_lots: number;
     lots: number; orders: number; pieces: number | null; g_per_piece: number | null;
@@ -107,7 +109,8 @@ export class OriginLotsDialog {
  */
 @Component({
   imports: [
-    TranslocoDirective, PageHeaderComponent, KpiComponent, StateComponent, PeriodFilterComponent, ButtonDirective, IconComponent, KgPipe, NumberPipe, MoneyPipe, LocalizedPipe,
+    HelpComponent,
+    TranslocoDirective, PageHeaderComponent, KpiComponent, StateComponent, PeriodFilterComponent, ButtonDirective, IconComponent, KgPipe, NumberPipe, MoneyPipe, LocalizedPipe, DatePipe,
     Tabs, TabList, Tab, TabPanels, TabPanel,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -115,8 +118,10 @@ export class OriginLotsDialog {
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('production.stats.title')" [subtitle]="t('production.stats.subtitle')">
         <dw-period-filter [(value)]="period" permission="sites.view" (changed)="load()" />
-        <button pButton severity="secondary" outlined type="button" [disabled]="exporting()" (click)="export()"><dw-icon>download</dw-icon>{{ t('production.stats.export') }}</button>
+        <button pButton severity="secondary" outlined type="button" [disabled]="exporting()" (click)="export('pdf')"><dw-icon>picture_as_pdf</dw-icon>PDF</button>
+        <button pButton severity="secondary" outlined type="button" [disabled]="exporting()" (click)="export('export')"><dw-icon>download</dw-icon>{{ t('production.stats.export') }}</button>
       </dw-page-header>
+      <dw-help topic="productionStats" />
 
       <dw-state [loading]="loading()" [error]="error()" (retry)="load()">
         @if (stats(); as s) {
@@ -176,6 +181,25 @@ export class OriginLotsDialog {
                 </p-tabpanels>
               </p-tabs>
             </section>
+            @if (s.monthly.length > 0) {
+              <section class="dw-panel">
+                <div class="dw-panel-head"><h2 class="dw-h2">{{ t('production.stats.monthly') }}</h2>
+                  <span class="dw-spacer"></span>
+                  <span class="key"><i class="m"></i>{{ t('production.stats.measured') }}</span><span class="key"><i class="e"></i>{{ t('production.stats.estimated') }}</span><span class="key"><i class="u"></i>{{ t('production.stats.unattributed') }}</span>
+                </div>
+                <div class="dw-panel-body months">
+                  @for (month of s.monthly; track month.month) {
+                    <div class="month">
+                      <span class="name">{{ month.month + '-01' | dwDate: 'month' }}</span>
+                      <div class="track" [attr.aria-label]="monthTotal(month) | dwKg">
+                        <span class="m" [style.inline-size.%]="monthShare(month.measured_kg, s.monthly)"></span><span class="e" [style.inline-size.%]="monthShare(month.estimated_kg, s.monthly)"></span><span class="u" [style.inline-size.%]="monthShare(month.unattributed_kg, s.monthly)"></span>
+                      </div>
+                      <strong>{{ monthTotal(month) | dwKg: 'auto' }}</strong>
+                    </div>
+                  }
+                </div>
+              </section>
+            }
             <p class="dw-muted method">{{ t('production.stats.method') }}</p>
           </div>
         }
@@ -189,6 +213,15 @@ export class OriginLotsDialog {
     .bar { display: flex; inline-size: 140px; height: 8px; border-radius: 4px; background: var(--dw-line-soft); overflow: hidden; margin-block-end: 2px; }
     .bar .m { background: var(--dw-primary); } .bar .e { background: repeating-linear-gradient(45deg, var(--dw-primary) 0 3px, transparent 3px 6px); opacity: 0.55; }
     .neg { color: var(--dw-danger); }
+    .months { display: grid; gap: 8px; }
+    .month { display: grid; grid-template-columns: 110px minmax(0, 1fr) 90px; gap: var(--dw-3); align-items: center; font-size: 13px; }
+    .month .name { text-transform: capitalize; } .month strong { text-align: end; }
+    .track { display: flex; height: 14px; border-radius: 4px; background: var(--dw-line-soft); overflow: hidden; }
+    .track .m, .key .m { background: var(--dw-primary); }
+    .track .e, .key .e { background: repeating-linear-gradient(45deg, var(--dw-primary) 0 3px, transparent 3px 6px); opacity: 0.6; }
+    .track .u, .key .u { background: #b9c3ca; }
+    .key { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--dw-ink-2); margin-inline-start: var(--dw-3); }
+    .key i { display: inline-block; inline-size: 12px; block-size: 12px; border-radius: 3px; }
     .method { font-size: 12.5px; max-inline-size: 900px; }
   `,
 })
@@ -222,6 +255,15 @@ export class ProductionStatsPage {
     return (Number(kg) / max) * 100;
   }
 
+  protected monthTotal(month: Stats['monthly'][number]): number {
+    return Number(month.measured_kg) + Number(month.estimated_kg) + Number(month.unattributed_kg);
+  }
+
+  /** Width of a part of a month, relative to the heaviest month. */
+  protected monthShare(kg: string, months: Stats['monthly']): number {
+    return (Number(kg) / Math.max(...months.map((month) => this.monthTotal(month)), 0.001)) * 100;
+  }
+
   protected drillable(section: Section): boolean {
     return section === 'by_order' || section === 'by_material';
   }
@@ -248,10 +290,11 @@ export class ProductionStatsPage {
     });
   }
 
-  protected async export(): Promise<void> {
+  protected async export(kind: 'export' | 'pdf'): Promise<void> {
     this.exporting.set(true);
     try {
-      openBlob(await firstValueFrom(this.api.blob('production/stats/export', this.query())), `production-${this.period().from}-${this.period().to}.xlsx`);
+      const blob = await firstValueFrom(this.api.blob(`production/stats/${kind}`, this.query()));
+      openBlob(blob, kind === 'pdf' ? undefined : `production-${this.period().from}-${this.period().to}.xlsx`);
     } catch (error) {
       this.toast.error(error);
     } finally {

@@ -22,6 +22,7 @@ import { IconComponent } from '../../ui/icon';
 import { MenuAction, MenuComponent } from '../../ui/menu';
 import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
+import { HelpComponent } from '../../ui/help';
 
 const FILTERS = `
   .filters dw-field { width: 220px; }
@@ -33,6 +34,7 @@ const FILTERS = `
  */
 @Component({
   imports: [
+    HelpComponent,
     TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, PeriodFilterComponent, DatePipe, KgPipe, RouterLink, IconComponent, ButtonDirective, CheckboxComponent, FilterBarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -44,6 +46,7 @@ const FILTERS = `
           <button pButton type="button" [disabled]="exporting()" (click)="export('pdf')"><dw-icon>picture_as_pdf</dw-icon>{{ t('compliance.register.exportPdf') }}</button>
         }
       </dw-page-header>
+      <dw-help topic="register" />
 
       <div class="dw-panel">
         <dw-filter-bar>
@@ -127,11 +130,12 @@ export class RegisterPage {
  * password). A slip carrying a handwritten signature is closed by attaching the scan of the signed copy.
  */
 @Component({
-  imports: [TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, DatePipe, KgPipe, IconComponent, ButtonDirective, ...SELECT, FilterBarComponent],
+  imports: [HelpComponent, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, DatePipe, KgPipe, IconComponent, ButtonDirective, ...SELECT, FilterBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('compliance.manifests.title')" [subtitle]="t('compliance.manifests.subtitle')" />
+      <dw-help topic="manifests" />
       <div class="dw-panel">
         <dw-filter-bar [active]="list.activeCount()" (cleared)="list.resetFilter()">
           <dw-select [placeholder]="t('fields.status')" [value]="list.filter().status ?? ''" (valueChange)="list.setFilter({ status: $event || null })">
@@ -234,12 +238,14 @@ export class ManifestsPage {
  */
 @Component({
   imports: [
+    HelpComponent,
     FormsModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, KpiComponent, DatePipe, KgPipe, IconComponent, ButtonDirective, ...SELECT, FilterBarComponent, MenuComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('compliance.declarations.title')" [subtitle]="t('compliance.declarations.subtitle')" />
+      <dw-help topic="declarations" />
 
       <div class="dw-stack">
         <div class="dw-panel">

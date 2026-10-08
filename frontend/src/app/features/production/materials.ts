@@ -25,6 +25,7 @@ import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { SearchComponent } from '../../ui/search';
 import { SELECT } from '../../ui/select';
 import { Article, DECIMAL, ProductionLists, RawMaterial, blankToNull, decimal } from './production-data';
+import { HelpComponent } from '../../ui/help';
 
 /**
  * A raw material: who supplies it, how it is counted, what it is made of, and the deliveries received. Its
@@ -323,6 +324,7 @@ export class ArticleDialog {
 /** Raw materials and articles: what is consumed, and what is made with it. */
 @Component({
   imports: [
+    HelpComponent,
     TranslocoDirective, PageHeaderComponent, ...TABLE, StatusComponent, SearchComponent, FilterBarComponent, CheckboxComponent, ButtonDirective, IconComponent, CodePipe,
     Tabs, TabList, Tab, TabPanels, TabPanel,
   ],
@@ -330,6 +332,7 @@ export class ArticleDialog {
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('production.catalog.title')" [subtitle]="t('production.catalog.subtitle')" />
+      <dw-help topic="productionCatalog" />
       <div class="dw-panel">
         <p-tabs [value]="0">
           <p-tablist><p-tab [value]="0">{{ t('production.materials.title') }}</p-tab><p-tab [value]="1">{{ t('production.articles.title') }}</p-tab></p-tablist>
