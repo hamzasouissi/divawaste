@@ -17,6 +17,8 @@ return [
     ],
     'signer' => ['producer' => 'Producer', 'transporter' => 'Transporter', 'receiver' => 'Receiver'],
     'production' => [
+        'measured' => 'Measured', 'estimated' => 'Estimated',
+        'method' => 'Measured: the lot names its manufacturing order. Estimated (≈): the lot only says its stage; its weight is shared between the orders at that stage, on that site, that day, in proportion to the pieces done. Not attributed: the lot says nothing, or no order was at its stage. The waste rate is the share of the consumed material that became waste.',
         'sheet' => 'Production statistics', 'by_order' => 'By manufacturing order', 'by_client' => 'By client', 'by_article' => 'By article', 'by_step' => 'By stage',
         'by_material' => 'By raw material', 'by_supplier' => 'By supplier', 'unattributed' => 'Not attributed',
         'columns' => ['section' => 'Section', 'label' => 'Label', 'detail' => 'Detail', 'lots' => 'Lots', 'measured_kg' => 'Measured (kg)', 'estimated_kg' => 'Estimated (kg)',

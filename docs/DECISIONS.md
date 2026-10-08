@@ -63,14 +63,15 @@ Seeded by `ProvisionalReferenceSeeder`, clearly separated from the stable refere
 | F30 | Statistics keep measured (lot names its OF) and estimated (lot only says its stage; shared between the OFs at that stage, site and day, by pieces done) apart; what cannot be attributed is reported, not guessed | Sewing-line waste often cannot be tied to one OF. An estimate shown as a measurement would be a false precision |
 | F31 | The waste rate is waste ÷ consumed material in kg; metres are converted with the fabric's width and weight, otherwise no rate is shown | Waste is weighed, fabric is measured in metres: without width and weight the two cannot be compared |
 | F32 | Pieces produced per site and month follow the finished OFs (month of the end, site of the last stage); a manual entry always wins | The dashboard's kg per piece stays right without retyping; the person who typed a figure knows better than a rule |
+| F33 | The word is "limite", not "seuil"; a line of stock that nothing watches says so ("Aucune limite", "Capacité non définie") and offers to define one | Client feedback: an absent limit must not look like "everything is fine" |
+| F34 | Most pages open with a short explanation that can be hidden, remembered per page on the device | Client feedback: the screens must explain themselves to an occasional user |
 | F15 | Only French ships; the language switch, English and Arabic files and right-to-left were prepared, not delivered | Cahier §1: other languages are V2. All texts are already in translation files |
 
 ## Not done
 
 - **Personal data export and erasure** (non-functional requirement). No endpoint. Open.
 - Performance and volume measurements at the cahier's targets.
-- Production statistics as scheduled PDF reports (they exist on screen and as an Excel export), and a production tab on the dashboard.
-- Correcting the origin of a lot from the lot page (the API exists: `PUT lots/{lot}/origin`; no button yet).
+- Production statistics in the queued "Rapports et exports" list (they are produced directly from their page, as PDF and Excel).
 - Tests on real devices: thermal printer for the label, phones for the camera scan, use with gloves.
 - English and Arabic translations.
 - `notification_logs` and `waste_daily_stats` tables exist in the schema and are not used.

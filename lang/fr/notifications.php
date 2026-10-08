@@ -4,12 +4,12 @@
 return [
     'stock' => [
         'threshold_warning' => [
-            'title' => 'Seuil de stock bientôt atteint — :site',
-            'body' => 'Le stock de déchets atteint :quantity_kg kg pour un seuil de :max_quantity_kg kg (:site).',
+            'title' => 'Limite de stock bientôt atteinte — :site',
+            'body' => 'Le stock de déchets atteint :quantity_kg kg pour une limite de :max_quantity_kg kg (:site).',
         ],
         'threshold_exceeded' => [
-            'title' => 'Seuil de stock dépassé — :site',
-            'body' => 'Le stock de déchets atteint :quantity_kg kg et dépasse le seuil de :max_quantity_kg kg (:site). Planifiez un enlèvement.',
+            'title' => 'Limite de stock dépassée — :site',
+            'body' => 'Le stock de déchets atteint :quantity_kg kg et dépasse la limite de :max_quantity_kg kg (:site). Planifiez un enlèvement.',
         ],
     ],
     'pickup' => [
