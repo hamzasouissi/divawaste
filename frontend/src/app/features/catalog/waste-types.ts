@@ -40,6 +40,10 @@ import { FilterBarComponent } from '../../ui/filter-bar';
           @if (form.controls.tinted.value) {
             <label class="tint"><input type="color" formControlName="hex_color" [attr.aria-label]="t('colors.tint')" /><span class="dw-mono">{{ form.controls.hex_color.value }}</span></label>
           }
+          <dw-field [label]="t('colors.pantone')">
+            <input pInputText formControlName="pantone_reference" maxlength="40" placeholder="19-4052 TCX" />
+            <small dwHint>{{ t('colors.pantoneHint') }}</small>
+          </dw-field>
         </div>
         <div class="dw-dialog-actions">
           <button pButton text type="button" dwDialogClose>{{ t('common.cancel') }}</button>
@@ -66,6 +70,7 @@ export class ColorDialog {
     name: [this.data ? this.locale.pick(this.data.name) : '', [Validators.required, Validators.maxLength(60)]],
     tinted: [this.data ? this.data.hex_color !== null : true],
     hex_color: [this.data?.hex_color ?? '#0F766E'],
+    pantone_reference: [this.data?.pantone_reference ?? ''],
   });
 
   protected async save(): Promise<void> {
@@ -76,7 +81,7 @@ export class ColorDialog {
     }
     this.busy.set(true);
     const value = this.form.getRawValue();
-    const body = { name: value.name.trim(), hex_color: value.tinted ? value.hex_color : null };
+    const body = { name: value.name.trim(), hex_color: value.tinted ? value.hex_color : null, pantone_reference: value.pantone_reference.trim() || null };
     try {
       this.ref.close(await firstValueFrom(this.data ? this.api.put<Color>(`colors/${this.data.code}`, body) : this.api.post<Color>('colors', body)));
       this.toast.success('colors.saved');
@@ -350,6 +355,7 @@ export class WasteTypeDialog {
                       <span class="swatch" [style.background]="color.hex_color ?? 'transparent'" [class.none]="!color.hex_color" aria-hidden="true"></span>
                       <div class="what">
                         <strong>{{ color.name | dwLocalized }}</strong>
+                        @if (color.pantone_reference) { <span class="dw-faint dw-mono">Pantone {{ color.pantone_reference }}</span> }
                         @if (!color.is_active) { <dw-status kind="member" value="suspended" [label]="t('common.inactive')" /> }
                       </div>
                       @if (!color.is_custom) {
@@ -443,7 +449,7 @@ export class WasteTypesPage {
   /** Withdrawn colours are no longer offered; lots that already carry one keep it. */
   protected async toggleColor(color: Color): Promise<void> {
     try {
-      await firstValueFrom(this.api.put(`colors/${color.code}`, { name: this.locale.pick(color.name), hex_color: color.hex_color, is_active: !color.is_active }));
+      await firstValueFrom(this.api.put(`colors/${color.code}`, { name: this.locale.pick(color.name), hex_color: color.hex_color, pantone_reference: color.pantone_reference, is_active: !color.is_active }));
       this.colorsChanged();
     } catch (error) {
       this.toast.error(error);

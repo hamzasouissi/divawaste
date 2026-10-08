@@ -47,7 +47,8 @@
     "selectAll": "Select all",
     "selected": "{{count}} selected",
     "collapseNavigation": "Collapse navigation",
-    "expandNavigation": "Expand navigation"
+    "expandNavigation": "Expand navigation",
+    "or": "or"
   },
   "paginator": {
     "perPage": "Rows per page",
@@ -695,7 +696,11 @@
     },
     "by": "by {{actor}}",
     "previousWeight": "previous weight {{kg}} kg",
-    "qrHint": "The QR code on the label identifies this lot. Without a reader, type its number: {{number}}."
+    "qrHint": "The QR code on the label identifies this lot. Without a reader, type its number: {{number}}.",
+    "zoneMismatch": {
+      "type": "This zone is not meant for this waste type. You can still continue.",
+      "color": "This zone is not meant for this colour. You can still continue."
+    }
   },
   "stock": {
     "title": "Waste stock",
@@ -717,7 +722,12 @@
     "noThreshold": "No threshold defined. A threshold warns you before a storage area overflows.",
     "requestPickup": "Request a pickup",
     "thresholdSaved": "Threshold saved.",
-    "thresholdDeleted": "Threshold deleted."
+    "thresholdDeleted": "Threshold deleted.",
+    "remaining": "Left:",
+    "uncounted": "{{count}} lot(s) not counted",
+    "uncountedHint": "These lots have no packaging, or a packaging the capacity of the zone does not cover. They are not in the percentage.",
+    "misplaced": "{{count}} lot(s) out of place",
+    "misplacedHint": "The waste type or the colour of these lots is not planned in this zone."
   },
   "sites": {
     "title": "Sites and zones",
@@ -745,7 +755,21 @@
     "saved": "Site saved.",
     "zoneSaved": "Zone saved.",
     "closeConfirm": "Close the site \"{{name}}\"?",
-    "closeHint": "The site stays in the history and in documents; it is no longer offered for new lots."
+    "closeHint": "The site stays in the history and in documents; it is no longer offered for new lots.",
+    "noZoneType": "No type",
+    "capacity": "Capacity",
+    "capacityHint": "State how many lots the zone holds when it receives a single packaging: \"40 bales\", \"100 bags\". Mixed lots add up: 20 bales out of 40 and 50 bags out of 100 fill the zone.",
+    "addCapacity": "Add a packaging",
+    "maxLots": "Number of lots",
+    "capacityKgLimit": "Maximum weight (kg), optional",
+    "noLimit": "No limit",
+    "reservedFor": "Reserved for",
+    "reservedHint": "Optional. A lot that does not match is reported, never refused.",
+    "acceptedTypes": "Waste types",
+    "acceptedColors": "Colours",
+    "anyType": "All types",
+    "anyColor": "All colours",
+    "anything": "Anything"
   },
   "wasteTypes": {
     "title": "Waste types",
@@ -1440,7 +1464,8 @@
       "confirm": "Confirm the loading",
       "missing": "{{count}} unscanned lot(s) will stay in stock.",
       "none": "No confirmed pickup to load."
-    }
+    },
+    "notForZone": "Not planned in this zone"
   },
   "validation": {
     "required": "This field is required.",
@@ -1739,7 +1764,9 @@
     "custom": "Added by your company",
     "withTint": "Show a tint next to the name",
     "tint": "Tint",
-    "saved": "Colour saved."
+    "saved": "Colour saved.",
+    "pantone": "Pantone reference",
+    "pantoneHint": "Optional. Type the code from your colour guide, for example 19-4052 TCX."
   },
   "titles": {
     "Abonnement": "Subscription",

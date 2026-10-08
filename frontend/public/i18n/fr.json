@@ -47,7 +47,8 @@
     "selectAll": "Tout sélectionner",
     "selected": "{{count}} sélectionné(s)",
     "collapseNavigation": "Réduire la navigation",
-    "expandNavigation": "Déployer la navigation"
+    "expandNavigation": "Déployer la navigation",
+    "or": "ou"
   },
   "paginator": {
     "perPage": "Lignes par page",
@@ -695,7 +696,11 @@
     },
     "by": "par {{actor}}",
     "previousWeight": "poids précédent {{kg}} kg",
-    "qrHint": "Le QR code de l'étiquette identifie ce lot. Sans lecteur, saisissez son numéro : {{number}}."
+    "qrHint": "Le QR code de l'étiquette identifie ce lot. Sans lecteur, saisissez son numéro : {{number}}.",
+    "zoneMismatch": {
+      "type": "Cette zone n'est pas prévue pour ce type de déchet. Vous pouvez tout de même continuer.",
+      "color": "Cette zone n'est pas prévue pour cette couleur. Vous pouvez tout de même continuer."
+    }
   },
   "stock": {
     "title": "Stock de déchets",
@@ -717,7 +722,12 @@
     "noThreshold": "Aucun seuil défini. Un seuil vous alerte avant qu'une aire de stockage ne déborde.",
     "requestPickup": "Demander un enlèvement",
     "thresholdSaved": "Seuil enregistré.",
-    "thresholdDeleted": "Seuil supprimé."
+    "thresholdDeleted": "Seuil supprimé.",
+    "remaining": "Reste :",
+    "uncounted": "{{count}} lot(s) non compté(s)",
+    "uncountedHint": "Ces lots n'ont pas de conditionnement, ou un conditionnement que la capacité de la zone ne prévoit pas. Ils ne sont pas dans le pourcentage.",
+    "misplaced": "{{count}} lot(s) hors affectation",
+    "misplacedHint": "Le type de déchet ou la couleur de ces lots n'est pas prévu dans cette zone."
   },
   "sites": {
     "title": "Sites et zones",
@@ -745,7 +755,21 @@
     "saved": "Site enregistré.",
     "zoneSaved": "Zone enregistrée.",
     "closeConfirm": "Fermer le site « {{name}} » ?",
-    "closeHint": "Le site reste dans l'historique et les documents ; il n'est plus proposé pour les nouveaux lots."
+    "closeHint": "Le site reste dans l'historique et les documents ; il n'est plus proposé pour les nouveaux lots.",
+    "noZoneType": "Aucun type",
+    "capacity": "Capacité",
+    "capacityHint": "Indiquez combien de lots la zone contient quand elle ne reçoit qu'un seul conditionnement : « 40 balles », « 100 sacs ». Les lots mélangés s'additionnent : 20 balles sur 40 et 50 sacs sur 100 remplissent la zone.",
+    "addCapacity": "Ajouter un conditionnement",
+    "maxLots": "Nombre de lots",
+    "capacityKgLimit": "Poids maximal (kg), facultatif",
+    "noLimit": "Sans limite",
+    "reservedFor": "Réservée à",
+    "reservedHint": "Facultatif. Un lot qui ne correspond pas est signalé, jamais refusé.",
+    "acceptedTypes": "Types de déchets",
+    "acceptedColors": "Couleurs",
+    "anyType": "Tous les types",
+    "anyColor": "Toutes les couleurs",
+    "anything": "Tout"
   },
   "wasteTypes": {
     "title": "Types de déchets",
@@ -1440,7 +1464,8 @@
       "confirm": "Valider le chargement",
       "missing": "{{count}} lot(s) non scanné(s) resteront en stock.",
       "none": "Aucun enlèvement confirmé à charger."
-    }
+    },
+    "notForZone": "Non prévu dans cette zone"
   },
   "validation": {
     "required": "Ce champ est obligatoire.",
@@ -1739,7 +1764,9 @@
     "custom": "Ajoutée par votre société",
     "withTint": "Afficher une teinte à côté du nom",
     "tint": "Teinte",
-    "saved": "Couleur enregistrée."
+    "saved": "Couleur enregistrée.",
+    "pantone": "Référence Pantone",
+    "pantoneHint": "Facultatif. Saisissez le code de votre nuancier, par exemple 19-4052 TCX."
   },
   "titles": {
     "Abonnement": "Abonnement",

@@ -16,6 +16,7 @@ import { StateComponent } from '../../ui/state';
 import { QrScannerComponent } from './qr-scanner';
 import { IconComponent } from '../../ui/icon';
 import { LanguageComponent } from '../../ui/language';
+import { zoneMismatch } from '../../ui/zone-fill';
 
 /** Shared look of the workshop screens: one column, very large targets (gloves), no dense tables. */
 const MOBILE_STYLES = `
@@ -23,6 +24,8 @@ const MOBILE_STYLES = `
   .title { font-size: 22px; line-height: 28px; font-weight: 600; }
   .tile { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 14px; width: 100%; min-height: var(--dw-touch); padding: 14px 18px;
     background: var(--dw-surface); border: 2px solid var(--dw-line); border-radius: 14px; font-size: 18px; font-weight: 600; }
+  .tile.other { border-style: dashed; color: var(--dw-ink-2); }
+  .elsewhere { display: block; font-size: 13px; font-weight: 400; color: var(--dw-warning); }
   .tile:active { background: var(--dw-primary-soft); border-color: var(--dw-primary); }
   .tile:focus-visible { outline: 3px solid var(--dw-primary); outline-offset: 2px; }
   .tile.primary { background: var(--dw-primary); border-color: var(--dw-primary); color: #fff; min-height: 88px; font-size: 20px; }
@@ -177,9 +180,9 @@ type Step = 'site' | 'zone' | 'type' | 'weight' | 'done';
           @case ('type') {
             <h1 class="title">{{ t('mobile.chooseType') }}</h1>
             <div class="grid">
-              @for (item of types(); track item.ulid) {
-                <button type="button" class="tile" (click)="pickType(item)">
-                  <span class="dw-spacer">{{ item.name }}</span>
+              @for (item of orderedTypes(); track item.ulid) {
+                <button type="button" class="tile" [class.other]="!fits(item)" (click)="pickType(item)">
+                  <span class="dw-spacer">{{ item.name }} @if (!fits(item)) { <small class="elsewhere">{{ t('mobile.notForZone') }}</small> }</span>
                   @if (item.is_hazardous) { <dw-status kind="alert" value="warning" [label]="t('common.hazardous')" /> }
                 </button>
               }
@@ -247,6 +250,8 @@ export class MobileNewLotPage {
   protected readonly types = computed(() => this.offline.bootstrap()?.waste_types ?? []);
   protected readonly site = signal<Site | null>(null);
   protected readonly zone = signal<Zone | null>(null);
+  /** The types the chosen zone is meant for come first; the others stay available, marked as such. */
+  protected readonly orderedTypes = computed(() => [...this.types()].sort((a, b) => Number(this.fits(b)) - Number(this.fits(a))));
   protected readonly type = signal<WasteType | null>(null);
   protected readonly weight = signal('');
   protected readonly step = signal<Step>('site');
@@ -280,6 +285,10 @@ export class MobileNewLotPage {
     } else {
       this.step.set('zone');
     }
+  }
+
+  protected fits(type: WasteType): boolean {
+    return zoneMismatch(this.zone(), type.ulid, null) === null;
   }
 
   protected pickZone(zone: Zone): void {

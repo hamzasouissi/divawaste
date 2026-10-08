@@ -9,7 +9,7 @@ import { InputText } from 'primeng/inputtext';
 import { ToggleSwitch } from 'primeng/toggleswitch';
 
 import { Api } from '../../core/api/api';
-import { StockResponse, StockRow, StockThreshold, Zone } from '../../core/api/models';
+import { StockResponse, StockRow, StockThreshold, Zone, ZoneFill } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
@@ -22,12 +22,13 @@ import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
 import { MenuAction, MenuComponent } from '../../ui/menu';
 import { SELECT } from '../../ui/select';
+import { ZoneFillComponent } from '../../ui/zone-fill';
 
 interface SiteGroup {
   site: string;
   name: string;
   total: number;
-  zones: { zone: string; name: string; total: number; capacity: number | null; level: 'warning' | 'exceeded' | null; rows: StockRow[] }[];
+  zones: { zone: string; name: string; total: number; fill: ZoneFill; rows: StockRow[] }[];
 }
 
 @Component({
@@ -136,7 +137,7 @@ export class ThresholdDialog {
  */
 @Component({
   imports: [
-    CodePipe, RouterLink, TranslocoDirective, KpiComponent, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, NumberPipe, IconComponent, ButtonDirective, ...SELECT, MenuComponent,
+    CodePipe, RouterLink, TranslocoDirective, ZoneFillComponent, KpiComponent, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, NumberPipe, IconComponent, ButtonDirective, ...SELECT, MenuComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -174,13 +175,7 @@ export class ThresholdDialog {
                         <div class="zone-head">
                           <span class="dw-h3">{{ zone.name }}</span>
                           <span class="dw-muted">{{ zone.total | dwKg }}</span>
-                          @if (zone.capacity) {
-                            <span class="meter" role="meter" [attr.aria-label]="t('stock.zoneFill')" [attr.aria-valuenow]="fill(zone.total, zone.capacity)" aria-valuemin="0" aria-valuemax="100">
-                              <span class="fill" [class]="zone.level ?? 'ok'" [style.inline-size.%]="fill(zone.total, zone.capacity)"></span>
-                            </span>
-                            <span class="dw-faint">{{ fill(zone.total, zone.capacity) | dwNumber }} % / {{ zone.capacity | dwKg: 'auto' }}</span>
-                            @if (zone.level) { <dw-status kind="alert" [value]="zone.level" /> }
-                          }
+                          <dw-zone-fill [fill]="zone.fill" />
                         </div>
                         <table>
                           <tbody>
@@ -242,9 +237,6 @@ export class ThresholdDialog {
     .zone { padding: var(--dw-3) var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); }
     .zone:last-child { border-block-end: 0; }
     .zone-head { display: flex; align-items: center; gap: var(--dw-3); flex-wrap: wrap; margin-block-end: 6px; }
-    .meter { flex: 0 1 180px; height: 8px; border-radius: 4px; background: var(--dw-line-soft); overflow: hidden; }
-    .fill { display: block; height: 100%; max-inline-size: 100%; background: var(--dw-success); }
-    .fill.warning { background: #d68a00; } .fill.exceeded { background: var(--dw-danger); }
     /* Fixed layout: the columns line up from one zone to the next, although each zone has its own table. */
     table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
     td { padding: 5px 8px; overflow: hidden; text-overflow: ellipsis; }
@@ -283,7 +275,7 @@ export class StockPage {
       const group = groups.get(row.site) ?? { site: row.site, name: row.site_name, total: 0, zones: [] };
       let zone = group.zones.find((item) => item.zone === row.zone);
       if (!zone) {
-        zone = { zone: row.zone, name: row.zone_name, total: Number(row.zone_quantity_kg), capacity: row.zone_capacity_kg ? Number(row.zone_capacity_kg) : null, level: row.zone_alert_level, rows: [] };
+        zone = { zone: row.zone, name: row.zone_name, total: Number(row.zone_quantity_kg), fill: row.zone_fill, rows: [] };
         group.zones.push(zone);
       }
       zone.rows.push(row);
@@ -315,10 +307,6 @@ export class StockPage {
         this.loading.set(false);
       },
     });
-  }
-
-  protected fill(total: number, capacity: number): number {
-    return Math.round((total / capacity) * 100);
   }
 
   protected current(ulid: string): StockResponse['thresholds'][number] | undefined {
