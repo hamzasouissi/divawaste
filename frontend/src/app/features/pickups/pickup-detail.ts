@@ -70,6 +70,7 @@ export class ConfirmDateDialog {
           <div class="dw-stack">
             @if (p.status === 'refused') { <p class="banner danger" role="status">{{ t('pickups.refused', { reason: p.refusal_reason }) }}</p> }
             @if (p.status === 'cancelled') { <p class="banner danger" role="status">{{ t('pickups.cancelled', { reason: p.cancellation_reason }) }}</p> }
+            @if (onBehalf()) { <p class="banner info" role="note"><dw-icon aria-hidden="true">info</dw-icon><span>{{ t('pickups.onBehalf', { name: p.provider?.legal_name }) }}</span></p> }
             @if (p.variance_flagged) {
               <p class="banner" [class.danger]="!p.variance_acknowledged" role="status">
                 <dw-icon aria-hidden="true">scale</dw-icon>
@@ -81,7 +82,9 @@ export class ConfirmDateDialog {
             <section class="dw-panel dw-panel-body">
               <dl class="dw-facts">
                 <div><dt>{{ t('fields.site') }}</dt><dd>{{ p.site?.name }}<br /><span class="dw-muted">{{ p.site?.address_line1 }} {{ p.site?.city }}</span></dd></div>
-                <div><dt>{{ t(provider ? 'pickups.client' : 'pickups.provider') }}</dt><dd>{{ provider ? p.company?.legal_name : p.provider?.legal_name }}</dd></div>
+                @if (provider) { <div><dt>{{ t('pickups.client') }}</dt><dd>{{ p.company?.legal_name }}</dd></div> }
+                <div><dt>{{ t('pickups.receiver') }}</dt><dd>{{ p.provider?.legal_name }} @if (p.provider?.external) { <dw-status kind="member" value="suspended" tone="neutral" [label]="t('partners.noAccount')" /> }</dd></div>
+                <div><dt>{{ t('pickups.transporter') }}</dt><dd>{{ p.transporter?.legal_name ?? t('pickups.receiverTransports') }} @if (p.transporter?.external) { <dw-status kind="member" value="suspended" tone="neutral" [label]="t('partners.noAccount')" /> }</dd></div>
                 <div><dt>{{ t('pickups.requestedDate') }}</dt><dd>{{ p.requested_date | dwDate }}</dd></div>
                 <div><dt>{{ t('pickups.confirmedDate') }}</dt><dd>{{ p.confirmed_date | dwDate }}</dd></div>
                 <div><dt>{{ t('pickups.departure') }}</dt><dd>{{ p.departure_weight_kg | dwKg }} @if (p.collected_at) { <span class="dw-faint">· {{ p.collected_at | dwDate: 'datetime' }}</span> }</dd></div>
@@ -154,6 +157,7 @@ export class ConfirmDateDialog {
   styles: `
     .banner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--dw-radius); background: var(--dw-success-soft); color: var(--dw-success); font-size: 13.5px; }
     .banner.danger { background: var(--dw-danger-soft); color: var(--dw-danger); }
+    .banner.info { background: var(--dw-surface-2); color: var(--dw-ink-2); }
     .scroll { overflow-x: auto; }
     .neg { color: var(--dw-danger); font-weight: 600; }
     .hazard { font-size: 15px; width: 15px; height: 15px; color: var(--dw-warning); vertical-align: -2px; }
@@ -179,6 +183,9 @@ export class PickupDetailPage implements OnInit {
   protected readonly busy = signal(false);
   protected readonly error = signal<unknown>(null);
 
+  /** The receiver has no account: the industrial records its answer, the reception and the treatment itself. */
+  protected readonly onBehalf = computed(() => !this.provider && this.pickup()?.provider?.external === true && !['completed', 'cancelled', 'refused'].includes(this.pickup()?.status ?? ''));
+
   /** The actions available now: status of the pickup × side of the user × permissions. The API re-checks each one. */
   protected readonly actions = computed(() => {
     const pickup = this.pickup();
@@ -189,6 +196,7 @@ export class PickupDetailPage implements OnInit {
     const lines = pickup.lots ?? [];
     const has = (status: string): boolean => lines.some((line) => line.line_status === status);
     const can = (permission: string): boolean => this.session.can(permission, this.provider ? undefined : site);
+    const external = pickup.provider?.external === true;
     const all: { key: string; icon: string; show: boolean; primary?: boolean; danger?: boolean }[] = this.provider
       ? [
           { key: 'confirm', icon: 'event_available', primary: true, show: pickup.status === 'requested' && can('provider.pickups.respond') },
@@ -199,11 +207,16 @@ export class PickupDetailPage implements OnInit {
         ]
       : [
           { key: 'submit', icon: 'send', primary: true, show: pickup.status === 'draft' && can('pickups.request') },
+          // Stages of a receiver without an account, recorded by the industrial.
+          { key: 'confirm', icon: 'event_available', primary: true, show: external && pickup.status === 'requested' && can('pickups.request') },
+          { key: 'refuse', icon: 'block', danger: true, show: external && pickup.status === 'requested' && can('pickups.request') },
+          { key: 'receive', icon: 'scale', primary: true, show: external && pickup.status === 'collected' && can('pickups.complete') },
+          { key: 'treat', icon: 'recycling', primary: true, show: external && pickup.status === 'received' && has('received') && can('pickups.complete') },
           { key: 'collect', icon: 'local_shipping', primary: true, show: pickup.status === 'confirmed' && can('pickups.load') },
           { key: 'acknowledge', icon: 'fact_check', primary: true, show: pickup.status === 'received' && pickup.variance_flagged && !pickup.variance_acknowledged && can('pickups.complete') },
           { key: 'complete', icon: 'task_alt', primary: true, show: pickup.status === 'received' && !has('received') && (!pickup.variance_flagged || pickup.variance_acknowledged) && can('pickups.complete') },
           { key: 'price', icon: 'payments', show: ['collected', 'received', 'completed'].includes(pickup.status) && can('pickups.price') },
-          { key: 'manifest', icon: 'assignment_late', show: ['confirmed', 'collected', 'received'].includes(pickup.status) && lines.some((line) => line.is_hazardous) && this.manifests().length === 0 && can('documents.generate') },
+          { key: 'manifest', icon: 'assignment_late', show: ['confirmed', 'collected', 'received'].includes(pickup.status) && this.manifests().length === 0 && can('documents.generate') },
           { key: 'certificate', icon: 'upload_file', show: ['collected', 'received'].includes(pickup.status) && can('documents.upload') },
           { key: 'cancel', icon: 'cancel', danger: true, show: ['draft', 'requested', 'confirmed'].includes(pickup.status) && can('pickups.cancel') },
         ];

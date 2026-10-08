@@ -18,6 +18,7 @@ import { CheckboxComponent } from '../../ui/checkbox';
 import { IconComponent } from '../../ui/icon';
 import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
+import { ExternalPartnersComponent } from './external-partners';
 
 interface DirectoryFilter {
   search: string;
@@ -32,12 +33,15 @@ interface DirectoryFilter {
  */
 @Component({
   imports: [
-    TranslocoDirective, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent,
+    TranslocoDirective, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent, ExternalPartnersComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('providers.title')" [subtitle]="t('providers.subtitle')" />
+
+      <dw-external-partners />
+      <h2 class="dw-h2 directory">{{ t('providers.directory') }}</h2>
 
       <dw-filter-bar class="dw-panel standalone" [active]="activeFilters()" (cleared)="resetFilter()">
         <dw-search [placeholder]="t('common.search')" [query]="filter().search" (queryChange)="patch({ search: $event })" />
@@ -116,6 +120,7 @@ interface DirectoryFilter {
     </ng-container>
   `,
   styles: `
+    .directory { margin-block-end: var(--dw-3); }
     .cards { display: grid; gap: var(--dw-4); grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); align-items: start; }
     .card { display: grid; gap: var(--dw-3); padding: var(--dw-4); }
     .card header { display: flex; align-items: flex-start; gap: var(--dw-3); }

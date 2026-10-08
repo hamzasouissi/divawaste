@@ -320,7 +320,8 @@
       "pending_transporter_signature": "Signature transporteur attendue",
       "pending_receiver_signature": "Signature destinataire attendue",
       "completed": "Signé",
-      "cancelled": "Annulé"
+      "cancelled": "Annulé",
+      "pending_signed_copy": "Exemplaire signé à joindre"
     },
     "declaration": {
       "draft": "Projet",
@@ -819,20 +820,23 @@
     "create": {
       "title": "Nouvelle demande d'enlèvement",
       "site": "1. Site et lots à enlever",
-      "provider": "2. Prestataire et date",
+      "provider": "2. Destinataire, transporteur et date",
       "selectLots": "Sélectionnez les lots",
       "selected": "{{count}} lot(s) — {{kg}}",
       "noLots": "Aucun lot disponible sur ce site.",
-      "hazardousWarning": "La sélection contient des déchets dangereux : seul un prestataire agréé pour les déchets dangereux peut être retenu.",
+      "hazardousWarning": "La sélection contient des déchets dangereux : seul un destinataire autorisé pour les déchets dangereux peut être retenu.",
       "notSelectable": {
         "no_valid_accreditation": "Agrément expiré ou absent",
-        "not_a_partner": "Non partenaire"
+        "not_a_partner": "Non partenaire",
+        "not_a_receiver": "Transporteur uniquement"
       },
       "saveDraft": "Enregistrer le brouillon",
-      "send": "Envoyer au prestataire"
+      "send": "Envoyer la demande",
+      "noReceiver": "Aucun destinataire disponible. Ajoutez un partenaire dans",
+      "transporterRequired": "Ce destinataire ne transporte pas : choisissez un transporteur."
     },
     "actions": {
-      "submit": "Envoyer au prestataire",
+      "submit": "Envoyer la demande",
       "cancel": "Annuler l'enlèvement",
       "collect": "Enregistrer le chargement",
       "acknowledge": "Prendre en compte l'écart",
@@ -842,7 +846,7 @@
       "refuse": "Refuser",
       "receive": "Enregistrer la réception",
       "treat": "Déclarer le traitement",
-      "manifest": "Établir le bordereau de suivi",
+      "manifest": "Établir les bordereaux de suivi",
       "certificate": "Déposer un certificat"
     },
     "cancelReason": "Motif de l'annulation",
@@ -880,7 +884,7 @@
     "varianceBanner": "Poids reçu {{received}} pour {{departure}} au départ, soit {{pct}} % d'écart.",
     "varianceAck": "Écart pris en compte : {{comment}}",
     "done": {
-      "submitted": "Demande envoyée au prestataire.",
+      "submitted": "Demande envoyée.",
       "cancelled": "Enlèvement annulé.",
       "collected": "Chargement enregistré.",
       "acknowledged": "Écart pris en compte.",
@@ -890,7 +894,7 @@
       "refused": "Demande refusée.",
       "received": "Réception enregistrée.",
       "treated": "Traitement déclaré.",
-      "manifest": "Bordereau établi.",
+      "manifest": "Bordereaux établis.",
       "certificate": "Certificat déposé."
     },
     "documents": "Documents",
@@ -901,11 +905,15 @@
     },
     "certificateFile": "Fichier (PDF, JPEG ou PNG, 20 Mo maximum)",
     "completeConfirm": "Clôturer l'enlèvement ?",
-    "completeHint": "Les lots passent au statut « Clôturé » : poids, filières et prix ne pourront plus être modifiés."
+    "completeHint": "Les lots passent au statut « Clôturé » : poids, filières et prix ne pourront plus être modifiés.",
+    "receiver": "Destinataire",
+    "transporter": "Transporteur",
+    "receiverTransports": "Le destinataire assure le transport",
+    "onBehalf": "{{name}} n'a pas de compte : enregistrez vous-même sa réponse, la réception et le traitement des lots."
   },
   "providers": {
     "title": "Prestataires",
-    "subtitle": "Annuaire des collecteurs, transporteurs et recycleurs agréés.",
+    "subtitle": "Vos partenaires sans compte et l'annuaire des collecteurs, transporteurs et recycleurs agréés.",
     "roles": "Activités",
     "role": {
       "collector": "Collecteur",
@@ -937,7 +945,8 @@
     "partnered": "Prestataire ajouté à vos partenaires.",
     "unpartnered": "Partenariat terminé.",
     "minQuantity": "Quantité minimale (kg)",
-    "family": "Famille de déchets"
+    "family": "Famille de déchets",
+    "directory": "Prestataires de la plateforme"
   },
   "compliance": {
     "register": {
@@ -950,8 +959,8 @@
       "emptyTitle": "Aucun lot sur la période"
     },
     "manifests": {
-      "title": "Bordereaux de suivi des déchets dangereux",
-      "subtitle": "Pré-remplis à partir de l'enlèvement et signés électroniquement par chaque intervenant.",
+      "title": "Bordereaux de suivi des déchets",
+      "subtitle": "Un bordereau par déchet enlevé, dangereux ou non. Pré-remplis à partir de l'enlèvement, signés par chaque intervenant : électroniquement, ou à la main sur le bordereau imprimé.",
       "number": "N° de bordereau",
       "waste": "Déchet",
       "packages": "Colis",
@@ -967,7 +976,29 @@
       "signedBy": "Signé par {{name}} le {{date}}",
       "pdf": "Ouvrir le PDF",
       "emptyTitle": "Aucun bordereau",
-      "emptyHint": "Un bordereau s'établit depuis un enlèvement contenant des déchets dangereux."
+      "emptyHint": "Les bordereaux sont établis au chargement d'un enlèvement.",
+      "method": "Mode de signature",
+      "methods": {
+        "electronic": "Électronique",
+        "paper": "À la main"
+      },
+      "methodHints": {
+        "electronic": "Je signe maintenant avec mon mot de passe.",
+        "paper": "Le bordereau imprimé a été signé à la main."
+      },
+      "externalHint": "Cet intervenant n'a pas de compte. Imprimez le bordereau, faites-le signer à la main, puis saisissez ici qui a signé et quand.",
+      "signerName": "Nom du signataire",
+      "signedOn": "Date de signature",
+      "record": "Enregistrer la signature",
+      "recordMessage": "Vous attestez que le bordereau a été signé à la main par cette personne. Confirmez avec votre mot de passe.",
+      "recorded": "Signature enregistrée.",
+      "signedOnPaper": "Signé à la main par {{name}} le {{date}}",
+      "waitingPaper": "Signature à la main attendue",
+      "attachCopy": "Joindre l'exemplaire signé",
+      "copyTitle": "Exemplaire signé du bordereau {{number}}",
+      "copyHint": "Toutes les parties ont signé, dont au moins une à la main. Joignez le scan du bordereau portant les signatures : il clôture le bordereau et devient le document archivé.",
+      "copyFile": "Choisir le fichier (PDF, JPG ou PNG)",
+      "copyAttached": "Exemplaire signé joint. Bordereau clôturé."
     },
     "declarations": {
       "title": "Déclarations annuelles",
@@ -1807,5 +1838,22 @@
     "Types de déchets": "Types de déchets",
     "Utilisateurs": "Utilisateurs",
     "Virements": "Virements"
+  },
+  "partners": {
+    "title": "Partenaires sans compte",
+    "subtitle": "Transporteurs et destinataires qui n'utilisent pas la plateforme. Vous enregistrez vous-même les étapes de leurs enlèvements, et ils signent le bordereau à la main.",
+    "new": "Ajouter un partenaire",
+    "edit": "Modifier le partenaire",
+    "intro": "Ce partenaire n'est visible que par votre société. La plateforme ne vérifie pas son autorisation : vous en restez responsable.",
+    "legalName": "Raison sociale",
+    "roles": "Activités",
+    "accreditation": "N° d'autorisation",
+    "accreditationHint": "Obligatoire pour lui confier des déchets dangereux.",
+    "noAccreditation": "Non renseignée",
+    "coversHazardous": "Autorisé pour les déchets dangereux",
+    "inUse": "Utilisé",
+    "noAccount": "Sans compte",
+    "empty": "Aucun partenaire sans compte. Ajoutez un transporteur ou un destinataire qui n'utilise pas la plateforme.",
+    "saved": "Partenaire enregistré."
   }
 }

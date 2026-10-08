@@ -7,10 +7,12 @@ import { ButtonDirective } from 'primeng/button';
 
 import { Api, openBlob } from '../../core/api/api';
 import { Declaration, DocumentRecord, Manifest, RegisterRow } from '../../core/api/models';
+import { SignManifestDialog, SignedCopyDialog } from './manifest-dialogs';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
 import { DatePipe, KgPipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
+import { Dialogs } from '../../ui/dialog';
 import { Column, TABLE } from '../../ui/data-table';
 import { ListStore } from '../../ui/list-store';
 import { KpiComponent, PageHeaderComponent, StatusComponent } from '../../ui/page';
@@ -120,8 +122,9 @@ export class RegisterPage {
 }
 
 /**
- * M5-02: tracking slips of hazardous waste. Same screen for the three parties; each one signs when its turn
- * comes, with its password (the API checks both the turn and the password).
+ * M5-02: tracking slips — every waste leaves with one, hazardous or not. Same screen for the three parties; each one
+ * signs when its turn comes, electronically or by hand on the printed slip (the API checks both the turn and the
+ * password). A slip carrying a handwritten signature is closed by attaching the scan of the signed copy.
  */
 @Component({
   imports: [TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, DatePipe, KgPipe, IconComponent, ButtonDirective, ...SELECT, FilterBarComponent],
@@ -140,7 +143,10 @@ export class RegisterPage {
           [pageSize]="list.perPage()" emptyIcon="assignment_late" [emptyTitle]="list.filtered() ? t('common.noResult') : t('compliance.manifests.emptyTitle')"
           [emptyHint]="list.filtered() ? '' : t('compliance.manifests.emptyHint')" (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (retry)="list.reload()">
           <ng-template dwCell="number" let-m><span class="dw-mono">{{ m.manifest_number }}</span><div class="dw-faint dw-mono">{{ m.pickup?.pickup_number }}</div></ng-template>
-          <ng-template dwCell="waste" let-m>{{ m.waste_type }}<div class="dw-faint">{{ m.regulatory_code }}</div></ng-template>
+          <ng-template dwCell="waste" let-m>
+            {{ m.waste_type }} @if (m.is_hazardous) { <dw-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</dw-icon> }
+            <div class="dw-faint">{{ m.regulatory_code }}</div>
+          </ng-template>
           <ng-template dwCell="weight" let-m>{{ m.received_weight_kg ?? m.declared_weight_kg | dwKg }}</ng-template>
           <ng-template dwCell="signatures" let-m>
             <ul class="signatures">
@@ -148,7 +154,11 @@ export class RegisterPage {
                 <li [class.done]="signature.signed_at">
                   <dw-icon aria-hidden="true">{{ signature.signed_at ? 'check_circle' : 'radio_button_unchecked' }}</dw-icon>
                   <span><strong>{{ t('compliance.manifests.' + signature.party) }}</strong> — {{ signature.company.legal_name }}
-                    <span class="dw-faint">@if (signature.signed_at) { {{ t('compliance.manifests.signedBy', { name: signature.signed_by, date: (signature.signed_at | dwDate: 'datetime') }) }} } @else { {{ t('compliance.manifests.waiting') }} }</span>
+                    <span class="dw-faint">
+                      @if (signature.method === 'paper') { {{ t('compliance.manifests.signedOnPaper', { name: signature.signed_by, date: (signature.signed_at | dwDate) }) }} }
+                      @else if (signature.signed_at) { {{ t('compliance.manifests.signedBy', { name: signature.signed_by, date: (signature.signed_at | dwDate: 'datetime') }) }} }
+                      @else { {{ t(signature.external ? 'compliance.manifests.waitingPaper' : 'compliance.manifests.waiting') }} }
+                    </span>
                   </span>
                 </li>
               }
@@ -157,8 +167,10 @@ export class RegisterPage {
           <ng-template dwCell="status" let-m><dw-status kind="manifest" [value]="m.status" /></ng-template>
           <ng-template dwCell="actions" let-m>
             <div class="dw-row-tight">
-              @if (canSign && m.awaiting_company === company) {
-                <button pButton type="button" [disabled]="busy()" (click)="sign(m)"><dw-icon>draw</dw-icon>{{ t('compliance.manifests.sign') }}</button>
+              @if (canSign && m.status === 'pending_signed_copy' && owner) {
+                <button pButton type="button" (click)="attach(m)"><dw-icon>upload_file</dw-icon>{{ t('compliance.manifests.attachCopy') }}</button>
+              } @else if (canSign && m.status !== 'pending_signed_copy' && m.awaiting_company === company) {
+                <button pButton type="button" (click)="sign(m)"><dw-icon>draw</dw-icon>{{ t(m.awaiting_external ? 'compliance.manifests.record' : 'compliance.manifests.sign') }}</button>
               }
               <button pButton severity="secondary" outlined type="button" (click)="pdf(m)"><dw-icon>picture_as_pdf</dw-icon>{{ t('compliance.manifests.pdf') }}</button>
             </div>
@@ -172,18 +184,21 @@ export class RegisterPage {
     .signatures li { display: flex; gap: 6px; align-items: flex-start; }
     .signatures dw-icon { font-size: 15px; margin-block-start: 2px; color: var(--dw-ink-3); flex: none; }
     .signatures li.done dw-icon { color: var(--dw-success); }
+    .hazard { font-size: 15px; width: 15px; height: 15px; color: var(--dw-warning); vertical-align: -2px; }
   `,
 })
 export class ManifestsPage {
   private readonly api = inject(Api);
   private readonly session = inject(Session);
   private readonly toast = inject(Toast);
-  private readonly confirm = inject(Confirm);
+  private readonly dialog = inject(Dialogs);
+
+  /** Only the producer, who owns the slip, attaches the signed copy. */
+  protected readonly owner = this.session.audience() !== 'provider';
 
   protected readonly company = this.session.company()?.ulid ?? null;
   protected readonly canSign = this.session.can('documents.sign') || this.session.can('provider.manifests.sign');
-  protected readonly busy = signal(false);
-  protected readonly statuses: Manifest['status'][] = ['pending_producer_signature', 'pending_transporter_signature', 'pending_receiver_signature', 'completed', 'cancelled'];
+  protected readonly statuses: Manifest['status'][] = ['pending_producer_signature', 'pending_transporter_signature', 'pending_receiver_signature', 'pending_signed_copy', 'completed', 'cancelled'];
   protected readonly list = new ListStore<Manifest, { status?: string | null }>((query) => this.api.list<Manifest>('manifests', query));
 
   protected readonly columns: Column<Manifest>[] = [
@@ -196,26 +211,12 @@ export class ManifestsPage {
     { key: 'actions', header: 'common.actions' },
   ];
 
-  protected async sign(manifest: Manifest): Promise<void> {
-    const password = await this.confirm.ask({
-      title: this.toast.text('compliance.manifests.signTitle', { number: manifest.manifest_number }),
-      message: this.toast.text('compliance.manifests.signMessage'),
-      confirmLabel: this.toast.text('compliance.manifests.sign'),
-      password: true,
-    });
-    if (typeof password !== 'string') {
-      return;
-    }
-    this.busy.set(true);
-    try {
-      await firstValueFrom(this.api.post(`manifests/${manifest.ulid}/sign`, { password }));
-      this.toast.success('compliance.manifests.signed');
-      this.list.reload();
-    } catch (error) {
-      this.toast.error(error);
-    } finally {
-      this.busy.set(false);
-    }
+  protected sign(manifest: Manifest): void {
+    this.dialog.open<SignManifestDialog, Manifest, Manifest>(SignManifestDialog, { data: manifest }).afterClosed().subscribe((done) => done && this.list.reload());
+  }
+
+  protected attach(manifest: Manifest): void {
+    this.dialog.open<SignedCopyDialog, Manifest, boolean>(SignedCopyDialog, { data: manifest }).afterClosed().subscribe((done) => done && this.list.reload());
   }
 
   protected async pdf(manifest: Manifest): Promise<void> {
