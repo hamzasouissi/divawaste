@@ -40,7 +40,7 @@ interface DirectoryFilter {
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('providers.title')" [subtitle]="t('providers.subtitle')" />
 
-      <dw-external-partners />
+      <dw-external-partners (linked)="load()" />
       <h2 class="dw-h2 directory">{{ t('providers.directory') }}</h2>
 
       <dw-filter-bar class="dw-panel standalone" [active]="activeFilters()" (cleared)="resetFilter()">

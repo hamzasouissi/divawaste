@@ -161,7 +161,8 @@
     "platformOverview": "Overview",
     "platformPlans": "Plans and prices",
     "platformInvoices": "Invoices",
-    "platformActivity": "Platform activity"
+    "platformActivity": "Platform activity",
+    "authorizations": "Authorisations"
   },
   "auth": {
     "pitch": "Trace, recover and declare your textile waste.",
@@ -467,7 +468,10 @@
       "invoice.issued": "New invoice",
       "subscription.activated": "Subscription activated",
       "subscription.trial_ending": "End of the free trial",
-      "company.pending_review": "Registration to review"
+      "company.pending_review": "Registration to review",
+      "document.signed_copy_requested": "Signed copy of a slip to attach",
+      "authorization.usage_high": "Authorisation almost used up",
+      "authorization.expiring_soon": "Authorisation ending soon"
     },
     "types": {
       "stock.threshold_warning": {
@@ -561,6 +565,18 @@
       "company.pending_review": {
         "title": "To review — {{company}}",
         "body": "{{type}}"
+      },
+      "document.signed_copy_requested": {
+        "title": "Tracking slip {{number}}: signed copy to attach",
+        "body": "Every party has signed. Attach the scan of the copy signed by hand."
+      },
+      "authorization.usage_high": {
+        "title": "Authorisation {{reference}} almost used up",
+        "body": "{{waste_type}}: {{pct}} % used. Plan a new authorisation."
+      },
+      "authorization.expiring_soon": {
+        "title": "Authorisation {{reference}}: ends on {{date}}",
+        "body": "{{waste_type}}: in {{days}} day(s). Without a new authorisation, pickups will be blocked."
       }
     }
   },
@@ -795,7 +811,9 @@
     "showInactive": "Show deactivated types",
     "saved": "Waste type saved.",
     "emptyTitle": "No type activated",
-    "emptyHint": "Activate at least one type from the catalogue to be able to create lots."
+    "emptyHint": "Activate at least one type from the catalogue to be able to create lots.",
+    "requiresAuthorization": "This waste only leaves the site under an authorisation (declaration signed by customs)",
+    "underAuthorization": "Under authorisation"
   },
   "pickups": {
     "title": "Pickups",
@@ -833,7 +851,13 @@
       "saveDraft": "Save the draft",
       "send": "Send the request",
       "noReceiver": "No receiver available. Add a partner in",
-      "transporterRequired": "This receiver does not transport: choose a transporter."
+      "transporterRequired": "This receiver does not transport: choose a transporter.",
+      "authorization": {
+        "missing": "no authorisation covers this waste on that date. Record one before requesting the pickup.",
+        "exceeded": "authorisation {{reference}} has not enough quantity left. Record a new authorisation.",
+        "packaging": "authorisation {{reference}} does not cover the packaging of some lots.",
+        "covered": "authorisation {{reference}}: {{after}} % used after this pickup, {{left}} % will be left."
+      }
     },
     "actions": {
       "submit": "Send the request",
@@ -1837,7 +1861,8 @@
     "Tableau de bord": "Dashboard",
     "Types de déchets": "Waste types",
     "Utilisateurs": "Users",
-    "Virements": "Transfers"
+    "Virements": "Transfers",
+    "Autorisations": "Authorisations"
   },
   "partners": {
     "title": "Partners without an account",
@@ -1854,6 +1879,44 @@
     "inUse": "In use",
     "noAccount": "No account",
     "empty": "No partner without an account. Add a transporter or a receiver that does not use the platform.",
-    "saved": "Partner saved."
+    "saved": "Partner saved.",
+    "hasAccount": "{{name}} is now on the platform (same tax ID).",
+    "link": "Tie to this account",
+    "linkTitle": "Tie {{name}} to its account?",
+    "linkMessage": "{{name}} becomes one of your partner providers: the next pickups will be sent to it through the platform and it will sign itself. Pickups already recorded do not change.",
+    "linked": "Partner tied to its account.",
+    "linkedTo": "Tied to {{name}}"
+  },
+  "authorizations": {
+    "title": "Waste exit authorisations",
+    "subtitle": "Declarations signed by customs: a waste type, a period and an allowed quantity. Without an available authorisation, pickups of that waste are blocked.",
+    "new": "New authorisation",
+    "edit": "Edit the authorisation",
+    "reference": "Reference",
+    "period": "Period",
+    "validFrom": "Valid from",
+    "validUntil": "Until",
+    "issuedOn": "Date of the document",
+    "quantity": "Allowed quantity",
+    "quantityHint": "Enter the quantity the way the document states it: a weight, a number of lots, or a number of lots per packaging (\"40 bales\", \"100 bags\"). Mixed packagings add up; when several limits are given, the most used one is the one that counts.",
+    "quantityRequired": "Give at least one quantity: a weight, a number of lots or a packaging.",
+    "maxKg": "Maximum weight (kg)",
+    "maxLots": "Maximum number of lots",
+    "alertPct": "Alert at (% used)",
+    "file": "Attach the signed document (PDF, JPG or PNG)",
+    "replaceFile": "Replace the attached document",
+    "active": "In force (untick to withdraw it)",
+    "used": "Usage",
+    "frozen": "Pickups already draw on this authorisation: the waste type, the period and the quantities can no longer change. For other values, record a new authorisation.",
+    "noType": "No waste type is marked \"under authorisation\". Tick the box on the waste type concerned.",
+    "saved": "Authorisation saved.",
+    "emptyTitle": "No authorisation",
+    "emptyHint": "First mark the waste types concerned as \"under authorisation\", then record each authorisation received here.",
+    "states": {
+      "valid": "In force",
+      "upcoming": "Upcoming",
+      "ended": "Ended",
+      "withdrawn": "Withdrawn"
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, output, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
@@ -9,6 +9,7 @@ import { Textarea } from 'primeng/textarea';
 import { Api } from '../../core/api/api';
 import { ExternalPartner } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
+import { Confirm } from '../../ui/confirm';
 import { Toast } from '../../core/feedback/toast';
 import { DatePipe } from '../../core/format/pipes';
 import { CheckboxComponent } from '../../ui/checkbox';
@@ -133,7 +134,13 @@ export class ExternalPartnerDialog {
             <tbody>
               @for (partner of rows(); track partner.ulid) {
                 <tr [class.off]="!partner.is_active">
-                  <td><strong>{{ partner.legal_name }}</strong><div class="dw-faint">{{ partner.city }} @if (partner.tax_id) { · {{ partner.tax_id }} }</div></td>
+                  <td>
+                    <strong>{{ partner.legal_name }}</strong><div class="dw-faint">{{ partner.city }} @if (partner.tax_id) { · {{ partner.tax_id }} }</div>
+                    @if (partner.suggested_company; as match) {
+                      <p class="match" role="note"><dw-icon aria-hidden="true">how_to_reg</dw-icon><span>{{ t('partners.hasAccount', { name: match.legal_name }) }}</span>
+                        @if (canManage) { <button pButton text size="small" type="button" (click)="link(partner)">{{ t('partners.link') }}</button> }</p>
+                    }
+                  </td>
                   <td>@for (role of partner.roles; track role; let last = $last) { {{ t('providers.role.' + role) }}@if (!last) { · } }</td>
                   <td>{{ partner.contact_name ?? '—' }}<div class="dw-faint">{{ partner.phone }}</div></td>
                   <td>
@@ -142,8 +149,11 @@ export class ExternalPartnerDialog {
                       @if (partner.accreditation_expires_on) { <div class="dw-faint" [class.late]="expired(partner)">{{ t('providers.expiresOn') }} {{ partner.accreditation_expires_on | dwDate }}</div> }
                     } @else { <span class="dw-faint">{{ t('partners.noAccreditation') }}</span> }
                   </td>
-                  <td><dw-status kind="member" [value]="partner.is_active ? 'active' : 'suspended'" [label]="t(partner.is_active ? 'partners.inUse' : 'common.inactive')" /></td>
-                  <td class="dw-num">@if (canManage) { <button pButton text type="button" (click)="edit(partner)">{{ t('common.edit') }}</button> }</td>
+                  <td>
+                    @if (partner.linked_company; as account) { <dw-status kind="accreditation" value="approved" [label]="t('partners.linkedTo', { name: account.legal_name })" /> }
+                    @else { <dw-status kind="member" [value]="partner.is_active ? 'active' : 'suspended'" [label]="t(partner.is_active ? 'partners.inUse' : 'common.inactive')" /> }
+                  </td>
+                  <td class="dw-num">@if (canManage && !partner.linked_company) { <button pButton text type="button" (click)="edit(partner)">{{ t('common.edit') }}</button> }</td>
                 </tr>
               }
             </tbody>
@@ -156,6 +166,8 @@ export class ExternalPartnerDialog {
     :host { display: block; margin-block-end: var(--dw-4); }
     .hint { margin: 2px 0 0; font-size: 13px; }
     tr.off td { color: var(--dw-ink-3); }
+    .match { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; padding: 4px 8px; border-radius: var(--dw-radius); background: var(--dw-primary-soft); font-size: 12.5px; }
+    .match dw-icon { font-size: 16px; color: var(--dw-primary); }
     .late { color: var(--dw-danger); font-weight: 600; }
   `,
 })
@@ -163,7 +175,10 @@ export class ExternalPartnersComponent {
   private readonly api = inject(Api);
   private readonly dialog = inject(Dialogs);
   private readonly toast = inject(Toast);
+  private readonly confirm = inject(Confirm);
 
+  /** A partner was tied to its account: the directory below has one more partner of the platform. */
+  readonly linked = output<void>();
   protected readonly canManage = inject(Session).can('providers.partnerships.manage');
   protected readonly rows = signal<ExternalPartner[]>([]);
 
@@ -177,6 +192,25 @@ export class ExternalPartnersComponent {
 
   protected edit(partner: ExternalPartner | null): void {
     this.dialog.open<ExternalPartnerDialog, ExternalPartner | null, ExternalPartner>(ExternalPartnerDialog, { data: partner }).afterClosed().subscribe((saved) => saved && this.load());
+  }
+
+  /**
+   * The partner has opened an account (same tax ID as a published provider): tie them. Past pickups stay as they
+   * were recorded; the next ones go to the provider through the platform.
+   */
+  protected async link(partner: ExternalPartner): Promise<void> {
+    const match = partner.suggested_company;
+    if (!match || !(await this.confirm.ask({ title: this.toast.text('partners.linkTitle', { name: partner.legal_name }), message: this.toast.text('partners.linkMessage', { name: match.legal_name }), confirmLabel: this.toast.text('partners.link') }))) {
+      return;
+    }
+    try {
+      await firstValueFrom(this.api.post(`external-partners/${partner.ulid}/link`, { provider: match.ulid }));
+      this.toast.success('partners.linked');
+      this.load();
+      this.linked.emit();
+    } catch (error) {
+      this.toast.error(error);
+    }
   }
 
   private load(): void {

@@ -36,6 +36,7 @@ const NAVIGATION: Record<Exclude<Audience, 'none'>, NavGroup[]> = {
       items: [
         { path: '/compliance/register', label: 'nav.register', icon: 'menu_book', permissions: ['documents.view'] },
         { path: '/compliance/manifests', label: 'nav.manifests', icon: 'assignment_late', permissions: ['documents.view'] },
+        { path: '/compliance/authorizations', label: 'nav.authorizations', icon: 'verified', permissions: ['waste_types.view'] },
         { path: '/compliance/declarations', label: 'nav.declarations', icon: 'fact_check', permissions: ['declarations.prepare'] },
         { path: '/compliance/documents', label: 'nav.documents', icon: 'folder_open', permissions: ['documents.view'] },
         { path: '/reports', label: 'nav.reports', icon: 'summarize', permissions: ['reports.view'] },

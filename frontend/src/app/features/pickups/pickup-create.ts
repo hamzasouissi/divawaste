@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 
 import { Api } from '../../core/api/api';
-import { DirectoryProvider, ExternalPartner, Lot, Pickup } from '../../core/api/models';
+import { AuthorizationCheck, DirectoryProvider, ExternalPartner, Lot, Pickup } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
 import { DatePipe, KgPipe } from '../../core/format/pipes';
@@ -74,6 +74,17 @@ function today(): string {
           <div class="dw-panel-body dw-stack-sm">
             <p class="summary" role="status">{{ t('pickups.create.selected', { count: selected().length, kg: (selectedKg() | dwKg) }) }}</p>
             @if (hazardous()) { <p class="warn"><dw-icon aria-hidden="true">warning</dw-icon>{{ t('pickups.create.hazardousWarning') }}</p> }
+            @for (item of authorizations(); track item.waste_type) {
+              <p class="cover" [class.bad]="item.reason" role="status">
+                <dw-icon aria-hidden="true">{{ item.reason ? 'block' : 'verified' }}</dw-icon>
+                <span>
+                  <strong>{{ item.waste_type }}</strong> —
+                  @if (item.reason === 'missing') { {{ t('pickups.create.authorization.missing') }} }
+                  @else if (item.reason) { {{ t('pickups.create.authorization.' + item.reason, { reference: item.reference }) }} }
+                  @else { {{ t('pickups.create.authorization.covered', { reference: item.reference, after: round(item.after_pct), left: 100 - round(item.after_pct) }) }} }
+                </span>
+              </p>
+            }
 
             <div class="providers" role="radiogroup" [attr.aria-label]="t('pickups.provider')">
               @for (item of providers(); track item.ulid) {
@@ -130,6 +141,8 @@ function today(): string {
     .summary { font-weight: 600; }
     .warn { display: flex; gap: 8px; padding: 8px 10px; border-radius: var(--dw-radius); background: var(--dw-warning-soft); color: var(--dw-warning); font-size: 13px; }
     .warn dw-icon { flex: none; font-size: 18px; }
+    .cover { display: flex; gap: 8px; padding: 8px 10px; border-radius: var(--dw-radius); background: var(--dw-success-soft); color: var(--dw-success); font-size: 13px; }
+    .cover.bad { background: var(--dw-danger-soft); color: var(--dw-danger); } .cover dw-icon { flex: none; font-size: 18px; }
     .providers { display: grid; gap: 8px; margin-block: var(--dw-2); }
     .provider { all: unset; cursor: pointer; display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--dw-line); border-radius: var(--dw-radius); }
     .provider .name { font-weight: 600; } .provider.on { border-color: var(--dw-primary); background: var(--dw-primary-soft); }
@@ -152,6 +165,9 @@ export class PickupCreatePage {
   private readonly externals = signal<ExternalPartner[]>([]);
   /** Partners without an account that may receive waste. */
   protected readonly receivers = computed(() => this.externals().filter((partner) => partner.roles.some((role) => role !== 'transporter')));
+  /** For the waste types that only leave under an authorisation: what covers the selection on the chosen date. */
+  protected readonly authorizations = signal<AuthorizationCheck[]>([]);
+  private check = 0;
   /** The chosen receiver: `c:` + a provider of the platform, or `x:` + a partner without an account. */
   protected readonly provider = signal('');
   /** The chosen transporter, written the same way; empty = the receiver transports. */
@@ -180,13 +196,33 @@ export class PickupCreatePage {
     const partner = this.receivers().find((item) => `x:${item.ulid}` === this.provider());
     const receiver = provider !== undefined ? this.choosable(provider) : partner !== undefined && this.blocked(partner) === null;
 
-    return this.selected().length > 0 && receiver && !this.transporterRequired() && this.date() >= this.minDate;
+    return this.selected().length > 0 && receiver && !this.transporterRequired() && this.date() >= this.minDate && !this.authorizations().some((item) => item.reason !== null);
   });
 
   constructor() {
     this.loadLots();
     this.api.get<DirectoryProvider[]>('providers/directory', { filter: { partners_only: true } }).subscribe({ next: (providers) => this.providers.set(providers), error: (error: unknown) => this.toast.error(error) });
-    this.api.get<ExternalPartner[]>('external-partners').subscribe({ next: (partners) => this.externals.set(partners), error: (error: unknown) => this.toast.error(error) });
+    // A partner that has opened an account is chosen among the providers of the platform from then on.
+    this.api.get<ExternalPartner[]>('external-partners').subscribe({ next: (partners) => this.externals.set(partners.filter((partner) => !partner.linked_company)), error: (error: unknown) => this.toast.error(error) });
+    // The API refuses a request that no authorisation covers; asking first lets the form say so before sending.
+    effect(() => {
+      const lots = this.selected();
+      const date = this.date();
+      const request = ++this.check;
+      if (lots.length === 0 || !date) {
+        untracked(() => this.authorizations.set([]));
+
+        return;
+      }
+      this.api.post<AuthorizationCheck[]>('waste-authorizations/check', { lots, date }).subscribe({
+        next: (items) => request === this.check && this.authorizations.set(items),
+        error: () => request === this.check && this.authorizations.set([]),
+      });
+    });
+  }
+
+  protected round(value: number | null): number {
+    return Math.round(value ?? 0);
   }
 
   protected choose(key: string): void {

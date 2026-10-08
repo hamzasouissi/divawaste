@@ -161,7 +161,8 @@
     "platformOverview": "Vue d'ensemble",
     "platformPlans": "Formules et tarifs",
     "platformInvoices": "Factures",
-    "platformActivity": "Activité de la plateforme"
+    "platformActivity": "Activité de la plateforme",
+    "authorizations": "Autorisations"
   },
   "auth": {
     "pitch": "Tracer, valoriser et déclarer vos déchets textiles.",
@@ -467,7 +468,10 @@
       "invoice.issued": "Nouvelle facture",
       "subscription.activated": "Abonnement activé",
       "subscription.trial_ending": "Fin de l'essai gratuit",
-      "company.pending_review": "Inscription à valider"
+      "company.pending_review": "Inscription à valider",
+      "document.signed_copy_requested": "Exemplaire signé d'un bordereau à joindre",
+      "authorization.usage_high": "Autorisation bientôt épuisée",
+      "authorization.expiring_soon": "Autorisation bientôt terminée"
     },
     "types": {
       "stock.threshold_warning": {
@@ -561,6 +565,18 @@
       "company.pending_review": {
         "title": "À valider — {{company}}",
         "body": "{{type}}"
+      },
+      "document.signed_copy_requested": {
+        "title": "Bordereau {{number}} : exemplaire signé à joindre",
+        "body": "Toutes les parties ont signé. Joignez le scan de l'exemplaire signé à la main."
+      },
+      "authorization.usage_high": {
+        "title": "Autorisation {{reference}} bientôt épuisée",
+        "body": "{{waste_type}} : utilisée à {{pct}} %. Prévoyez une nouvelle autorisation."
+      },
+      "authorization.expiring_soon": {
+        "title": "Autorisation {{reference}} : fin le {{date}}",
+        "body": "{{waste_type}} : dans {{days}} jour(s). Sans nouvelle autorisation, les enlèvements seront bloqués."
       }
     }
   },
@@ -795,7 +811,9 @@
     "showInactive": "Afficher les types désactivés",
     "saved": "Type de déchet enregistré.",
     "emptyTitle": "Aucun type activé",
-    "emptyHint": "Activez au moins un type du catalogue pour pouvoir créer des lots."
+    "emptyHint": "Activez au moins un type du catalogue pour pouvoir créer des lots.",
+    "requiresAuthorization": "Ce déchet ne sort du site que sous autorisation (déclaration signée par la douane)",
+    "underAuthorization": "Sous autorisation"
   },
   "pickups": {
     "title": "Enlèvements",
@@ -833,7 +851,13 @@
       "saveDraft": "Enregistrer le brouillon",
       "send": "Envoyer la demande",
       "noReceiver": "Aucun destinataire disponible. Ajoutez un partenaire dans",
-      "transporterRequired": "Ce destinataire ne transporte pas : choisissez un transporteur."
+      "transporterRequired": "Ce destinataire ne transporte pas : choisissez un transporteur.",
+      "authorization": {
+        "missing": "aucune autorisation ne couvre ce déchet à cette date. Saisissez-en une avant de demander l'enlèvement.",
+        "exceeded": "l'autorisation {{reference}} n'a plus assez de quantité disponible. Saisissez une nouvelle autorisation.",
+        "packaging": "l'autorisation {{reference}} ne prévoit pas le conditionnement de certains lots.",
+        "covered": "autorisation {{reference}} : utilisée à {{after}} % après cet enlèvement, il restera {{left}} %."
+      }
     },
     "actions": {
       "submit": "Envoyer la demande",
@@ -1837,7 +1861,8 @@
     "Tableau de bord": "Tableau de bord",
     "Types de déchets": "Types de déchets",
     "Utilisateurs": "Utilisateurs",
-    "Virements": "Virements"
+    "Virements": "Virements",
+    "Autorisations": "Autorisations"
   },
   "partners": {
     "title": "Partenaires sans compte",
@@ -1854,6 +1879,44 @@
     "inUse": "Utilisé",
     "noAccount": "Sans compte",
     "empty": "Aucun partenaire sans compte. Ajoutez un transporteur ou un destinataire qui n'utilise pas la plateforme.",
-    "saved": "Partenaire enregistré."
+    "saved": "Partenaire enregistré.",
+    "hasAccount": "{{name}} est maintenant sur la plateforme (même matricule fiscal).",
+    "link": "Associer à ce compte",
+    "linkTitle": "Associer {{name}} à son compte ?",
+    "linkMessage": "{{name}} devient l'un de vos prestataires partenaires : les prochains enlèvements lui seront envoyés par la plateforme et il signera lui-même. Les enlèvements déjà enregistrés ne changent pas.",
+    "linked": "Partenaire associé à son compte.",
+    "linkedTo": "Associé à {{name}}"
+  },
+  "authorizations": {
+    "title": "Autorisations de sortie des déchets",
+    "subtitle": "Déclarations signées par la douane : un type de déchet, une période et une quantité autorisée. Sans autorisation disponible, les enlèvements de ce déchet sont bloqués.",
+    "new": "Nouvelle autorisation",
+    "edit": "Modifier l'autorisation",
+    "reference": "Référence",
+    "period": "Période",
+    "validFrom": "Valable du",
+    "validUntil": "Jusqu'au",
+    "issuedOn": "Date du document",
+    "quantity": "Quantité autorisée",
+    "quantityHint": "Saisissez la quantité comme le document l'indique : un poids, un nombre de lots, ou un nombre de lots par conditionnement (« 40 balles », « 100 sacs »). Les conditionnements mélangés s'additionnent ; si plusieurs limites sont données, la plus utilisée est celle qui compte.",
+    "quantityRequired": "Indiquez au moins une quantité : un poids, un nombre de lots ou un conditionnement.",
+    "maxKg": "Poids maximal (kg)",
+    "maxLots": "Nombre maximal de lots",
+    "alertPct": "Alerte à (% utilisé)",
+    "file": "Joindre le document signé (PDF, JPG ou PNG)",
+    "replaceFile": "Remplacer le document joint",
+    "active": "En vigueur (décochez pour la retirer)",
+    "used": "Utilisation",
+    "frozen": "Des enlèvements utilisent déjà cette autorisation : le type de déchet, la période et les quantités ne sont plus modifiables. Pour d'autres valeurs, saisissez une nouvelle autorisation.",
+    "noType": "Aucun type de déchet n'est marqué « sous autorisation ». Cochez la case sur le type concerné.",
+    "saved": "Autorisation enregistrée.",
+    "emptyTitle": "Aucune autorisation",
+    "emptyHint": "Marquez d'abord les types de déchets concernés « sous autorisation », puis saisissez ici chaque autorisation reçue.",
+    "states": {
+      "valid": "En vigueur",
+      "upcoming": "À venir",
+      "ended": "Terminée",
+      "withdrawn": "Retirée"
+    }
   }
 }
