@@ -203,8 +203,15 @@ usual channel, packaging, colour, grammage, density, unit weight and default fib
 
 ![Providers directory](screenshots/client/17-providers.png)
 
-Directory of approved providers: activities, description, area, channels, contact, accreditations with their
-validity. Filters: search, channel, "Mes partenaires uniquement", "Agréés déchets dangereux".
+**Partenaires sans compte** (top of the page): transporters and receivers that do not use the platform.
+**Ajouter un partenaire** records the legal name, the activities (transporter, recycler, eliminator — any
+combination), the tax ID, the contact and, optionally, the authorisation number with its expiry date and whether it
+covers hazardous waste. Such a partner is visible to your company only; the platform does not review its
+authorisation. For its pickups you record the stages yourself and it signs the tracking slip by hand. A partner
+you stop using is switched off ("Utilisé" unticked), never deleted.
+
+**Prestataires de la plateforme**: directory of approved providers: activities, description, area, channels,
+contact, accreditations with their validity. Filters: search, channel, "Mes partenaires uniquement", "Agréés déchets dangereux".
 **Ajouter à mes partenaires** makes a provider selectable in your pickup requests. A provider whose accreditation
 has expired shows a red notice and cannot be chosen.
 
@@ -314,9 +321,16 @@ status.
 ![New pickup request](screenshots/manager/07-pickup-new.png)
 
 1. Choose the site, tick the lots to send (only lots in stock are listed).
-2. Choose the provider among your partners; a provider that cannot take the selection (hazardous waste without
-   the right accreditation, expired accreditation) cannot be chosen. Give the wished date.
-3. **Enregistrer le brouillon** or **Envoyer au prestataire**.
+2. Choose the **receiver**: a provider of the platform among your partners, or a partner without an account (tag
+   "Sans compte"). One that cannot take the selection (hazardous waste without the right authorisation, expired
+   authorisation) cannot be chosen, and says why.
+3. Choose the **transporter** when it is not the receiver ("Le destinataire assure le transport" by default). A
+   receiver that only recycles or eliminates needs one. Give the wished date.
+4. **Enregistrer le brouillon** or **Envoyer la demande**.
+
+When the receiver has no account, the pickup page offers you its stages: **Confirmer une date** or **Refuser**,
+then, after the loading, **Enregistrer la réception** (weights received) and **Déclarer le traitement** (channel).
+A receiver of the platform keeps doing these itself.
 
 ![Request sent](screenshots/manager/08-pickup-requested.png)
 
@@ -360,8 +374,20 @@ Rapports when ready.
 
 ### Bordereaux de suivi — `/compliance/manifests`
 
-Tracking slips for **hazardous waste**, created automatically when a pickup containing hazardous lots is
-confirmed, pre-filled, and signed electronically by three parties.
+Every waste leaves with a tracking slip, **hazardous or not**: one slip per waste code of a pickup, issued
+automatically when the lots are loaded (or earlier with **Établir les bordereaux de suivi** on a confirmed pickup),
+pre-filled, and signed in order by the producer, the transporter and the receiver.
+
+Each party signs one of two ways:
+
+- **Électronique**: the user's password. Who, when, from where and the fingerprint of the content are kept.
+- **À la main**: print the slip (**Ouvrir le PDF** — it has a "Signature et cachet" box for every party that has not
+  signed electronically), have it signed, then **Enregistrer la signature**: name of the signatory, date, and your
+  password. A partner without an account can only sign this way; you record its signature.
+
+A slip signed electronically by everyone is archived at the last signature. As soon as one signature is handwritten,
+the slip waits for **Joindre l'exemplaire signé**: the scan (PDF, JPG or PNG) closes it and becomes the archived
+document.
 
 ![Slips](screenshots/compliance/02-manifests.png)
 
@@ -560,7 +586,7 @@ The back office of Diva Software is described screen by screen in
 | | Clôturé | Pickup closed; end of the trail |
 | Pickup | Brouillon, Demandé, Confirmé, Enlevé, Réceptionné, Clôturé, Refusé, Annulé | See [Enlèvements](#enlèvements--pickups) |
 | Pickup line | Prévu, Chargé, Non chargé, Reçu, Rejeté, Traité | State of one lot within the pickup |
-| Tracking slip | Signature producteur / transporteur / destinataire attendue, Complet, Annulé | Whose signature is missing |
+| Tracking slip | Signature producteur / transporteur / destinataire attendue, Exemplaire signé à joindre, Signé, Annulé | Whose signature is missing, or that the scan of the hand-signed slip is still to attach |
 | Declaration | Projet, Validée | Draft (recomputable) or frozen |
 | Accreditation | À valider, Approuvé, Rejeté; Valide, Expire bientôt, Expiré | Review by the platform; validity in time |
 | Company | Email à confirmer, En attente de validation, Active, Rejetée, Suspendue | See the platform guide |

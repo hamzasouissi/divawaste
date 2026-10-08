@@ -91,8 +91,10 @@ final class PickupNotifier
      */
     private function names(Pickup $pickup): array
     {
-        $names = DB::table('companies')->whereIn('id', [$pickup->company_id, $pickup->provider_company_id])->pluck('legal_name', 'id');
+        $names = DB::table('companies')->whereIn('id', array_filter([$pickup->company_id, $pickup->provider_company_id]))->pluck('legal_name', 'id');
+        $provider = $pickup->provider_company_id !== null ? $names[$pickup->provider_company_id]
+            : DB::table('external_partners')->where('id', $pickup->external_provider_id)->value('legal_name');
 
-        return ['number' => $pickup->pickup_number, 'company' => (string) $names[$pickup->company_id], 'provider' => (string) $names[$pickup->provider_company_id]];
+        return ['number' => $pickup->pickup_number, 'company' => (string) $names[$pickup->company_id], 'provider' => (string) $provider];
     }
 }

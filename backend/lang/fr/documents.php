@@ -47,7 +47,8 @@ return [
     ],
 
     'manifest' => [
-        'title' => 'Bordereau de suivi des déchets dangereux',
+        'title' => 'Bordereau de suivi des déchets',
+        'title_hazardous' => 'Bordereau de suivi des déchets dangereux',
         'meta' => 'N° :number · Enlèvement :pickup du :date',
         'signing' => 'EN COURS DE SIGNATURE',
         'producer' => '1. Producteur',
@@ -61,13 +62,20 @@ return [
         'departure_weight' => 'Poids au départ',
         'received_weight' => 'Poids reçu',
         'lot_number' => 'N° de lot',
-        'signatures' => 'Signatures électroniques',
+        'signatures' => 'Signatures',
+        'method' => 'Mode',
+        'electronic' => 'Électronique',
+        'paper' => 'Manuscrite',
+        'by_hand' => 'Signature et cachet',
+        'by_hand_name' => 'Nom',
+        'by_hand_date' => 'Date',
+        'no_code' => 'sans code',
         'party' => 'Intervenant',
         'signer' => 'Signataire',
         'date' => 'Date',
         'hash' => 'Empreinte du contenu signé (SHA-256)',
         'pending' => 'En attente',
-        'note' => 'Chaque signature est apposée par un utilisateur authentifié après confirmation de son mot de passe ; la date, l\'adresse IP et l\'empreinte du contenu signé sont conservées.',
+        'note' => 'Signature électronique : apposée par un utilisateur authentifié après confirmation de son mot de passe ; la date, l\'adresse IP et l\'empreinte du contenu signé sont conservées. Signature manuscrite : apposée à la main dans le cadre prévu ci-dessus ; l\'exemplaire signé est numérisé et archivé.',
     ],
 
     'declaration' => [

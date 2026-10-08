@@ -15,6 +15,7 @@ use App\Modules\Identity\Models\Role;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Models\UserRoleAssignment;
 use App\Modules\Pickups\Actions\PickupWorkflow;
+use App\Modules\Providers\Models\ExternalPartner;
 use App\Modules\Providers\Models\ProviderAcceptedWaste;
 use App\Modules\Providers\Models\ProviderAccreditation;
 use App\Modules\Providers\Models\ProviderPartnership;
@@ -250,6 +251,12 @@ class DemoSeeder extends Seeder
                     composition: $code === 'CHUTES' ? [['material' => 'CO', 'pct' => '65.00'], ['material' => 'PES', 'pct' => '35.00']] : null), $amira);
             }
             ProviderPartnership::query()->create(['provider_company_id' => $provider->id, 'status' => 'active', 'started_at' => now()->subMonths(4), 'created_by_user_id' => $amira->id]);
+            // Two partners without an account: the company records the stages of their pickups and they sign on paper.
+            ExternalPartner::query()->create(['legal_name' => 'Transports Ben Salah', 'tax_id' => '1187452K', 'address_line1' => 'Route de Tunis km 4', 'postal_code' => '8000',
+                'city' => 'Nabeul', 'phone' => '+216 72 000 111', 'contact_name' => 'Ali Ben Salah', 'is_transporter' => true, 'created_by_user_id' => $amira->id]);
+            ExternalPartner::query()->create(['legal_name' => 'Fibres du Cap', 'tax_id' => '1320986P', 'address_line1' => 'Zone industrielle', 'postal_code' => '8030',
+                'city' => 'Grombalia', 'phone' => '+216 72 000 222', 'email' => 'contact@fibres-du-cap.test', 'contact_name' => 'Mouna Zribi', 'is_recycler' => true,
+                'accreditation_reference' => 'ANGed-2025-0412', 'accreditation_expires_on' => now()->addMonths(8)->toDateString(), 'created_by_user_id' => $amira->id]);
             StockThreshold::query()->create(['site_id' => $sites['NAB']->id, 'waste_type_id' => $types['CHUTES']->id, 'max_quantity_kg' => 900, 'warning_pct' => 80, 'created_by_user_id' => $sami->id]);
 
             // Three months of production: a deterministic spread so charts are stable from one seed to the next.
@@ -287,7 +294,7 @@ class DemoSeeder extends Seeder
                         continue;
                     }
                     $date = now()->subMonths($monthsAgo)->endOfMonth()->subDays(2);
-                    $pickup = $pickups->create($site->id, $provider->id, null, $date->toDateString(), array_map(fn (WasteLot $lot) => $lot->ulid, $batch), $sami);
+                    $pickup = $pickups->create($site->id, ['provider_company_id' => $provider->id], $date->toDateString(), array_map(fn (WasteLot $lot) => $lot->ulid, $batch), $sami);
                     $pickup = $pickups->submit($pickup, $sami);
                     $pickup = $pickups->confirm($pickup, $date->toDateString(), $karim);
                     $pickup = $pickups->collect($pickup, array_fill_keys(array_map(fn (WasteLot $lot) => $lot->ulid, $batch), null), $sami);
@@ -327,7 +334,7 @@ class DemoSeeder extends Seeder
             // A request waiting for the provider's answer.
             $pending = array_slice($lots[0]['NAB'] ?? [], 0, 4);
             if ($pending !== []) {
-                $pickups->submit($pickups->create($sites['NAB']->id, $provider->id, null, now()->addDays(3)->toDateString(), array_map(fn (WasteLot $lot) => $lot->ulid, $pending), $sami), $sami);
+                $pickups->submit($pickups->create($sites['NAB']->id, ['provider_company_id' => $provider->id], now()->addDays(3)->toDateString(), array_map(fn (WasteLot $lot) => $lot->ulid, $pending), $sami), $sami);
             }
 
             // A pickup confirmed for today, ready to be loaded from the workshop application, with its slip awaiting the producer's signature.
@@ -337,7 +344,7 @@ class DemoSeeder extends Seeder
                 $ready[] = $createLot->handle(new CreateWasteLotData(siteUlid: $sites['NAB']->ulid, zoneUlid: $zone->ulid, wasteTypeUlid: $types[$typeCode]->ulid,
                     netWeightKg: $kg, packagingType: $typeCode === 'TEINT' ? 'drum' : 'bale', generatedAt: now()->subDay()->setTime(14, 30)->toDateTimeString()), $sami)->ulid;
             }
-            $confirmed = $pickups->confirm($pickups->submit($pickups->create($sites['NAB']->id, $provider->id, null, now()->toDateString(), $ready, $sami), $sami), now()->toDateString(), $karim);
+            $confirmed = $pickups->confirm($pickups->submit($pickups->create($sites['NAB']->id, ['provider_company_id' => $provider->id], now()->toDateString(), $ready, $sami), $sami), now()->toDateString(), $karim);
             $manifests->generate($confirmed, $sami);
 
             foreach ([2, 1, 0] as $monthsAgo) {

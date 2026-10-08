@@ -8,6 +8,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Pickups\Enums\PickupStatus;
 use App\Modules\Pickups\Models\Pickup;
 use App\Modules\Pickups\Models\PickupLot;
+use App\Modules\Providers\Models\ExternalPartner;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\TenantContext;
 use App\Modules\Waste\Actions\TransitionLot;
@@ -27,15 +28,20 @@ final class PickupWorkflow
     public function __construct(private readonly TenantContext $context, private readonly TransitionLot $lots) {}
 
     /**
+     * The receiver and the transporter are each a company of the platform or a partner without an account.
+     * Without a transporter, the receiver carries the waste itself.
+     *
+     * @param  array{provider_company_id?: int|null, external_provider_id?: int|null, transporter_company_id?: int|null, external_transporter_id?: int|null}  $parties
      * @param  list<string>  $lotUlids
      */
-    public function create(int $siteId, int $providerId, ?int $transporterId, string $requestedDate, array $lotUlids, User $actor): Pickup
+    public function create(int $siteId, array $parties, string $requestedDate, array $lotUlids, User $actor): Pickup
     {
-        return DB::transaction(function () use ($siteId, $providerId, $transporterId, $requestedDate, $lotUlids, $actor) {
+        return DB::transaction(function () use ($siteId, $parties, $requestedDate, $lotUlids, $actor) {
             $year = now()->format('Y');
             $pickup = Pickup::query()->create([
                 'pickup_number' => NumberSequence::next($this->context->companyId(), 'pickup', "ENL-{$year}-", $year, 4),
-                'site_id' => $siteId, 'provider_company_id' => $providerId, 'transporter_company_id' => $transporterId,
+                'site_id' => $siteId, 'provider_company_id' => $parties['provider_company_id'] ?? null, 'external_provider_id' => $parties['external_provider_id'] ?? null,
+                'transporter_company_id' => $parties['transporter_company_id'] ?? null, 'external_transporter_id' => $parties['external_transporter_id'] ?? null,
                 'requested_date' => $requestedDate, 'currency_code' => DB::table('companies')->where('id', $this->context->companyId())->value('currency_code'),
                 'created_by_user_id' => $actor->id,
             ]);
@@ -292,6 +298,27 @@ final class PickupWorkflow
 
             if (! $partner || ! $published || ! $accredited) {
                 throw new BusinessRuleViolation('PROVIDER_NOT_ELIGIBLE', 'The provider is not an active partner with a valid accreditation on the pickup date.');
+            }
+        }
+
+        // A partner without an account is not reviewed by the platform: the company answers for it. It must still be
+        // in use, have the right role, and — for hazardous waste — an authorisation recorded and valid on the date.
+        $receiver = $pickup->external_provider_id === null ? null : ExternalPartner::query()->findOrFail($pickup->external_provider_id);
+        $transporter = $pickup->external_transporter_id === null ? null : ExternalPartner::query()->findOrFail($pickup->external_transporter_id);
+        if ($receiver !== null && ! $receiver->receives()) {
+            throw new BusinessRuleViolation('PARTNER_ROLE_MISMATCH', "{$receiver->legal_name} is not recorded as a recycler or an eliminator.");
+        }
+        if ($transporter !== null && ! $transporter->is_transporter) {
+            throw new BusinessRuleViolation('PARTNER_ROLE_MISMATCH', "{$transporter->legal_name} is not recorded as a transporter.");
+        }
+        if ($receiver !== null && ! $receiver->is_transporter && $transporter === null && $pickup->transporter_company_id === null) {
+            throw new BusinessRuleViolation('TRANSPORTER_REQUIRED', "{$receiver->legal_name} does not transport waste: choose a transporter.");
+        }
+        foreach (array_filter([$receiver, $transporter]) as $partner) {
+            $expired = $partner->accreditation_expires_on !== null && $partner->accreditation_expires_on->lt($date);
+            $missing = $hazardous && ($partner->accreditation_reference === null || ! $partner->covers_hazardous);
+            if (! $partner->is_active || $expired || $missing) {
+                throw new BusinessRuleViolation('PROVIDER_NOT_ELIGIBLE', "{$partner->legal_name} is not in use, or has no authorisation valid on the pickup date for this waste.");
             }
         }
     }

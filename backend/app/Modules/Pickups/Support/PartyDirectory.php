@@ -35,6 +35,21 @@ final class PartyDirectory
     }
 
     /**
+     * A partner without an account. Only its name is shown to the other parties of the pickup.
+     *
+     * @return array{ulid: string, legal_name: string, external: true}|null
+     */
+    public function external(?int $id): ?array
+    {
+        if ($id === null) {
+            return null;
+        }
+        $row = DB::table('external_partners')->where('id', $id)->first(['ulid', 'legal_name']);
+
+        return $row === null ? null : ['ulid' => $row->ulid, 'legal_name' => $row->legal_name, 'external' => true];
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function site(int $id): ?array

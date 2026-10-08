@@ -71,8 +71,11 @@ class ComplianceApiTest extends TestCase
     {
         [$pickup, $hazardous] = $this->collectedPickup();
 
-        // Pre-filled: one slip for the hazardous code, nothing typed by the user; the non-hazardous lot is not on it.
-        $manifest = $this->industrial()->postJson("/api/v1/pickups/{$pickup}/manifests")->assertCreated()->assertJsonCount(1, 'data')->json('data.0');
+        // Pre-filled, nothing typed by the user: one slip per waste code — every waste leaves with one, hazardous or
+        // not. They were issued when the lots were loaded.
+        $slips = collect($this->industrial()->postJson("/api/v1/pickups/{$pickup}/manifests")->assertCreated()->assertJsonCount(2, 'data')->json('data'));
+        $this->assertSame([true, false], $slips->pluck('is_hazardous')->all());
+        $manifest = $slips->firstWhere('is_hazardous', true);
         $this->assertSame('04 02 16', $manifest['regulatory_code']);
         $this->assertSame('30.000', $manifest['declared_weight_kg']);
         $this->assertSame($this->company->legal_name, $manifest['producer']['legal_name']);
@@ -82,7 +85,7 @@ class ComplianceApiTest extends TestCase
         Notification::assertSentTo($this->manager, BusinessEventNotification::class, fn (BusinessEventNotification $n) => $n->type === 'document.signature_requested');
 
         // Asking again returns the same slip instead of creating a duplicate.
-        $this->industrial()->postJson("/api/v1/pickups/{$pickup}/manifests")->assertCreated()->assertJsonPath('data.0.ulid', $manifest['ulid']);
+        $this->industrial()->postJson("/api/v1/pickups/{$pickup}/manifests")->assertCreated()->assertJsonCount(2, 'data')->assertJsonPath('data.0.ulid', $manifest['ulid']);
         $ulid = $manifest['ulid'];
 
         // Order is enforced, and a signature needs the signer's password.
@@ -94,7 +97,7 @@ class ComplianceApiTest extends TestCase
         $this->industrial()->postJson("/api/v1/manifests/{$ulid}/sign", ['password' => self::PASSWORD])->assertConflict();
 
         // The provider transports and receives: it signs each role.
-        $this->asProvider()->getJson('/api/v1/manifests')->assertOk()->assertJsonCount(1, 'data');
+        $this->asProvider()->getJson('/api/v1/manifests')->assertOk()->assertJsonCount(2, 'data');
         $this->asProvider()->postJson("/api/v1/manifests/{$ulid}/sign", ['password' => self::PASSWORD])->assertOk()->assertJsonPath('data.status', 'pending_receiver_signature');
         $this->asProvider()->postJson("/api/v1/pickups/{$pickup}/receive", ['lots' => [['lot_number' => $hazardous['lot_number'], 'received_weight_kg' => '29.5']]])->assertOk();
         $this->asProvider()->postJson("/api/v1/manifests/{$ulid}/sign", ['password' => self::PASSWORD])->assertOk()
@@ -102,13 +105,13 @@ class ComplianceApiTest extends TestCase
         $this->asProvider()->postJson("/api/v1/manifests/{$ulid}/sign", ['password' => self::PASSWORD])->assertConflict()->assertJsonPath('code', 'MANIFEST_NOT_SIGNABLE');
 
         // Each signature keeps who, when, where from and the hash of what was signed.
-        $signatures = DB::table('document_signatures')->orderBy('sequence')->get();
+        $signatures = DB::table('document_signatures')->where('document_id', DB::table('hazardous_waste_manifests')->where('ulid', $ulid)->value('document_id'))->orderBy('sequence')->get();
         $this->assertSame([$this->manager->id, $this->providerUser->id, $this->providerUser->id], $signatures->pluck('signer_user_id')->all());
         $this->assertCount(3, $signatures->pluck('signed_payload_hash')->filter(fn ($hash) => strlen((string) $hash) === 64));
         $this->assertNotNull($signatures[0]->ip_address);
 
         // M5-04: the signed slip is archived as an issued PDF kept ten years, readable by both parties.
-        $document = $this->industrial()->getJson('/api/v1/documents?filter[type]=hazardous_manifest')->assertOk()->assertJsonCount(1, 'data')->json('data.0');
+        $document = collect($this->industrial()->getJson('/api/v1/documents?filter[type]=hazardous_manifest')->assertOk()->json('data'))->firstWhere('reference_number', $manifest['manifest_number']);
         $this->assertSame('issued', $document['status']);
         $this->assertSame(now()->addYears(10)->toDateString(), $document['retention_until']);
         $this->assertStringStartsWith('%PDF-', $this->industrial()->get("/api/v1/documents/{$document['ulid']}/download")->assertOk()->streamedContent());
@@ -130,11 +133,15 @@ class ComplianceApiTest extends TestCase
         $this->assertSame(1, DB::table('documents')->where('ulid', $document['ulid'])->count());
     }
 
-    public function test_a_pickup_without_hazardous_waste_needs_no_slip(): void
+    public function test_non_hazardous_waste_leaves_with_a_slip_too(): void
     {
-        [$pickup] = $this->collectedPickup(hazardous: false);
+        [$pickup, $lot] = $this->collectedPickup(hazardous: false);
 
-        $this->industrial()->postJson("/api/v1/pickups/{$pickup}/manifests")->assertConflict()->assertJsonPath('code', 'NO_HAZARDOUS_LOTS');
+        $slip = $this->industrial()->getJson("/api/v1/manifests?filter[pickup]={$pickup}")->assertOk()->assertJsonCount(1, 'data')->json('data.0');
+        $this->assertFalse($slip['is_hazardous']);
+        $this->assertSame('04 02 22', $slip['regulatory_code']);
+        $this->assertSame('80.000', $slip['declared_weight_kg']);
+        $this->assertSame($lot['lot_number'], DB::table('pickup_lots')->whereNotNull('hazardous_waste_manifest_id')->value('lot_number_snapshot'));
     }
 
     public function test_annual_declaration_is_computed_from_the_year_then_validated_and_archived(): void
