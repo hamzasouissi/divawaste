@@ -22,6 +22,7 @@ export const INDUSTRIAL_ROUTES: Routes = [
   { path: 'production/catalog', canActivate: [permissionGuard('production.view')], loadComponent: () => import('./production/materials').then((m) => m.MaterialsPage), title: 'Matières et articles — DivaWaste' },
   { path: 'production/orders', canActivate: [permissionGuard('production.view')], loadComponent: () => import('./production/orders').then((m) => m.OrdersPage), title: 'Commandes — DivaWaste' },
   { path: 'production/manufacturing-orders', canActivate: [permissionGuard('production.view')], loadComponent: () => import('./production/orders').then((m) => m.ManufacturingOrdersPage), title: 'Ordres de fabrication — DivaWaste' },
+  { path: 'production/stats', canActivate: [permissionGuard('production.stats.view')], loadComponent: () => import('./production/stats').then((m) => m.ProductionStatsPage), title: 'Statistiques de production — DivaWaste' },
   { path: 'production/import', canActivate: [permissionGuard('production.manage')], loadComponent: () => import('./production/import').then((m) => m.ImportPage), title: 'Import — DivaWaste' },
   { path: 'reports', canActivate: [permissionGuard('reports.view')], loadComponent: () => import('./reports/reports').then((m) => m.ReportsPage), title: 'Rapports — DivaWaste' },
   { path: 'sites', canActivate: [permissionGuard('sites.view')], loadComponent: () => import('./sites/sites').then((m) => m.SitesPage), title: 'Sites — DivaWaste' },

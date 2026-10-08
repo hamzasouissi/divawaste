@@ -68,6 +68,23 @@ import { IconComponent } from '../../ui/icon';
                 </div>
               </section>
 
+              @if (l.origin; as o) {
+                <section class="dw-panel">
+                  <div class="dw-panel-head"><h2 class="dw-h2">{{ t('lots.production') }}</h2></div>
+                  <div class="dw-panel-body">
+                    <dl class="dw-facts">
+                      <div><dt>{{ t('lots.productionOrder') }}</dt><dd class="dw-mono">{{ o.production_order?.order_number ?? '—' }}</dd></div>
+                      <div><dt>{{ t('production.of.step') }}</dt><dd>{{ o.step ? (o.step.name | dwLocalized) : '—' }}</dd></div>
+                      <div><dt>{{ t('production.articles.one') }}</dt><dd>{{ o.article ? o.article.reference + ' — ' + o.article.name : '—' }}</dd></div>
+                      <div><dt>{{ t('production.clients.one') }}</dt><dd>{{ o.client ?? '—' }}</dd></div>
+                      <div><dt>{{ t('production.orders.one') }}</dt><dd class="dw-mono">{{ o.customer_order ?? '—' }}</dd></div>
+                      <div><dt>{{ t('lots.rawMaterial') }}</dt><dd>{{ o.raw_material ? o.raw_material.reference + ' — ' + o.raw_material.name : '—' }} @if (o.batch) { <span class="dw-faint">· {{ t('production.materials.batchNumber') }} {{ o.batch.batch_number }}</span> }</dd></div>
+                      <div><dt>{{ t('production.suppliers.one') }}</dt><dd>{{ o.supplier ?? '—' }}</dd></div>
+                    </dl>
+                  </div>
+                </section>
+              }
+
               @if (meta(); as m) {
                 @if (m.parents.length > 0 || m.children.length > 0) {
                   <section class="dw-panel">

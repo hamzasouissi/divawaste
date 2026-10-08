@@ -142,6 +142,27 @@ export interface WasteType {
 
 export type LotStatus = 'created' | 'stored' | 'awaiting_pickup' | 'collected' | 'treated' | 'closed';
 
+/** Where a waste lot comes from in production; each part may be unknown. */
+export interface LotOrigin {
+  production_order: { ulid: string; order_number: string } | null;
+  article: { reference: string; name: string } | null;
+  customer_order: string | null;
+  client: string | null;
+  step: { code: string; name: Localized } | null;
+  raw_material: { ulid: string; reference: string; name: string } | null;
+  supplier: string | null;
+  batch: { ulid: string; batch_number: string } | null;
+}
+
+/** A manufacturing order a lot can be attached to: only what is needed to choose it. */
+export interface OpenOrder {
+  ulid: string;
+  order_number: string;
+  article: { reference: string; name: string };
+  steps: { step: string; site: string }[];
+  materials: { ulid: string; reference: string; name: string }[];
+}
+
 export interface Named {
   ulid: string;
   code: string;
@@ -165,6 +186,8 @@ export interface Lot {
   tare_weight_kg: string | null;
   color_family: string | null;
   color_label: string | null;
+  /** null when the lot says nothing about its origin. */
+  origin?: LotOrigin | null;
   grammage_gsm: string | null;
   composition_label: string | null;
   notes: string | null;

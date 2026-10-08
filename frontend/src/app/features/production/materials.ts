@@ -53,6 +53,10 @@ import { Article, DECIMAL, ProductionLists, RawMaterial, blankToNull, decimal } 
               </dw-select>
             </dw-field>
             <dw-field [label]="t('lots.grammage')"><input pInputText formControlName="grammage_gsm" inputmode="decimal" /></dw-field>
+            <dw-field [label]="t('production.materials.width')">
+              <input pInputText formControlName="width_cm" inputmode="decimal" />
+              <small dwHint>{{ t('production.materials.widthHint') }}</small>
+            </dw-field>
             <dw-field [label]="t('lots.color')">
               <dw-select formControlName="color_family">
                 <dw-option value="" label="—" />
@@ -137,6 +141,7 @@ export class MaterialDialog {
     color_family: [this.data?.color_family ?? ''],
     color_label: [this.data?.color_label ?? ''],
     grammage_gsm: [this.data?.grammage_gsm ?? '', DECIMAL],
+    width_cm: [this.data?.width_cm ?? '', DECIMAL],
     notes: [this.data?.notes ?? ''],
     is_active: [this.data?.is_active ?? true],
     composition: this.composition,
@@ -164,7 +169,7 @@ export class MaterialDialog {
     }
     this.busy.set(true);
     const value = this.form.getRawValue();
-    const body = blankToNull({ ...value, grammage_gsm: decimal(value.grammage_gsm), composition: value.composition.map((line) => ({ material: line['material'] as string, pct: decimal(line['pct'] as string) })) });
+    const body = blankToNull({ ...value, grammage_gsm: decimal(value.grammage_gsm), width_cm: decimal(value.width_cm), composition: value.composition.map((line) => ({ material: line['material'] as string, pct: decimal(line['pct'] as string) })) });
     const current = this.material();
     try {
       const saved = await firstValueFrom(current ? this.api.put<RawMaterial>(`production/materials/${current.ulid}`, body) : this.api.post<RawMaterial>('production/materials', body));

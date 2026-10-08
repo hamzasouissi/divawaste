@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
+import { catchError, firstValueFrom, of } from 'rxjs';
 import { ulid } from 'ulid';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
@@ -10,7 +10,7 @@ import { Textarea } from 'primeng/textarea';
 import { AutoFocus } from 'primeng/autofocus';
 
 import { Api } from '../../core/api/api';
-import { Lot, Zone } from '../../core/api/models';
+import { Lot, OpenOrder, Zone } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
@@ -56,6 +56,21 @@ const decimal = (value: string | number): string => String(value).replace(',', '
                 }
               </dw-select>
             </dw-field>
+            @if (orders().length > 0) {
+              <dw-field [label]="t('lots.productionOrder')">
+                <dw-select formControlName="production_order">
+                  <dw-option [value]="null" [label]="t('lots.noProductionOrder')" />
+                  @for (order of orders(); track order.ulid) { <dw-option [value]="order.ulid" [label]="order.order_number + ' — ' + order.article.reference" /> }
+                </dw-select>
+                <small dwHint>{{ t('lots.productionOrderHint') }}</small>
+              </dw-field>
+              <dw-field [label]="t('lots.rawMaterial')">
+                <dw-select formControlName="raw_material">
+                  <dw-option [value]="null" [label]="t('lots.materialOfOrder')" />
+                  @for (material of materials(); track material.ulid) { <dw-option [value]="material.ulid" [label]="material.reference + ' — ' + material.name" /> }
+                </dw-select>
+              </dw-field>
+            }
             <dw-field [label]="t('fields.netWeight')">
               <input pInputText formControlName="net_weight_kg" inputmode="decimal" required [pAutoFocus]="true" />
             </dw-field>
@@ -105,6 +120,8 @@ export class CreateLotDialog {
     zone: ['', Validators.required],
     waste_type: ['', Validators.required],
     net_weight_kg: ['', WEIGHT],
+    production_order: [null as string | null],
+    raw_material: [null as string | null],
     packaging_type: [null as string | null],
     color_family: [null as string | null],
     grammage_gsm: [''],
@@ -112,6 +129,11 @@ export class CreateLotDialog {
   });
 
   private readonly chosen = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
+  private readonly openOrders = toSignal(this.api.get<OpenOrder[]>('production/open-orders').pipe(catchError(() => of([] as OpenOrder[]))), { initialValue: [] });
+  /** The manufacturing orders that come to the chosen site (an OF without stages may be anywhere). */
+  protected readonly orders = computed(() => this.openOrders().filter((order) => order.steps.length === 0 || order.steps.some((step) => step.site === this.chosen().site)));
+  /** The materials of the chosen OF: with a single one, the lot takes it without asking. */
+  protected readonly materials = computed(() => this.openOrders().find((order) => order.ulid === this.chosen().production_order)?.materials ?? []);
   /** A warning, never a refusal: the operator may have a good reason to put the lot there. */
   protected readonly mismatch = computed(() => {
     const value = this.chosen();
