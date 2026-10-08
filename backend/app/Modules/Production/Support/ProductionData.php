@@ -39,7 +39,7 @@ final class ProductionData
             'supplier' => $this->named('production_suppliers', $material->production_supplier_id),
             'unit' => $this->codes->code('units', $material->unit_id),
             'color_family' => $this->codes->code('color_families', $material->color_family_id), 'color_label' => $material->color_label,
-            'grammage_gsm' => $material->grammage_gsm, 'composition' => $material->composition ?? [],
+            'grammage_gsm' => $material->grammage_gsm, 'width_cm' => $material->width_cm, 'composition' => $material->composition ?? [],
             'notes' => $material->notes, 'is_active' => $material->is_active,
             'batches' => DB::table('raw_material_batches')->where('raw_material_id', $material->id)->orderByDesc('received_on')->orderByDesc('id')
                 ->get(['ulid', 'batch_number', 'received_on', 'quantity', 'notes'])->map(fn ($batch) => (array) $batch),

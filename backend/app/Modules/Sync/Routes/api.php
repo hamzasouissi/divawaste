@@ -3,6 +3,7 @@
 use App\Modules\Catalog\Models\WasteType;
 use App\Modules\Catalog\Resources\WasteTypeResource;
 use App\Modules\Identity\Authorization\AccessResolver;
+use App\Modules\Production\Support\LotOrigin;
 use App\Modules\Sites\Models\Site;
 use App\Modules\Sites\Resources\SiteResource;
 use App\Modules\Sync\Actions\ApplyOfflineOperations;
@@ -28,7 +29,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
      * What the workshop application needs to keep working without a network: the sites and zones where the
      * operator may create lots, and the active waste types.
      */
-    Route::get('sync/bootstrap', function (Request $request, AccessResolver $access) {
+    Route::get('sync/bootstrap', function (Request $request, AccessResolver $access, LotOrigin $origin) {
         $siteIds = $access->siteIdsFor($request->user(), 'lots.create');
         abort_if($siteIds === [], 403);
 
@@ -38,6 +39,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
                 ->when($siteIds !== null, fn ($query) => $query->whereIn('id', $siteIds))
                 ->with(['zones' => fn ($query) => $query->where('is_active', true)->orderBy('code')])->orderBy('code')->get()),
             'waste_types' => WasteTypeResource::collection(WasteType::query()->where('is_active', true)->orderBy('name')->get()),
+            // The manufacturing orders a lot can be attached to on these sites (empty when the company does not use production).
+            'manufacturing_orders' => $origin->openOrders($siteIds),
         ]]);
     })->name('sync.bootstrap');
 

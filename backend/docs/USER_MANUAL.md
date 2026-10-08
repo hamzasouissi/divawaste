@@ -390,8 +390,48 @@ keeps working exactly as before. Nothing is deleted here: what is no longer used
 
 ![Manufacturing order](screenshots/production/02-manufacturing-order.png)
 
-### Import — `/production/import`
+### Where a waste comes from
 
+A lot can say its **manufacturing order**, the **stage** it was produced at, and the **raw material** (and received
+batch) it is made of. All of it is optional, and most of it is deduced:
+
+- In **Nouveau lot** (and in the workshop application, one extra screen "Pour quel OF ?" when the site has open
+  orders, the last one used first, "Sans OF" always possible), you choose the OF.
+- The **stage** is the one the zone stands for (a lot created in a zone of type Coupe comes from cutting), or the
+  only stage the OF has on that site. So a lot created without an OF still knows its stage.
+- The **material** is the one the OF works with when it works with a single one; otherwise it can be chosen.
+- The lot then takes the **composition and colour of its material** (before the defaults of the waste type).
+
+The lot page shows the whole chain under **Origine en production**: OF, stage, article, client, order, material,
+batch, supplier. A split keeps the origin; a grouping keeps it only where all its lots agree. The origin of a lot
+can be given or corrected afterwards (permission `lots.update`).
+
+### Statistiques — `/production/stats`
+
+*production.stats.view.*
+
+![Production statistics](screenshots/production/04-stats.png)
+
+For a period (and a site): the waste generated, then six tables — by OF, client, article, stage, raw material and
+supplier — with lots, weight, pieces, grams per piece, waste rate and money balance. **Exporter (Excel)** gives the
+same figures. Click an OF or a material to list its lots.
+
+Two kinds of figures are always shown apart:
+
+- **Mesuré**: the lot names its OF.
+- **Estimé** (≈, hatched bar): the lot only says its stage. Its weight is shared between the OFs that were at
+  that stage, on that site, that day, in proportion to the pieces they made there.
+- **Non attribué**: the lot says nothing, or no OF was at its stage. It is never guessed further.
+
+**Taux de chute** is the share of the consumed material that became waste. It needs the consumption of the OF in
+kilograms: either the material is counted in kg, or it is counted in metres and its **laize (cm)** and **grammage**
+are filled in. Otherwise the column shows "—".
+
+**Pieces produced** per site and month (used by the dashboard's "déchets par pièce produite") are counted from the
+finished OFs: the produced quantity, in the month the OF finished, on the site of its last stage. A month typed by
+hand is never overwritten.
+
+### Import — `/production/import`
 Any Excel or CSV file can be imported; its columns need no particular names or order.
 
 ![Import](screenshots/production/03-import.png)

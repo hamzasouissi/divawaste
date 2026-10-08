@@ -6,6 +6,7 @@ use App\Modules\Common\Docs\DemoData;
 use App\Modules\Identity\Models\User;
 use App\Modules\Notifications\Actions\NotifyUsers;
 use App\Modules\Notifications\Support\EmailLog;
+use App\Modules\Production\Support\ProductionVolumes;
 use App\Modules\Providers\Actions\AlertExpiringAccreditations;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Support\Carbon;
@@ -52,6 +53,14 @@ Artisan::command('authorizations:alert', function (NotifyUsers $notify) {
 })->purpose('Alert 30 and 7 days before a waste authorisation ends, unless a later one already takes over');
 
 Schedule::command('authorizations:alert')->dailyAt('06:10')->withoutOverlapping()->onOneServer();
+
+Artisan::command('production:volumes', function () {
+    $companies = DB::table('production_orders')->distinct()->pluck('company_id');
+    $companies->each(fn ($companyId) => ProductionVolumes::sync((int) $companyId));
+    $this->info("Production volumes: {$companies->count()} company(ies).");
+})->purpose('Count the pieces produced per site and month from the finished manufacturing orders');
+
+Schedule::command('production:volumes')->dailyAt('04:30')->withoutOverlapping()->onOneServer();
 
 Artisan::command('subscriptions:run', function (ManageSubscription $subscriptions) {
     $this->info('Subscriptions: '.json_encode($subscriptions->runDaily()));

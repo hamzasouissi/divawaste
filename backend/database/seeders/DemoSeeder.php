@@ -269,6 +269,8 @@ class DemoSeeder extends Seeder
 
             // Production reference: two clients, two suppliers, their materials and articles, orders and manufacturing orders.
             $this->production($sites);
+            $manufacturingOrders = ProductionOrder::query()->pluck('ulid', 'order_number');
+            $attributed = 0;
 
             // Two partners without an account: the company records the stages of their pickups and they sign on paper.
             ExternalPartner::query()->create(['legal_name' => 'Transports Ben Salah', 'tax_id' => '1187452K', 'address_line1' => 'Route de Tunis km 4', 'postal_code' => '8000',
@@ -295,8 +297,17 @@ class DemoSeeder extends Seeder
                                 continue;
                             }
                             $zone = Zone::query()->where('site_id', $site->id)->where('code', $zoneFor[$typeCode])->firstOrFail();
+                            // Textile waste comes from a manufacturing order: cutting scraps alternate between the two running
+                            // OFs in Nabeul, sewing waste belongs to the OF sewn on the other site. One lot in three says nothing
+                            // (the stage of its zone is still known), as happens on a real floor.
+                            $of = match (true) {
+                                ! in_array($typeCode, ['CHUTES', 'FILS', 'REBUTS'], true) || ++$attributed % 3 === 0 => null,
+                                $siteCode !== 'NAB' => $manufacturingOrders['OF-2026-014'],
+                                default => $manufacturingOrders[$attributed % 2 === 0 ? 'OF-2026-014' : 'OF-2026-016'],
+                            };
                             $lot = $createLot->handle(new CreateWasteLotData(siteUlid: $site->ulid, zoneUlid: $zone->ulid, wasteTypeUlid: $types[$typeCode]->ulid,
-                                netWeightKg: (string) ($kg + $monthsAgo * 3), packagingType: $typeCode === 'TEINT' ? 'drum' : 'bale', generatedAt: $at->toDateTimeString()), $sami);
+                                netWeightKg: (string) ($kg + $monthsAgo * 3), packagingType: $typeCode === 'TEINT' ? 'drum' : 'bale', generatedAt: $at->toDateTimeString(),
+                                productionOrder: $of), $sami);
                             $lots[$monthsAgo][$siteCode][] = $lot;
                         }
                     }
@@ -393,15 +404,15 @@ class DemoSeeder extends Seeder
         $sahel = ProductionSupplier::query()->create(['code' => 'TISSAHEL', 'name' => 'Tissages du Sahel', 'country_code' => 'TN']);
 
         $denim = RawMaterial::query()->create(['reference' => 'DEN-12OZ', 'name' => 'Denim 12 oz stretch', 'production_supplier_id' => $mills->id, 'unit_id' => $unit('m'),
-            'color_label' => '19-4052 TCX', 'grammage_gsm' => 407, 'composition' => [['material' => 'CO', 'pct' => '98.00'], ['material' => 'EL', 'pct' => '2.00']]]);
-        $poplin = RawMaterial::query()->create(['reference' => 'POP-110', 'name' => 'Popeline 110 g', 'production_supplier_id' => $sahel->id, 'unit_id' => $unit('m'),
-            'color_label' => 'Blanc optique', 'grammage_gsm' => 110, 'composition' => [['material' => 'CO', 'pct' => '100.00']]]);
+            'color_label' => '19-4052 TCX', 'grammage_gsm' => 407, 'width_cm' => 150, 'composition' => [['material' => 'CO', 'pct' => '98.00'], ['material' => 'EL', 'pct' => '2.00']]]);
+        $poplin = RawMaterial::query()->create(['reference' => 'POP-110', 'name' => 'Popeline 160 g', 'production_supplier_id' => $sahel->id, 'unit_id' => $unit('m'),
+            'color_label' => 'Blanc optique', 'grammage_gsm' => 160, 'width_cm' => 150, 'composition' => [['material' => 'CO', 'pct' => '100.00']]]);
         $batch = fn (RawMaterial $material, string $number, int $daysAgo, int $metres) => DB::table('raw_material_batches')->insertGetId(['ulid' => strtoupper((string) Str::ulid()),
             'company_id' => $material->getAttribute('company_id'), 'raw_material_id' => $material->id, 'batch_number' => $number, 'received_on' => now()->subDays($daysAgo)->toDateString(),
             'quantity' => $metres, 'created_at' => now(), 'updated_at' => now()]);
-        $roll = $batch($denim, 'R-0412', 60, 3200);
-        $batch($denim, 'R-0455', 20, 2400);
-        $bolt = $batch($poplin, 'P-2231', 45, 2600);
+        $roll = $batch($denim, 'R-0412', 60, 32000);
+        $batch($denim, 'R-0455', 20, 24000);
+        $bolt = $batch($poplin, 'P-2231', 45, 26000);
 
         $jean = Article::query()->create(['reference' => 'JEAN-501', 'name' => 'Jean droit 5 poches', 'family' => 'Jean', 'production_client_id' => $levant->id]);
         $shirt = Article::query()->create(['reference' => 'CHEM-220', 'name' => 'Chemise popeline', 'family' => 'Chemise', 'production_client_id' => $nordic->id]);
@@ -418,8 +429,8 @@ class DemoSeeder extends Seeder
 
             return $order;
         };
-        $jeans = $order('CMD-2026-088', $levant, $jean, 2400, 70, 'in_progress');
-        $shirts = $order('CMD-2026-091', $nordic, $shirt, 1500, 55, 'completed');
+        $jeans = $order('CMD-2026-088', $levant, $jean, 24000, 70, 'in_progress');
+        $shirts = $order('CMD-2026-091', $nordic, $shirt, 15000, 55, 'completed');
 
         $of = function (string $number, Article $article, CustomerOrder $order, int $planned, ?int $produced, ?int $startedDaysAgo, ?int $finishedDaysAgo, array $steps, array $consumed) use ($step) {
             $of = ProductionOrder::query()->create(['order_number' => $number, 'article_id' => $article->id, 'customer_order_id' => $order->id, 'quantity_planned' => $planned,
@@ -436,9 +447,9 @@ class DemoSeeder extends Seeder
         };
         $nabeul = $sites['NAB'];
         $other = collect($sites)->first(fn (Site $site) => $site->id !== $nabeul->id) ?? $nabeul;
-        // Cut in Nabeul, sewn on the other site: 1 200 planned × 1.35 m = 1 620 m expected, 1 705 m consumed.
-        $of('OF-2026-014', $jean, $jeans, 1200, 1160, 40, null, [['cutting', $nabeul, 1200], ['sewing', $other, 1160], ['washing', $other, 1100]], [[$denim, $roll, 1705]]);
-        $of('OF-2026-015', $jean, $jeans, 1200, null, null, null, [['cutting', $nabeul, null], ['sewing', $other, null]], []);
-        $of('OF-2026-016', $shirt, $shirts, 1500, 1480, 50, 12, [['cutting', $nabeul, 1500], ['sewing', $nabeul, 1480], ['finishing', $nabeul, 1480]], [[$poplin, $bolt, 2460]]);
+        // Cut in Nabeul, sewn on the other site: 12 000 planned × 1.35 m = 16 200 m expected, 17 050 m consumed.
+        $of('OF-2026-014', $jean, $jeans, 12000, 11600, 95, null, [['cutting', $nabeul, 12000], ['sewing', $other, 11600], ['washing', $other, 11000]], [[$denim, $roll, 17050]]);
+        $of('OF-2026-015', $jean, $jeans, 12000, null, null, null, [['cutting', $nabeul, null], ['sewing', $other, null]], []);
+        $of('OF-2026-016', $shirt, $shirts, 15000, 14800, 95, 12, [['cutting', $nabeul, 15000], ['sewing', $nabeul, 14800], ['finishing', $nabeul, 14800]], [[$poplin, $bolt, 24600]]);
     }
 }

@@ -29,5 +29,10 @@ final readonly class CreateWasteLotData
         public ?string $generatedAt = null,
         public ?int $deviceId = null,
         public string $source = 'web',
+        // Where the waste comes from in production (all optional): OF and material by ULID, stage by code.
+        public ?string $productionOrder = null,
+        public ?string $productionStep = null,
+        public ?string $rawMaterial = null,
+        public ?string $rawMaterialBatch = null,
     ) {}
 }

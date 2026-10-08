@@ -3,6 +3,7 @@
 use App\Modules\Catalog\Support\Colors;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Support\ReferenceCodes;
+use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Production\Models\Article;
 use App\Modules\Production\Models\CustomerOrder;
 use App\Modules\Production\Models\ProductionClient;
@@ -10,7 +11,10 @@ use App\Modules\Production\Models\ProductionOrder;
 use App\Modules\Production\Models\ProductionSupplier;
 use App\Modules\Production\Models\RawMaterial;
 use App\Modules\Production\Support\ImportEngine;
+use App\Modules\Production\Support\LotOrigin;
 use App\Modules\Production\Support\ProductionData;
+use App\Modules\Production\Support\ProductionStats;
+use App\Modules\Production\Support\ProductionVolumes;
 use App\Modules\Reporting\Support\ArrayExport;
 use App\Modules\Sites\Models\Site;
 use App\Modules\Tenancy\Rules\TenantExists;
@@ -125,6 +129,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
         'color_family' => ['nullable', 'string', Colors::rule(app(TenantContext::class)->companyId())],
         'color_label' => ['nullable', 'string', 'max:100'],
         'grammage_gsm' => ['nullable', 'decimal:0,2', 'gt:0'],
+        'width_cm' => ['nullable', 'decimal:0,2', 'gt:0', 'lte:1000'],
         'composition' => ['nullable', 'array'],
         'composition.*.material' => ['required', 'string', 'distinct', Rule::exists('materials', 'code')->where('is_active', true)],
         'composition.*.pct' => ['required', 'decimal:0,2', 'gt:0', 'lte:100'],
@@ -140,7 +145,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
         return [
             'reference' => trim($input['reference']), 'name' => trim($input['name']), 'production_supplier_id' => $id(ProductionSupplier::class, $input['supplier'] ?? null),
             'unit_id' => $codes->id('units', $input['unit']), 'color_family_id' => $codes->id('color_families', $input['color_family'] ?? null),
-            'color_label' => $input['color_label'] ?? null, 'grammage_gsm' => $input['grammage_gsm'] ?? null, 'composition' => $composition === [] ? null : $composition,
+            'color_label' => $input['color_label'] ?? null, 'grammage_gsm' => $input['grammage_gsm'] ?? null, 'width_cm' => $input['width_cm'] ?? null, 'composition' => $composition === [] ? null : $composition,
             'notes' => $input['notes'] ?? null, 'is_active' => (bool) ($input['is_active'] ?? true),
         ];
     };
@@ -364,14 +369,61 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
     Route::post('manufacturing-orders', function (Request $request, ProductionData $data) use ($manage, $ofRules, $saveOf) {
         $manage($request);
 
-        return response()->json(['data' => $data->manufacturingOrder($saveOf(new ProductionOrder, $request->validate($ofRules())), detailed: true)], 201);
+        $of = $saveOf(new ProductionOrder, $request->validate($ofRules()));
+        ProductionVolumes::sync((int) $of->getAttribute('company_id'));
+
+        return response()->json(['data' => $data->manufacturingOrder($of, detailed: true)], 201);
     })->name('production.manufacturing-orders.store');
 
     Route::put('manufacturing-orders/{of}', function (Request $request, ProductionOrder $of, ProductionData $data) use ($manage, $ofRules, $saveOf) {
         $manage($request);
 
-        return response()->json(['data' => $data->manufacturingOrder($saveOf($of, $request->validate($ofRules($of))), detailed: true)]);
+        $of = $saveOf($of, $request->validate($ofRules($of)));
+        ProductionVolumes::sync((int) $of->getAttribute('company_id'));
+
+        return response()->json(['data' => $data->manufacturingOrder($of, detailed: true)]);
     })->name('production.manufacturing-orders.update');
+
+    // The manufacturing orders a lot can be attached to: for whoever creates lots, on the sites where he may. Only
+    // what is needed to choose one — an operator does not see clients or quantities.
+    Route::get('open-orders', function (Request $request, AccessResolver $access, LotOrigin $origin) {
+        $siteIds = $access->siteIdsFor($request->user(), 'lots.create');
+        abort_if($siteIds === [], 403);
+
+        return ['data' => $origin->openOrders($siteIds)];
+    })->name('production.open-orders');
+
+    /*
+     * Statistics: where the waste of a period comes from, measured (the lot names its order) and estimated (the lot
+     * only says its stage) kept apart.
+     */
+    $statsInput = function (Request $request) use ($id) {
+        abort_unless($request->user()->can('production.stats.view'), 403);
+        $input = $request->validate(['from' => ['required', 'date'], 'to' => ['required', 'date', 'after_or_equal:from'], 'site' => ['nullable', 'string', new TenantExists(Site::class)]]);
+
+        return [$input['from'], $input['to'], $id(Site::class, $input['site'] ?? null)];
+    };
+
+    Route::get('stats', fn (Request $request, ProductionStats $stats) => ['data' => $stats->compute(...$statsInput($request))])->name('production.stats');
+
+    Route::get('stats/export', function (Request $request, ProductionStats $stats) use ($statsInput) {
+        $data = $stats->compute(...$statsInput($request));
+        $rows = [];
+        foreach (['by_order', 'by_client', 'by_article', 'by_step', 'by_material', 'by_supplier'] as $section) {
+            foreach ($data[$section] as $row) {
+                $label = is_array($row['label']) ? ($row['label'][app()->getLocale()] ?? reset($row['label'])) : $row['label'];
+                $rows[] = [__("exports.production.{$section}"), $label, $row['sublabel'], $row['lots'], (float) $row['measured_kg'], (float) $row['estimated_kg'], (float) $row['total_kg'],
+                    $row['pieces'], $row['g_per_piece'], $row['consumed_kg'] === null ? null : (float) $row['consumed_kg'], $row['waste_rate_pct'], (float) $row['net_amount']];
+            }
+        }
+        $rows[] = [__('exports.production.unattributed'), null, null, $data['totals']['unattributed_lots'], null, null, (float) $data['totals']['unattributed_kg'], null, null, null, null, null];
+
+        return response(Excel::raw(new ArrayExport(__('exports.production.sheet'), array_map(fn (string $key) => __("exports.production.columns.{$key}"),
+            ['section', 'label', 'detail', 'lots', 'measured_kg', 'estimated_kg', 'total_kg', 'pieces', 'g_per_piece', 'consumed_kg', 'waste_rate_pct', 'net_amount']), $rows), ExcelFormat::XLSX), 200, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => 'attachment; filename="production-'.$data['period']['from'].'-'.$data['period']['to'].'.xlsx"', 'Cache-Control' => 'private, no-store',
+            ]);
+    })->name('production.stats.export');
 
     /*
      * Import from any spreadsheet: the user says in which column each piece of information is.
@@ -433,6 +485,11 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
             }
         }
 
-        return ['data' => $engine->run($input['target'], $sheet['rows'], $mapping, $request->boolean('dry_run')) + ['dry_run' => $request->boolean('dry_run')]];
+        $result = $engine->run($input['target'], $sheet['rows'], $mapping, $request->boolean('dry_run'));
+        if (! $request->boolean('dry_run')) {
+            ProductionVolumes::sync(app(TenantContext::class)->companyId());
+        }
+
+        return ['data' => $result + ['dry_run' => $request->boolean('dry_run')]];
     })->name('production.imports.run');
 });

@@ -11,7 +11,7 @@ return [
         'suppliers' => ['code' => 'Code', 'name' => 'Name', 'country_code' => 'Country (code)', 'contact_name' => 'Contact', 'email' => 'Email', 'phone' => 'Phone'],
         'materials' => [
             'reference' => 'Reference', 'name' => 'Description', 'supplier' => 'Supplier', 'unit' => 'Unit (m, kg, piece)', 'color_label' => 'Colour',
-            'grammage_gsm' => 'Weight (g/m²)', 'batch_number' => 'Received batch no.', 'received_on' => 'Reception date', 'batch_quantity' => 'Quantity received',
+            'grammage_gsm' => 'Weight (g/m²)', 'width_cm' => 'Width (cm)', 'batch_number' => 'Received batch no.', 'received_on' => 'Reception date', 'batch_quantity' => 'Quantity received',
         ],
         'articles' => [
             'reference' => 'Reference', 'name' => 'Description', 'family' => 'Family', 'client' => 'Client', 'material' => 'Raw material',
