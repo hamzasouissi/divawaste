@@ -26,13 +26,14 @@ import { SearchComponent } from '../../ui/search';
 import { SELECT } from '../../ui/select';
 import { Article, DECIMAL, ProductionLists, RawMaterial, blankToNull, decimal } from './production-data';
 import { HelpComponent } from '../../ui/help';
+import { COLOR } from '../../ui/swatch';
 
 /**
  * A raw material: who supplies it, how it is counted, what it is made of, and the deliveries received. Its
  * composition and colour are what the waste coming from it will carry.
  */
 @Component({
-  imports: [ReactiveFormsModule, TranslocoDirective, LocalizedPipe, DatePipe, NumberPipe, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, ...DIALOG_PARTS, IconComponent, CheckboxComponent, DateComponent],
+  imports: [ReactiveFormsModule, TranslocoDirective, LocalizedPipe, DatePipe, NumberPipe, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, ...COLOR, ...DIALOG_PARTS, IconComponent, CheckboxComponent, DateComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -61,7 +62,7 @@ import { HelpComponent } from '../../ui/help';
             <dw-field [label]="t('lots.color')">
               <dw-select formControlName="color_family">
                 <dw-option value="" label="—" />
-                @for (color of vocabulary()?.color_families ?? []; track color.code) { <dw-option [value]="color.code" [label]="color.name | dwLocalized" /> }
+                @for (color of vocabulary()?.color_families ?? []; track color.code) { <dw-option [value]="color.code" [label]="(color.name | dwLocalized) | dwColorName: color.pantone_reference" [swatch]="color.hex_color" /> }
               </dw-select>
             </dw-field>
             <dw-field [label]="t('production.materials.colorLabel')"><input pInputText formControlName="color_label" maxlength="100" placeholder="19-4052 TCX" /></dw-field>
@@ -325,7 +326,7 @@ export class ArticleDialog {
 @Component({
   imports: [
     HelpComponent,
-    TranslocoDirective, PageHeaderComponent, ...TABLE, StatusComponent, SearchComponent, FilterBarComponent, CheckboxComponent, ButtonDirective, IconComponent, CodePipe,
+    TranslocoDirective, PageHeaderComponent, ...TABLE, StatusComponent, SearchComponent, FilterBarComponent, CheckboxComponent, ButtonDirective, IconComponent, CodePipe, ...COLOR,
     Tabs, TabList, Tab, TabPanels, TabPanel,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -349,7 +350,7 @@ export class ArticleDialog {
                 (page)="materials.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="editMaterial($event)" (retry)="materials.reload()">
                 <ng-template dwCell="reference" let-m><span class="dw-mono">{{ m.reference }}</span></ng-template>
                 <ng-template dwCell="composition" let-m>@for (line of m.composition; track line.material) { <span class="chip">{{ line.material | dwCode: 'material' }} {{ +line.pct }} %</span> } @empty { — }</ng-template>
-                <ng-template dwCell="color" let-m>{{ m.color_label ?? (m.color_family | dwCode: 'color') }}</ng-template>
+                <ng-template dwCell="color" let-m>@if (m.color_family) { <dw-color [code]="m.color_family" /> }@if (m.color_family && m.color_label) { · }{{ m.color_label ?? (m.color_family ? '' : '—') }}</ng-template>
                 <ng-template dwCell="batches" let-m>{{ m.batches.length || '—' }}</ng-template>
                 <ng-template dwCell="status" let-m><dw-status kind="member" [value]="m.is_active ? 'active' : 'suspended'" [label]="t(m.is_active ? 'common.active' : 'common.inactive')" /></ng-template>
               </dw-data-table>

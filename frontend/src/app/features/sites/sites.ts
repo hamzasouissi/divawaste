@@ -27,6 +27,7 @@ import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
 import { ZoneFillComponent } from '../../ui/zone-fill';
 import { HelpComponent } from '../../ui/help';
+import { COLOR } from '../../ui/swatch';
 
 const DIALOG = [ReactiveFormsModule, TranslocoDirective] as const;
 const DECIMAL = Validators.pattern(/^\d+([.,]\d{1,3})?$/);
@@ -117,7 +118,7 @@ interface ZoneDialogData {
 }
 
 @Component({
-  imports: [...DIALOG, LocalizedPipe, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS, IconComponent],
+  imports: [...DIALOG, LocalizedPipe, ButtonDirective, InputText, ...FIELD, ...SELECT, ...COLOR, ...DIALOG_PARTS, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -166,7 +167,7 @@ interface ZoneDialogData {
             </dw-field>
             <dw-field [label]="t('sites.acceptedColors')">
               <dw-select formControlName="accepted_colors" multiple clearable [placeholder]="t('sites.anyColor')">
-                @for (color of vocabulary()?.color_families ?? []; track color.code) { <dw-option [value]="color.code" [label]="color.name | dwLocalized" /> }
+                @for (color of vocabulary()?.color_families ?? []; track color.code) { <dw-option [value]="color.code" [label]="(color.name | dwLocalized) | dwColorName: color.pantone_reference" [swatch]="color.hex_color" /> }
               </dw-select>
             </dw-field>
           </div>
@@ -311,7 +312,7 @@ export class SitesPage {
 
 /** A site and its zones. Zones holding waste cannot be closed; nothing is ever deleted (traceability). */
 @Component({
-  imports: [HelpComponent, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KgPipe, CodePipe, LocalizedPipe, IconComponent, ButtonDirective, ZoneFillComponent],
+  imports: [HelpComponent, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KgPipe, CodePipe, LocalizedPipe, IconComponent, ButtonDirective, ZoneFillComponent, ...COLOR],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -362,7 +363,7 @@ export class SitesPage {
                           <span class="dw-faint">{{ t('sites.anything') }}</span>
                         } @else {
                           @if (zone.accepted_waste_types.length > 0) { <div>{{ typeNames(zone.accepted_waste_types) }}</div> }
-                          @if (zone.accepted_colors.length > 0) { <div class="dw-faint">@for (color of zone.accepted_colors; track color; let last = $last) { {{ color | dwCode: 'color' }}@if (!last) { , } }</div> }
+                          @if (zone.accepted_colors.length > 0) { <div class="dw-faint">@for (color of zone.accepted_colors; track color; let last = $last) { <dw-color [code]="color" />@if (!last) { , } }</div> }
                         }
                       </td>
                       <td><dw-status kind="member" [value]="zone.is_active ? 'active' : 'suspended'" [label]="t(zone.is_active ? 'common.active' : 'common.inactive')" /></td>
