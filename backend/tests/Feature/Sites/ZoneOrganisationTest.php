@@ -49,7 +49,7 @@ class ZoneOrganisationTest extends TestCase
             ->assertJsonPath('data.capacities.0', ['packaging_type' => 'bale', 'max_count' => 40])
             ->assertJsonPath('data.accepted_waste_types', [$chutes->ulid])
             ->assertJsonPath('data.accepted_colors', ['white', 'ecru'])
-            ->assertJsonPath('data.fill.pct', 0)
+            ->assertJsonPath('data.fill.constraints.0.key', 'space')->assertJsonPath('data.fill.constraints.0.pct', 0)
             ->json('data');
 
         // A list that is sent replaces the previous one; a list left out is kept.
@@ -97,23 +97,23 @@ class ZoneOrganisationTest extends TestCase
         // What a request has read is kept for that request only; the test runs several of them in one process.
         $this->app->forgetScopedInstances();
 
-        // 2 bales of 4 (50 %) + 2 bags of 10 (20 %) = 70 %; by weight 600 kg of 1000 = 60 %. The higher one counts.
+        // Room: 2 bales of 4 (50 %) + 2 bags of 10 (20 %) = 70 %, and two lots it cannot count. Load: 600 kg of 1000.
+        // Two limits, two answers: neither percentage is taken for the other.
         $fill = collect($this->withToken($this->token)->getJson("/api/v1/sites/{$this->site->ulid}")->assertOk()->json('data.zones'))->firstWhere('ulid', $zone)['fill'];
-        $this->assertEquals(70, $fill['pct']);
-        $this->assertEquals(70, $fill['count_pct']);
-        $this->assertEquals(60, $fill['weight_pct']);
-        $this->assertSame('warning', $fill['alert_level']);
+        [$space, $load] = $fill['constraints'];
+        $this->assertEquals(['space', 70, 'unverifiable', 2], [$space['key'], $space['pct'], $space['outcome'], $space['missing_count']]);
+        $this->assertCount(2, $space['missing_lots']);
+        $this->assertEquals(['load', '600.000', '1000.000', 60, 'respected', '400.000', false], [$load['key'], $load['used'], $load['max'], $load['pct'], $load['outcome'], $load['remaining'], $load['blocking']]);
+        $this->assertSame(['unverifiable', null], [$fill['outcome'], $fill['alert_level']]);
         $this->assertSame(6, $fill['lots']);
-        $this->assertSame(2, $fill['uncounted']);
         $this->assertSame(2, $fill['misplaced']);
-        $this->assertSame(['bale' => 1, 'bag' => 3], $fill['remaining']['counts']);
-        $this->assertSame('400.000', $fill['remaining']['kg']);
+        $this->assertSame(['bale' => 1, 'bag' => 3], array_column($space['lines'], 'remaining', 'packaging_type'));
 
         // The stock page shows the same figures, whatever the filter applied to its rows.
         $this->withToken($this->token)->getJson('/api/v1/stock?filter[waste_type]='.$fils->ulid)->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.zone_quantity_kg', '600.000')
-            ->assertJsonPath('data.0.zone_alert_level', 'warning')
+            ->assertJsonPath('data.0.zone_fill.outcome', 'unverifiable')
             ->assertJsonPath('data.0.zone_fill.misplaced', 2);
     }
 

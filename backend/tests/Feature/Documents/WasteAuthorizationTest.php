@@ -61,7 +61,7 @@ class WasteAuthorizationTest extends TestCase
         $this->client()->postJson('/api/v1/waste-authorizations', ['waste_type' => $free->ulid, 'max_kg' => '100'] + $base)->assertUnprocessable()->assertJsonStructure(['errors' => ['waste_type']]);
 
         $created = $this->client()->postJson('/api/v1/waste-authorizations', $base + ['max_kg' => '1000', 'limits' => [['packaging_type' => 'bale', 'max_count' => 4], ['packaging_type' => 'bag', 'max_count' => 10]]])
-            ->assertCreated()->assertJsonPath('data.state', 'valid')->assertJsonPath('data.usage.pct', 0)->assertJsonPath('data.in_use', false)
+            ->assertCreated()->assertJsonPath('data.state', 'valid')->assertJsonPath('data.usage.outcome', 'respected')->assertJsonPath('data.usage.constraints.0.pct', 0)->assertJsonPath('data.usage.constraints.1.key', 'packages')->assertJsonPath('data.in_use', false)
             ->assertJsonPath('data.limits.0', ['packaging_type' => 'bale', 'max_count' => 4])->json('data');
 
         // The scan of the document is kept with it.
@@ -91,17 +91,24 @@ class WasteAuthorizationTest extends TestCase
             'valid_from' => now()->toDateString(), 'valid_until' => now()->addMonths(3)->toDateString(), 'max_kg' => '1000', 'alert_pct' => 60,
             'limits' => [['packaging_type' => 'bale', 'max_count' => 4], ['packaging_type' => 'bag', 'max_count' => 10]]])->assertCreated()->json('data.ulid');
         $usage = fn () => collect($this->client()->getJson('/api/v1/waste-authorizations')->assertOk()->json('data'))->firstWhere('ulid', $authorization)['usage'];
+        // Each limit of the document is answered on its own: the room in packages, and the weight.
+        $limit = fn (string $key) => collect($usage()['constraints'])->firstWhere('key', $key);
 
         // The request holds its share at once: 1 bale of 4 = 25 %.
         $this->client()->postJson("/api/v1/pickups/{$first}/submit")->assertOk();
-        $this->assertEquals(25, $usage()['pct']);
-        $this->assertSame(['bale' => 3, 'bag' => 7], $usage()['remaining']['counts']);
+        $this->assertEquals([25, 'respected'], [$limit('packages')['pct'], $limit('packages')['outcome']]);
+        $this->assertSame(['bale' => 3, 'bag' => 7], array_column($limit('packages')['lines'], 'remaining', 'packaging_type'));
+        $this->assertEquals(['100.000', '1000.000', 10, 'respected'], [$limit('weight')['used'], $limit('weight')['max'], $limit('weight')['pct'], $limit('weight')['outcome']]);
         Notification::assertNothingSentTo($this->manager);
 
         // Before asking, the form shows what a selection would leave: 2 more bales and 3 bags = 25 + 50 + 30 = 105 %.
         $more = [$this->lot($this->controlled, '100', 'bale'), $this->lot($this->controlled, '100', 'bale'), $this->lot($this->controlled, '20', 'bag'), $this->lot($this->controlled, '20', 'bag'), $this->lot($this->controlled, '20', 'bag')];
         $this->client()->postJson('/api/v1/waste-authorizations/check', ['date' => now()->toDateString(), 'lots' => $more])->assertOk()
-            ->assertJsonPath('data.0.reference', 'D-2026-001')->assertJsonPath('data.0.reason', 'exceeded')->assertJsonPath('data.0.before_pct', 25)->assertJsonPath('data.0.after_pct', 105);
+            ->assertJsonPath('data.0.reference', 'D-2026-001')->assertJsonPath('data.0.reason', 'exceeded')
+            // The weight is fine (360 of 1000 kg) and says so; the packages are not, and say so. Neither figure replaces the other.
+            ->assertJsonPath('data.0.before.0.key', 'weight')->assertJsonPath('data.0.before.1.pct', 25)
+            ->assertJsonPath('data.0.constraints.0.outcome', 'respected')->assertJsonPath('data.0.constraints.0.used', '360.000')
+            ->assertJsonPath('data.0.constraints.1.key', 'packages')->assertJsonPath('data.0.constraints.1.pct', 105)->assertJsonPath('data.0.constraints.1.outcome', 'exceeded');
         $tooMuch = $this->pickup($more);
         $this->client()->postJson("/api/v1/pickups/{$tooMuch}/submit")->assertConflict()->assertJsonPath('code', 'AUTHORIZATION_EXCEEDED');
         $this->assertSame(0, DB::table('waste_lots')->where('status', 'awaiting_pickup')->whereIn('ulid', $more)->count());
@@ -110,16 +117,17 @@ class WasteAuthorizationTest extends TestCase
         // Within the room left it passes, and crossing the alert level tells the people who request pickups, once.
         $second = $this->pickup(array_slice($more, 0, 2));
         $this->client()->postJson("/api/v1/pickups/{$second}/submit")->assertOk();
-        $this->assertEquals(75, $usage()['pct']);
-        $this->assertSame('warning', $usage()['level']);
+        $this->assertEquals([75, 'warning'], [$limit('packages')['pct'], $limit('packages')['outcome']]);
+        $this->assertEquals([30, 'respected'], [$limit('weight')['pct'], $limit('weight')['outcome']]);
+        $this->assertSame(['warning', false], [$usage()['outcome'], $usage()['blocked']]);
         Notification::assertSentTo($this->manager, BusinessEventNotification::class, fn (BusinessEventNotification $n) => $n->type === 'authorization.usage_high');
 
         // A packaging the authorisation says nothing about is still covered by its weight; a cancelled pickup gives its share back.
         $drum = $this->pickup([$this->lot($this->controlled, '50', 'drum')]);
         $this->client()->postJson("/api/v1/pickups/{$drum}/submit")->assertOk();
         $this->client()->postJson("/api/v1/pickups/{$second}/cancel", ['reason' => 'reporté'])->assertOk();
-        $this->assertEquals(25, $usage()['pct']);
-        $this->assertSame('150.000', $usage()['used']['kg']);
+        $this->assertEquals(25, $limit('packages')['pct']);
+        $this->assertSame(['150.000', 1], [$limit('weight')['used'], $limit('packages')['outside_count']]);
 
         // Once pickups draw on it, the quantities are history; the reference and a withdrawal are not.
         $payload = ['waste_type' => $this->controlled->ulid, 'reference' => 'D-2026-001-BIS', 'valid_from' => now()->toDateString(), 'valid_until' => now()->addMonths(3)->toDateString(),

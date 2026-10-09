@@ -9,7 +9,10 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
  */
 final class BusinessRuleViolation extends ConflictHttpException
 {
-    public function __construct(public readonly string $errorCode, string $message)
+    /**
+     * @param  array<string, mixed>  $context  figures behind the refusal, for a client that wants to show them
+     */
+    public function __construct(public readonly string $errorCode, string $message, public readonly array $context = [])
     {
         parent::__construct($message);
     }

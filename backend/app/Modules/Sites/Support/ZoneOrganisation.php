@@ -2,14 +2,15 @@
 
 namespace App\Modules\Sites\Support;
 
-use App\Modules\Common\Support\Quota;
+use App\Modules\Common\Support\Constraint;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Sites\Models\Zone;
 use Illuminate\Support\Facades\DB;
 
 /**
- * What a zone is meant to hold (optional waste types and colours), how much of it (lots per packaging, weight),
- * and how full it is right now. Like the stock, the fill is never stored: it is counted from the lots on site.
+ * What a zone is meant to hold (optional waste types and colours), how much of it, and how full it is right now.
+ * A zone has two separate physical limits: the room it offers (packages per packaging, sharing one room) and the load
+ * it bears (kilograms). Each is answered on its own; neither percentage stands for the other. Like the stock, the fill is never stored: it is counted from the lots on site.
  * Registered as a scoped service: what it reads is kept for one request, never longer.
  */
 final class ZoneOrganisation
@@ -19,6 +20,9 @@ final class ZoneOrganisation
 
     /** @var array<int, array<int, array{kg: string, lots: int, counts: array<string, int>, misplaced: int, unweighed: int, unconfirmed: int}>> */
     private array $usage = [];
+
+    /** @var array<int, array<int, array{unweighed: list<string>, uncounted: list<string>}>> */
+    private array $named = [];
 
     public function __construct(private readonly StockQuery $stock, private readonly ReferenceCodes $codes) {}
 
@@ -96,16 +100,36 @@ final class ZoneOrganisation
     }
 
     /**
-     * How full the zone is: percentage, what still fits, lots that are not counted or not where they should be.
+     * How full the zone is. `constraints` holds one answer per limit the zone states:
+     * - 'space': packages against the room ("100 bags or 50 boxes" is one room, shared). Loose lots and packagings the
+     *   room does not plan for cannot be counted: they are named, and the occupancy is not said to be verified;
+     * - 'load': known kilograms against the weight the zone bears. Lots nobody weighed are named, never counted as zero.
+     * Nothing here blocks a placement: the zone informs and alerts.
      *
      * @return array<string, mixed>
      */
     public function fill(int $siteId, int $zoneId, ?string $capacityKg, int $alertPct): array
     {
         $usage = $this->usage($siteId)[$zoneId] ?? ['kg' => '0.000', 'lots' => 0, 'counts' => [], 'misplaced' => 0, 'unweighed' => 0, 'unconfirmed' => 0];
-        $quota = Quota::usage($capacityKg, array_column($this->of($zoneId)['capacities'], 'max_count', 'packaging_type'), $usage['kg'], $usage['counts']);
+        $room = array_filter(array_column($this->of($zoneId)['capacities'], 'max_count', 'packaging_type'), fn (int $max) => $max > 0);
+        $hasLoad = $capacityKg !== null && bccomp($capacityKg, '0', 3) > 0;
+        $named = ($room !== [] && array_diff_key($usage['counts'], $room) !== []) || ($hasLoad && $usage['unweighed'] > 0)
+            ? ($this->named($siteId)[$zoneId] ?? ['unweighed' => [], 'uncounted' => []]) : ['unweighed' => [], 'uncounted' => []];
 
-        return $quota + [
+        $constraints = [];
+        if ($room !== []) {
+            $constraints[] = Constraint::packages('space', $room, $usage['counts'], $alertPct, $named['uncounted']);
+        }
+        if ($hasLoad) {
+            $constraints[] = Constraint::quantity('load', 'kg', $usage['kg'], $capacityKg, $alertPct, $named['unweighed']);
+        }
+        $overall = Constraint::overall($constraints);
+
+        return [
+            'constraints' => $constraints,
+            // The most serious answer among the limits, for a badge; the figures stay per limit.
+            'outcome' => $overall['outcome'],
+            'alert_level' => in_array($overall['outcome'], [Constraint::EXCEEDED, Constraint::WARNING], true) ? $overall['outcome'] : null,
             'quantity_kg' => $usage['kg'],
             'lots' => $usage['lots'],
             // Lots in the zone nobody weighed: in the number of lots, not in the weight.
@@ -115,8 +139,44 @@ final class ZoneOrganisation
             'packages' => $usage['counts'],
             'unconfirmed_lots' => $usage['unconfirmed'],
             'misplaced' => $usage['misplaced'],
-            'alert_level' => Quota::level($quota['pct'], $alertPct),
         ];
+    }
+
+    /**
+     * The lots a limit of their zone cannot count, by number: unweighed ones, and those loose or in a packaging the room
+     * of the zone does not plan for.
+     *
+     * @return array<int, array{unweighed: list<string>, uncounted: list<string>}>
+     */
+    private function named(int $siteId): array
+    {
+        if (isset($this->named[$siteId])) {
+            return $this->named[$siteId];
+        }
+        $rows = $this->stock->lots([$siteId])
+            ->where(fn ($query) => $query->whereNull('l.net_weight_kg')->orWhere(fn ($query) => $query
+                ->whereExists(fn ($sub) => $sub->from('zone_capacities as c')->whereColumn('c.zone_id', 'l.zone_id')->where('c.max_count', '>', 0))
+                ->where(fn ($query) => $query->whereNull('l.packaging_type_id')->orWhereNotExists(fn ($sub) => $sub->from('zone_capacities as c')
+                    ->whereColumn('c.zone_id', 'l.zone_id')->whereColumn('c.packaging_type_id', 'l.packaging_type_id')->where('c.max_count', '>', 0)))))
+            ->orderBy('l.id')->get(['l.zone_id', 'l.lot_number', 'l.packaging_type_id', DB::raw('l.net_weight_kg IS NULL as unweighed')]);
+        $this->load($rows->pluck('zone_id')->unique()->map(fn ($id) => (int) $id)->values()->all());
+
+        $named = [];
+        foreach ($rows as $row) {
+            $zone = &$named[(int) $row->zone_id];
+            $zone ??= ['unweighed' => [], 'uncounted' => []];
+            if ((bool) $row->unweighed) {
+                $zone['unweighed'][] = (string) $row->lot_number;
+            }
+            $room = array_filter(array_column($this->rules[(int) $row->zone_id]['capacities'], 'max_count', 'packaging_type'), fn (int $max) => $max > 0);
+            $kind = (string) $this->codes->code('packaging_types', $row->packaging_type_id === null ? null : (int) $row->packaging_type_id);
+            if ($room !== [] && ! isset($room[$kind])) {
+                $zone['uncounted'][] = (string) $row->lot_number;
+            }
+            unset($zone);
+        }
+
+        return $this->named[$siteId] = $named;
     }
 
     /**

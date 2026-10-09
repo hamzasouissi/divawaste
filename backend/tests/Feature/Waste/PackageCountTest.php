@@ -75,30 +75,33 @@ class PackageCountTest extends TestCase
         $fill = function () {
             $this->app->forgetScopedInstances();
 
-            return $this->api()->getJson("/api/v1/sites/{$this->site->ulid}")->assertOk()->json('data.zones.0.fill');
+            $fill = $this->api()->getJson("/api/v1/sites/{$this->site->ulid}")->assertOk()->json('data.zones.0.fill');
+
+            return $fill + ['space' => collect($fill['constraints'])->firstWhere('key', 'space')];
         };
 
         // One lot of one bag: 1 %. One lot of twelve bags: twelve more, not one more.
         $this->lot($type, '5', ['packaging_type' => 'bag']);
-        $this->assertSame([1.0, ['bag' => 1], 1], [(float) $fill()['pct'], $fill()['packages'], $fill()['unconfirmed_lots']]);
+        $this->assertSame([1.0, ['bag' => 1], 1], [(float) $fill()['space']['pct'], $fill()['packages'], $fill()['unconfirmed_lots']]);
         $this->lot($type, '60', ['packaging_type' => 'bag', 'package_count' => 12]);
-        $this->assertSame([13.0, ['bag' => 13], 2], [(float) $fill()['pct'], $fill()['packages'], $fill()['lots']]);
+        $this->assertSame([13.0, ['bag' => 13], 2], [(float) $fill()['space']['pct'], $fill()['packages'], $fill()['lots']]);
 
         // Several lots add up: 13 + 37 = 50 bags, half the room; 10 + 15 = 25 boxes, the other half.
         $this->lot($type, '200', ['packaging_type' => 'bag', 'package_count' => 37]);
-        $this->assertSame(50.0, (float) $fill()['pct']);
-        $this->assertSame(['bag' => 50, 'box' => 25], $fill()['remaining']['counts']);
+        $this->assertSame(50.0, (float) $fill()['space']['pct']);
+        $this->assertSame(['bag' => 50, 'box' => 25], array_column($fill()['space']['lines'], 'remaining', 'packaging_type'));
         $this->lot($type, '40', ['packaging_type' => 'box', 'package_count' => 10]);
         $this->lot($type, '60', ['packaging_type' => 'box', 'package_count' => 15]);
         $full = $fill();
-        $this->assertSame([100.0, ['bag' => 50, 'box' => 25], ['bag' => 0, 'box' => 0], 5], [(float) $full['pct'], $full['packages'], $full['remaining']['counts'], $full['lots']]);
-        $this->assertSame('warning', $full['alert_level']);
+        $this->assertSame([100.0, ['bag' => 50, 'box' => 25], ['bag' => 0, 'box' => 0], 5], [(float) $full['space']['pct'], $full['packages'], array_column($full['space']['lines'], 'remaining', 'packaging_type'), $full['lots']]);
+        $this->assertSame(['warning', 'warning'], [$full['space']['outcome'], $full['alert_level']]);
 
         // A loose lot and a packaging the zone does not plan for are reported apart, not turned into bags.
         $this->lot($type, '20');
         $this->lot($type, '20', ['packaging_type' => 'drum', 'package_count' => 3]);
         $more = $fill();
-        $this->assertSame([100.0, 4, ['bag' => 50, 'box' => 25, '' => 1, 'drum' => 3]], [(float) $more['pct'], $more['uncounted'], $more['packages']]);
+        // The room is then no longer said to be verified: the two lots it cannot count are named.
+        $this->assertSame([100.0, 2, 'unverifiable', ['bag' => 50, 'box' => 25, '' => 1, 'drum' => 3]], [(float) $more['space']['pct'], $more['space']['missing_count'], $more['space']['outcome'], $more['packages']]);
     }
 
     public function test_an_authorisation_in_packages_counts_packages_and_cannot_count_what_has_none(): void
@@ -111,11 +114,11 @@ class PackageCountTest extends TestCase
         $drums = $this->lot($type, '15', ['packaging_type' => 'drum', 'package_count' => 2])->json('data');
 
         // Twelve bags of thirty — no weight is needed for a document stated in bags.
-        $this->check([$twelve['ulid']])->assertJsonPath('data.0.reason', null)->assertJsonPath('data.0.after_pct', 40);
+        $this->check([$twelve['ulid']])->assertJsonPath('data.0.reason', null)->assertJsonPath('data.0.constraints.0.pct', 40)->assertJsonPath('data.0.constraints.0.lines.0.used', 12);
         $first = $this->pickup([$twelve['ulid']]);
         $this->api()->postJson("/api/v1/pickups/{$first}/submit")->assertOk();
         $usage = $this->usage($authorization);
-        $this->assertSame([12, 1, 18], [$usage['used']['counts']['bag'], $usage['used']['lots'], $usage['remaining']['counts']['bag']]);
+        $this->assertSame([12, 1, 18], [$usage['used']['counts']['bag'], $usage['used']['lots'], $usage['constraints'][0]['lines'][0]['remaining']]);
         // Twenty more would make thirty-two.
         $this->check([$twenty['ulid']])->assertJsonPath('data.0.reason', 'exceeded');
         // Loose waste and drums have no bags to count: the document cannot be checked for them, and they are named.
@@ -126,7 +129,8 @@ class PackageCountTest extends TestCase
 
         // What was asked and answered is kept with the line.
         $decision = json_decode((string) DB::table('pickup_lots')->where('lot_number_snapshot', $twelve['lot_number'])->value('authorization_decision'), true);
-        $this->assertSame(['bag', 12, ['bag' => 30], 40], [$decision['packaging'], $decision['package_count'], $decision['limits']['packages'], (int) $decision['used_after_pct']]);
+        $this->assertSame(['bag', 12, ['bag' => 30], 'packages', 12, 30, 'respected', 0], [$decision['packaging'], $decision['package_count'], $decision['limits']['packages'], $decision['constraints_after'][0]['key'],
+            $decision['constraints_after'][0]['lines'][0]['used'], $decision['constraints_after'][0]['lines'][0]['max'], $decision['constraints_after'][0]['outcome'], $decision['constraints_before'][0]['lines'][0]['used']]);
     }
 
     public function test_an_authorisation_in_weight_only_takes_any_packaging_and_one_in_both_checks_both(): void
@@ -136,7 +140,7 @@ class PackageCountTest extends TestCase
         // Drums, bags or loose: a document stated in kilograms does not care how the waste is packed.
         $drums = $this->lot($weight, '120', ['packaging_type' => 'drum', 'package_count' => 4])->json('data');
         $loose = $this->lot($weight, '80')->json('data');
-        $this->check([$drums['ulid'], $loose['ulid']])->assertJsonPath('data.0.reason', null)->assertJsonPath('data.0.after_pct', 40);
+        $this->check([$drums['ulid'], $loose['ulid']])->assertJsonPath('data.0.reason', null)->assertJsonPath('data.0.constraints.0.key', 'weight')->assertJsonPath('data.0.constraints.0.pct', 40);
         $this->api()->postJson('/api/v1/pickups/'.$this->pickup([$drums['ulid'], $loose['ulid']]).'/submit')->assertOk();
 
         $both = $this->type('TEINT', authorised: true);
@@ -188,7 +192,7 @@ class PackageCountTest extends TestCase
         $this->assertSame(12, (int) DB::table('hazardous_waste_manifests')->where('id', $slip->id)->value('package_count'));
         $this->assertSame($decided, DB::table('pickup_lots')->value('authorization_decision'));
         // The allowance is drawn by what really left.
-        $this->assertSame([14, 16], [$this->usage($authorization)['used']['counts']['bag'], $this->usage($authorization)['remaining']['counts']['bag']]);
+        $this->assertSame([14, 16], [$this->usage($authorization)['used']['counts']['bag'], $this->usage($authorization)['constraints'][0]['lines'][0]['remaining']]);
 
         // The trail: previous and new count, who, when, why — for each change.
         $events = DB::table('waste_lot_events')->where('event_type', 'packages_corrected')->orderBy('id')->get(['payload', 'user_id', 'occurred_at']);

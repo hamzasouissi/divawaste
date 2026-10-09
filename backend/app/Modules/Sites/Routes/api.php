@@ -4,6 +4,7 @@ use App\Modules\Catalog\Models\WasteType;
 use App\Modules\Catalog\Support\Colors;
 use App\Modules\Catalog\Support\UnitConversion;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
+use App\Modules\Common\Support\Constraint;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Sites\Actions\CreateSite;
@@ -225,10 +226,14 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
                 return [
                     'ulid' => $threshold->ulid,
                     'quantity_kg' => $quantity,
-                    // With lots nobody weighed, a level below the limit is not a proof that the limit is respected.
                     'unweighed_lots' => $stock->unweighed($threshold->site_id, $threshold->zone_id, $threshold->waste_type_id),
                     'max_quantity_kg' => (string) $threshold->max_quantity_kg,
                     'alert_level' => EvaluateStockThresholds::level($quantity, (string) $threshold->max_quantity_kg, $threshold->warning_pct)?->value,
+                    // The limit answered on its own, in its unit. Known weight above it: exceeded, and the lots nobody weighed
+                    // are named too. Known weight below it with such lots: unverifiable, never "respected". A stock limit
+                    // alerts; it blocks nothing.
+                    'constraint' => Constraint::quantity('stock', 'kg', $quantity, (string) $threshold->max_quantity_kg, $threshold->warning_pct,
+                        $stock->unweighedNumbers($threshold->site_id, $threshold->zone_id, $threshold->waste_type_id)),
                 ];
             }),
             'meta' => ['total_kg' => $rows->reduce(fn ($sum, $row) => bcadd($sum, (string) $row->quantity_kg, 3), '0'), 'unweighed_lots' => (int) $rows->sum('unweighed_lots'), 'generated_at' => now()->toIso8601ZuluString()],
