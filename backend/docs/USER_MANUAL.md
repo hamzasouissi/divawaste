@@ -201,6 +201,23 @@ adds one to your types.
 **Type personnalisé** creates your own: code, family, name, regulatory code, hazardous flag, tracking unit,
 usual channel, packaging, colour, grammage, density, unit weight and default fibre composition.
 
+**Couleurs** (third tab) lists the colours offered on lots, waste types, raw materials and zones, as swatches: the
+defaults shared by everyone, then yours. The search box filters by name, code or HEX value.
+
+- **Ajouter une couleur**: a name, an optional internal code, and an optional tint — chosen with the picker, typed as
+  HEX (`#0F4C81`) or as three RGB values; typing one rewrites the other. A Pantone reference can still be typed by hand.
+- **Teintes proches dans le catalogue** (in that form, **Chercher**): the five catalogue colours nearest to the tint,
+  with their difference (ΔE, CIEDE2000: 0 = identical, about 2 = barely visible, above 10 = another colour). These are
+  approximate suggestions computed from the screen colour, not official Pantone equivalences; your colour is not
+  changed. **Ajouter à mes couleurs** adds the suggested colour beside yours.
+- **Catalogue Pantone** (shown only when the platform has loaded a catalogue): browse it 60 colours at a time, search
+  by reference or HEX, filter by collection (coated, uncoated, metallic, pastels and neons, skin tones, colours of the
+  year). **Ajouter** puts the colour in your list; it keeps the reference and tint of the catalogue and you may rename it.
+  The same reference exists in several collections (871-c is both coated and metallic): they are different colours.
+- "…" on one of your colours: **Modifier**, **Retirer de la liste** (no longer offered; what carries it keeps it) or
+  **Supprimer** (only while no lot, waste type, material or zone uses it).
+
+The tints are unverified screen approximations and do not replace a physical colour guide.
 ### Prestataires — `/providers`
 
 *View: providers.view. Partners: providers.partnerships.manage.*

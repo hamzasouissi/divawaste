@@ -181,7 +181,10 @@ return [
     */
 
     'custom' => [
-        'color' => ['taken' => 'A colour already has this name.'],
+        'color' => [
+            'taken' => 'A colour already has this name.', 'code_taken' => 'One of your colours already has this code.',
+            'hex' => 'Give a colour in HEX format, for example #0F4C81.', 'rgb_mismatch' => 'The RGB values do not match the HEX value.',
+        ],
         'composition' => ['total' => 'The composition percentages must add up to 100.'],
         'email_verification' => ['invalid' => 'This confirmation link is invalid or has expired.'],
         'invitation' => ['invalid' => 'This invitation is invalid, has expired or was already used.'],

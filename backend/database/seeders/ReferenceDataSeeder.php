@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Modules\Catalog\Support\Colors;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -115,6 +116,8 @@ class ReferenceDataSeeder extends Seeder
             'multicolor' => ['Multicolore', 'Multicolour'],
             'mixed' => ['Mélangé', 'Mixed'],
         ]));
+        // The defaults are the platform's, and carry the RGB and Lab values of their tint.
+        Colors::completeDerived();
 
         $this->upsert('treatment_channels', 'code', $this->vocabulary([
             'reuse' => ['Réutilisation', 'Reuse', ['is_valorization' => true, 'hierarchy_rank' => 1]],

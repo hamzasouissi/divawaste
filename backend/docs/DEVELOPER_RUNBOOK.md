@@ -267,6 +267,31 @@ without regenerating the documentation fails the tests.
 
 A production server does not publish `/docs` (`API_DOCS_ENABLED` defaults to off there): the API is internal in the MVP.
 
+## Colour catalogue (Pantone)
+
+The application ships **no** colour library. The catalogue is loaded by hand, from JSON files you have the right to use:
+
+```powershell
+cd C:\Projects\diva-waste
+php artisan colors:import C:\path\to\folder --dry-run     # reads and reports, writes nothing
+php artisan colors:import C:\path\to\folder --source=name-of-the-source
+php artisan colors:remove-catalogue                        # removes the catalogue (--collection=metallic for one)
+```
+
+- A file is a JSON list of `{ "pantone": "<reference>", "hex": "#RRGGBB" }` (or `r`/`g`/`b`). The collection comes
+  from the file name (`pantone-coated.json` → `coated`, `-uncoated`, `-metallic`, `-pastels-neons`, `-skin`,
+  `-color-of-the-year`); any other file needs `--collection=`.
+- The report gives, per file: records, inserted, updated, unchanged, duplicates skipped, invalid, warnings, and one
+  line per problem. A record without a reference or a readable colour is refused, never guessed. A file that is not a
+  JSON list is refused whole (exit code 1).
+- Running it again changes nothing; a corrected file updates the rows it names. Add `--env=demo` to load the demo
+  database, which `demo.ps1 reset` empties again.
+- Colours that companies already took keep their values when the catalogue is removed.
+
+**Licence**: the files of `github.com/brettapeters/pantones` carry no licence, and Pantone LLC claims rights on its
+colour libraries. They were used to test the importer (3,245 records, none invalid, one warning) and are not in the
+repository. Do not load them on a server that serves clients before the right to use them is confirmed.
+
 ## Static analysis (Larastan)
 
 ```powershell

@@ -4,6 +4,7 @@ use App\Modules\Catalog\Actions\CreateWasteType;
 use App\Modules\Catalog\Models\WasteType;
 use App\Modules\Catalog\Requests\StoreWasteTypeRequest;
 use App\Modules\Catalog\Resources\WasteTypeResource;
+use App\Modules\Catalog\Support\ColorMath;
 use App\Modules\Catalog\Support\Colors;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Support\ReferenceCodes;
@@ -51,7 +52,7 @@ Route::middleware(['auth:sanctum', 'tenant:active,pending_approval'])->group(fun
             'materials' => $active('materials', ['code', 'name', 'material_class']),
             // The defaults of the platform and the colours this company added.
             'color_families' => $localized(Colors::visibleTo($context->companyId())->where('is_active', true)
-                ->orderByRaw('company_id is not null')->orderBy('sort_order')->orderBy('id')->get(['code', 'name', 'hex_color', 'pantone_reference'])),
+                ->orderByRaw('company_id is not null')->orderBy('sort_order')->orderBy('id')->get(['code', 'name', 'hex_color', 'pantone_reference', 'color_system', 'collection'])),
             'treatment_channels' => $active('treatment_channels', ['code', 'name', 'is_valorization', 'is_landfill', 'hierarchy_rank'], ['is_valorization', 'is_landfill']),
             'regulatory_waste_codes' => $localized(DB::table('regulatory_waste_codes')->where('code_system', $codeSystem)->where('is_selectable', true)
                 ->orderBy('code')->get(['code', 'label', 'is_hazardous']), ['is_hazardous']),
@@ -169,67 +170,230 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
 
     /*
      * Colours work like waste types: the defaults of the platform, plus the ones the company adds for itself.
-     * A default colour cannot be changed; a company colour is renamed or withdrawn, never deleted (lots keep it).
+     * A default colour cannot be changed; a company colour is renamed or withdrawn, and deleted only while nothing
+     * names it (lots keep their colour).
+     *
+     * Beside them, the reference catalogue (rows imported from a colour library): it is searched, never modified,
+     * and a company takes a colour out of it into its own list.
      */
     $colorData = fn (stdClass $row) => [
-        'code' => $row->code, 'name' => json_decode((string) $row->name, true), 'hex_color' => $row->hex_color,
+        'code' => $row->code, 'name' => json_decode((string) $row->name, true),
+        'color_system' => $row->color_system, 'collection' => $row->collection, 'reference_code' => $row->reference_code,
+        'hex_color' => $row->hex_color,
+        'rgb' => $row->rgb_r === null ? null : ['r' => (int) $row->rgb_r, 'g' => (int) $row->rgb_g, 'b' => (int) $row->rgb_b],
+        // Computed from the screen colour, not measured on a sample.
+        'lab' => $row->lab_l === null ? null : ['l' => (float) $row->lab_l, 'a' => (float) $row->lab_a, 'b' => (float) $row->lab_b],
         'pantone_reference' => $row->pantone_reference,
-        'is_custom' => $row->company_id !== null, 'is_active' => (bool) $row->is_active,
+        'source' => $row->source, 'verification_status' => $row->verification_status,
+        'is_custom' => $row->company_id !== null, 'is_catalogue' => $row->company_id === null && $row->source === Colors::SOURCE_IMPORT,
+        'is_active' => (bool) $row->is_active, 'created_at' => $row->created_at, 'updated_at' => $row->updated_at,
     ];
     $colorRules = [
-        'name' => ['required', 'string', 'max:60'], 'hex_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-        // Typed by the company (for example "19-4052 TCX"); the Pantone library itself is not part of the application.
+        'name' => ['required', 'string', 'max:60'],
+        // The company's own code for the colour, if it has one.
+        'reference_code' => ['nullable', 'string', 'max:60'],
+        'hex_color' => ['nullable', 'string', 'max:9'],
+        'rgb' => ['nullable', 'array:r,g,b'],
+        'rgb.r' => ['required_with:rgb', 'integer', 'between:0,255'], 'rgb.g' => ['required_with:rgb', 'integer', 'between:0,255'], 'rgb.b' => ['required_with:rgb', 'integer', 'between:0,255'],
+        // Typed by the company (for example "19-4052 TCX") when the colour is not taken from the catalogue.
         'pantone_reference' => ['nullable', 'string', 'max:40'],
     ];
+    // HEX and RGB say the same thing: either is enough, both must agree. Returns the normalised HEX, or null for "no tint".
+    $colorTint = function (array $input): ?string {
+        $hex = null;
+        if (($input['hex_color'] ?? null) !== null) {
+            $hex = ColorMath::normalizeHex($input['hex_color']);
+            if ($hex === null) {
+                throw ValidationException::withMessages(['hex_color' => [__('validation.custom.color.hex')]]);
+            }
+        }
+        if (isset($input['rgb'])) {
+            $fromRgb = ColorMath::hex((int) $input['rgb']['r'], (int) $input['rgb']['g'], (int) $input['rgb']['b']);
+            if ($hex !== null && $hex !== $fromRgb) {
+                throw ValidationException::withMessages(['rgb' => [__('validation.custom.color.rgb_mismatch')]]);
+            }
+            $hex = $fromRgb;
+        }
+
+        return $hex;
+    };
     // The same name twice in one list would make the choice ambiguous for the operator.
     $colorNameTaken = fn (int $companyId, string $name, ?int $exceptId = null) => Colors::visibleTo($companyId)->where('is_active', true)
         ->when($exceptId !== null, fn ($query) => $query->where('id', '!=', $exceptId))->get(['name'])
         ->contains(fn (stdClass $row) => in_array(mb_strtolower($name), array_map(mb_strtolower(...), array_values((array) json_decode((string) $row->name, true))), true));
+    $colorCodeTaken = fn (int $companyId, string $reference, ?int $exceptId = null) => DB::table('color_families')->where('company_id', $companyId)
+        ->where('color_system', 'custom')->where('reference_code', $reference)->when($exceptId !== null, fn ($query) => $query->where('id', '!=', $exceptId))->exists();
+    // A code, a name or a HEX value, as people type them: "pantone 19-4052", "warm gray", "#0f4c81", "0F4C".
+    $colorSearch = function ($query, string $term): void {
+        $term = trim((string) preg_replace('/^pantone\s+/i', '', trim($term)));
+        if ($term === '') {
+            return;
+        }
+        $like = fn (string $value) => '%'.addcslashes($value, '%_\\').'%';
+        $query->where(function ($q) use ($term, $like) {
+            $q->where('reference_code', 'like', $like($term))->orWhere('reference_code', 'like', $like(str_replace(' ', '-', $term)))
+                ->orWhere('pantone_reference', 'like', $like($term))->orWhereRaw('LOWER(name) like ?', [$like(mb_strtolower($term))]);
+            if (preg_match('/^#?[0-9a-f]{1,6}$/i', $term) === 1) {
+                $q->orWhere('hex_color', 'like', '#'.ltrim($term, '#').'%');
+            }
+        });
+    };
 
-    Route::get('colors', function (Request $request, TenantContext $context) use ($allow, $colorData) {
+    Route::get('colors', function (Request $request, TenantContext $context) use ($allow, $colorData, $colorSearch) {
         $allow($request, 'waste_types.view');
 
         return response()->json(['data' => Colors::visibleTo($context->companyId())
+            ->when($request->string('search')->toString(), $colorSearch)
             ->orderByRaw('company_id is not null')->orderBy('sort_order')->orderBy('id')->get()->map($colorData)]);
     })->name('colors.index');
 
-    Route::post('colors', function (Request $request, TenantContext $context) use ($allow, $colorData, $colorRules, $colorNameTaken) {
+    // The catalogue is large: it is read page by page, filtered by collection and by what the user types.
+    Route::get('colors/catalogue', function (Request $request, TenantContext $context) use ($allow, $colorData, $colorSearch) {
+        $allow($request, 'waste_types.view');
+        $input = $request->validate(['collection' => ['nullable', 'string', 'max:30'], 'search' => ['nullable', 'string', 'max:60'], 'per_page' => ['nullable', 'integer', 'between:1,120'], 'page' => ['nullable', 'integer', 'min:1']]);
+        $page = Colors::catalogue()->where('is_active', true)
+            ->when($input['collection'] ?? null, fn ($query, $collection) => $query->where('collection', $collection))
+            ->when($input['search'] ?? null, $colorSearch)
+            ->orderBy('collection')->orderBy('id')->paginate((int) ($input['per_page'] ?? 60));
+        // What the company already took, so the screen can say so.
+        $taken = DB::table('color_families')->where('company_id', $context->companyId())->whereIn('catalog_color_id', collect($page->items())->pluck('id'))->pluck('code', 'catalog_color_id');
+
+        return response()->json([
+            'data' => collect($page->items())->map(fn (stdClass $row) => $colorData($row) + ['taken_as' => $taken[$row->id] ?? null]),
+            'meta' => [
+                'current_page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'per_page' => $page->perPage(), 'total' => $page->total(),
+                'collections' => Colors::catalogue()->where('is_active', true)->groupBy('collection')->orderBy('collection')->get(['collection', DB::raw('COUNT(*) as colors')])
+                    ->map(fn (stdClass $row) => ['collection' => $row->collection, 'colors' => (int) $row->colors]),
+            ],
+        ])->header('Cache-Control', 'private, no-store');
+    })->name('colors.catalogue');
+
+    // The catalogue colours nearest to a given one. Approximate by nature: a suggestion, never an official equivalence.
+    Route::get('colors/match', function (Request $request) use ($allow, $colorData) {
+        $allow($request, 'waste_types.view');
+        $input = $request->validate(['hex' => ['required', 'string', 'max:9'], 'collection' => ['nullable', 'string', 'max:30'], 'limit' => ['nullable', 'integer', 'between:1,20']]);
+        $hex = ColorMath::normalizeHex($input['hex']);
+        if ($hex === null) {
+            throw ValidationException::withMessages(['hex' => [__('validation.custom.color.hex')]]);
+        }
+        $target = ColorMath::lab($hex);
+        $matches = Colors::catalogue()->where('is_active', true)->whereNotNull('lab_l')
+            ->when($input['collection'] ?? null, fn ($query, $collection) => $query->where('collection', $collection))->get()
+            ->map(fn (stdClass $row) => [$row, ColorMath::deltaE($target, ['l' => (float) $row->lab_l, 'a' => (float) $row->lab_a, 'b' => (float) $row->lab_b])])
+            ->sortBy(fn (array $pair) => $pair[1])->take((int) ($input['limit'] ?? 5))->values();
+
+        return response()->json([
+            'data' => $matches->map(fn (array $pair) => $colorData($pair[0]) + ['delta_e' => round($pair[1], 2)]),
+            'meta' => ['approximate' => true, 'formula' => 'CIEDE2000', 'hex' => $hex, 'rgb' => ColorMath::rgb($hex), 'lab' => $target],
+        ])->header('Cache-Control', 'private, no-store');
+    })->name('colors.match');
+
+    // Take a catalogue colour into the company's list. Asking twice gives the same colour back.
+    Route::post('colors/catalogue/{code}/take', function (Request $request, string $code, TenantContext $context) use ($allow, $colorData, $colorNameTaken) {
+        $allow($request, 'waste_types.manage');
+        $source = Colors::catalogue()->where('is_active', true)->where('code', $code)->first();
+        abort_if($source === null, 404);
+        $input = $request->validate(['name' => ['nullable', 'string', 'max:60']]);
+
+        $mine = DB::table('color_families')->where('company_id', $context->companyId())->where('color_system', $source->color_system)
+            ->where('collection', $source->collection)->where('reference_code', $source->reference_code)->first();
+        if ($mine !== null) {
+            DB::table('color_families')->where('id', $mine->id)->update(['is_active' => true, 'catalog_color_id' => $source->id, 'updated_at' => now()]);
+
+            return response()->json(['data' => $colorData(DB::table('color_families')->where('id', $mine->id)->firstOrFail())]);
+        }
+
+        $name = trim($input['name'] ?? '') ?: 'Pantone '.$source->reference_code;
+        if ($colorNameTaken($context->companyId(), $name)) {
+            if (trim($input['name'] ?? '') !== '') {
+                throw ValidationException::withMessages(['name' => [__('validation.custom.color.taken')]]);
+            }
+            // The same reference exists in several collections: say which one.
+            $name = Str::limit($name.' · '.str_replace('_', ' ', (string) $source->collection), 60, '');
+        }
+        $id = DB::table('color_families')->insertGetId(Colors::derived($source->hex_color) + [
+            'company_id' => $context->companyId(), 'code' => 'c_'.Str::lower((string) Str::ulid()),
+            'color_system' => $source->color_system, 'collection' => $source->collection, 'reference_code' => $source->reference_code,
+            'name' => json_encode(['fr' => $name, 'en' => $name], JSON_UNESCAPED_UNICODE), 'pantone_reference' => $source->pantone_reference,
+            'source' => Colors::SOURCE_IMPORT, 'source_name' => $source->source_name, 'verification_status' => $source->verification_status, 'catalog_color_id' => $source->id,
+            'sort_order' => 1000, 'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        return response()->json(['data' => $colorData(DB::table('color_families')->where('id', $id)->firstOrFail())], 201);
+    })->name('colors.take');
+
+    Route::get('colors/{code}', function (Request $request, string $code, TenantContext $context) use ($allow, $colorData) {
+        $allow($request, 'waste_types.view');
+        // A default, one of the company's, or a catalogue colour; another company's answers "not found".
+        $color = DB::table('color_families')->where('code', $code)->where(fn ($query) => $query->whereNull('company_id')->orWhere('company_id', $context->companyId()))->first();
+        abort_if($color === null, 404);
+
+        return response()->json(['data' => $colorData($color)]);
+    })->name('colors.show');
+
+    Route::post('colors', function (Request $request, TenantContext $context) use ($allow, $colorData, $colorRules, $colorTint, $colorNameTaken, $colorCodeTaken) {
         $allow($request, 'waste_types.manage');
         $input = $request->validate($colorRules);
+        $tint = $colorTint($input);
         $name = trim($input['name']);
         if ($colorNameTaken($context->companyId(), $name)) {
             throw ValidationException::withMessages(['name' => [__('validation.custom.color.taken')]]);
         }
+        $reference = trim($input['reference_code'] ?? '') ?: null;
+        if ($reference !== null && $colorCodeTaken($context->companyId(), $reference)) {
+            throw ValidationException::withMessages(['reference_code' => [__('validation.custom.color.code_taken')]]);
+        }
 
-        $id = DB::table('color_families')->insertGetId([
-            'company_id' => $context->companyId(), 'code' => 'c_'.Str::lower((string) Str::ulid()),
-            'name' => json_encode(['fr' => $name, 'en' => $name], JSON_UNESCAPED_UNICODE), 'hex_color' => isset($input['hex_color']) ? strtoupper($input['hex_color']) : null,
-            'pantone_reference' => isset($input['pantone_reference']) ? trim($input['pantone_reference']) : null, 'sort_order' => 1000, 'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
+        $id = DB::table('color_families')->insertGetId(Colors::derived($tint) + [
+            'company_id' => $context->companyId(), 'code' => 'c_'.Str::lower((string) Str::ulid()), 'color_system' => 'custom', 'reference_code' => $reference,
+            'name' => json_encode(['fr' => $name, 'en' => $name], JSON_UNESCAPED_UNICODE),
+            'pantone_reference' => isset($input['pantone_reference']) ? (trim($input['pantone_reference']) ?: null) : null,
+            'source' => Colors::SOURCE_USER, 'sort_order' => 1000, 'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
         ]);
 
         return response()->json(['data' => $colorData(DB::table('color_families')->where('id', $id)->firstOrFail())], 201);
     })->name('colors.store');
 
-    Route::put('colors/{code}', function (Request $request, string $code, TenantContext $context) use ($allow, $colorData, $colorRules, $colorNameTaken) {
+    Route::put('colors/{code}', function (Request $request, string $code, TenantContext $context) use ($allow, $colorData, $colorRules, $colorTint, $colorNameTaken, $colorCodeTaken) {
         $allow($request, 'waste_types.manage');
-        // Only the company's own colours: a default one, or another company's, answers "not found".
+        // Only the company's own colours: a default one, a catalogue one, or another company's, answers "not found".
         $color = DB::table('color_families')->where('code', $code)->where('company_id', $context->companyId())->first();
         abort_if($color === null, 404);
         $input = $request->validate($colorRules + ['is_active' => ['sometimes', 'boolean']]);
+        $tint = $color->color_system === 'custom' ? $colorTint($input) : null;
         $name = trim($input['name']);
         if (($input['is_active'] ?? true) && $colorNameTaken($context->companyId(), $name, (int) $color->id)) {
             throw ValidationException::withMessages(['name' => [__('validation.custom.color.taken')]]);
         }
 
-        DB::table('color_families')->where('id', $color->id)->update([
-            'name' => json_encode(['fr' => $name, 'en' => $name], JSON_UNESCAPED_UNICODE),
-            'hex_color' => isset($input['hex_color']) ? strtoupper($input['hex_color']) : null,
-            'pantone_reference' => isset($input['pantone_reference']) ? trim($input['pantone_reference']) : null,
-            'is_active' => (bool) ($input['is_active'] ?? $color->is_active), 'updated_at' => now(),
-        ]);
+        $values = ['name' => json_encode(['fr' => $name, 'en' => $name], JSON_UNESCAPED_UNICODE), 'is_active' => (bool) ($input['is_active'] ?? $color->is_active), 'updated_at' => now()];
+        // A colour taken from the catalogue keeps the reference and the tint of the catalogue: only its name is the company's.
+        if ($color->color_system === 'custom') {
+            $reference = trim($input['reference_code'] ?? '') ?: null;
+            if ($reference !== null && $colorCodeTaken($context->companyId(), $reference, (int) $color->id)) {
+                throw ValidationException::withMessages(['reference_code' => [__('validation.custom.color.code_taken')]]);
+            }
+            $values += Colors::derived($tint) + [
+                'reference_code' => $reference, 'pantone_reference' => isset($input['pantone_reference']) ? (trim($input['pantone_reference']) ?: null) : null,
+            ];
+        }
+        DB::table('color_families')->where('id', $color->id)->update($values);
 
         return response()->json(['data' => $colorData(DB::table('color_families')->where('id', $color->id)->firstOrFail())]);
     })->name('colors.update');
+
+    // A colour nothing names can be removed; one that a lot, a type, a material or a zone carries is withdrawn instead.
+    Route::delete('colors/{code}', function (Request $request, string $code, TenantContext $context) use ($allow) {
+        $allow($request, 'waste_types.manage');
+        $color = DB::table('color_families')->where('code', $code)->where('company_id', $context->companyId())->first();
+        abort_if($color === null, 404);
+        if (Colors::inUse((int) $color->id)) {
+            throw new BusinessRuleViolation('COLOR_IN_USE', 'This colour is used by lots, waste types, materials or zones. Withdraw it instead.');
+        }
+        DB::table('color_families')->where('id', $color->id)->delete();
+
+        return response()->noContent();
+    })->name('colors.destroy');
 });
 
 /*

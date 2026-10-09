@@ -1,6 +1,8 @@
 <?php
 
 use App\Modules\Billing\Actions\ManageSubscription;
+use App\Modules\Catalog\Support\ColorCatalogueImporter;
+use App\Modules\Catalog\Support\Colors;
 use App\Modules\Common\Docs\ApiRoutes;
 use App\Modules\Common\Docs\DemoData;
 use App\Modules\Identity\Models\User;
@@ -61,6 +63,44 @@ Artisan::command('production:volumes', function () {
 })->purpose('Count the pieces produced per site and month from the finished manufacturing orders');
 
 Schedule::command('production:volumes')->dailyAt('04:30')->withoutOverlapping()->onOneServer();
+
+Artisan::command('colors:import {path : A JSON file of a colour library, or a folder of them} {--collection= : Collection of the file, when its name does not say it} {--source= : Where the data comes from (kept on each colour)} {--dry-run : Read and report, write nothing}', function (ColorCatalogueImporter $importer) {
+    $path = (string) $this->argument('path');
+    $files = is_dir($path) ? (glob(rtrim($path, '/\\').'/*.json') ?: []) : [$path];
+    if ($files === []) {
+        $this->error('No JSON file found.');
+
+        return 1;
+    }
+    $failed = false;
+    $rows = [];
+    foreach ($files as $file) {
+        try {
+            $summary = $importer->import($file, $this->option('collection') ?: null, (bool) $this->option('dry-run'), $this->option('source') ? $this->option('source').':'.basename($file) : null);
+        } catch (InvalidArgumentException $exception) {
+            $this->error($exception->getMessage());
+            $failed = true;
+
+            continue;
+        }
+        $rows[] = [$summary['file'], $summary['collection'], $summary['records'], $summary['inserted'], $summary['updated'], $summary['unchanged'], $summary['duplicates'], $summary['invalid'], $summary['warnings']];
+        foreach ($summary['issues'] as $issue) {
+            $this->line("  {$summary['file']} {$issue}");
+        }
+    }
+    $this->table(['File', 'Collection', 'Records', 'Inserted', 'Updated', 'Unchanged', 'Duplicates skipped', 'Invalid', 'Warnings'], $rows);
+    if ($this->option('dry-run')) {
+        $this->comment('Dry run: nothing was written.');
+    }
+
+    return $failed ? 1 : 0;
+})->purpose('Load a colour library (JSON) into the reference catalogue. Use only data you have the right to use; running it again changes nothing');
+
+Artisan::command('colors:remove-catalogue {--collection= : Only this collection}', function () {
+    // Colours that companies took keep their values; they only lose the link to the catalogue.
+    $removed = Colors::catalogue()->when($this->option('collection'), fn ($query, $collection) => $query->where('collection', $collection))->delete();
+    $this->info("Catalogue: {$removed} colour(s) removed.");
+})->purpose('Remove the imported reference catalogue (for example if the right to use it is not confirmed)');
 
 Artisan::command('subscriptions:run', function (ManageSubscription $subscriptions) {
     $this->info('Subscriptions: '.json_encode($subscriptions->runDaily()));
