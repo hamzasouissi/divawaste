@@ -169,7 +169,9 @@
     "productionCatalog": "Materials and articles",
     "productionPartners": "Clients and suppliers",
     "productionImport": "Import",
-    "productionStats": "Statistics"
+    "productionStats": "Statistics",
+    "productionFinance": "Costs and gains",
+    "productionLots": "Received and produced lots"
   },
   "auth": {
     "pitch": "Trace, recover and declare your textile waste.",
@@ -443,7 +445,8 @@
     "INVALID_COMPANY_TRANSITION": "A decision has already been made for this company.",
     "ACCREDITATION_ALREADY_REVIEWED": "This accreditation already has that status.",
     "DEVICE_REVOKED": "This device was revoked by an administrator.",
-    "COLOR_IN_USE": "This colour is used by lots, waste types, materials or zones. Withdraw it from the list instead."
+    "COLOR_IN_USE": "This colour is used by lots, waste types, materials or zones. Withdraw it from the list instead.",
+    "RECEIVED_LOT_IN_USE": "The number of a received lot cannot change once an order or a waste lot names it."
   },
   "notifications": {
     "title": "Notifications",
@@ -1857,7 +1860,8 @@
     "platform.support.view": "Consult the platform activity",
     "production.view": "View production data",
     "production.manage": "Manage and import production data",
-    "production.stats.view": "View production statistics"
+    "production.stats.view": "View production statistics",
+    "production.finance.view": "See production prices, costs and gains"
   },
   "colors": {
     "title": "Colours",
@@ -1961,7 +1965,12 @@
     "Commandes": "Orders",
     "Ordres de fabrication": "Manufacturing orders",
     "Import": "Import",
-    "Statistiques de production": "Production statistics"
+    "Statistiques de production": "Production statistics",
+    "Matière première": "Raw material",
+    "Lots reçus et fabriqués": "Received and produced lots",
+    "Coûts et gains": "Costs and gains",
+    "Commande": "Order",
+    "Ordre de fabrication": "Manufacturing order"
   },
   "partners": {
     "title": "Partners without an account",
@@ -2089,7 +2098,16 @@
       "orderedOn": "Order date",
       "dueOn": "Delivery",
       "lines": "Articles ordered",
-      "addLine": "Add an article"
+      "addLine": "Add an article",
+      "detail": "Order {{number}}",
+      "quantity": "Pieces ordered",
+      "unitPrice": "Unit price excl. tax",
+      "priceHint": "The selling price agreed for one piece, excluding tax.",
+      "discount": "Discount",
+      "discountHint": "Amount deducted from the whole order.",
+      "discounted": "discount of {{amount}} deducted",
+      "priceMissing": "a selling price is missing",
+      "noOf": "No manufacturing order for this order."
     },
     "orderStatus": {
       "open": "Open",
@@ -2120,7 +2138,16 @@
       "expected": "planned",
       "consumed": "consumed",
       "anyBatch": "Batch not stated",
-      "addConsumption": "Add a consumption"
+      "addConsumption": "Add a consumption",
+      "one": "Order",
+      "detail": "Manufacturing order {{number}}",
+      "chain": "Client, customer order, manufacturing order, article",
+      "fromLots": "sum of {{count}} produced lot(s)",
+      "typed": "entered on the order",
+      "wasteKpi": "Waste",
+      "wasteRate": "{{pct}} % of the material consumed",
+      "wasteLots": "{{count}} waste lot(s)",
+      "producedHint": "As soon as the order has produced lots, this quantity is their sum."
     },
     "ofStatus": {
       "planned": "Planned",
@@ -2155,16 +2182,27 @@
         "articles": "Articles",
         "materials": "Raw materials",
         "clients": "Clients",
-        "suppliers": "Suppliers"
+        "suppliers": "Suppliers",
+        "received_lots": "Received lots",
+        "consumptions": "Materials consumed",
+        "produced_lots": "Produced lots",
+        "expenses": "Production expenses",
+        "invoices": "Customer invoices"
       },
       "hints": {
         "manufacturing_orders": "Order, article, quantities, stages per site, consumptions. Creates the client, the order and the article when needed.",
         "orders": "One line per article ordered. Creates the client and the article when needed.",
         "articles": "Reference, client, and the consumption per piece of each material.",
-        "materials": "Reference, supplier, unit, and the batches received.",
+        "materials": "Reference, category, default supplier, unit.",
         "clients": "Name, code, contact.",
-        "suppliers": "Name, code, contact."
-      }
+        "suppliers": "Name, code, contact.",
+        "received_lots": "Material, lot number, supplier of the delivery, quantity, price. The material must exist.",
+        "consumptions": "Order, material, quantity and received lot (or empty = lot not specified). The order, the material and the lot must exist.",
+        "produced_lots": "Lot number, order, quantity, date, status. The order must exist.",
+        "expenses": "Order, supporting document, description, amount, category.",
+        "invoices": "Invoice number, customer order, amount, invoice or credit note."
+      },
+      "expected": "expected: {{example}}"
     },
     "stats": {
       "title": "Production statistics",
@@ -2196,6 +2234,249 @@
         "by_supplier": "Suppliers"
       },
       "monthly": "Monthly trend"
+    },
+    "currency": "Currency",
+    "unknown": "Unknown",
+    "estimated": "estimated",
+    "cost": "Cost",
+    "pieces": "pieces",
+    "missing": {
+      "no_order": "the order is not attached to a customer order",
+      "no_price": "selling price missing on the order",
+      "no_production": "quantity produced not entered",
+      "unknown_material_cost": "cost of some materials unknown",
+      "no_consumption": "material consumption not entered",
+      "expense_currency": "an expense is in another currency",
+      "order_currency": "the order is in another currency"
+    },
+    "costReason": {
+      "no_price": "Neither this lot nor any other lot of this material has a price.",
+      "currency": "The price of this lot is in another currency than the company’s."
+    },
+    "producedStatus": {
+      "produced": "Produced",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    },
+    "expenseCategory": {
+      "subcontracting": "Subcontracting",
+      "external_service": "External service",
+      "purchase": "Purchase",
+      "transport": "Transport",
+      "labour": "Labour",
+      "other": "Other"
+    },
+    "invoiceKind": {
+      "invoice": "Invoice",
+      "credit_note": "Credit note"
+    },
+    "lots": {
+      "title": "Received lots and produced lots",
+      "subtitle": "The materials received from your suppliers, and the goods made for your clients. Waste lots are in Operations."
+    },
+    "material": {
+      "overview": "Overview",
+      "history": "Consumption",
+      "prices": "Purchase prices",
+      "category": "Category",
+      "defaultSupplier": "Default supplier",
+      "defaultSupplierHint": "Proposed for a new received lot. Each lot keeps its own supplier.",
+      "consumed": "Consumed",
+      "inOrders": "in {{count}} order(s)",
+      "unallocated": "No lot specified",
+      "unallocatedHint": "Consumed without knowing which received lot",
+      "receivedHint": "{{quantity}} {{unit}} received",
+      "noQuantity": "Quantities not entered",
+      "averagePrice": "Average price per {{unit}}",
+      "unpriced": "{{count}} lot(s) without a price",
+      "purchased": "{{amount}} purchased",
+      "waste": "Waste from this material",
+      "wasteLots": "{{count}} waste lot(s)",
+      "historyIntro": "Where this material was consumed: the last 200 consumptions, with the order and the received lot they come from.",
+      "historyEmpty": "No order has consumed this material yet.",
+      "pricesIntro": "The cost of each delivery, delivery included. The same material can have a different price by supplier and date.",
+      "pricesEmpty": "No received lot has a price.",
+      "versusAverage": "Gap to average price",
+      "weightedAverage": "Average price weighted by quantities"
+    },
+    "received": {
+      "title": "Received lots",
+      "one": "Received lot",
+      "new": "New received lot",
+      "edit": "Edit received lot",
+      "number": "Received lot number",
+      "receivedOn": "Received on",
+      "supplier": "Supplier",
+      "supplierHint": "The one of this delivery. It can differ from the default supplier of the material.",
+      "supplierReference": "Supplier’s lot number",
+      "quantity": "Quantity received ({{unit}})",
+      "deliveryNote": "Delivery note",
+      "purchase": "Purchase (excl. tax)",
+      "unitPrice": "Unit price per {{unit}}",
+      "totalAmount": "Total amount",
+      "amountHint": "Enter the unit price or the amount: the other is computed with the quantity.",
+      "deliveryCost": "Delivery cost",
+      "deliveryCostHint": "Transport, customs… spread over the quantity of the lot.",
+      "taxRate": "VAT (%)",
+      "invoice": "Supplier invoice",
+      "intro": "Each delivery of the material, with its supplier and its price. This is not a stock: \"consumed\" is what orders declared taking from the lot.",
+      "empty": "No received lot",
+      "emptyHint": "Add a received lot from the page of a material, or import them.",
+      "received": "Received",
+      "consumed": "Consumed by orders",
+      "unitCost": "Unit cost",
+      "purchaseValue": "Purchase value",
+      "consumedValue": "Consumed value",
+      "documents": "Delivery note / invoice",
+      "overConsumed": "Orders declare having consumed more than the lot held: check the quantities.",
+      "search": "Lot number, reference or material",
+      "price": "Price",
+      "withPrice": "With a price",
+      "withoutPrice": "Without a price"
+    },
+    "consumed": {
+      "title": "Materials consumed",
+      "edit": "Edit consumption",
+      "editHint": "One line per material and received lot: 12 kg of lot A and 8 kg of lot B are two lines. If you do not know which lot the material came from, leave \"Lot not specified\".",
+      "none": "No consumption entered.",
+      "intro": "Order → material consumed → received lot → supplier. Planned comes from the consumption per piece of the article.",
+      "empty": "No material planned or consumed for this order.",
+      "planned": "Planned",
+      "actual": "Consumed",
+      "variance": "Variance",
+      "where": "Stage · site",
+      "notYet": "Nothing consumed yet.",
+      "materialsHint": "material(s) planned or consumed",
+      "averageHint": "Lot not specified: valued at the average price of the lots of this material.",
+      "unallocated": "{{quantity}} {{unit}} with no lot specified; the origin of {{known}} {{unit}} is known."
+    },
+    "produced": {
+      "title": "Produced lots",
+      "new": "New produced lot",
+      "edit": "Edit produced lot",
+      "number": "Produced lot number",
+      "quantity": "Quantity produced (pieces)",
+      "producedOn": "Produced on",
+      "producedUntil": "Until",
+      "untilHint": "If the lot was made over several days.",
+      "deliveredOn": "Delivered on",
+      "for": "Article {{article}} — client {{client}} — order {{order}}",
+      "intro": "The finished goods made by this order for {{client}}, lot by lot. A produced lot has no supplier: suppliers are those of the received lots consumed.",
+      "empty": "No produced lot for this order.",
+      "emptyList": "No produced lot",
+      "emptyHint": "Produced lots are created from the page of a manufacturing order.",
+      "total": "Total produced",
+      "deliveredHint": "{{count}} piece(s) delivered",
+      "search": "Lot number, order, article or customer order"
+    },
+    "waste": {
+      "title": "Waste lots",
+      "new": "Record waste",
+      "intro": "The waste attached to this order. These are ordinary waste lots: register, pickups and tracking slips apply as always.",
+      "empty": "No waste lot names this order.",
+      "hidden": "{{count}} lot(s), {{kg}}: you are not allowed to read waste lots.",
+      "source": "Material · received lot",
+      "ofOnly": "Order only",
+      "total": "{{count}} lot(s) generated",
+      "noRate": "Waste rate not calculable"
+    },
+    "expenses": {
+      "title": "Other expenses",
+      "new": "New expense",
+      "edit": "Edit expense",
+      "category": "Category",
+      "amount": "Amount excl. tax",
+      "description": "Description",
+      "payee": "Supplier / payee",
+      "reference": "Supporting document",
+      "referenceHint": "Invoice, quote or receipt number.",
+      "deleteTitle": "Delete the expense \"{{description}}\"?"
+    },
+    "invoices": {
+      "title": "Invoices and credit notes",
+      "new": "Record an invoice",
+      "edit": "Edit invoice",
+      "kind": "Type",
+      "number": "Invoice number",
+      "amount": "Amount excl. tax",
+      "amountHint": "Always positive: a credit note is deducted.",
+      "of": "Manufacturing order",
+      "wholeOrder": "Whole order",
+      "ofHint": "If the invoice is for one manufacturing order only.",
+      "count": "{{count}} invoice(s) or credit note(s)",
+      "intro": "The invoices issued for this order. They are issued elsewhere (accounting): their number, date and amount are noted here to tell \"ordered\" from \"really invoiced\".",
+      "empty": "No invoice recorded.",
+      "deleteTitle": "Delete invoice {{number}}?"
+    },
+    "finance": {
+      "title": "Costs, revenue and gain",
+      "exclTax": "Amounts excluding tax, in {{currency}}",
+      "costs": "Production costs",
+      "revenue": "Revenue",
+      "amount": "Amount",
+      "value": "Value",
+      "plannedMaterial": "Planned material cost",
+      "plannedMaterialHint": "Planned consumption × average price of each material",
+      "materialKnown": "Actual material cost",
+      "materialKnownHint": "Quantity consumed × cost of the received lot",
+      "materialEstimated": "Estimated material cost",
+      "materialEstimatedHint": "Lots not specified, at the average price of the material",
+      "materialUnknown": "{{count}} consumption(s) without a price",
+      "materialUnknownHint": "No lot of the material has a price: cost unknown, not zero",
+      "totalCost": "Recorded production cost",
+      "unitCost": "Cost per piece",
+      "perPiece": "{{amount}} per piece",
+      "incomplete": "incomplete: some costs are unknown",
+      "notCalculable": "Not calculable",
+      "unitPrice": "Unit selling price",
+      "fromOrder": "order",
+      "afterDiscount": "{{amount}} after discount",
+      "plannedValue": "Planned value",
+      "plannedValueHint": "Planned quantity × price",
+      "producedValue": "Value of production",
+      "producedValueHint": "Quantity produced × agreed price",
+      "deliveredValue": "Delivered value",
+      "orderValue": "Order value",
+      "orderValueHint": "What the client ordered",
+      "invoiced": "Invoiced",
+      "invoicedOfHint": "Invoices of this order, credit notes deducted",
+      "invoicedOrderHint": "Invoices of the whole customer order: it has several manufacturing orders, nothing is shared out",
+      "invoicedNoneHint": "No invoice recorded",
+      "uninvoiced": "Still to invoice",
+      "uninvoicedHint": "Order value − invoiced",
+      "gain": "Recorded gain",
+      "margin": "margin {{pct}} %",
+      "gainFormula": "Value of production − recorded production costs (materials + other expenses). Gross margin on entered costs: this is not an accounting result.",
+      "gainMissing": "Missing:",
+      "gainEstimated": "Part of the material cost is estimated at the average price (lots not specified)."
+    },
+    "report": {
+      "title": "Costs and gains",
+      "subtitle": "What the orders of the period cost and are worth, with what is missing to trust it.",
+      "export": "Export (Excel)",
+      "byOrder": "By order",
+      "byClient": "By client",
+      "byMaterial": "By material",
+      "bySupplier": "By supplier",
+      "material": "Materials",
+      "produced": "Pieces produced",
+      "empty": "No order in this period.",
+      "noClient": "No client",
+      "noLot": "Lot not specified",
+      "costSplit": "materials {{material}} · expenses {{expenses}}",
+      "invoicedHint": "Recorded invoices, credit notes deducted",
+      "gainHint": "computed for {{counted}} of {{total}} order(s)",
+      "missingTitle": "Some gains cannot be calculated",
+      "missingLine": "{{count}} order(s): {{reason}}",
+      "ofWhichEstimated": "of which {{amount}} estimated",
+      "unallocated": "No lot specified",
+      "unknownQuantity": "{{quantity}} {{unit}} without a price",
+      "lines": "Consumptions",
+      "consumedValue": "Consumed value",
+      "unpricedLines": "{{count}} without a price",
+      "materialIntro": "Planned against consumed, for the orders of the period that declared a consumption.",
+      "supplierIntro": "A consumption goes to the supplier of the received lot it comes from. Without a lot, the supplier is unknown.",
+      "method": "Method: actual material cost = quantity consumed × cost of the received lot (price paid, delivery cost spread). Lot not specified = weighted average price of the material, counted as \"estimated\". A gain is added up only for the orders where it can be calculated. An order belongs to the period by its end date, else its start date, else its creation date. Amounts exclude tax."
     }
   },
   "help": {
@@ -2268,6 +2549,14 @@
     "reports": {
       "title": "Reports and exports",
       "text": "Choose a report, a period and a format: it is prepared in the background and appears in the list when ready.\nA report is visible only to the person who requested it and stays available for 30 days."
+    },
+    "productionLots": {
+      "title": "Three kinds of lot, not to be confused",
+      "text": "Received lot: a delivery of raw material by a supplier. It tells where the material comes from and what it cost.\nProduced lot: finished goods made by an order for its client. It has no supplier.\nWaste lot: waste from production, managed in Operations → Waste lots.\nNone of these is a stock: no balance, no location and no movement is kept here."
+    },
+    "productionFinance": {
+      "title": "How to read costs and gains",
+      "text": "Actual material cost: quantity consumed × cost of the received lot it comes from. A lot used by several orders is shared by what each one consumed.\nEstimated material cost: when the lot is not specified, the quantity is valued at the average price of the material — and counted apart.\nValue of production: pieces made × price agreed on the order. It is not what was invoiced.\nRecorded gain: value of production − recorded costs (materials + other expenses). It is computed only when everything is known; otherwise what is missing is listed.\nThis is not an accounting result: no overheads, no labour unless entered as an expense. Amounts exclude tax."
     }
   }
 }

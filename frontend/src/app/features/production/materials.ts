@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
@@ -12,10 +13,9 @@ import { Api } from '../../core/api/api';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
-import { CodePipe, DatePipe, LocalizedPipe, NumberPipe } from '../../core/format/pipes';
+import { CodePipe, LocalizedPipe, NumberPipe } from '../../core/format/pipes';
 import { CheckboxComponent } from '../../ui/checkbox';
 import { Column, TABLE } from '../../ui/data-table';
-import { DateComponent } from '../../ui/date';
 import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
 import { FIELD } from '../../ui/field';
 import { FilterBarComponent } from '../../ui/filter-bar';
@@ -33,7 +33,7 @@ import { COLOR } from '../../ui/swatch';
  * composition and colour are what the waste coming from it will carry.
  */
 @Component({
-  imports: [ReactiveFormsModule, TranslocoDirective, LocalizedPipe, DatePipe, NumberPipe, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, ...COLOR, ...DIALOG_PARTS, IconComponent, CheckboxComponent, DateComponent],
+  imports: [ReactiveFormsModule, TranslocoDirective, LocalizedPipe, NumberPipe, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, ...COLOR, ...DIALOG_PARTS, IconComponent, CheckboxComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -48,11 +48,13 @@ import { COLOR } from '../../ui/swatch';
               </dw-select>
             </dw-field>
             <dw-field class="dw-span-2" [label]="t('production.designation')"><input pInputText formControlName="name" maxlength="191" required /></dw-field>
-            <dw-field [label]="t('production.suppliers.one')">
+            <dw-field [label]="t('production.material.category')"><input pInputText formControlName="category" maxlength="80" /></dw-field>
+            <dw-field [label]="t('production.material.defaultSupplier')">
               <dw-select formControlName="supplier">
                 <dw-option value="" label="—" />
                 @for (supplier of suppliers(); track supplier.ulid) { <dw-option [value]="supplier.ulid" [label]="supplier.name" /> }
               </dw-select>
+              <small dwHint>{{ t('production.material.defaultSupplierHint') }}</small>
             </dw-field>
             <dw-field [label]="t('lots.grammage')"><input pInputText formControlName="grammage_gsm" inputmode="decimal" /></dw-field>
             <dw-field [label]="t('production.materials.width')">
@@ -86,24 +88,6 @@ import { COLOR } from '../../ui/swatch';
             @if (data) { <dw-checkbox class="dw-span-2" formControlName="is_active">{{ t('common.active') }}</dw-checkbox> }
           </div>
 
-          @if (material(); as m) {
-            <section class="part batches">
-              <h3 class="dw-h3">{{ t('production.materials.batches') }}</h3>
-              <p class="dw-muted">{{ t('production.materials.batchesHint') }}</p>
-              @if (m.batches.length > 0) {
-                <table class="dw-table">
-                  <thead><tr><th>{{ t('production.materials.batchNumber') }}</th><th>{{ t('production.materials.receivedOn') }}</th><th class="dw-num">{{ t('fields.quantity') }}</th></tr></thead>
-                  <tbody>@for (batch of m.batches; track batch.ulid) { <tr><td class="dw-mono">{{ batch.batch_number }}</td><td>{{ batch.received_on | dwDate }}</td><td class="dw-num">{{ batch.quantity | dwNumber: 2 }}</td></tr> }</tbody>
-                </table>
-              }
-              <div class="line batch" [formGroup]="batch">
-                <input pInputText formControlName="batch_number" maxlength="60" [placeholder]="t('production.materials.batchNumber')" [attr.aria-label]="t('production.materials.batchNumber')" />
-                <dw-date formControlName="received_on" [placeholder]="t('production.materials.receivedOn')" />
-                <input pInputText formControlName="quantity" inputmode="decimal" [placeholder]="t('fields.quantity')" [attr.aria-label]="t('fields.quantity')" />
-                <button pButton severity="secondary" outlined type="button" [disabled]="batch.invalid || busy()" (click)="addBatch()">{{ t('common.add') }}</button>
-              </div>
-            </section>
-          }
         </div>
         <div class="dw-dialog-foot">
           <button pButton type="button" severity="secondary" outlined (click)="ref.close(changed())">{{ t('common.close') }}</button>
@@ -139,6 +123,7 @@ export class MaterialDialog {
     reference: [this.data?.reference ?? '', Validators.required],
     name: [this.data?.name ?? '', Validators.required],
     unit: [this.data?.unit ?? 'm', Validators.required],
+    category: [this.data?.category ?? ''],
     supplier: [this.data?.supplier?.ulid ?? ''],
     color_family: [this.data?.color_family ?? ''],
     color_label: [this.data?.color_label ?? ''],
@@ -148,7 +133,6 @@ export class MaterialDialog {
     is_active: [this.data?.is_active ?? true],
     composition: this.composition,
   });
-  protected readonly batch = this.fb.nonNullable.group({ batch_number: ['', Validators.required], received_on: [''], quantity: ['', DECIMAL] });
   private readonly lines = toSignal(this.composition.valueChanges, { initialValue: this.composition.getRawValue() });
 
   protected total(): number {
@@ -176,13 +160,7 @@ export class MaterialDialog {
     try {
       const saved = await firstValueFrom(current ? this.api.put<RawMaterial>(`production/materials/${current.ulid}`, body) : this.api.post<RawMaterial>('production/materials', body));
       this.toast.success('common.saved');
-      // A new material stays open: its deliveries can now be recorded.
-      if (current) {
-        this.ref.close(saved);
-      } else {
-        this.material.set(saved);
-        this.changed.set(true);
-      }
+      this.ref.close(saved);
     } catch (error) {
       if (!this.toast.applyValidation(this.form, error)) {
         this.toast.error(error);
@@ -192,25 +170,7 @@ export class MaterialDialog {
     }
   }
 
-  protected async addBatch(): Promise<void> {
-    const material = this.material();
-    if (!material || this.batch.invalid) {
-      return;
-    }
-    this.busy.set(true);
-    const value = this.batch.getRawValue();
-    try {
-      this.material.set(await firstValueFrom(this.api.post<RawMaterial>(`production/materials/${material.ulid}/batches`, blankToNull({ ...value, quantity: decimal(value.quantity) }))));
-      this.changed.set(true);
-      this.batch.reset();
-    } catch (error) {
-      if (!this.toast.applyValidation(this.batch, error)) {
-        this.toast.error(error);
-      }
-    } finally {
-      this.busy.set(false);
-    }
-  }
+
 }
 
 /** An article, the client it is made for, and what one piece is expected to consume. */
@@ -346,8 +306,8 @@ export class ArticleDialog {
                 @if (canManage) { <button pButton type="button" (click)="editMaterial(null)"><dw-icon>add</dw-icon>{{ t('production.materials.new') }}</button> }
               </dw-filter-bar>
               <dw-data-table [columns]="materialColumns" [rows]="materials.rows()" [loading]="materials.loading()" [error]="materials.error()" [total]="materials.total()" [pageIndex]="materials.page() - 1"
-                [pageSize]="materials.perPage()" [clickable]="canManage" [emptyTitle]="t('production.materials.empty')" [emptyHint]="t('production.emptyHint')" emptyIcon="texture"
-                (page)="materials.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="editMaterial($event)" (retry)="materials.reload()">
+                [pageSize]="materials.perPage()" [clickable]="true" [emptyTitle]="t('production.materials.empty')" [emptyHint]="t('production.emptyHint')" emptyIcon="texture"
+                (page)="materials.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="openMaterial($event)" (retry)="materials.reload()">
                 <ng-template dwCell="reference" let-m><span class="dw-mono">{{ m.reference }}</span></ng-template>
                 <ng-template dwCell="composition" let-m>@for (line of m.composition; track line.material) { <span class="chip">{{ line.material | dwCode: 'material' }} {{ +line.pct }} %</span> } @empty { — }</ng-template>
                 <ng-template dwCell="color" let-m>@if (m.color_family) { <dw-color [code]="m.color_family" /> }@if (m.color_family && m.color_label) { · }{{ m.color_label ?? (m.color_family ? '' : '—') }}</ng-template>
@@ -379,6 +339,7 @@ export class ArticleDialog {
 export class MaterialsPage {
   private readonly api = inject(Api);
   private readonly dialog = inject(Dialogs);
+  private readonly router = inject(Router);
 
   protected readonly canManage = inject(Session).can('production.manage');
   protected readonly materialSearch = signal('');
@@ -405,8 +366,15 @@ export class MaterialsPage {
     { key: 'status', header: 'fields.status' },
   ];
 
+  /** The page of the material: its received lots, its consumption, its prices. */
+  protected openMaterial(material: RawMaterial): void {
+    void this.router.navigate(['/production/catalog', material.ulid]);
+  }
+
+  /** A new material opens on its own page, where its received lots are recorded. */
   protected editMaterial(material: RawMaterial | null): void {
-    this.dialog.open<MaterialDialog, RawMaterial | null, RawMaterial | boolean>(MaterialDialog, { data: material }).afterClosed().subscribe((saved) => saved && this.materials.reload());
+    this.dialog.open<MaterialDialog, RawMaterial | null, RawMaterial | boolean>(MaterialDialog, { data: material }).afterClosed()
+      .subscribe((saved) => (saved && typeof saved === 'object' ? this.openMaterial(saved) : saved && this.materials.reload()));
   }
 
   protected editArticle(article: Article | null): void {

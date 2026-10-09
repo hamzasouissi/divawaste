@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
@@ -10,7 +11,7 @@ import { Textarea } from 'primeng/textarea';
 import { Api } from '../../core/api/api';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe, LocalizedPipe, NumberPipe } from '../../core/format/pipes';
+import { DatePipe, LocalizedPipe, MoneyPipe, NumberPipe } from '../../core/format/pipes';
 import { Column, TABLE } from '../../ui/data-table';
 import { DateComponent } from '../../ui/date';
 import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
@@ -21,7 +22,7 @@ import { ListStore } from '../../ui/list-store';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { SearchComponent } from '../../ui/search';
 import { SELECT } from '../../ui/select';
-import { CustomerOrder, DECIMAL, ManufacturingOrder, OfStatus, OrderStatus, ProductionLists, blankToNull, decimal } from './production-data';
+import { AMOUNT, CustomerOrder, DECIMAL, ManufacturingOrder, OfStatus, OrderStatus, ProductionLists, blankToNull, decimal } from './production-data';
 import { HelpComponent } from '../../ui/help';
 
 const ORDER_STATUSES: OrderStatus[] = ['open', 'in_progress', 'completed', 'cancelled'];
@@ -58,16 +59,21 @@ const tone = (status: string): string => (status === 'completed' ? 'approved' : 
             <section class="dw-span-2 part">
               <h3 class="dw-h3">{{ t('production.orders.lines') }}</h3>
               @for (line of lines.controls; track line; let i = $index) {
-                <div class="line" [formGroup]="line">
+                <div class="line" [class.priced]="money" [formGroup]="line">
                   <dw-select formControlName="article" [ariaLabel]="t('production.articles.one')" [placeholder]="t('production.articles.one')">
                     @for (article of articles(); track article.ulid) { <dw-option [value]="article.ulid" [label]="article.reference + ' — ' + article.name" [disabled]="taken(article.ulid, i)" /> }
                   </dw-select>
                   <input pInputText type="number" formControlName="quantity" min="1" [placeholder]="t('fields.quantity')" [attr.aria-label]="t('fields.quantity')" />
+                  @if (money) { <input pInputText formControlName="unit_price" inputmode="decimal" [placeholder]="t('production.orders.unitPrice')" [attr.aria-label]="t('production.orders.unitPrice')" /> }
                   <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="lines.removeAt(i)" [attr.aria-label]="t('common.remove')"><dw-icon>close</dw-icon></button>
                 </div>
               }
               <button pButton text type="button" class="add" (click)="addLine()"><dw-icon>add</dw-icon>{{ t('production.orders.addLine') }}</button>
+              @if (money) { <p class="dw-faint">{{ t('production.orders.priceHint') }}</p> }
             </section>
+            @if (money) {
+              <dw-field [label]="t('production.orders.discount')"><input pInputText formControlName="discount_amount" inputmode="decimal" /><small dwHint>{{ t('production.orders.discountHint') }}</small></dw-field>
+            }
             <dw-field class="dw-span-2" [label]="t('fields.notes')"><textarea pTextarea formControlName="notes" rows="2" maxlength="1000"></textarea></dw-field>
           </div>
         </div>
@@ -78,7 +84,7 @@ const tone = (status: string): string => (status === 'completed' ? 'approved' : 
       </form>
     </ng-container>
   `,
-  styles: LINE_STYLES + '.dw-dialog-body { inline-size: min(640px, 86vw); } .line { grid-template-columns: minmax(0, 1fr) 140px auto; }',
+  styles: LINE_STYLES + '.dw-dialog-body { inline-size: min(680px, 88vw); } .line { grid-template-columns: minmax(0, 1fr) 140px auto; } .line.priced { grid-template-columns: minmax(0, 1fr) 110px 150px auto; }',
 })
 export class OrderDialog {
   protected readonly data = dialogData<CustomerOrder | null>();
@@ -92,7 +98,8 @@ export class OrderDialog {
   protected readonly clients = toSignal(this.lists.clients(), { initialValue: [] });
   protected readonly articles = toSignal(this.lists.articles(), { initialValue: [] });
   protected readonly busy = signal(false);
-  protected readonly lines = this.fb.array((this.data?.lines ?? []).map((line) => this.line(line.article, line.quantity)));
+  protected readonly money = inject(Session).can('production.finance.view');
+  protected readonly lines = this.fb.array((this.data?.lines ?? []).map((line) => this.line(line.article, line.quantity, line.unit_price ? String(+line.unit_price) : '')));
   protected readonly form = this.fb.nonNullable.group({
     order_number: [this.data?.order_number ?? '', Validators.required],
     client: [this.data?.client?.ulid ?? '', Validators.required],
@@ -100,11 +107,12 @@ export class OrderDialog {
     due_on: [this.data?.due_on ?? ''],
     status: [this.data?.status ?? ('open' as OrderStatus)],
     notes: [this.data?.notes ?? ''],
+    discount_amount: [this.data?.discount_amount ? String(+this.data.discount_amount) : '', AMOUNT],
     lines: this.lines,
   });
 
-  private line(article = '', quantity: number | null = null): FormGroup {
-    return this.fb.nonNullable.group({ article: [article, Validators.required], quantity: [quantity, [Validators.required, Validators.min(1)]] });
+  private line(article = '', quantity: number | null = null, unitPrice = ''): FormGroup {
+    return this.fb.nonNullable.group({ article: [article, Validators.required], quantity: [quantity, [Validators.required, Validators.min(1)]], unit_price: [unitPrice, DECIMAL] });
   }
 
   protected addLine(): void {
@@ -122,7 +130,9 @@ export class OrderDialog {
       return;
     }
     this.busy.set(true);
-    const body = blankToNull(this.form.getRawValue());
+    const value = this.form.getRawValue();
+    const body = blankToNull({ ...value, discount_amount: decimal(value.discount_amount),
+      lines: value.lines.map((line) => ({ article: line['article'] as string, quantity: line['quantity'] as number, unit_price: decimal(line['unit_price'] as string) })) });
     try {
       this.ref.close(await firstValueFrom(this.data ? this.api.put<CustomerOrder>(`production/orders/${this.data.ulid}`, body) : this.api.post<CustomerOrder>('production/orders', body)));
       this.toast.success('common.saved');
@@ -138,7 +148,7 @@ export class OrderDialog {
 
 /** The orders of the clients. */
 @Component({
-  imports: [HelpComponent, TranslocoDirective, PageHeaderComponent, ...TABLE, StatusComponent, SearchComponent, FilterBarComponent, ButtonDirective, IconComponent, DatePipe, NumberPipe, ...SELECT],
+  imports: [HelpComponent, TranslocoDirective, PageHeaderComponent, ...TABLE, StatusComponent, SearchComponent, FilterBarComponent, ButtonDirective, IconComponent, DatePipe, NumberPipe, MoneyPipe, ...SELECT],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -155,8 +165,9 @@ export class OrderDialog {
           </dw-select>
         </dw-filter-bar>
         <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1" [pageSize]="list.perPage()"
-          [clickable]="canManage" [emptyTitle]="t('production.orders.empty')" [emptyHint]="t('production.emptyHint')" emptyIcon="receipt_long"
-          (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="edit($event)" (retry)="list.reload()">
+          [clickable]="true" [emptyTitle]="t('production.orders.empty')" [emptyHint]="t('production.emptyHint')" emptyIcon="receipt_long"
+          (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="open($event)" (retry)="list.reload()">
+          <ng-template dwCell="value" let-o>{{ o.order_value === null ? '—' : (o.order_value | dwMoney: o.currency_code) }}@if (o.invoiced && +o.invoiced > 0) { <div class="dw-faint">{{ t('production.finance.invoiced') }} {{ o.invoiced | dwMoney: o.currency_code }}</div> }</ng-template>
           <ng-template dwCell="number" let-o><span class="dw-mono">{{ o.order_number }}</span></ng-template>
           <ng-template dwCell="articles" let-o>@for (line of o.lines; track line.article) { <div>{{ line.quantity | dwNumber }} × {{ line.reference }} <span class="dw-faint">{{ line.name }}</span></div> } @empty { — }</ng-template>
           <ng-template dwCell="dates" let-o>{{ o.ordered_on | dwDate }}<div class="dw-faint">{{ t('production.orders.dueOn') }} {{ o.due_on | dwDate }}</div></ng-template>
@@ -169,8 +180,10 @@ export class OrderDialog {
 export class OrdersPage {
   private readonly api = inject(Api);
   private readonly dialog = inject(Dialogs);
+  private readonly router = inject(Router);
+  private readonly session = inject(Session);
 
-  protected readonly canManage = inject(Session).can('production.manage');
+  protected readonly canManage = this.session.can('production.manage');
   protected readonly statuses = ORDER_STATUSES;
   protected readonly tone = tone;
   protected readonly search = signal('');
@@ -182,11 +195,17 @@ export class OrdersPage {
     { key: 'articles', header: 'production.articles.title', hideBelow: 900 },
     { key: 'dates', header: 'production.orders.orderedOn', hideBelow: 700 },
     { key: 'ofs', header: 'production.of.short', align: 'end', value: (o) => o.manufacturing_orders || '—', hideBelow: 1100 },
+    ...(this.session.can('production.finance.view') ? [{ key: 'value', header: 'production.finance.orderValue', align: 'end' as const, hideBelow: 900 }] : []),
     { key: 'status', header: 'fields.status' },
   ];
 
+  /** The page of the order: its articles and prices, its OFs, its invoices. */
+  protected open(order: CustomerOrder): void {
+    void this.router.navigate(['/production/orders', order.ulid]);
+  }
+
   protected edit(order: CustomerOrder | null): void {
-    this.dialog.open<OrderDialog, CustomerOrder | null, CustomerOrder>(OrderDialog, { data: order }).afterClosed().subscribe((saved) => saved && this.list.reload());
+    this.dialog.open<OrderDialog, CustomerOrder | null, CustomerOrder>(OrderDialog, { data: order }).afterClosed().subscribe((saved) => saved && this.open(saved));
   }
 }
 
@@ -195,7 +214,7 @@ export class OrdersPage {
  * can be cut in one place and sewn in another — and what it really consumed, next to what was expected.
  */
 @Component({
-  imports: [ReactiveFormsModule, TranslocoDirective, LocalizedPipe, NumberPipe, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, ...DIALOG_PARTS, IconComponent, DateComponent],
+  imports: [ReactiveFormsModule, TranslocoDirective, LocalizedPipe, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, ...DIALOG_PARTS, IconComponent, DateComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -219,7 +238,7 @@ export class OrdersPage {
               </dw-select>
             </dw-field>
             <dw-field [label]="t('production.of.planned')"><input pInputText type="number" formControlName="quantity_planned" min="1" required /></dw-field>
-            <dw-field [label]="t('production.of.produced')"><input pInputText type="number" formControlName="quantity_produced" min="0" /></dw-field>
+            <dw-field [label]="t('production.of.produced')"><input pInputText type="number" formControlName="quantity_produced" min="0" /><small dwHint>{{ t('production.of.producedHint') }}</small></dw-field>
             <dw-field [label]="t('production.of.startedOn')"><dw-date formControlName="started_on" /></dw-field>
             <dw-field [label]="t('production.of.finishedOn')"><dw-date formControlName="finished_on" [min]="form.controls.started_on.value || null" /></dw-field>
 
@@ -241,31 +260,6 @@ export class OrdersPage {
               <button pButton text type="button" class="add" (click)="addStep()"><dw-icon>add</dw-icon>{{ t('production.of.addStep') }}</button>
             </section>
 
-            <section class="dw-span-2 part">
-              <h3 class="dw-h3">{{ t('production.of.consumption') }}</h3>
-              @if (expected().length > 0) {
-                <ul class="expected">
-                  @for (item of expected(); track item.material) {
-                    <li>{{ item.reference }} — {{ t('production.of.expected') }} <strong>{{ item.planned | dwNumber: 2 }} {{ item.unit }}</strong>@if (+item.consumed > 0) { , {{ t('production.of.consumed') }}
-                      <strong [class.over]="+item.consumed > +item.planned">{{ item.consumed | dwNumber: 2 }} {{ item.unit }}</strong> }</li>
-                  }
-                </ul>
-              }
-              @for (line of consumptions.controls; track line; let i = $index) {
-                <div class="line use" [formGroup]="line">
-                  <dw-select formControlName="material" [ariaLabel]="t('production.materials.one')" [placeholder]="t('production.materials.one')">
-                    @for (material of materials(); track material.ulid) { <dw-option [value]="material.ulid" [label]="material.reference + ' — ' + material.name + ' (' + material.unit + ')'" /> }
-                  </dw-select>
-                  <dw-select formControlName="batch" [ariaLabel]="t('production.materials.batchNumber')" [placeholder]="t('production.materials.batchNumber')">
-                    <dw-option value="" [label]="t('production.of.anyBatch')" />
-                    @for (batch of batchesOf(line.value.material); track batch.ulid) { <dw-option [value]="batch.ulid" [label]="batch.batch_number" /> }
-                  </dw-select>
-                  <input pInputText formControlName="quantity" inputmode="decimal" [placeholder]="t('fields.quantity')" [attr.aria-label]="t('fields.quantity')" />
-                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="consumptions.removeAt(i)" [attr.aria-label]="t('common.remove')"><dw-icon>close</dw-icon></button>
-                </div>
-              }
-              <button pButton text type="button" class="add" (click)="addConsumption()"><dw-icon>add</dw-icon>{{ t('production.of.addConsumption') }}</button>
-            </section>
             <dw-field class="dw-span-2" [label]="t('fields.notes')"><textarea pTextarea formControlName="notes" rows="2" maxlength="1000"></textarea></dw-field>
           </div>
         </div>
@@ -279,9 +273,7 @@ export class OrdersPage {
   styles: LINE_STYLES + `
     .dw-dialog-body { inline-size: min(760px, 90vw); }
     .line.step { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 150px auto; }
-    .line.use { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 120px auto; }
-    .expected { margin: 0; padding-inline-start: 18px; font-size: 13px; color: var(--dw-ink-2); } .over { color: var(--dw-danger); }
-    @media (max-width: 640px) { .line.step, .line.use { grid-template-columns: minmax(0, 1fr) auto; } }
+    @media (max-width: 640px) { .line.step { grid-template-columns: minmax(0, 1fr) auto; } }
   `,
 })
 export class ManufacturingOrderDialog {
@@ -297,12 +289,9 @@ export class ManufacturingOrderDialog {
   protected readonly sites = inject(Session).sitesFor('sites.view');
   protected readonly orders = toSignal(this.lists.orders(), { initialValue: [] });
   private readonly articles = toSignal(this.lists.articles(), { initialValue: [] });
-  protected readonly materials = toSignal(this.lists.materials(), { initialValue: [] });
   protected readonly stepOptions = toSignal(this.lists.steps(), { initialValue: [] });
   protected readonly busy = signal(false);
-  protected readonly expected = signal(this.data?.planned_consumption ?? []);
   protected readonly steps = this.fb.array((this.data?.steps ?? []).map((line) => this.step(line.step, line.site, line.pieces_done)));
-  protected readonly consumptions = this.fb.array((this.data?.consumptions ?? []).map((line) => this.consumption(line.material, line.batch ?? '', line.quantity)));
   protected readonly form = this.fb.nonNullable.group({
     order_number: [this.data?.order_number ?? '', Validators.required],
     status: [this.data?.status ?? ('planned' as OfStatus)],
@@ -314,7 +303,6 @@ export class ManufacturingOrderDialog {
     finished_on: [this.data?.finished_on ?? ''],
     notes: [this.data?.notes ?? ''],
     steps: this.steps,
-    consumptions: this.consumptions,
   });
   private readonly chosenOrder = toSignal(this.form.controls.customer_order.valueChanges, { initialValue: this.form.controls.customer_order.value });
   /** For an order, only the articles of that order; otherwise any article. */
@@ -328,29 +316,12 @@ export class ManufacturingOrderDialog {
     return this.fb.nonNullable.group({ step: [step, Validators.required], site: [site || (this.sites[0]?.ulid ?? ''), Validators.required], pieces_done: [pieces, Validators.min(0)] });
   }
 
-  private consumption(material = '', batch = '', quantity = ''): FormGroup {
-    const line = this.fb.nonNullable.group({ material: [material, Validators.required], batch: [batch], quantity: [quantity, [Validators.required, DECIMAL]] });
-    // A batch belongs to one material: choosing another material forgets it. (Changes made by the user only: the
-    // control does not announce the value it starts with.)
-    line.controls.material.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => line.controls.batch.setValue(''));
-
-    return line;
-  }
-
   protected addStep(): void {
     this.steps.push(this.step());
   }
 
-  protected addConsumption(): void {
-    this.consumptions.push(this.consumption());
-  }
-
   protected stepTaken(code: string, index: number): boolean {
     return this.steps.controls.some((line, i) => i !== index && line.value.step === code);
-  }
-
-  protected batchesOf(material: string): { ulid: string; batch_number: string }[] {
-    return this.materials().find((item) => item.ulid === material)?.batches ?? [];
   }
 
   constructor() {
@@ -374,7 +345,6 @@ export class ManufacturingOrderDialog {
     const body = blankToNull({
       ...value,
       steps: value.steps.map((line) => blankToNull(line)),
-      consumptions: value.consumptions.map((line) => ({ material: line['material'] as string, batch: (line['batch'] as string) || null, quantity: decimal(line['quantity'] as string) })),
     });
     try {
       this.ref.close(await firstValueFrom(this.data ? this.api.put<ManufacturingOrder>(`production/manufacturing-orders/${this.data.ulid}`, body) : this.api.post<ManufacturingOrder>('production/manufacturing-orders', body)));
@@ -415,7 +385,7 @@ export class ManufacturingOrderDialog {
         </dw-filter-bar>
         <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1" [pageSize]="list.perPage()"
           [clickable]="true" [emptyTitle]="t('production.of.empty')" [emptyHint]="t('production.emptyHint')" emptyIcon="precision_manufacturing"
-          (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="edit($event)" (retry)="list.reload()">
+          (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="open($event)" (retry)="list.reload()">
           <ng-template dwCell="number" let-of><span class="dw-mono">{{ of.order_number }}</span>@if (of.customer_order) { <div class="dw-faint dw-mono">{{ of.customer_order.order_number }}</div> }</ng-template>
           <ng-template dwCell="article" let-of>{{ of.article.reference }}<div class="dw-faint">{{ of.article.name }}</div></ng-template>
           <ng-template dwCell="quantity" let-of>{{ of.quantity_produced ?? '—' | dwNumber }} / {{ of.quantity_planned | dwNumber }}</ng-template>
@@ -430,7 +400,7 @@ export class ManufacturingOrderDialog {
 export class ManufacturingOrdersPage {
   private readonly api = inject(Api);
   private readonly dialog = inject(Dialogs);
-  private readonly toast = inject(Toast);
+  private readonly router = inject(Router);
   private readonly session = inject(Session);
 
   protected readonly canManage = this.session.can('production.manage');
@@ -451,16 +421,13 @@ export class ManufacturingOrdersPage {
     { key: 'status', header: 'fields.status' },
   ];
 
-  /** The list is light; the form needs the stages and the consumption, read on opening. */
-  protected async edit(row: ManufacturingOrder | null): Promise<void> {
-    if (!this.canManage) {
-      return;
-    }
-    try {
-      const data = row ? await firstValueFrom(this.api.get<ManufacturingOrder>(`production/manufacturing-orders/${row.ulid}`)) : null;
-      this.dialog.open<ManufacturingOrderDialog, ManufacturingOrder | null, ManufacturingOrder>(ManufacturingOrderDialog, { data }).afterClosed().subscribe((saved) => saved && this.list.reload());
-    } catch (error) {
-      this.toast.error(error);
-    }
+  /** The page of the OF: what it consumed, made, wasted, cost and is worth. */
+  protected open(of: ManufacturingOrder): void {
+    void this.router.navigate(['/production/manufacturing-orders', of.ulid]);
+  }
+
+  /** A new OF opens on its own page, where consumption, produced lots and expenses are recorded. */
+  protected edit(row: ManufacturingOrder | null): void {
+    this.dialog.open<ManufacturingOrderDialog, ManufacturingOrder | null, ManufacturingOrder>(ManufacturingOrderDialog, { data: row }).afterClosed().subscribe((saved) => saved && this.open(saved));
   }
 }

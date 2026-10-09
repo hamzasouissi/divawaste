@@ -5,18 +5,24 @@ import { firstValueFrom } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 
 import { Api, openBlob } from '../../core/api/api';
+import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
 import { IconComponent } from '../../ui/icon';
 import { PageHeaderComponent } from '../../ui/page';
 import { SELECT } from '../../ui/select';
 
-type Target = 'clients' | 'suppliers' | 'materials' | 'articles' | 'orders' | 'manufacturing_orders';
+type Target = 'clients' | 'suppliers' | 'materials' | 'received_lots' | 'articles' | 'orders' | 'manufacturing_orders' | 'consumptions' | 'produced_lots' | 'expenses' | 'invoices';
+/** Targets that are nothing but money: offered to who may see amounts. */
+const MONEY_TARGETS: Target[] = ['expenses', 'invoices'];
 
 interface Field {
   field: string;
   label: string;
   type: string;
   required: boolean;
+  /** What a cell of this column looks like. */
+  example: string | null;
+  money: boolean;
 }
 
 interface Preview {
@@ -73,14 +79,14 @@ interface Result {
             <h2 class="dw-h2">{{ t('production.import.step2') }}</h2>
             <p class="dw-muted">{{ t('production.import.mappingHint', { lines: p.lines }) }}</p>
             <div class="mapping">
-              @for (field of p.fields; track field.field) {
+              @for (field of visible(p.fields); track field.field) {
                 <div class="map" [class.missing]="field.required && mapping()[field.field] === null">
                   <span>{{ field.label }} @if (field.required) { <abbr class="req" [title]="t('validation.required')">*</abbr> }</span>
                   <dw-select [value]="mapping()[field.field]" (valueChange)="map(field.field, $event)" [ariaLabel]="field.label" [placeholder]="t('production.import.noColumn')">
                     <dw-option [value]="null" [label]="t('production.import.noColumn')" />
                     @for (header of p.headers; track $index) { <dw-option [value]="$index" [label]="header || t('production.import.column', { n: $index + 1 })" /> }
                   </dw-select>
-                  <span class="dw-faint sample">{{ sampleOf(field.field) }}</span>
+                  <span class="dw-faint sample">{{ sampleOf(field.field) || (field.example ? t('production.import.expected', { example: field.example }) : '') }}</span>
                 </div>
               }
             </div>
@@ -131,8 +137,11 @@ export class ImportPage {
   private readonly http = inject(HttpClient);
   private readonly toast = inject(Toast);
 
-  protected readonly targets: Target[] = ['manufacturing_orders', 'orders', 'articles', 'materials', 'clients', 'suppliers'];
-  protected readonly target = signal<Target>('manufacturing_orders');
+  private readonly money = inject(Session).can('production.finance.view');
+  /** In the order they are best imported: what is referred to first, what refers to it after. */
+  protected readonly targets: Target[] = (['materials', 'received_lots', 'articles', 'orders', 'manufacturing_orders', 'consumptions', 'produced_lots', 'expenses', 'invoices', 'clients', 'suppliers'] as Target[])
+    .filter((target) => this.money || !MONEY_TARGETS.includes(target));
+  protected readonly target = signal<Target>('materials');
   protected readonly file = signal<File | null>(null);
   protected readonly preview = signal<Preview | null>(null);
   protected readonly mapping = signal<Record<string, number | null>>({});
@@ -141,6 +150,11 @@ export class ImportPage {
   /** The import is offered once the same file, with the same columns, has been checked. */
   protected readonly checked = signal(false);
   protected readonly mapped = computed(() => (this.preview()?.fields ?? []).every((field) => !field.required || (this.mapping()[field.field] ?? null) !== null));
+
+  /** Columns of amounts are offered only to who may see money. */
+  protected visible(fields: Field[]): Field[] {
+    return fields.filter((field) => this.money || !field.money);
+  }
 
   protected choose(target: Target): void {
     this.target.set(target);
