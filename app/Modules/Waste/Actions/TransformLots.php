@@ -103,6 +103,10 @@ final class TransformLots
         if (! $lot->status->isTransformable() || $lot->trashed()) {
             throw new BusinessRuleViolation('LOT_NOT_TRANSFORMABLE', "Lot {$lot->lot_number} cannot be split or grouped.");
         }
+        // Splitting and grouping share out a weight. A lot of a type counted in pieces or litres would lose its quantity on the way.
+        if (in_array(DB::table('waste_types as t')->join('units as u', 'u.id', '=', 't.default_unit_id')->where('t.id', $lot->waste_type_id)->value('u.dimension'), ['count', 'volume'], true)) {
+            throw new BusinessRuleViolation('LOT_NOT_WEIGHED', "Lot {$lot->lot_number} is counted, not weighed: it cannot be split or grouped by weight.");
+        }
     }
 
     private function operation(string $type, int $siteId, string $input, string $output, ?string $notes, User $actor): WasteLotOperation

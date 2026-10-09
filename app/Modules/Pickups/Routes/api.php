@@ -18,6 +18,7 @@ use App\Modules\Tenancy\Rules\TenantExists;
 use App\Modules\Tenancy\TenantContext;
 use App\Modules\Waste\Models\WasteLot;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
 
@@ -82,6 +83,33 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             ->paginate(min((int) $request->integer('per_page', 25), 100)));
     })->name('pickups.index');
 
+    // Gaps at reception, per waste type, over a period: where measures keep disagreeing with what was declared.
+    // Only the receptions judged by a rule are counted as such; older ones carry no outcome and are reported apart.
+    Route::get('pickups/tolerance-summary', function (Request $request, AccessResolver $access) {
+        $siteIds = $access->siteIdsFor($request->user(), 'pickups.view');
+        abort_if($siteIds === [], 403);
+        $input = $request->validate(['from' => ['nullable', 'date'], 'to' => ['nullable', 'date', 'after_or_equal:from']]);
+        $rows = DB::table('pickup_lots as pl')->join('pickups as p', 'p.id', '=', 'pl.pickup_id')
+            ->join('waste_lots as l', 'l.id', '=', 'pl.waste_lot_id')->join('waste_types as t', 't.id', '=', 'l.waste_type_id')
+            ->where('pl.company_id', app(TenantContext::class)->companyId())->whereNotNull('pl.received_at')
+            ->when($siteIds !== null, fn ($query) => $query->whereIn('p.site_id', $siteIds))
+            ->when($input['from'] ?? null, fn ($query, $value) => $query->whereDate('pl.received_at', '>=', $value))
+            ->when($input['to'] ?? null, fn ($query, $value) => $query->whereDate('pl.received_at', '<=', $value))
+            ->groupBy('t.ulid', 't.code', 't.name', 'pl.unit_code')->orderBy('t.code')
+            ->get(['t.ulid', 't.code', 't.name', 'pl.unit_code as unit', DB::raw('COUNT(*) as received'),
+                DB::raw("SUM(pl.tolerance_status = 'within') as within"), DB::raw("SUM(pl.tolerance_status = 'warning') as warning"),
+                DB::raw("SUM(pl.tolerance_status = 'blocking') as blocking"), DB::raw("SUM(pl.tolerance_status = 'no_reference') as no_reference"),
+                DB::raw('SUM(pl.tolerance_status IS NULL) as not_judged')]);
+        $count = fn (string $key) => (int) $rows->sum($key);
+
+        return ['data' => $rows->map(fn ($row) => [
+            'waste_type' => ['ulid' => $row->ulid, 'code' => $row->code, 'name' => $row->name], 'unit' => $row->unit ?? 'kg',
+            'received' => (int) $row->received, 'within' => (int) $row->within, 'warning' => (int) $row->warning, 'blocking' => (int) $row->blocking,
+            'no_reference' => (int) $row->no_reference, 'not_judged' => (int) $row->not_judged,
+        ]), 'meta' => ['received' => $count('received'), 'within' => $count('within'), 'warning' => $count('warning'), 'blocking' => $count('blocking'),
+            'no_reference' => $count('no_reference'), 'not_judged' => $count('not_judged')]];
+    })->name('pickups.tolerance-summary');
+
     Route::get('pickups/{pickup}', function (Request $request, Pickup $pickup) use ($view, $show) {
         $view($request, $pickup);
 
@@ -103,6 +131,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'requested_date' => ['required', 'date', 'after_or_equal:today'],
             'lots' => ['required', 'array', 'min:1', 'max:500'],
             'lots.*' => ['required', 'string', new TenantExists(WasteLot::class)],
+            // What the receiver is to do with the waste, when it differs from what each waste type plans. It selects the tolerance.
+            'treatment_channel' => ['nullable', 'string', Rule::exists('treatment_channels', 'code')->where('is_active', true)],
         ]);
         $siteId = (int) Site::query()->where('ulid', strtoupper($input['site']))->value('id');
         $allow($request, 'pickups.request', $siteId);
@@ -113,7 +143,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         return $show($workflow->create($siteId, [
             'provider_company_id' => $company($input['provider'] ?? null), 'external_provider_id' => $partner($input['external_provider'] ?? null),
             'transporter_company_id' => $company($input['transporter'] ?? null), 'external_transporter_id' => $partner($input['external_transporter'] ?? null),
-        ], $input['requested_date'], array_map('strtoupper', $input['lots']), $request->user()))->response()->setStatusCode(201);
+        ], $input['requested_date'], array_map('strtoupper', $input['lots']), $request->user(),
+            app(ReferenceCodes::class)->id('treatment_channels', $input['treatment_channel'] ?? null)))->response()->setStatusCode(201);
     })->name('pickups.store');
 
     Route::post('pickups/{pickup}/submit', function (Request $request, Pickup $pickup, PickupWorkflow $workflow, PickupNotifier $notifier) use ($allow, $show) {
@@ -142,9 +173,12 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'lots' => ['required', 'array', 'min:1'],
             'lots.*.lot' => ['required', 'string'],
             'lots.*.departure_weight_kg' => ['nullable', 'decimal:0,3', 'gte:0'],
+            // Waste counted in pieces or litres: what leaves, in the unit of the line.
+            'lots.*.departure_quantity' => ['nullable', 'decimal:0,3', 'gte:0'],
         ]);
+        $quantities = collect($input['lots'])->filter(fn ($l) => isset($l['departure_quantity']))->mapWithKeys(fn ($l) => [strtoupper($l['lot']) => (string) $l['departure_quantity']])->all();
         $loaded = collect($input['lots'])->mapWithKeys(fn ($l) => [strtoupper($l['lot']) => isset($l['departure_weight_kg']) ? (string) $l['departure_weight_kg'] : null])->all();
-        $pickup = $workflow->collect($pickup, $loaded, $request->user());
+        $pickup = $workflow->collect($pickup, $loaded, $request->user(), $quantities);
         $thresholds->forSite($pickup->site_id);
         $notifier->collected($pickup);
         // No waste leaves without its tracking slip: the ones not issued yet are issued now. A slip that cannot be
@@ -161,7 +195,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::post('pickups/{pickup}/acknowledge-variance', function (Request $request, Pickup $pickup, PickupWorkflow $workflow) use ($allow, $show) {
         $allow($request, 'pickups.complete', $pickup->site_id);
 
-        return $show($workflow->acknowledgeVariance($pickup, (string) $request->validate(['comment' => ['required', 'string', 'max:1000']])['comment'], $request->user()));
+        return $show($workflow->acknowledgeVariance($pickup, (string) $request->validate(['comment' => ['required', 'string', 'max:1000']])['comment'], $request->user(),
+            $request->user()->can('pickups.authorize_variance', $pickup->site_id)));
     })->name('pickups.acknowledge-variance');
 
     // M4-05.
@@ -214,9 +249,12 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         $input = $request->validate([
             'lots' => ['required', 'array', 'min:1'],
             'lots.*.lot_number' => ['required', 'string'],
-            'lots.*.received_weight_kg' => ['required', 'decimal:0,3', 'gte:0'],
+            // A weighed lot is received by its weight; a lot counted in pieces or litres by its quantity (a weight may be added).
+            'lots.*.received_weight_kg' => ['required_without:lots.*.received_quantity', 'nullable', 'decimal:0,3', 'gte:0'],
+            'lots.*.received_quantity' => ['nullable', 'decimal:0,3', 'gte:0'],
         ]);
-        $pickup = $workflow->receive($pickup, collect($input['lots'])->mapWithKeys(fn ($l) => [$l['lot_number'] => (string) $l['received_weight_kg']])->all(), $request->user());
+        $of = fn (string $key) => collect($input['lots'])->filter(fn ($l) => isset($l[$key]))->mapWithKeys(fn ($l) => [$l['lot_number'] => (string) $l[$key]])->all();
+        $pickup = $workflow->receive($pickup, $of('received_weight_kg'), $request->user(), $of('received_quantity'));
         $onBehalf || $notifier->received($pickup);
 
         return $show($pickup);

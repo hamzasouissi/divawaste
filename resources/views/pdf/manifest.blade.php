@@ -3,6 +3,12 @@
 @php
     $party = fn (array $p) => e($p['legal_name'] ?? '').'<br>'.(($p['tax_id'] ?? null) ? e(__('documents.tax_id').__('documents.colon')).e($p['tax_id']).'<br>' : '').e($p['address'] ?? '').(($p['phone'] ?? null) ? '<br>'.e(__('documents.phone')).' '.e($p['phone']) : '');
     $kg = fn ($value) => $value === null ? '—' : Doc::number($value).' kg';
+    // A lot counted in pieces or litres shows its quantity, and its weight beside it only when one is known.
+    $measure = fn ($weight, $quantity, $unit) => $unit === null ? $kg($weight)
+        : ($quantity === null ? '—' : rtrim(rtrim(number_format((float) $quantity, 3, ',', ' '), '0'), ',').' '.__('documents.units.'.$unit).((float) $weight > 0 ? ' ('.$kg($weight).')' : ''));
+    // A slip that carries counted waste speaks of quantities; its total weight is printed only when there is one.
+    $counted = collect($payload['lots'])->contains(fn ($lot) => ($lot['unit'] ?? null) !== null);
+    $weighed = (float) $payload['declared_weight_kg'] > 0;
     $electronic = fn ($signature) => $signature->status === 'signed' && $signature->signature_method !== 'paper';
     $paper = fn ($signature) => $signature->status === 'signed' && $signature->signature_method === 'paper';
 @endphp
@@ -44,14 +50,14 @@
     @if ($payload['waste_code'] ?? null)
         {{ __('documents.manifest.code') }}{{ __('documents.colon') }}<strong>{{ $payload['waste_code'] }}</strong> — {{ $payload['waste_label'] }}<br>
     @endif
-    {{ __('documents.manifest.designation') }}{{ __('documents.colon') }}{{ $payload['waste_type'] }} · {{ __('documents.manifest.packages') }}{{ __('documents.colon') }}{{ $payload['package_count'] }} · {{ __('documents.manifest.departure_weight') }}{{ __('documents.colon') }}<strong>{{ $kg($payload['declared_weight_kg']) }}</strong>
+    {{ __('documents.manifest.designation') }}{{ __('documents.colon') }}{{ $payload['waste_type'] }} · {{ __('documents.manifest.packages') }}{{ __('documents.colon') }}{{ $payload['package_count'] }} · {{ __('documents.manifest.departure_weight') }}{{ __('documents.colon') }}<strong>{{ $weighed || ! $counted ? $kg($payload['declared_weight_kg']) : __('documents.manifest.not_weighed') }}</strong>
 </div>
 
 <table class="data">
-    <thead><tr><th>{{ __('documents.manifest.lot_number') }}</th><th class="num">{{ __('documents.manifest.departure_weight') }}</th><th class="num">{{ __('documents.manifest.received_weight') }}</th></tr></thead>
+    <thead><tr><th>{{ __('documents.manifest.lot_number') }}</th><th class="num">{{ __($counted ? 'documents.manifest.departure_quantity' : 'documents.manifest.departure_weight') }}</th><th class="num">{{ __($counted ? 'documents.manifest.received_quantity' : 'documents.manifest.received_weight') }}</th></tr></thead>
     <tbody>
     @foreach ($payload['lots'] as $lot)
-        <tr><td>{{ $lot['lot_number'] }}</td><td class="num">{{ $kg($lot['weight_kg']) }}</td><td class="num">{{ $kg($lot['received_weight_kg']) }}</td></tr>
+        <tr><td>{{ $lot['lot_number'] }}</td><td class="num">{{ $measure($lot['weight_kg'], $lot['quantity'] ?? null, $lot['unit'] ?? null) }}</td><td class="num">{{ $measure($lot['received_weight_kg'], $lot['received_quantity'] ?? null, $lot['unit'] ?? null) }}</td></tr>
     @endforeach
     </tbody>
 </table>

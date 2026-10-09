@@ -12,7 +12,7 @@ final readonly class CreateWasteLotData
         public string $siteUlid,
         public string $zoneUlid,
         public string $wasteTypeUlid,
-        public string $netWeightKg,
+        public ?string $netWeightKg,
         public ?string $ulid = null,
         public ?string $tagValue = null,
         public ?string $grossWeightKg = null,

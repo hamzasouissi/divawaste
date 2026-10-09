@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Catalog\Actions\CreateWasteType;
+use App\Modules\Catalog\Models\WasteToleranceRule;
 use App\Modules\Catalog\Models\WasteType;
 use App\Modules\Catalog\Requests\StoreWasteTypeRequest;
 use App\Modules\Catalog\Resources\WasteTypeResource;
@@ -10,7 +11,9 @@ use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Sites\Support\StockQuery;
+use App\Modules\Tenancy\Rules\TenantExists;
 use App\Modules\Tenancy\TenantContext;
+use App\Modules\Waste\Support\ToleranceRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -96,9 +99,9 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
 
     Route::post('waste-types', function (StoreWasteTypeRequest $request, CreateWasteType $action) {
         $wasteType = $action->handle($request->toData(), $request->user());
-        if ($request->boolean('requires_authorization')) {
-            $wasteType->forceFill(['requires_authorization' => true])->save();
-        }
+        // A type counted in pieces is counted, one in litres measured, unless the company says it is only estimated.
+        $wasteType->forceFill(['requires_authorization' => $request->boolean('requires_authorization'),
+            'measurement_method' => $request->input('measurement_method') ?? WasteType::defaultMethod(app(ReferenceCodes::class)->code('units', $wasteType->default_unit_id))])->save();
 
         return (new WasteTypeResource($wasteType))->response()->setStatusCode(201);
     })->name('waste-types.store');
@@ -119,6 +122,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
             'description' => ['nullable', 'string', 'max:1000'],
             'requires_authorization' => ['sometimes', 'boolean'],
             'unit' => ['required', 'string', Rule::exists('units', 'code')->whereNot('dimension', 'length')],
+            'measurement_method' => ['sometimes', Rule::in(WasteType::METHODS)],
             'packaging_type' => ['nullable', 'string', $reference('packaging_types')],
             'color_family' => ['nullable', 'string', Colors::rule($wasteType->company_id)],
             'treatment_channel' => ['nullable', 'string', $reference('treatment_channels')],
@@ -139,6 +143,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
             'name' => $input['name'], 'description' => $input['description'] ?? null,
             'requires_authorization' => (bool) ($input['requires_authorization'] ?? $wasteType->requires_authorization),
             'default_unit_id' => $codes->id('units', $input['unit']),
+            'measurement_method' => $input['measurement_method'] ?? $wasteType->measurement_method,
             'default_packaging_type_id' => $codes->id('packaging_types', $input['packaging_type'] ?? null),
             'default_color_family_id' => $codes->id('color_families', $input['color_family'] ?? null),
             'default_treatment_channel_id' => $codes->id('treatment_channels', $input['treatment_channel'] ?? null),
@@ -167,6 +172,87 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
 
         return new WasteTypeResource($wasteType);
     })->name('waste-types.activate');
+
+    /*
+     * Tolerances: the gap accepted between the quantity that left and the one received, as a percentage of the
+     * first. A rule is for one waste type, one way of handling the waste, both, or neither (every waste). The most
+     * precise one applies; below all of them stands the percentage of the company settings.
+     */
+    $toleranceData = fn (WasteToleranceRule $rule) => [
+        'ulid' => $rule->ulid,
+        'waste_type' => $rule->wasteType === null ? null : ['ulid' => $rule->wasteType->ulid, 'code' => $rule->wasteType->code, 'name' => $rule->wasteType->name,
+            'unit' => app(ReferenceCodes::class)->code('units', $rule->wasteType->default_unit_id)],
+        'treatment_channel' => app(ReferenceCodes::class)->code('treatment_channels', $rule->treatment_channel_id),
+        'warning_pct' => $rule->warning_pct, 'blocking_pct' => $rule->blocking_pct, 'direction' => $rule->direction,
+        'basis' => $rule->basis, 'reference' => $rule->reference, 'notes' => $rule->notes, 'is_active' => $rule->is_active,
+    ];
+    $toleranceInput = function (Request $request, ?WasteToleranceRule $existing, ReferenceCodes $codes): array {
+        $input = $request->validate([
+            'waste_type' => ['nullable', 'string', new TenantExists(WasteType::class)],
+            'treatment_channel' => ['nullable', 'string', Rule::exists('treatment_channels', 'code')->where('is_active', true)],
+            // Above the first the gap must be explained; above the second it must be accepted by someone authorised.
+            'warning_pct' => ['nullable', 'required_without:blocking_pct', 'decimal:0,2', 'gt:0', 'lte:1000'],
+            'blocking_pct' => ['nullable', 'decimal:0,2', 'gt:0', 'lte:1000'],
+            'direction' => ['required', Rule::in(['both', 'excess', 'shortage'])],
+            // A legal requirement is recorded only with the text it comes from.
+            'basis' => ['required', Rule::in(['operational', 'legal'])],
+            'reference' => ['nullable', 'required_if:basis,legal', 'string', 'max:255'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'is_active' => ['sometimes', 'boolean'],
+        ]);
+        if (isset($input['warning_pct'], $input['blocking_pct']) && bccomp((string) $input['blocking_pct'], (string) $input['warning_pct'], 2) < 0) {
+            throw ValidationException::withMessages(['blocking_pct' => [__('validation.custom.tolerance.order')]]);
+        }
+        $typeId = isset($input['waste_type']) ? (int) WasteType::query()->where('ulid', strtoupper($input['waste_type']))->value('id') : null;
+        $channelId = $codes->id('treatment_channels', $input['treatment_channel'] ?? null);
+        if (WasteToleranceRule::query()->when($existing !== null, fn ($q) => $q->whereKeyNot($existing->id))
+            ->where('waste_type_scope_key', $typeId ?? 0)->where('channel_scope_key', $channelId ?? 0)->exists()) {
+            throw ValidationException::withMessages(['waste_type' => [__('validation.custom.tolerance.duplicate')]]);
+        }
+
+        return ['waste_type_id' => $typeId, 'treatment_channel_id' => $channelId, 'warning_pct' => $input['warning_pct'] ?? null,
+            'blocking_pct' => $input['blocking_pct'] ?? null, 'direction' => $input['direction'], 'basis' => $input['basis'],
+            'reference' => $input['reference'] ?? null, 'notes' => $input['notes'] ?? null, 'is_active' => (bool) ($input['is_active'] ?? $existing->is_active ?? true)];
+    };
+
+    Route::get('tolerance-rules', function (Request $request, TenantContext $context, ToleranceRules $rules) use ($allow, $toleranceData) {
+        $allow($request, 'waste_types.view');
+
+        return ['data' => WasteToleranceRule::query()->with('wasteType:id,ulid,code,name,default_unit_id')->orderBy('waste_type_scope_key')->orderBy('channel_scope_key')->get()->map($toleranceData),
+            // What applies when no rule does: the percentage of the company settings, or the 5 % of the cahier.
+            'meta' => ['default' => $rules->companyDefault($context->companyId())]];
+    })->name('tolerance-rules.index');
+
+    // Which rule would apply to a waste type handled in a given way: what the screens show before any measure exists.
+    Route::get('tolerance-rules/resolve', function (Request $request, TenantContext $context, ToleranceRules $rules, ReferenceCodes $codes) {
+        abort_unless($request->user()->can('waste_types.view') || app(AccessResolver::class)->siteIdsFor($request->user(), 'lots.view') !== [], 403);
+        $input = $request->validate(['waste_type' => ['required', 'string', new TenantExists(WasteType::class)], 'treatment_channel' => ['nullable', 'string', Rule::exists('treatment_channels', 'code')]]);
+        $type = WasteType::query()->where('ulid', strtoupper($input['waste_type']))->firstOrFail(['id', 'default_treatment_channel_id']);
+
+        return ['data' => $rules->resolve($context->companyId(), (int) $type->id, $codes->id('treatment_channels', $input['treatment_channel'] ?? null) ?? $type->default_treatment_channel_id)];
+    })->name('tolerance-rules.resolve');
+
+    Route::post('tolerance-rules', function (Request $request, ReferenceCodes $codes) use ($allow, $toleranceData, $toleranceInput) {
+        $allow($request, 'waste_types.manage');
+        $rule = WasteToleranceRule::query()->create($toleranceInput($request, null, $codes) + ['created_by_user_id' => $request->user()->id]);
+
+        return response()->json(['data' => $toleranceData($rule->load('wasteType:id,ulid,code,name,default_unit_id'))], 201);
+    })->name('tolerance-rules.store');
+
+    // Changing a rule changes what happens to the next receptions; the ones already judged keep the rule they were judged with.
+    Route::put('tolerance-rules/{toleranceRule}', function (Request $request, WasteToleranceRule $toleranceRule, ReferenceCodes $codes) use ($allow, $toleranceData, $toleranceInput) {
+        $allow($request, 'waste_types.manage');
+        $toleranceRule->forceFill($toleranceInput($request, $toleranceRule, $codes))->save();
+
+        return ['data' => $toleranceData($toleranceRule->load('wasteType:id,ulid,code,name,default_unit_id'))];
+    })->name('tolerance-rules.update');
+
+    Route::delete('tolerance-rules/{toleranceRule}', function (Request $request, WasteToleranceRule $toleranceRule) use ($allow) {
+        $allow($request, 'waste_types.manage');
+        $toleranceRule->delete();
+
+        return response()->noContent();
+    })->name('tolerance-rules.destroy');
 
     /*
      * Colours work like waste types: the defaults of the platform, plus the ones the company adds for itself.

@@ -196,7 +196,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             $previous = (string) $lot->net_weight_kg;
             $lot->forceFill([
                 'net_weight_kg' => $input['net_weight_kg'], 'gross_weight_kg' => $input['gross_weight_kg'] ?? null,
-                'tare_weight_kg' => $input['tare_weight_kg'] ?? null, 'updated_by_user_id' => $request->user()->id,
+                'tare_weight_kg' => $input['tare_weight_kg'] ?? null, 'weight_basis' => 'measured', 'updated_by_user_id' => $request->user()->id,
             ])->save();
             WasteLotEvent::record($lot, 'weighed', [
                 'weight_kg' => $input['net_weight_kg'], 'gross_weight_kg' => $input['gross_weight_kg'] ?? null,

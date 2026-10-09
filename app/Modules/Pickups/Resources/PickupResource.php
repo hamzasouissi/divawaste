@@ -56,7 +56,11 @@ class PickupResource extends JsonResource
             'weight_variance_kg' => $this->weight_variance_kg,
             'weight_variance_pct' => $this->weight_variance_pct,
             'variance_flagged' => $this->variance_flagged,
+            // The worst outcome among the lots: within, warning, blocking, no_reference (nothing to compare with).
+            'tolerance_status' => $this->tolerance_status,
             'variance_acknowledged' => $this->variance_acknowledged_at !== null,
+            // 'acknowledged' = explained; 'authorized' = a gap above the blocking limit accepted by someone entitled to.
+            'variance_decision' => $this->variance_decision,
             'variance_comment' => $this->variance_comment,
             'currency_code' => $this->currency_code,
             'version' => $this->version,
@@ -78,6 +82,16 @@ class PickupResource extends JsonResource
                 'received_weight_kg' => $line->received_weight_kg,
                 'weight_variance_pct' => $line->weight_variance_pct,
                 'variance_flagged' => $line->variance_flagged,
+                // What the lot is compared in (mass, count, volume) and its quantities in that unit; null for weighed waste.
+                'measure_dimension' => $line->measure_dimension,
+                'unit' => $line->unit_code ?? 'kg',
+                'declared_quantity' => $line->declared_quantity,
+                'departure_quantity' => $line->departure_quantity,
+                'received_quantity' => $line->received_quantity,
+                'planned_channel' => $codes->code('treatment_channels', $line->planned_treatment_channel_id),
+                'tolerance_status' => $line->tolerance_status,
+                // The rule applied and the figures it was applied to, as they stood at reception.
+                'tolerance' => $line->tolerance_rule,
                 'treatment_channel' => $codes->code('treatment_channels', $line->actual_treatment_channel_id),
                 'pricing_mode' => $line->pricing_mode,
                 'unit_price' => $line->unit_price,

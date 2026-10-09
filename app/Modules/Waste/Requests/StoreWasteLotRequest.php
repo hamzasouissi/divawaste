@@ -48,7 +48,8 @@ class StoreWasteLotRequest extends FormRequest
             'site' => ['required', 'string', new TenantExists(Site::class, fn ($q) => $q->where('is_active', true))],
             'zone' => ['required', 'string', new TenantExists(Zone::class, fn ($q) => $q->where('is_active', true)->whereIn('site_id', Site::query()->select('id')->where('ulid', $site)))],
             'waste_type' => ['required', 'string', new TenantExists(WasteType::class, fn ($q) => $q->where('is_active', true))],
-            'net_weight_kg' => ['required', 'decimal:0,3', 'gte:0', 'lte:999999'],
+            // Required for weighed waste; waste counted in pieces or litres is declared by its quantity (CreateWasteLot checks which).
+            'net_weight_kg' => ['nullable', 'decimal:0,3', 'gte:0', 'lte:999999'],
             'gross_weight_kg' => ['nullable', 'decimal:0,3', 'gte:0', 'lte:999999'],
             'tare_weight_kg' => ['nullable', 'decimal:0,3', 'gte:0', 'lte:999999'],
             'packaging_type' => ['nullable', 'string', $ref('packaging_types')],
@@ -86,7 +87,7 @@ class StoreWasteLotRequest extends FormRequest
             siteUlid: strtoupper((string) $v('site')),
             zoneUlid: strtoupper((string) $v('zone')),
             wasteTypeUlid: strtoupper((string) $v('waste_type')),
-            netWeightKg: (string) $v('net_weight_kg'),
+            netWeightKg: $v('net_weight_kg'),
             ulid: $v('ulid') === null ? null : strtoupper((string) $v('ulid')),
             tagValue: $v('tag'),
             grossWeightKg: $v('gross_weight_kg'),

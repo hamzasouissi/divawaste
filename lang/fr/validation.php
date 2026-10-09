@@ -60,6 +60,8 @@ return [
             'amount_mismatch' => 'Le montant ne correspond pas à la quantité multipliée par le prix unitaire.',
             'batch_of_material' => 'Ce lot reçu n\'est pas un lot de cette matière.',
         ],
+        'tolerance' => ['order' => 'Le seuil bloquant ne peut pas être inférieur au seuil d\'alerte.', 'duplicate' => 'Une règle existe déjà pour ce type de déchet et cette filière.'],
+        'measure' => ['unit' => 'Ce type de déchet se déclare en :unit : indiquez la quantité dans cette unité.', 'weight' => 'Le poids net est obligatoire pour un déchet pesé.'],
         'composition' => ['total' => 'La somme des pourcentages de composition doit être égale à 100.'],
         'email_verification' => ['invalid' => 'Ce lien de confirmation est invalide ou expiré.'],
         'invitation' => ['invalid' => 'Cette invitation est invalide, expirée ou déjà utilisée.'],

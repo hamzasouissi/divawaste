@@ -37,6 +37,8 @@ class WasteLotResource extends JsonResource
             'regulatory_code' => self::code('regulatory_waste_codes', $this->regulatory_waste_code_id),
             'packaging_type' => self::code('packaging_types', $this->packaging_type_id),
             'net_weight_kg' => $this->net_weight_kg,
+            // 'measured' on a scale, 'computed' from the quantity, or 'unknown': counted waste nobody weighed (the weight is then 0).
+            'weight_basis' => $this->weight_basis ?? 'measured',
             'gross_weight_kg' => $this->gross_weight_kg,
             'tare_weight_kg' => $this->tare_weight_kg,
             'quantity' => $this->quantity,
