@@ -41,4 +41,15 @@ final class StockQuery
             ->when($wasteTypeId !== null, fn (Builder $query) => $query->where('l.waste_type_id', $wasteTypeId))
             ->sum('l.net_weight_kg') ?: '0');
     }
+
+    /**
+     * Lots on site within the same subject whose weight is not known: a limit in kilograms cannot count them.
+     */
+    public function unweighed(int $siteId, ?int $zoneId, ?int $wasteTypeId): int
+    {
+        return $this->lots([$siteId])
+            ->when($zoneId !== null, fn (Builder $query) => $query->where('l.zone_id', $zoneId))
+            ->when($wasteTypeId !== null, fn (Builder $query) => $query->where('l.waste_type_id', $wasteTypeId))
+            ->whereNull('l.net_weight_kg')->count();
+    }
 }

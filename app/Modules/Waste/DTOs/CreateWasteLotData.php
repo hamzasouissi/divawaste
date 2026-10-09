@@ -34,5 +34,7 @@ final readonly class CreateWasteLotData
         public ?string $productionStep = null,
         public ?string $rawMaterial = null,
         public ?string $rawMaterialBatch = null,
+        // The weight given is a guess of the person, not a reading of a scale.
+        public bool $weightEstimated = false,
     ) {}
 }

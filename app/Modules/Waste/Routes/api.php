@@ -45,6 +45,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'filter.search' => ['nullable', 'string', 'max:64'],
             'filter.production_order' => ['nullable', 'string', 'ulid'],
             'filter.raw_material' => ['nullable', 'string', 'ulid'],
+            // Lots still waiting for their weight.
+            'filter.unweighed' => ['nullable', 'boolean'],
             'sort' => ['nullable', Rule::in(['generated_at', '-generated_at', 'net_weight_kg', '-net_weight_kg', 'lot_number', '-lot_number'])],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
@@ -62,6 +64,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             ->when($filter['from'] ?? null, fn ($query, $value) => $query->where('generated_at', '>=', $value))
             ->when($filter['to'] ?? null, fn ($query, $value) => $query->where('generated_at', '<', now()->parse($value)->addDay()->startOfDay()))
             ->when($filter['production_order'] ?? null, fn ($query, $value) => $query->whereIn('production_order_id', ProductionOrder::query()->select('id')->where('ulid', strtoupper($value))))
+            ->when($filter['unweighed'] ?? false, fn ($query) => $query->whereNull('net_weight_kg'))
             ->when($filter['raw_material'] ?? null, fn ($query, $value) => $query->whereIn('raw_material_id', RawMaterial::query()->select('id')->where('ulid', strtoupper($value))))
             // Lot numbers are searched by prefix so the (company_id, lot_number) index is used.
             ->when($filter['search'] ?? null, fn ($query, $value) => $query->where('lot_number', 'like', addcslashes(strtoupper($value), '%_\\').'%'))
@@ -182,6 +185,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'net_weight_kg' => ['required', 'decimal:0,3', 'gte:0'],
             'gross_weight_kg' => ['nullable', 'decimal:0,3', 'gte:0'],
             'tare_weight_kg' => ['nullable', 'decimal:0,3', 'gte:0'],
+            // A guess of the person rather than a reading: kept as such, and not accepted where a measure is required.
+            'estimated' => ['sometimes', 'boolean'],
             'version' => ['nullable', 'integer'],
         ]);
 
@@ -193,15 +198,16 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             if (isset($input['version']) && (int) $input['version'] !== $lot->version) {
                 throw new BusinessRuleViolation('LOT_VERSION_CONFLICT', 'This lot was modified in the meantime.');
             }
-            $previous = (string) $lot->net_weight_kg;
+            $previous = $lot->net_weight_kg === null ? null : (string) $lot->net_weight_kg;
+            $basis = ($input['estimated'] ?? false) ? 'estimated' : 'measured';
             $lot->forceFill([
                 'net_weight_kg' => $input['net_weight_kg'], 'gross_weight_kg' => $input['gross_weight_kg'] ?? null,
-                'tare_weight_kg' => $input['tare_weight_kg'] ?? null, 'weight_basis' => 'measured', 'updated_by_user_id' => $request->user()->id,
+                'tare_weight_kg' => $input['tare_weight_kg'] ?? null, 'weight_basis' => $basis, 'updated_by_user_id' => $request->user()->id,
             ])->save();
             WasteLotEvent::record($lot, 'weighed', [
                 'weight_kg' => $input['net_weight_kg'], 'gross_weight_kg' => $input['gross_weight_kg'] ?? null,
                 'tare_weight_kg' => $input['tare_weight_kg'] ?? null, 'weight_source' => 'manual',
-                'payload' => ['previous_weight_kg' => $previous], 'user_id' => $request->user()->id,
+                'payload' => ['previous_weight_kg' => $previous, 'weight_basis' => $basis], 'user_id' => $request->user()->id,
             ]);
 
             return $lot;

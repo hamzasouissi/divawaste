@@ -146,13 +146,12 @@ class ToleranceRulesTest extends TestCase
         $this->as($this->manager)->postJson('/api/v1/lots', $base + ['quantity' => '100', 'unit' => 'kg'])->assertStatus(422)->assertJsonValidationErrors('quantity');
         // Nobody weighed it and the type states no weight per piece: the weight is unknown, not invented.
         $lot = $this->as($this->manager)->postJson('/api/v1/lots', $base + ['quantity' => '100', 'unit' => 'piece'])->assertCreated()
-            ->assertJsonPath('data.weight_basis', 'unknown')->assertJsonPath('data.net_weight_kg', '0.000')->assertJsonPath('data.quantity', '100.000')->json('data');
+            ->assertJsonPath('data.weight_basis', 'unknown')->assertJsonPath('data.net_weight_kg', null)->assertJsonPath('data.quantity', '100.000')->json('data');
         // With a weight per piece on the type, the weight is computed and said to be.
         DB::table('waste_types')->where('ulid', $cones)->update(['unit_weight_kg' => '0.350']);
         $this->as($this->manager)->postJson('/api/v1/lots', $base + ['quantity' => '40', 'unit' => 'piece'])->assertCreated()
             ->assertJsonPath('data.weight_basis', 'computed')->assertJsonPath('data.net_weight_kg', '14.000');
-        // A weighed type still needs its weight, and a counted lot is not split by weight.
-        $this->as($this->manager)->postJson('/api/v1/lots', ['waste_type' => $this->type('CHUTES', 'kg')] + $base)->assertStatus(422)->assertJsonValidationErrors('net_weight_kg');
+        // A counted lot is not split by weight.
         $this->as($this->manager)->postJson("/api/v1/lots/{$lot['ulid']}/split", ['outputs' => [['net_weight_kg' => '1'], ['net_weight_kg' => '1']]])
             ->assertStatus(409)->assertJsonPath('code', 'LOT_NOT_WEIGHED');
 

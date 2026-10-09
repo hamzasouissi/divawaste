@@ -128,12 +128,16 @@ final class PickupWorkflow
 
                     continue;
                 }
-                $weight = $loaded[$lot->ulid] ?? (string) $lot->net_weight_kg;
+                // A weight typed at loading is a measure. Otherwise the lot leaves with the weight it has — possibly none.
+                $typed = $loaded[$lot->ulid] ?? null;
+                $weight = $typed ?? ($lot->net_weight_kg === null ? null : (string) $lot->net_weight_kg);
                 $line->forceFill(['line_status' => 'loaded', 'departure_weight_kg' => $weight, 'loaded_at' => now(), 'loaded_by_user_id' => $actor->id,
+                    'weight_basis' => $typed !== null ? 'measured' : ($lot->weight_basis ?? 'measured'),
                     'departure_quantity' => $line->measure_dimension === 'mass' ? null : ($quantities[$lot->ulid] ?? $line->declared_quantity)])->save();
                 $this->lots->handle($lot, LotStatus::Collected, $actor);
-                $total = bcadd($total, (string) $weight, 3);
+                $total = bcadd($total, $weight ?? '0', 3);
             }
+            // The total is the sum of the weights that are known; the lots without one are counted apart, never as 0 kg.
             $p->forceFill(['departure_weight_kg' => $total, 'departure_weight_source' => 'lots_sum', 'collected_at' => now(), 'collected_by_user_id' => $actor->id]);
         });
     }
@@ -150,7 +154,7 @@ final class PickupWorkflow
     {
         return $this->step($pickup, [PickupStatus::Collected], PickupStatus::Received, function (Pickup $p) use ($received, $actor, $quantities) {
             $total = '0';
-            $weighed = ['departure' => '0', 'received' => '0', 'missing' => false];
+            $weighed = ['departure' => '0', 'received' => '0', 'missing' => false, 'unknown' => false];
             $statuses = [];
             foreach ($this->lines($p) as $line) {
                 if ($line->line_status !== 'loaded') {
@@ -159,7 +163,9 @@ final class PickupWorkflow
                 $mass = $line->measure_dimension === 'mass';
                 $kg = $received[$line->lot_number_snapshot] ?? null;
                 $quantity = $quantities[$line->lot_number_snapshot] ?? null;
-                if ($mass) {
+                if ($mass && $line->departure_weight_kg === null) {
+                    $weighed['unknown'] = true;
+                } elseif ($mass) {
                     $weighed['departure'] = bcadd($weighed['departure'], (string) $line->departure_weight_kg, 3);
                 }
                 if ($kg === null && $quantity === null) {
@@ -175,7 +181,8 @@ final class PickupWorkflow
                 }
 
                 $rule = $this->rules->resolve((int) $p->company_id, (int) DB::table('waste_lots')->where('id', $line->waste_lot_id)->value('waste_type_id'), $line->planned_treatment_channel_id);
-                $reference = $mass ? (string) $line->departure_weight_kg : ($line->departure_quantity === null ? null : (string) $line->departure_quantity);
+                $departure = $mass ? $line->departure_weight_kg : $line->departure_quantity;
+                $reference = $departure === null ? null : (string) $departure;
                 $result = Tolerance::evaluate($reference, $mass ? $kg : $quantity, $rule);
                 $line->forceFill([
                     'line_status' => 'received', 'received_weight_kg' => $kg, 'received_quantity' => $mass ? null : $quantity,
@@ -196,12 +203,13 @@ final class PickupWorkflow
             // The weighed lots as a whole, for the record. It decides something only when a weighed lot that left was
             // not received at all — each lot received was already judged by its own rule.
             $default = $this->rules->companyDefault((int) $p->company_id);
-            $whole = Tolerance::evaluate($weighed['departure'], $weighed['received'], $default);
+            // With a weighed lot that left unweighed, the total that left is not known: no percentage is given for the whole.
+            $whole = Tolerance::evaluate($weighed['unknown'] ? null : $weighed['departure'], $weighed['received'], $default);
             if ($weighed['missing']) {
                 $statuses[] = $whole['status'];
             }
             $status = Tolerance::worst($statuses);
-            $p->forceFill(['received_weight_kg' => $total, 'weight_variance_kg' => $whole['difference'] ?? bcsub($weighed['received'], $weighed['departure'], 3),
+            $p->forceFill(['received_weight_kg' => $total, 'weight_variance_kg' => $weighed['unknown'] ? null : ($whole['difference'] ?? bcsub($weighed['received'], $weighed['departure'], 3)),
                 'weight_variance_pct' => $whole['pct'], 'variance_threshold_pct' => $default['warning_pct'], 'tolerance_status' => $status,
                 'variance_flagged' => Tolerance::needsReview($status), 'received_at' => now(), 'received_by_user_id' => $actor->id]);
             $p->save();
@@ -251,7 +259,13 @@ final class PickupWorkflow
                 }
 
                 $received = $line->received_weight_kg !== null;
-                $weight = (string) ($received ? $line->received_weight_kg : $line->departure_weight_kg);
+                $known = $received ? $line->received_weight_kg : $line->departure_weight_kg;
+                // A price per kilogram needs a weight that was measured or computed: an unknown one is not 0 kg, and an
+                // estimate is not a measure. A flat amount needs nothing.
+                if ($price['pricing_mode'] !== 'flat' && ($known === null || (! $received && $line->weight_basis === 'estimated'))) {
+                    throw new BusinessRuleViolation('PRICE_NEEDS_WEIGHT', "Lot {$line->lot_number_snapshot} has no measured weight: weigh it to price it by weight, or enter a flat amount.");
+                }
+                $weight = (string) ($known ?? '0');
                 $amount = match ($price['pricing_mode']) {
                     'per_kg' => bcmul($weight, $price['unit_price'], 3),
                     'per_tonne' => bcdiv(bcmul($weight, $price['unit_price'], 6), '1000', 3),
@@ -417,7 +431,7 @@ final class PickupWorkflow
             'qr_tag_value_snapshot' => DB::table('lot_tags')->where('waste_lot_id', $lot->id)->where('tag_type', 'qr')->where('is_active_flag', true)->value('tag_value'),
             'waste_type_label_snapshot' => DB::table('waste_types')->where('id', $lot->waste_type_id)->value('name'),
             'regulatory_waste_code_id' => $lot->regulatory_waste_code_id, 'regulatory_code_snapshot' => $code,
-            'is_hazardous' => $lot->is_hazardous, 'declared_weight_kg' => $lot->net_weight_kg,
+            'is_hazardous' => $lot->is_hazardous, 'declared_weight_kg' => $lot->net_weight_kg, 'weight_basis' => $lot->weight_basis ?? 'measured',
         ]);
     }
 

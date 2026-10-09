@@ -17,7 +17,7 @@ final class PickupNotifier
 
     public function requested(Pickup $pickup): void
     {
-        $lines = DB::table('pickup_lots')->where('pickup_id', $pickup->id)->selectRaw('COUNT(*) as lots, SUM(declared_weight_kg) as kg')->first();
+        $lines = DB::table('pickup_lots')->where('pickup_id', $pickup->id)->selectRaw('COUNT(*) as lots, COALESCE(SUM(declared_weight_kg), 0) as kg')->first();
 
         $this->toProvider($pickup, 'provider.pickups.respond', 'pickup.requested', [
             'date' => $pickup->requested_date->format('d/m/Y'),

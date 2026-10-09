@@ -106,7 +106,7 @@ final class DeclarationWorkflow
             ->where('l.company_id', $site->company_id)->where('l.site_id', $site->id)->where('l.origin_type', 'created')->whereNull('l.deleted_at')
             ->where('l.generated_at', '>=', $start)->where('l.generated_at', '<', $end)
             ->groupBy('rc.code', 't.name', 'l.is_hazardous')
-            ->get(['rc.code', 't.name', 'l.is_hazardous', DB::raw('SUM(l.net_weight_kg) as kg'), DB::raw('COUNT(*) as lots')]);
+            ->get(['rc.code', 't.name', 'l.is_hazardous', DB::raw('SUM(l.net_weight_kg) as kg'), DB::raw('COUNT(*) as lots'), DB::raw('SUM(l.net_weight_kg IS NULL) as unweighed')]);
 
         $evacuated = DB::table('pickup_lots as pl')->join('pickups as p', 'p.id', '=', 'pl.pickup_id')
             ->leftJoin('companies as c', 'c.id', '=', 'p.provider_company_id')->leftJoin('external_partners as xp', 'xp.id', '=', 'p.external_provider_id')
@@ -132,13 +132,15 @@ final class DeclarationWorkflow
             'year' => $year,
             'producer' => ['legal_name' => $company->legal_name, 'tax_id' => $company->tax_id, 'site' => $site->name, 'site_code' => $site->code,
                 'address' => trim("{$site->address_line1} {$site->postal_code} {$site->city}"), 'regulatory_identifier' => $site->regulatory_identifier],
-            'produced' => $produced->map(fn (\stdClass $row) => $line($row, ['lots' => (int) $row->lots]))->sortByDesc('kg', SORT_NUMERIC)->values()->all(),
+            'produced' => $produced->map(fn (\stdClass $row) => $line($row, ['lots' => (int) $row->lots, 'unweighed_lots' => (int) $row->unweighed]))->sortByDesc('kg', SORT_NUMERIC)->values()->all(),
             'evacuated' => $evacuated->map(fn (\stdClass $row) => $line($row, ['provider' => $row->provider, 'channel' => $row->channel]))->sortByDesc('kg', SORT_NUMERIC)->values()->all(),
             'totals' => [
                 'produced_kg' => $kg($produced->sum('kg')),
                 'hazardous_produced_kg' => $kg($produced->where('is_hazardous', 1)->sum('kg')),
                 'evacuated_kg' => $kg($evacuated->sum('kg')),
                 'stock_at_year_end_kg' => $kg($stock),
+                // Produced lots nobody weighed: the declared weights do not include them.
+                'unweighed_lots' => (int) $produced->sum('unweighed'),
             ],
         ];
     }

@@ -4,6 +4,7 @@
 return [
     'units' => ['piece' => 'pieces', 'l' => 'l', 'm3' => 'm³', 'kg' => 'kg', 't' => 't'],
     'colon' => ': ',
+    'unweighed_note' => ':count lot(s) not weighed over the period: they are counted as lots and are in none of the weights above.',
     'yes' => 'Yes',
     'no' => 'No',
     'tax_id' => 'Tax ID',
@@ -17,11 +18,12 @@ return [
 
     'register' => [
         'headings' => [
-            'Date', 'Lot no.', 'Site', 'Zone', 'Waste type', 'Waste code', 'Hazardous', 'Weight (kg)', 'Origin', 'Status',
+            'Date', 'Lot no.', 'Site', 'Zone', 'Waste type', 'Waste code', 'Hazardous', 'Weight (kg)', 'Declared quantity', 'Origin', 'Status',
             'Pickup no.', 'Pickup date', 'Provider', 'Weight received (kg)', 'Channel',
         ],
         'empty' => 'No lot over the period.',
-        'summary' => ':count lot(s) — total weight: :kg kg.',
+        'summary' => ':count lot(s) — total weight: :kg kg:unweighed.',
+        'unweighed' => ' (:count lot(s) not weighed, not included)',
         'note' => 'Register generated automatically from the recorded lots; no line is typed by hand.',
     ],
 
@@ -65,6 +67,8 @@ return [
         'departure_quantity' => 'Quantity at departure',
         'received_quantity' => 'Quantity received',
         'not_weighed' => 'not weighed (counted waste)',
+        'not_weighed_lot' => 'not weighed',
+        'plus_unweighed' => '+ :count lot(s) not weighed',
         'lot_number' => 'Lot no.',
         'signatures' => 'Signatures',
         'method' => 'Method',

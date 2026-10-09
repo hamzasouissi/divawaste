@@ -17,7 +17,7 @@ final class ZoneOrganisation
     /** @var array<int, array{capacities: list<array{packaging_type: string, max_count: int}>, accepted_waste_types: list<string>, accepted_colors: list<string>, waste_type_ids: list<int>, color_ids: list<int>}> */
     private array $rules = [];
 
-    /** @var array<int, array<int, array{kg: string, lots: int, counts: array<string, int>, misplaced: int}>> */
+    /** @var array<int, array<int, array{kg: string, lots: int, counts: array<string, int>, misplaced: int, unweighed: int}>> */
     private array $usage = [];
 
     public function __construct(private readonly StockQuery $stock, private readonly ReferenceCodes $codes) {}
@@ -102,12 +102,14 @@ final class ZoneOrganisation
      */
     public function fill(int $siteId, int $zoneId, ?string $capacityKg, int $alertPct): array
     {
-        $usage = $this->usage($siteId)[$zoneId] ?? ['kg' => '0.000', 'lots' => 0, 'counts' => [], 'misplaced' => 0];
+        $usage = $this->usage($siteId)[$zoneId] ?? ['kg' => '0.000', 'lots' => 0, 'counts' => [], 'misplaced' => 0, 'unweighed' => 0];
         $quota = Quota::usage($capacityKg, array_column($this->of($zoneId)['capacities'], 'max_count', 'packaging_type'), $usage['kg'], $usage['counts']);
 
         return $quota + [
             'quantity_kg' => $usage['kg'],
             'lots' => $usage['lots'],
+            // Lots in the zone nobody weighed: in the number of lots, not in the weight.
+            'unweighed_lots' => $usage['unweighed'],
             'misplaced' => $usage['misplaced'],
             'alert_level' => Quota::level($quota['pct'], $alertPct),
         ];
@@ -116,7 +118,7 @@ final class ZoneOrganisation
     /**
      * Lots on site, per zone: weight, number per packaging ('' when a lot has none) and lots the zone is not meant for.
      *
-     * @return array<int, array{kg: string, lots: int, counts: array<string, int>, misplaced: int}>
+     * @return array<int, array{kg: string, lots: int, counts: array<string, int>, misplaced: int, unweighed: int}>
      */
     private function usage(int $siteId): array
     {
@@ -126,13 +128,14 @@ final class ZoneOrganisation
 
         $rows = $this->stock->lots([$siteId])
             ->groupBy('l.zone_id', 'l.packaging_type_id', 'l.waste_type_id', 'l.color_family_id')
-            ->get(['l.zone_id', 'l.packaging_type_id', 'l.waste_type_id', 'l.color_family_id', DB::raw('COUNT(*) as lots'), DB::raw('SUM(l.net_weight_kg) as kg')]);
+            ->get(['l.zone_id', 'l.packaging_type_id', 'l.waste_type_id', 'l.color_family_id', DB::raw('COUNT(*) as lots'), DB::raw('COALESCE(SUM(l.net_weight_kg), 0) as kg'), DB::raw('SUM(l.net_weight_kg IS NULL) as unweighed')]);
         $this->load($rows->pluck('zone_id')->unique()->map(fn ($id) => (int) $id)->values()->all());
 
         $usage = [];
         foreach ($rows as $row) {
             $zone = &$usage[(int) $row->zone_id];
-            $zone ??= ['kg' => '0.000', 'lots' => 0, 'counts' => [], 'misplaced' => 0];
+            $zone ??= ['kg' => '0.000', 'lots' => 0, 'counts' => [], 'misplaced' => 0, 'unweighed' => 0];
+            $zone['unweighed'] += (int) $row->unweighed;
             $kind = (string) $this->codes->code('packaging_types', $row->packaging_type_id === null ? null : (int) $row->packaging_type_id);
             $zone['kg'] = bcadd($zone['kg'], (string) $row->kg, 3);
             $zone['lots'] += (int) $row->lots;

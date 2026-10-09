@@ -22,6 +22,7 @@
             <td><div class="label">{{ __('documents.report.kg_per_piece') }}</div><div class="value">{{ $totals['kg_per_piece'] === null ? '—' : Doc::number($totals['kg_per_piece'], 4) }}</div></td>
         </tr>
     </table>
+@if (($totals['unweighed_lots'] ?? 0) > 0)<p class="note">{{ __('documents.unweighed_note', ['count' => $totals['unweighed_lots']]) }}</p>@endif
 
     <h2>{{ __('documents.report.by_type') }}</h2>
     <table class="data">

@@ -324,8 +324,21 @@ them into one lot.
 Required: site, zone, waste type, net weight. Optional: packaging, colour, grammage, notes. The lot gets its
 number (`L-2026-000072`) and a QR label.
 
-### A lot — `/lots/:id`
+### A lot that is not weighed yet
 
+The weight of a lot may be left empty when it is created: the lot is then **À peser**. It is never recorded as 0 kg.
+
+- It can be stored, moved, labelled (the label prints "non pesé") and put in a pickup.
+- It cannot be split or grouped, be priced per kilogram, or pass an authorisation limited in weight: each of these says
+  which lot must be weighed and why. A flat price is always possible.
+- **Ce poids est une estimation** marks a weight typed without a scale. It is shown with "≈" and "estimé", and is not
+  accepted where a measure is required (weight-limited authorisation, price per kilogram on what left).
+- Filter **À peser** in the lot list; **Peser** on the lot page; **Peser plus tard** in the workshop application.
+- Every total gives the known weight and counts the others beside it: "950 kg + 2 lot(s) non pesé(s)" — on the stock,
+  the dashboard, pickups, the register (empty weight cell, counted in the summary line), reports and the tracking slip.
+- A stock limit that is not exceeded while lots are unweighed is marked **Non vérifiable**.
+
+### A lot — `/lots/:id`
 ![Lot detail](screenshots/manager/04-lot-detail.png)
 
 ![Split a lot](screenshots/manager/04b-lot-split.png)
