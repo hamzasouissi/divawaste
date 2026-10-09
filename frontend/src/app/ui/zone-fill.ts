@@ -45,6 +45,10 @@ export function zoneMismatch(zone: Partial<Pick<Zone, 'accepted_waste_types' | '
       } @else if (placeholder()) {
         <span class="dw-faint">{{ placeholder() }}</span>
       }
+      @if (details() && breakdown().length > 0) {
+        <span class="dw-faint">{{ t('stock.holds') }} @for (item of breakdown(); track item.kind; let first = $first) { @if (!first) { · } {{ item.count }} × {{ item.kind | dwCode: 'packaging' }} }</span>
+      }
+      @if ((fill().unconfirmed_lots ?? 0) > 0) { <span class="note" [title]="t('stock.unconfirmedHint')">{{ t('stock.unconfirmed', { count: fill().unconfirmed_lots }) }}</span> }
       @if (fill().uncounted > 0) { <span class="note" [title]="t('stock.uncountedHint')">{{ t('stock.uncounted', { count: fill().uncounted }) }}</span> }
       @if (fill().misplaced > 0) { <span class="note" [title]="t('stock.misplacedHint')">{{ t('stock.misplaced', { count: fill().misplaced }) }}</span> }
     </ng-container>
@@ -62,6 +66,8 @@ export class ZoneFillComponent {
   readonly fill = input.required<ZoneFill>();
   /** Shows what still fits next to the percentage. */
   readonly details = input(true);
+  /** What the zone holds, in packages per packaging (loose lots are reported apart, they have no packages). */
+  protected readonly breakdown = computed(() => Object.entries(this.fill().packages ?? {}).filter(([kind, count]) => kind !== '' && count > 0).map(([kind, count]) => ({ kind, count })));
   /** Text shown when the zone has no limit. */
   readonly placeholder = input('');
 

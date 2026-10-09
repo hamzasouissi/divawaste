@@ -220,7 +220,8 @@ export class ThresholdDialog {
                                 <tr>
                                   <td>{{ row.waste_type_name }} @if (row.is_hazardous) { <dw-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</dw-icon> }</td>
                                   <td class="dw-num">{{ row.lots }}</td>
-                                  <td class="dw-num strong">{{ row.quantity_kg | dwKgKnown: row.unweighed_lots }}
+                                  <td class="dw-num strong">{{ row.quantity_kg | dwKg }}
+                                    @if ((row.unweighed_lots ?? 0) > 0) { <div class="unverifiable">{{ t('lots.plusUnweighed', { count: row.unweighed_lots }) }}</div> }
                                     @if (row.unit && row.unit !== 'kg' && row.quantity_in_unit) { <div class="dw-faint">{{ row.quantity_in_unit | dwNumber: 2 }} {{ row.unit | dwCode: 'unit' }}</div> }</td>
                                   <td class="dw-faint">{{ +row.awaiting_pickup_kg > 0 ? (row.awaiting_pickup_kg | dwKg) : '—' }}</td>
                                   <td class="dw-faint">{{ row.oldest_lot_at | dwDate }}</td>

@@ -80,6 +80,7 @@ function today(): string {
                 <span>
                   <strong>{{ item.waste_type }}</strong> —
                   @if (item.reason === 'missing') { {{ t('pickups.create.authorization.missing') }} }
+                  @else if (item.reason === 'packaging') { {{ t('pickups.create.authorization.packaging', { reference: item.reference, lots: (item.uncounted ?? []).join(', ') }) }} }
                   @else if (item.reason === 'unverifiable') { {{ t('pickups.create.authorization.unverifiable', { reference: item.reference, lots: (item.unweighed ?? []).join(', ') }) }} }
                   @else if (item.reason) { {{ t('pickups.create.authorization.' + item.reason, { reference: item.reference }) }} }
                   @else { {{ t('pickups.create.authorization.covered', { reference: item.reference, after: round(item.after_pct), left: 100 - round(item.after_pct) }) }} }

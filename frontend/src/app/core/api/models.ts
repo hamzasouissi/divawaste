@@ -81,6 +81,11 @@ export interface ZoneFill {
   /** Lots of a waste type or colour the zone is not meant for. */
   misplaced: number;
   alert_level: 'warning' | 'exceeded' | null;
+  /** Packages per packaging ('' = loose lots, which have none and are counted as lots). */
+  packages?: Record<string, number>;
+  /** Lots that only carry the default of one package nobody confirmed. */
+  unconfirmed_lots?: number;
+  unweighed_lots?: number;
 }
 
 export interface Zone {
@@ -163,6 +168,8 @@ export interface ToleranceRuleSnapshot {
 /** A rule as applied to one reception: the figures it was applied to are kept with it. */
 export interface ToleranceDecision extends ToleranceRuleSnapshot {
   unit: string;
+  /** 'estimated': what left was a guess, not a measure — the gap is an indication and the tolerance is not said to be met. */
+  reference_basis?: 'measured' | 'estimated';
   reference_quantity: string | null;
   measured_quantity: string | null;
   /** Signed: + = more than what left. */
@@ -225,6 +232,10 @@ export interface Lot {
   is_hazardous: boolean;
   regulatory_code: string | null;
   packaging_type: string | null;
+  /** How many packages (bags, bales…) the lot is made of; null for loose waste, which has none. */
+  package_count?: number | null;
+  /** false = the default of one, or a figure nobody checked. */
+  package_count_confirmed?: boolean;
   /** null = nobody weighed the lot yet. Never to be read as 0 kg. */
   net_weight_kg: string | null;
   /** Where the weight comes from: a scale, the quantity × the conversion of the type, a guess of the person, or nothing yet. */
@@ -339,6 +350,10 @@ export interface PickupLine {
   declared_quantity?: string | null;
   departure_quantity?: string | null;
   received_quantity?: string | null;
+  /** How the lot is packed and with how many packages it was requested and loaded; a count corrected after departure stands beside it. */
+  packaging_type?: string | null;
+  package_count?: number | null;
+  corrected_package_count?: number | null;
   planned_channel?: string | null;
   tolerance_status?: ToleranceStatus | null;
   tolerance?: ToleranceDecision | null;
@@ -478,6 +493,8 @@ export interface AuthorizationCheck {
   /** 'unverifiable': the authorisation is limited in weight and the lots listed in `unweighed` have no measured weight. */
   reason: 'missing' | 'exceeded' | 'packaging' | 'unverifiable' | null;
   unweighed?: string[];
+  /** For 'packaging': the lots a document stated in packages cannot count (loose, or a packaging it does not name). */
+  uncounted?: string[];
   before_pct: number | null;
   after_pct: number | null;
 }

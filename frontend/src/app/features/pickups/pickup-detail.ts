@@ -9,7 +9,7 @@ import { Api, Page, openBlob } from '../../core/api/api';
 import { DocumentRecord, Manifest, Pickup, PickupLine } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe, KnownWeightPipe, MoneyPipe, NumberPipe, QuantityPipe } from '../../core/format/pipes';
+import { CodePipe, DatePipe, KnownWeightPipe, MoneyPipe, NumberPipe, QuantityPipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
@@ -51,7 +51,7 @@ export class ConfirmDateDialog {
  * current status and the user's permissions allow; everything else about the pickup is on the page.
  */
 @Component({
-  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KnownWeightPipe, MoneyPipe, NumberPipe, QuantityPipe, ToleranceDecisionCard, IconComponent, ButtonDirective],
+  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, CodePipe, DatePipe, KnownWeightPipe, MoneyPipe, NumberPipe, QuantityPipe, ToleranceDecisionCard, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -108,7 +108,7 @@ export class ConfirmDateDialog {
                 <table class="dw-table">
                   <thead>
                     <tr>
-                      <th>{{ t('lots.number') }}</th><th>{{ t('fields.wasteType') }}</th><th>{{ t('lots.regulatoryCode') }}</th><th class="dw-num">{{ t('pickups.quantity.declared') }}</th>
+                      <th>{{ t('lots.number') }}</th><th>{{ t('fields.wasteType') }}</th><th>{{ t('lots.regulatoryCode') }}</th><th>{{ t('lots.packages') }}</th><th class="dw-num">{{ t('pickups.quantity.declared') }}</th>
                       <th class="dw-num">{{ t('pickups.quantity.departure') }}</th><th class="dw-num">{{ t('pickups.quantity.received') }}</th><th class="dw-num">{{ t('pickups.variance') }}</th>
                       <th>{{ t('pickups.channel') }}</th>@if (!provider) { <th class="dw-num">{{ t('pickups.amount') }}</th> }<th>{{ t('fields.status') }}</th>
                     </tr>
@@ -121,6 +121,10 @@ export class ConfirmDateDialog {
                           @if (line.is_hazardous) { <dw-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</dw-icon> }
                         </td>
                         <td>{{ line.waste_type_label_snapshot }}</td><td class="dw-mono">{{ line.regulatory_code_snapshot ?? '—' }}</td>
+                        <td>
+                          @if (line.packaging_type) { {{ line.package_count ?? 1 }} × {{ line.packaging_type | dwCode: 'packaging' }} } @else { <span class="dw-faint">{{ t('lots.loose') }}</span> }
+                          @if (line.corrected_package_count !== null && line.corrected_package_count !== undefined && line.corrected_package_count !== line.package_count) { <div class="dw-faint">{{ t('lots.packagesCorrected', { count: line.corrected_package_count }) }}</div> }
+                        </td>
                         @for (stage of stages; track stage) {
                           <td class="dw-num">
                             @if (measure(line, stage).value === null && unweighed(line, stage)) { <span class="dw-faint">{{ t('lots.toWeigh') }}</span> }

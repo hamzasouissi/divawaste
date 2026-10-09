@@ -730,7 +730,8 @@
       "split_into": "Split",
       "split_from": "Comes from a split",
       "grouped_into": "Grouped",
-      "grouped_from": "Comes from a grouping"
+      "grouped_from": "Comes from a grouping",
+      "packages_corrected": "Number of packages changed"
     },
     "by": "by {{actor}}",
     "previousWeight": "previous weight {{kg}} kg",
@@ -765,7 +766,25 @@
     "weightEstimated": "This weight is an estimate, not a weighing",
     "weighNow": "Weigh",
     "unweighedOnly": "To be weighed",
-    "estimatedTag": "(estimated)"
+    "estimatedTag": "(estimated)",
+    "packages": "Packages",
+    "packageCount": "Number of packages ({{packaging}})",
+    "packageCountHint": "One lot may hold several bags, bales or boxes. Left empty: 1 package, marked \"default\".",
+    "packagesDefault": "default",
+    "packagesCorrect": "Correct",
+    "loose": "Loose (no packages)",
+    "packagesTitle": "Number of packages",
+    "packagesSaved": "Number of packages saved.",
+    "packagesOnSite": "Give the real number of packages of the lot. A pickup being prepared takes this number.",
+    "packagesAfterDeparture": "The lot has left the site: this is a correction. The number the pickup and the authorisation were decided with is kept; the corrected number is shown beside it and recorded in the history.",
+    "packagesDefaultHint": "The current number is a default: nobody has confirmed it yet.",
+    "packagesReason": "Reason for the correction",
+    "packagesCorrected": "corrected after departure: {{count}}",
+    "splitPackagesHint": "The original lot counts {{count}} package(s): give the packages of each new lot, as you count them.",
+    "groupPackages": "Number of packages of the grouped lot",
+    "groupPackagesHint": "Count the result: three lots put in one bale are one package. Left empty: 1, as a default.",
+    "packagesChange": "{{from}} → {{to}} package(s)",
+    "afterDeparture": "after departure"
   },
   "stock": {
     "title": "Waste stock",
@@ -790,7 +809,7 @@
     "thresholdDeleted": "Limit deleted.",
     "remaining": "Left:",
     "uncounted": "{{count}} lot(s) not counted",
-    "uncountedHint": "These lots have no packaging, or a packaging the capacity of the zone does not cover. They are not in the percentage.",
+    "uncountedHint": "These lots are loose, or in a packaging the capacity of the zone does not plan for. They are not in the percentage.",
     "misplaced": "{{count}} lot(s) out of place",
     "misplacedHint": "The waste type or the colour of these lots is not planned in this zone.",
     "capacity": "Capacity",
@@ -813,7 +832,10 @@
       "siteType": "this type on the whole site",
       "site": "whole site"
     },
-    "unverifiable": "Cannot be verified: some lots are not weighed"
+    "unverifiable": "Cannot be verified: some lots are not weighed",
+    "holds": "Holds:",
+    "unconfirmed": "{{count}} lot(s) with a default number of packages",
+    "unconfirmedHint": "These lots count as one package for want of a figure. Correct their number of packages if they hold several."
   },
   "sites": {
     "title": "Sites and zones",
@@ -937,7 +959,7 @@
       "authorization": {
         "missing": "no authorisation covers this waste on that date. Record one before requesting the pickup.",
         "exceeded": "authorisation {{reference}} has not enough quantity left. Record a new authorisation.",
-        "packaging": "authorisation {{reference}} does not cover the packaging of some lots.",
+        "packaging": "authorisation {{reference}} is stated in packages only; these lots are loose or in a packaging it does not name: {{lots}}. It cannot be checked for them.",
         "covered": "authorisation {{reference}}: {{after}} % used after this pickup, {{left}} % will be left.",
         "unverifiable": "authorisation {{reference}} is limited in weight and these lots have no measured weight: {{lots}}. Weigh them before requesting the pickup."
       }
@@ -2063,7 +2085,7 @@
     "validUntil": "Until",
     "issuedOn": "Date of the document",
     "quantity": "Allowed quantity",
-    "quantityHint": "Enter the quantity the way the document states it: a weight, a number of lots, or a number of lots per packaging (\"40 bales\", \"100 bags\"). Mixed packagings add up; when several limits are given, the most used one is the one that counts.",
+    "quantityHint": "Enter the quantity the way the document states it: a weight, a number of lots, or a number of packages per packaging (\"40 bales\", \"100 bags\"). A lot counts for as many packages as it holds. Mixed packagings add up; when several limits are given, the most used one is the one that counts.",
     "quantityRequired": "Give at least one quantity: a weight, a number of lots or a packaging.",
     "maxKg": "Maximum weight (kg)",
     "maxLots": "Maximum number of lots",
@@ -2538,7 +2560,7 @@
     "hide": "Hide",
     "stock": {
       "title": "How to read the stock",
-      "text": "The stock is calculated at each display from the lots present on site: nothing is typed here.\nCapacity: the room available in a zone, as a number of lots per packaging and/or a weight. It is set on the page of the site.\nLimit: a maximum weight you set for a site, a zone or a waste type. You are warned before it is reached, then when it is exceeded.\n\"No limit\" or \"Capacity not defined\" means nothing watches this line: click \"Define\" to add one."
+      "text": "The stock is calculated at each display from the lots present on site: nothing is typed here.\nCapacity: the room available in a zone, as a number of packages per packaging (one lot may hold several packages) and/or a weight. It is set on the page of the site.\nLimit: a maximum weight you set for a site, a zone or a waste type. You are warned before it is reached, then when it is exceeded.\n\"No limit\" or \"Capacity not defined\" means nothing watches this line: click \"Define\" to add one."
     },
     "lots": {
       "title": "Waste lots",
@@ -2578,7 +2600,7 @@
     },
     "authorizations": {
       "title": "Exit authorisations",
-      "text": "Only waste types marked \"under authorisation\" are concerned (a checkbox on the waste type).\nAn authorisation gives a period and a quantity: a weight, a number of lots, or lots per packaging.\nEach pickup request reserves its share. Without a valid authorisation or with too little left, the request is blocked.\nYou are warned when the authorisation is almost used up and before it ends."
+      "text": "Only waste types marked \"under authorisation\" are concerned (a checkbox on the waste type).\nAn authorisation gives a period and a quantity: a weight, a number of lots, or packages per packaging.\nEach pickup request reserves its share. Without a valid authorisation or with too little left, the request is blocked.\nYou are warned when the authorisation is almost used up and before it ends."
     },
     "productionPartners": {
       "title": "Clients and suppliers",
@@ -2660,7 +2682,8 @@
       "warning": "The gap exceeds the {{pct}} % tolerance: an explanation is required.",
       "blocking": "The gap exceeds the {{pct}} % limit: it must be accepted by an authorised person.",
       "no_reference": "No reliable departure quantity: the percentage cannot be calculated. Check what left.",
-      "not_measured": "The received quantity has not been entered."
+      "not_measured": "The received quantity has not been entered.",
+      "estimated_reference": "The departure weight was an estimate, not a weighing: the gap is indicative and the tolerance cannot be verified. An explanation is required."
     },
     "banner": {
       "within": "Reception within tolerances.",
@@ -2716,6 +2739,7 @@
       "hint": "Number of lots received and what their comparison gave.",
       "received": "Lots received",
       "repeated": "Repeated gaps"
-    }
+    },
+    "indicative": "(indicative)"
   }
 }

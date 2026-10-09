@@ -11,7 +11,7 @@ import { Toast } from '../../core/feedback/toast';
 import { CodePipe, DatePipe, KgPipe, LocalizedPipe, LotMeasurePipe, TermPipe } from '../../core/format/pipes';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
-import { LotActionData, LotOriginDialog, SplitLotDialog, StoreLotDialog, WeighLotDialog } from './lot-dialogs';
+import { LotActionData, LotOriginDialog, LotPackagesDialog, SplitLotDialog, StoreLotDialog, WeighLotDialog } from './lot-dialogs';
 import { Dialogs } from '../../ui/dialog';
 import { IconComponent } from '../../ui/icon';
 import { COLOR } from '../../ui/swatch';
@@ -59,7 +59,15 @@ import { COLOR } from '../../ui/swatch';
                     <div><dt>{{ t('lots.regulatoryCode') }}</dt><dd class="dw-mono">{{ l.regulatory_code ?? '—' }}</dd></div>
                     <div><dt>{{ t('lots.origin') }}</dt><dd>{{ t('origin.' + l.origin_type) }}</dd></div>
                     <div><dt>{{ t('lots.generatedAt') }}</dt><dd>{{ l.generated_at | dwDate: 'datetime' }}</dd></div>
-                    <div><dt>{{ t('lots.packaging') }}</dt><dd>{{ l.packaging_type | dwCode: 'packaging' }}</dd></div>
+                    <div><dt>{{ t('lots.packaging') }}</dt>
+                      <dd>
+                        @if (l.packaging_type) {
+                          {{ l.package_count ?? 1 }} × {{ l.packaging_type | dwCode: 'packaging' }}
+                          @if (!l.package_count_confirmed) { <dw-status kind="member" value="suspended" tone="neutral" [label]="t('lots.packagesDefault')" /> }
+                          @if (session.can('lots.update', l.site?.ulid)) { <button type="button" class="linkish" (click)="act('packages')">{{ t(onSite() ? 'common.edit' : 'lots.packagesCorrect') }}</button> }
+                        } @else { {{ t('lots.loose') }} }
+                      </dd>
+                    </div>
                     <div><dt>{{ t('lots.color') }}</dt><dd>@if (l.color_family) { <dw-color [code]="l.color_family" /> }@if (l.color_family && l.color_label) { · }{{ l.color_label ?? (l.color_family ? '' : '—') }}</dd></div>
                     <div><dt>{{ t('lots.grammage') }}</dt><dd>{{ l.grammage_gsm ?? '—' }}</dd></div>
                     <div><dt>{{ t('lots.composition') }}</dt>
@@ -123,6 +131,9 @@ import { COLOR } from '../../ui/swatch';
                           @if (event.to_status && event.event_type !== 'created') { <dw-status kind="lot" [value]="event.to_status" /> }
                           @if (event.to_zone && event.from_zone !== event.to_zone) { <span class="dw-muted">→ {{ event.to_zone }}</span> }
                           @if (event.pickup_number) { <span class="dw-mono dw-muted">{{ event.pickup_number }}</span> }
+                          @if (event.event_type === 'packages_corrected' && event.payload) {
+                            <span class="dw-muted">{{ t('lots.packagesChange', { from: event.payload['previous_package_count'] ?? '—', to: event.payload['package_count'] }) }}@if (event.payload['after_departure']) { · {{ t('lots.afterDeparture') }} }@if (event.payload['reason']) { · {{ event.payload['reason'] }} }</span>
+                          }
                           @if (event.weight_kg && (event.event_type === 'weighed' || event.event_type === 'created')) { <span class="dw-muted">{{ event.weight_kg | dwKg }}</span> }
                           @if (event.payload?.['previous_weight_kg']; as previous) { <span class="dw-faint">({{ t('lots.previousWeight', { kg: previous }) }})</span> }
                         </div>
@@ -160,6 +171,7 @@ import { COLOR } from '../../ui/swatch';
     </ng-container>
   `,
   styles: `
+    .linkish { all: unset; cursor: pointer; color: var(--dw-primary); margin-inline-start: 8px; font-size: 13px; } .linkish:hover { text-decoration: underline; } .linkish:focus-visible { outline: 2px solid var(--dw-primary); outline-offset: 2px; }
     .weight { font-size: 18px; font-weight: 600; } .basis { font-size: 12.5px; font-weight: 400; }
     .chip { display: inline-block; padding: 1px 8px; margin-inline-end: 4px; border-radius: 999px; background: var(--dw-neutral-soft); font-size: 12.5px; }
     .lineage { display: grid; gap: var(--dw-4); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
@@ -217,12 +229,12 @@ export class LotDetailPage implements OnInit {
     });
   }
 
-  protected act(action: 'store' | 'weigh' | 'split' | 'origin'): void {
+  protected act(action: 'store' | 'weigh' | 'split' | 'origin' | 'packages'): void {
     const lot = this.lot();
     if (!lot) {
       return;
     }
-    const component = action === 'store' ? StoreLotDialog : action === 'weigh' ? WeighLotDialog : action === 'origin' ? LotOriginDialog : SplitLotDialog;
+    const component = action === 'store' ? StoreLotDialog : action === 'weigh' ? WeighLotDialog : action === 'origin' ? LotOriginDialog : action === 'packages' ? LotPackagesDialog : SplitLotDialog;
     this.dialog.open<unknown, LotActionData, Lot | Lot[]>(component, { data: { lot } }).afterClosed().subscribe((result) => result && this.load());
   }
 
