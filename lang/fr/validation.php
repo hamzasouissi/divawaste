@@ -52,7 +52,10 @@ return [
     'unique' => 'Cette valeur est déjà utilisée.',
 
     'custom' => [
-        'color' => ['taken' => 'Une couleur porte déjà ce nom.'],
+        'color' => [
+            'taken' => 'Une couleur porte déjà ce nom.', 'code_taken' => 'Une de vos couleurs porte déjà ce code.',
+            'hex' => 'Indiquez une couleur au format HEX, par exemple #0F4C81.', 'rgb_mismatch' => 'Les valeurs RVB ne correspondent pas à la valeur HEX.',
+        ],
         'composition' => ['total' => 'La somme des pourcentages de composition doit être égale à 100.'],
         'email_verification' => ['invalid' => 'Ce lien de confirmation est invalide ou expiré.'],
         'invitation' => ['invalid' => 'Cette invitation est invalide, expirée ou déjà utilisée.'],
