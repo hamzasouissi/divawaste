@@ -185,8 +185,9 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
                 'l.site_id', 'l.zone_id', 'l.waste_type_id', 's.ulid as site', 's.name as site_name', 'z.ulid as zone', 'z.name as zone_name',
                 'z.capacity_kg', 'z.capacity_alert_pct', 't.ulid as waste_type', 't.name as waste_type_name', 't.is_hazardous',
                 't.default_unit_id', 't.density_kg_m3', 't.unit_weight_kg',
-                DB::raw('SUM(l.net_weight_kg) as quantity_kg'), DB::raw('COUNT(*) as lots'),
-                DB::raw("SUM(CASE WHEN l.status = 'awaiting_pickup' THEN l.net_weight_kg ELSE 0 END) as awaiting_pickup_kg"),
+                DB::raw('COALESCE(SUM(l.net_weight_kg), 0) as quantity_kg'), DB::raw('COUNT(*) as lots'),
+                DB::raw('SUM(l.net_weight_kg IS NULL) as unweighed_lots'),
+                DB::raw("COALESCE(SUM(CASE WHEN l.status = 'awaiting_pickup' THEN l.net_weight_kg ELSE 0 END), 0) as awaiting_pickup_kg"),
                 DB::raw('MIN(l.generated_at) as oldest_lot_at'),
             ]);
 
@@ -208,6 +209,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
                     'site' => $row->site, 'site_name' => $row->site_name, 'zone' => $row->zone, 'zone_name' => $row->zone_name,
                     'waste_type' => $row->waste_type, 'waste_type_name' => $row->waste_type_name, 'is_hazardous' => (bool) $row->is_hazardous,
                     'quantity_kg' => (string) $row->quantity_kg, 'awaiting_pickup_kg' => (string) $row->awaiting_pickup_kg, 'lots' => (int) $row->lots,
+                    // Lots of this line nobody weighed: they are in `lots`, not in `quantity_kg`.
+                    'unweighed_lots' => (int) $row->unweighed_lots,
                     'oldest_lot_at' => $row->oldest_lot_at,
                     'zone_quantity_kg' => $fills[$row->zone_id]['quantity_kg'],
                     'zone_capacity_kg' => $capacity,
@@ -222,11 +225,13 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
                 return [
                     'ulid' => $threshold->ulid,
                     'quantity_kg' => $quantity,
+                    // With lots nobody weighed, a level below the limit is not a proof that the limit is respected.
+                    'unweighed_lots' => $stock->unweighed($threshold->site_id, $threshold->zone_id, $threshold->waste_type_id),
                     'max_quantity_kg' => (string) $threshold->max_quantity_kg,
                     'alert_level' => EvaluateStockThresholds::level($quantity, (string) $threshold->max_quantity_kg, $threshold->warning_pct)?->value,
                 ];
             }),
-            'meta' => ['total_kg' => $rows->reduce(fn ($sum, $row) => bcadd($sum, (string) $row->quantity_kg, 3), '0'), 'generated_at' => now()->toIso8601ZuluString()],
+            'meta' => ['total_kg' => $rows->reduce(fn ($sum, $row) => bcadd($sum, (string) $row->quantity_kg, 3), '0'), 'unweighed_lots' => (int) $rows->sum('unweighed_lots'), 'generated_at' => now()->toIso8601ZuluString()],
         ]);
     })->name('stock.index');
 

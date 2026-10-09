@@ -48,8 +48,10 @@ class StoreWasteLotRequest extends FormRequest
             'site' => ['required', 'string', new TenantExists(Site::class, fn ($q) => $q->where('is_active', true))],
             'zone' => ['required', 'string', new TenantExists(Zone::class, fn ($q) => $q->where('is_active', true)->whereIn('site_id', Site::query()->select('id')->where('ulid', $site)))],
             'waste_type' => ['required', 'string', new TenantExists(WasteType::class, fn ($q) => $q->where('is_active', true))],
-            // Required for weighed waste; waste counted in pieces or litres is declared by its quantity (CreateWasteLot checks which).
+            // Optional: a lot may be registered before it is weighed. Waste counted in pieces or litres is declared by its
+            // quantity (CreateWasteLot checks it). An unknown weight is never a zero.
             'net_weight_kg' => ['nullable', 'decimal:0,3', 'gte:0', 'lte:999999'],
+            'weight_estimated' => ['sometimes', 'boolean'],
             'gross_weight_kg' => ['nullable', 'decimal:0,3', 'gte:0', 'lte:999999'],
             'tare_weight_kg' => ['nullable', 'decimal:0,3', 'gte:0', 'lte:999999'],
             'packaging_type' => ['nullable', 'string', $ref('packaging_types')],
@@ -108,6 +110,7 @@ class StoreWasteLotRequest extends FormRequest
             productionStep: $v('production_step'),
             rawMaterial: $v('raw_material'),
             rawMaterialBatch: $v('raw_material_batch'),
+            weightEstimated: (bool) ($validated['weight_estimated'] ?? false),
         );
     }
 }

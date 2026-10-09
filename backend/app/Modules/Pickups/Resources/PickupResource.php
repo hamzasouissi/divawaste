@@ -65,6 +65,8 @@ class PickupResource extends JsonResource
             'currency_code' => $this->currency_code,
             'version' => $this->version,
             'lots_count' => $this->whenCounted('lines'),
+            // Lots whose weight is not known: every weight of this pickup is the sum of the others, never of zeros.
+            'unweighed_lots' => $this->when($lines !== null, fn () => $lines->filter(fn ($line) => ($line->received_weight_kg ?? $line->departure_weight_kg ?? $line->declared_weight_kg) === null)->count()),
             'declared_weight_kg' => $this->when($declared !== null, fn () => (string) $declared),
             // Signed total: positive = revenue for the industrial, negative = cost.
             'net_amount' => $this->when($lines !== null, fn () => $lines->whereNotNull('net_amount')->isEmpty() ? null
@@ -78,6 +80,8 @@ class PickupResource extends JsonResource
                 'is_hazardous' => $line->is_hazardous,
                 'line_status' => $line->line_status,
                 'declared_weight_kg' => $line->declared_weight_kg,
+                // 'estimated': the weight the lot left with is a guess, not a measure; null on older lines.
+                'weight_basis' => $line->weight_basis,
                 'departure_weight_kg' => $line->departure_weight_kg,
                 'received_weight_kg' => $line->received_weight_kg,
                 'weight_variance_pct' => $line->weight_variance_pct,

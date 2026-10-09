@@ -316,7 +316,7 @@ final class ProductionData
     private function waste(ProductionOrder $of): array
     {
         $base = fn () => DB::table('waste_lots as l')->where('l.production_order_id', $of->id)->whereNull('l.deleted_at');
-        $totals = $base()->where('l.origin_type', 'created')->selectRaw('COUNT(*) as lots, COALESCE(SUM(l.net_weight_kg), 0) as kg')->first();
+        $totals = $base()->where('l.origin_type', 'created')->selectRaw('COUNT(*) as lots, COALESCE(SUM(l.net_weight_kg), 0) as kg, COALESCE(SUM(l.net_weight_kg IS NULL), 0) as unweighed')->first();
         $user = auth()->user();
         $siteIds = $user === null ? [] : $this->access->siteIdsFor($user, 'lots.view');
         $rows = $siteIds === [] ? collect() : $base()->when($siteIds !== null, fn (Builder $query) => $query->whereIn('l.site_id', $siteIds))
@@ -341,8 +341,8 @@ final class ProductionData
         $consumedKg = $lines->isEmpty() || $consumedKg === null || bccomp($consumedKg, '0', 3) <= 0 ? null : $consumedKg;
 
         return [
-            'lots' => (int) $totals->lots, 'kg' => (string) $totals->kg,
-            'rows' => $rows->map(fn ($lot) => ['ulid' => $lot->ulid, 'lot_number' => $lot->lot_number, 'status' => $lot->status, 'net_weight_kg' => (string) $lot->net_weight_kg,
+            'lots' => (int) $totals->lots, 'kg' => (string) $totals->kg, 'unweighed_lots' => (int) $totals->unweighed,
+            'rows' => $rows->map(fn ($lot) => ['ulid' => $lot->ulid, 'lot_number' => $lot->lot_number, 'status' => $lot->status, 'net_weight_kg' => $lot->net_weight_kg === null ? null : (string) $lot->net_weight_kg,
                 'generated_at' => $lot->generated_at, 'origin_type' => $lot->origin_type, 'waste_type' => $lot->waste_type, 'site_name' => $lot->site_name,
                 'step_name' => $lot->step_name === null ? null : json_decode((string) $lot->step_name, true),
                 // The OF says where the waste comes from; the material and the lot only when the operator said them.

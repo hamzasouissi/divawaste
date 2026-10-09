@@ -4,6 +4,7 @@
 return [
     'units' => ['piece' => 'pièces', 'l' => 'l', 'm3' => 'm³', 'kg' => 'kg', 't' => 't'],
     'colon' => ' : ',
+    'unweighed_note' => ':count lot(s) non pesé(s) sur la période : ils sont comptés comme lots et ne figurent dans aucun des poids ci-dessus.',
     'yes' => 'Oui',
     'no' => 'Non',
     'tax_id' => 'Matricule fiscal',
@@ -17,11 +18,12 @@ return [
 
     'register' => [
         'headings' => [
-            'Date', 'N° de lot', 'Site', 'Zone', 'Type de déchet', 'Code déchet', 'Dangereux', 'Poids (kg)', 'Origine', 'Statut',
+            'Date', 'N° de lot', 'Site', 'Zone', 'Type de déchet', 'Code déchet', 'Dangereux', 'Poids (kg)', 'Quantité déclarée', 'Origine', 'Statut',
             'N° enlèvement', 'Date d\'enlèvement', 'Prestataire', 'Poids reçu (kg)', 'Filière',
         ],
         'empty' => 'Aucun lot sur la période.',
-        'summary' => ':count lot(s) — poids total : :kg kg.',
+        'summary' => ':count lot(s) — poids total : :kg kg:unweighed.',
+        'unweighed' => ' (:count lot(s) non pesé(s), non compris)',
         'note' => 'Registre généré automatiquement à partir des lots enregistrés ; aucune ligne n\'est saisie manuellement.',
     ],
 
@@ -65,6 +67,8 @@ return [
         'departure_quantity' => 'Quantité au départ',
         'received_quantity' => 'Quantité reçue',
         'not_weighed' => 'non pesé (déchet compté)',
+        'not_weighed_lot' => 'non pesé',
+        'plus_unweighed' => '+ :count lot(s) non pesé(s)',
         'lot_number' => 'N° de lot',
         'signatures' => 'Signatures',
         'method' => 'Mode',

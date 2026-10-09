@@ -27,6 +27,7 @@
         <td><div class="label">{{ __('exports.production.unattributed') }}</div><div class="value">{{ $kg($stats['totals']['unattributed_kg']) }}</div></td>
     </tr>
 </table>
+@if (($stats['totals']['unweighed_lots'] ?? 0) > 0)<p class="note">{{ __('documents.unweighed_note', ['count' => $stats['totals']['unweighed_lots']]) }}</p>@endif
 
 @foreach (['by_order', 'by_client', 'by_article', 'by_step', 'by_material', 'by_supplier'] as $section)
     @if ($stats[$section] !== [])

@@ -64,6 +64,9 @@ final class ProductionStats
         // Each lot becomes one share (measured) or several (estimated): [order, stage, material, kg, measured, lots, amount].
         $shares = [];
         $unattributed = ['kg' => '0', 'lots' => 0];
+        // Lots nobody weighed are counted, and kept out of every weight: an unknown weight is not a share of 0 kg.
+        $unweighed = $lots->whereNull('net_weight_kg')->count();
+        $lots = $lots->whereNotNull('net_weight_kg');
         $monthly = [];
         $addMonth = function (string $month, string $kind, string $kg) use (&$monthly): void {
             $monthly[$month] ??= ['month' => $month, 'measured_kg' => '0', 'estimated_kg' => '0', 'unattributed_kg' => '0'];
@@ -149,8 +152,8 @@ final class ProductionStats
             'period' => ['from' => $from, 'to' => $to],
             'monthly' => array_values(collect($monthly)->sortKeys()->all()),
             'totals' => [
-                'waste_kg' => $total, 'measured_kg' => $measured, 'estimated_kg' => $estimated, 'unattributed_kg' => $unattributed['kg'], 'unattributed_lots' => $unattributed['lots'],
-                'lots' => $lots->count(), 'orders' => count($byOrder), 'pieces' => $pieces > 0 ? $pieces : null,
+                'waste_kg' => $total, 'measured_kg' => $measured, 'estimated_kg' => $estimated, 'unattributed_kg' => $unattributed['kg'], 'unattributed_lots' => $unattributed['lots'], 'unweighed_lots' => $unweighed,
+                'lots' => $lots->count() + $unweighed, 'orders' => count($byOrder), 'pieces' => $pieces > 0 ? $pieces : null,
                 'g_per_piece' => $pieces > 0 ? round((float) $attributed * 1000 / $pieces, 1) : null,
             ],
             'by_order' => $byOrder,

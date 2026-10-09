@@ -21,6 +21,7 @@
         <td><div class="label">{{ __('documents.declaration.stock_end') }}</div><div class="value">{{ $kg($data['totals']['stock_at_year_end_kg']) }} kg</div></td>
     </tr>
 </table>
+@if (($data['totals']['unweighed_lots'] ?? 0) > 0)<p class="note">{{ __('documents.unweighed_note', ['count' => $data['totals']['unweighed_lots']]) }}</p>@endif
 
 <h2>{{ __('documents.declaration.produced_title') }}</h2>
 <table class="data">

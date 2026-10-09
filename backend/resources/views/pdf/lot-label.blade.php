@@ -32,7 +32,12 @@
             <div class="company">{{ \Illuminate\Support\Str::limit($company, 34, '…') }}</div>
             <div class="number">{{ $lot->lot_number }}</div>
             <div class="type">{{ \Illuminate\Support\Str::limit($lot->wasteType->name, 40, '…') }}</div>
-            <div class="weight">{{ \App\Modules\Common\Support\DocumentLanguage::trimmed($lot->net_weight_kg) }} kg</div>
+            {{-- A lot counted in pieces or litres shows its quantity; a weight is printed only when there is one. --}}
+            @php($unit = $lot->unit_id === null ? null : \Illuminate\Support\Facades\DB::table('units')->where('id', $lot->unit_id)->value('code'))
+            <div class="weight">
+                @if ($lot->quantity !== null && ! in_array($unit, [null, 'kg', 't'], true)){{ \App\Modules\Common\Support\DocumentLanguage::trimmed($lot->quantity) }} {{ __('documents.units.'.$unit) }}@if ($lot->net_weight_kg !== null) · @endif @endif
+                @if ($lot->net_weight_kg !== null){{ \App\Modules\Common\Support\DocumentLanguage::trimmed($lot->net_weight_kg) }} kg @elseif ($lot->quantity === null || in_array($unit, [null, 'kg', 't'], true)){{ __('documents.manifest.not_weighed_lot') }}@endif
+            </div>
             <div class="line">{{ $lot->site->code }} · {{ \Illuminate\Support\Str::limit($lot->zone->name, 26, '…') }} · {{ $lot->generated_at->timezone($timezone)->format('d/m/Y H:i') }}</div>
             @if ($lot->composition_label)
                 <div class="line">{{ \Illuminate\Support\Str::limit($lot->composition_label, 40, '…') }}</div>

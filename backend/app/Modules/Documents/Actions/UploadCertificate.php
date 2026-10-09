@@ -139,7 +139,7 @@ final class UploadCertificate
                             'waste_type' => $line->waste_type_label_snapshot,
                             'regulatory_waste_code' => $line->regulatory_code_snapshot,
                             'is_hazardous' => (bool) $line->is_hazardous,
-                            'declared_weight_kg' => (string) $line->declared_weight_kg,
+                            'declared_weight_kg' => $line->declared_weight_kg === null ? null : (string) $line->declared_weight_kg,
                             'loaded_weight_kg' => $line->departure_weight_kg !== null
                                 ? (string) $line->departure_weight_kg
                                 : null,

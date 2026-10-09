@@ -65,8 +65,8 @@ final class AuthorizationQuota
     /**
      * Which authorisation covers each waste type of a set of lots on a date, and what it would leave.
      *
-     * @param  Collection<int, \stdClass>  $lots  each with waste_type_id, packaging_type_id and kg
-     * @return list<array{waste_type_id: int, waste_type: string, authorization: WasteAuthorization|null, reason: string|null, before_pct: float|null, after_pct: float|null}>
+     * @param  Collection<int, \stdClass>  $lots  each with waste_type_id, packaging_type_id, kg (null when unknown), weight_basis and lot_number
+     * @return list<array{waste_type_id: int, waste_type: string, authorization: WasteAuthorization|null, reason: string|null, before_pct: float|null, after_pct: float|null, unweighed: list<string>}>
      */
     public function cover(Collection $lots, string $date, ?int $exceptPickupId = null): array
     {
@@ -75,9 +75,14 @@ final class AuthorizationQuota
 
         foreach ($types as $typeId => $name) {
             $extra = ['kg' => '0.000', 'lots' => 0, 'counts' => []];
+            // Lots whose weight is unknown, or only estimated: against a limit in kilograms they cannot be checked.
+            $unweighed = [];
             foreach ($lots->where('waste_type_id', $typeId) as $lot) {
+                if ($lot->kg === null || ($lot->weight_basis ?? 'measured') === 'estimated') {
+                    $unweighed[] = (string) ($lot->lot_number ?? '');
+                }
                 $kind = (string) $this->codes->code('packaging_types', $lot->packaging_type_id === null ? null : (int) $lot->packaging_type_id);
-                $extra['kg'] = bcadd($extra['kg'], (string) $lot->kg, 3);
+                $extra['kg'] = bcadd($extra['kg'], (string) ($lot->kg ?? '0'), 3);
                 $extra['lots']++;
                 $extra['counts'][$kind] = ($extra['counts'][$kind] ?? 0) + 1;
             }
@@ -85,13 +90,17 @@ final class AuthorizationQuota
             // The one that ends first is used first; a later one is taken when the first has no room left.
             $candidates = WasteAuthorization::query()->where('waste_type_id', $typeId)->where('is_active', true)
                 ->whereDate('valid_from', '<=', $date)->whereDate('valid_until', '>=', $date)->orderBy('valid_until')->orderBy('id')->get();
-            $choice = ['waste_type_id' => (int) $typeId, 'waste_type' => (string) $name, 'authorization' => null, 'reason' => 'missing', 'before_pct' => null, 'after_pct' => null];
+            $choice = ['waste_type_id' => (int) $typeId, 'waste_type' => (string) $name, 'authorization' => null, 'reason' => 'missing', 'before_pct' => null, 'after_pct' => null, 'unweighed' => []];
 
             foreach ($candidates as $candidate) {
                 $after = $this->usage($candidate, $exceptPickupId, $extra);
-                $reason = $after['uncovered'] ? 'packaging' : ($after['pct'] > 100 ? 'exceeded' : null);
+                // Exceeded on what is known is exceeded; otherwise a weight limit with an unknown weight cannot be verified —
+                // it is not passed on the strength of another limit, nor by reading the unknown as zero.
+                $unverifiable = $candidate->max_kg !== null && $unweighed !== [];
+                $reason = $after['uncovered'] ? 'packaging' : ($after['pct'] > 100 ? 'exceeded' : ($unverifiable ? 'unverifiable' : null));
                 if ($reason === null || $choice['authorization'] === null) {
-                    $choice = ['authorization' => $candidate, 'reason' => $reason, 'before_pct' => $this->usage($candidate, $exceptPickupId)['pct'], 'after_pct' => $after['pct']] + $choice;
+                    $choice = ['authorization' => $candidate, 'reason' => $reason, 'before_pct' => $this->usage($candidate, $exceptPickupId)['pct'], 'after_pct' => $after['pct'],
+                        'unweighed' => $unverifiable ? $unweighed : []] + $choice;
                 }
                 if ($reason === null) {
                     break;
@@ -112,13 +121,15 @@ final class AuthorizationQuota
         $date = ($pickup->confirmed_date ?? $pickup->requested_date)->toDateString();
         $lines = DB::table('pickup_lots as pl')->join('waste_lots as l', 'l.id', '=', 'pl.waste_lot_id')
             ->where('pl.pickup_id', $pickup->id)->where('pl.line_status', '!=', 'not_loaded')
-            ->get(['pl.id', 'l.waste_type_id', 'l.packaging_type_id', DB::raw('COALESCE(pl.departure_weight_kg, pl.declared_weight_kg) as kg')]);
+            ->get(['pl.id', 'l.waste_type_id', 'l.packaging_type_id', 'pl.lot_number_snapshot as lot_number', 'pl.weight_basis', DB::raw('COALESCE(pl.departure_weight_kg, pl.declared_weight_kg) as kg')]);
 
         foreach ($this->cover($lines, $date, $pickup->id) as $item) {
             if ($item['reason'] !== null) {
                 throw new BusinessRuleViolation('AUTHORIZATION_'.strtoupper($item['reason']), match ($item['reason']) {
                     'missing' => "No authorisation covers {$item['waste_type']} on {$date}: record one before requesting this pickup.",
                     'packaging' => "Authorisation {$item['authorization']?->reference} does not cover the packaging of some lots of {$item['waste_type']}.",
+                    'unverifiable' => "Authorisation {$item['authorization']?->reference} is limited in weight and ".count($item['unweighed']).' lot(s) of '.$item['waste_type']
+                        .' have no measured weight ('.implode(', ', $item['unweighed']).'): weigh them before requesting this pickup.',
                     default => "Authorisation {$item['authorization']?->reference} has not enough room left for {$item['waste_type']}: record a new one.",
                 });
             }

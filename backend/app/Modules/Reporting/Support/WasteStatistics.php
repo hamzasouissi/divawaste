@@ -51,6 +51,8 @@ final class WasteStatistics
             'totals' => [
                 'generated_kg' => $this->kg($generatedKg),
                 'generated_lots' => $generated()->count(),
+                // Lots nobody weighed: counted as lots, absent from every weight of this page.
+                'unweighed_lots' => $generated()->whereNull('l.net_weight_kg')->count(),
                 'hazardous_kg' => $this->kg((string) ($generated()->where('l.is_hazardous', true)->sum('l.net_weight_kg') ?: '0')),
                 'evacuated_kg' => $this->kg($this->sum($byChannel)),
                 'recovered_kg' => $this->kg($recoveredKg),
@@ -68,12 +70,12 @@ final class WasteStatistics
             'by_month' => $this->byMonth($from, $to, $siteIds),
             'by_waste_type' => $generated()->join('waste_types as t', 't.id', '=', 'l.waste_type_id')
                 ->groupBy('t.ulid', 't.name', 't.is_hazardous')->orderByDesc('kg')->limit(30)
-                ->get(['t.ulid as waste_type', 't.name', 't.is_hazardous', DB::raw('SUM(l.net_weight_kg) as kg'), DB::raw('COUNT(*) as lots')])
+                ->get(['t.ulid as waste_type', 't.name', 't.is_hazardous', DB::raw('COALESCE(SUM(l.net_weight_kg), 0) as kg'), DB::raw('COUNT(*) as lots'), DB::raw('SUM(l.net_weight_kg IS NULL) as unweighed')])
                 ->map(fn ($row) => ['waste_type' => $row->waste_type, 'name' => $row->name, 'is_hazardous' => (bool) $row->is_hazardous,
-                    'kg' => $this->kg((string) $row->kg), 'lots' => (int) $row->lots])->all(),
+                    'kg' => $this->kg((string) $row->kg), 'lots' => (int) $row->lots, 'unweighed_lots' => (int) $row->unweighed])->all(),
             'by_site' => $generated()->join('sites as s', 's.id', '=', 'l.site_id')->groupBy('s.ulid', 's.name')->orderByDesc('kg')
-                ->get(['s.ulid as site', 's.name', DB::raw('SUM(l.net_weight_kg) as kg'), DB::raw('COUNT(*) as lots')])
-                ->map(fn ($row) => ['site' => $row->site, 'name' => $row->name, 'kg' => $this->kg((string) $row->kg), 'lots' => (int) $row->lots])->all(),
+                ->get(['s.ulid as site', 's.name', DB::raw('COALESCE(SUM(l.net_weight_kg), 0) as kg'), DB::raw('COUNT(*) as lots'), DB::raw('SUM(l.net_weight_kg IS NULL) as unweighed')])
+                ->map(fn ($row) => ['site' => $row->site, 'name' => $row->name, 'kg' => $this->kg((string) $row->kg), 'lots' => (int) $row->lots, 'unweighed_lots' => (int) $row->unweighed])->all(),
             'by_channel' => $byChannel->map(fn ($row) => [
                 'channel' => $row->code, 'is_valorization' => (bool) $row->is_valorization, 'is_landfill' => (bool) $row->is_landfill,
                 'kg' => $this->kg((string) $row->kg),
@@ -90,7 +92,7 @@ final class WasteStatistics
     public function byMonth(Carbon $from, Carbon $to, ?array $siteIds): array
     {
         $generated = $this->generated($from, $to, $siteIds)->groupByRaw("DATE_FORMAT(l.generated_at, '%Y-%m')")
-            ->selectRaw("DATE_FORMAT(l.generated_at, '%Y-%m') as month, SUM(l.net_weight_kg) as kg")->pluck('kg', 'month');
+            ->selectRaw("DATE_FORMAT(l.generated_at, '%Y-%m') as month, COALESCE(SUM(l.net_weight_kg), 0) as kg")->pluck('kg', 'month');
         $evacuated = $this->evacuated($from, $to, $siteIds)->groupByRaw("DATE_FORMAT(p.collected_at, '%Y-%m')")
             ->selectRaw("DATE_FORMAT(p.collected_at, '%Y-%m') as month, {$this->weight()} as kg, COALESCE(SUM(pl.net_amount), 0) as net")->get()->keyBy('month');
 
@@ -133,7 +135,7 @@ final class WasteStatistics
 
     private function weight(): string
     {
-        return 'SUM(COALESCE(pl.received_weight_kg, pl.departure_weight_kg))';
+        return 'COALESCE(SUM(COALESCE(pl.received_weight_kg, pl.departure_weight_kg)), 0)';
     }
 
     /**

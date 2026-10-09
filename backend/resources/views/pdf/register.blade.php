@@ -24,7 +24,8 @@
     @endforelse
     </tbody>
 </table>
-<p class="note">{{ __('documents.register.summary', ['count' => count($rows), 'kg' => Doc::number(array_sum(array_column($rows, 7)))]) }}
+<p class="note">{{ __('documents.register.summary', ['count' => count($rows), 'kg' => Doc::number(array_sum(array_column($rows, 7))),
+    'unweighed' => ($unweighed = count(array_filter($rows, fn ($row) => $row[7] === null))) > 0 ? __('documents.register.unweighed', ['count' => $unweighed]) : '']) }}
     {{ __('documents.register.note') }}</p>
 </body>
 </html>

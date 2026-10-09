@@ -107,6 +107,9 @@ final class TransformLots
         if (in_array(DB::table('waste_types as t')->join('units as u', 'u.id', '=', 't.default_unit_id')->where('t.id', $lot->waste_type_id)->value('u.dimension'), ['count', 'volume'], true)) {
             throw new BusinessRuleViolation('LOT_NOT_WEIGHED', "Lot {$lot->lot_number} is counted, not weighed: it cannot be split or grouped by weight.");
         }
+        if ($lot->net_weight_kg === null) {
+            throw new BusinessRuleViolation('LOT_WEIGHT_UNKNOWN', "Lot {$lot->lot_number} has not been weighed: weigh it before splitting or grouping it.");
+        }
     }
 
     private function operation(string $type, int $siteId, string $input, string $output, ?string $notes, User $actor): WasteLotOperation

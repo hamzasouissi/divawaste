@@ -109,7 +109,9 @@ final class ManifestWorkflow
                     'is_hazardous' => (bool) $first->is_hazardous,
                     'waste_type_id' => $first->waste_type_id, 'packaging_type_id' => $first->packaging_type_id,
                     'package_count' => $group->count(),
-                    'declared_weight_kg' => $group->reduce(fn ($sum, $line) => bcadd($sum, (string) ($line->departure_weight_kg ?? $line->declared_weight_kg), 3), '0'),
+                    // The sum of the weights that are known; none known = no weight on the slip, not 0 kg.
+                    'declared_weight_kg' => $group->every(fn ($line) => ($line->departure_weight_kg ?? $line->declared_weight_kg) === null) ? null
+                        : $group->reduce(fn ($sum, $line) => bcadd($sum, (string) ($line->departure_weight_kg ?? $line->declared_weight_kg ?? '0'), 3), '0'),
                     'producer_snapshot' => $party($owner) + ['site' => $site->name, 'site_address' => trim("{$site->address_line1} {$site->city}"), 'site_identifier' => $site->regulatory_identifier],
                     'transporter_snapshot' => $transporter['snapshot'], 'receiver_snapshot' => $receiver['snapshot'],
                     'transporter_company_id' => $transporter['company'], 'receiver_company_id' => $receiver['company'],
@@ -268,13 +270,14 @@ final class ManifestWorkflow
             'waste_label' => $code === null ? null : (json_decode((string) $code->label, true)['fr'] ?? null),
             'waste_type' => DB::table('waste_types')->where('id', $manifest->waste_type_id)->value('name'),
             'package_count' => $manifest->package_count,
-            'declared_weight_kg' => (string) $manifest->declared_weight_kg,
+            'declared_weight_kg' => $manifest->declared_weight_kg === null ? null : (string) $manifest->declared_weight_kg,
             'producer' => $manifest->producer_snapshot,
             'transporter' => $manifest->transporter_snapshot,
             'receiver' => $manifest->receiver_snapshot,
             'lots' => DB::table('pickup_lots')->where('hazardous_waste_manifest_id', $manifest->id)->orderBy('id')
                 ->get(['lot_number_snapshot', 'declared_weight_kg', 'departure_weight_kg', 'received_weight_kg', 'measure_dimension', 'unit_code', 'declared_quantity', 'departure_quantity', 'received_quantity'])
-                ->map(fn ($line) => ['lot_number' => $line->lot_number_snapshot, 'weight_kg' => (string) ($line->departure_weight_kg ?? $line->declared_weight_kg),
+                ->map(fn ($line) => ['lot_number' => $line->lot_number_snapshot,
+                    'weight_kg' => ($line->departure_weight_kg ?? $line->declared_weight_kg) === null ? null : (string) ($line->departure_weight_kg ?? $line->declared_weight_kg),
                     'received_weight_kg' => $line->received_weight_kg === null ? null : (string) $line->received_weight_kg,
                     // Waste counted in pieces or litres travels with its quantity; its weight is printed only when known.
                     'unit' => $line->measure_dimension === 'mass' ? null : $line->unit_code,

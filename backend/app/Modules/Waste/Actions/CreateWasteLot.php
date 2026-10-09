@@ -80,31 +80,27 @@ final class CreateWasteLot
     }
 
     /**
-     * The weight of the lot and where it comes from. Weighed waste needs its weight. Waste counted in pieces or litres
-     * needs its quantity in a unit of that kind; its weight is then what was weighed, else what the conversion of the
-     * type gives, else unknown — recorded as 0 kg and marked as such, never guessed.
+     * The weight of the lot and where it comes from: read on a scale, estimated by the person, computed from the
+     * quantity with the conversion of the type, or unknown — then empty, never a zero. Waste counted in pieces or
+     * litres needs its quantity in a unit of that kind; weighed waste may wait for its weighing.
      *
-     * @return array{string, string}
+     * @return array{string|null, string}
      */
     private function weight(WasteType $type, CreateWasteLotData $data): array
     {
         $typeUnit = (string) DB::table('units')->where('id', $type->default_unit_id)->value('code');
         if (UnitConversion::dimension($typeUnit) === 'mass') {
-            if ($data->netWeightKg === null) {
-                throw ValidationException::withMessages(['net_weight_kg' => [__('validation.custom.measure.weight')]]);
-            }
-
-            return [$data->netWeightKg, 'measured'];
+            return [$data->netWeightKg, $data->netWeightKg === null ? 'unknown' : ($data->weightEstimated ? 'estimated' : 'measured')];
         }
         if ($data->quantity === null || ! UnitConversion::comparable($data->unit, $typeUnit)) {
             throw ValidationException::withMessages(['quantity' => [__('validation.custom.measure.unit', ['unit' => $typeUnit])]]);
         }
         if ($data->netWeightKg !== null) {
-            return [$data->netWeightKg, 'measured'];
+            return [$data->netWeightKg, $data->weightEstimated ? 'estimated' : 'measured'];
         }
         $computed = UnitConversion::toKg($data->quantity, $data->unit, $type->density_kg_m3, $type->unit_weight_kg);
 
-        return $computed === null ? ['0', 'unknown'] : [$computed, 'computed'];
+        return $computed === null ? [null, 'unknown'] : [$computed, 'computed'];
     }
 
     private function ref(string $table, ?string $code): ?int

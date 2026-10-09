@@ -389,6 +389,10 @@ class DemoSeeder extends Seeder
                     'direction' => $direction, 'created_by_user_id' => $amira->id]);
             }
             $stock = Zone::query()->where('site_id', $sites['NAB']->id)->where('code', 'STOCK')->firstOrFail();
+            // Registered at the end of the shift, to be weighed the next morning: its weight is unknown, not zero.
+            $cutting = Zone::query()->where('site_id', $sites['NAB']->id)->where('code', 'COUPE')->firstOrFail();
+            $createLot->handle(new CreateWasteLotData(siteUlid: $sites['NAB']->ulid, zoneUlid: $cutting->ulid, wasteTypeUlid: $types['CHUTES']->ulid, netWeightKg: null,
+                packagingType: 'bag', generatedAt: now()->subHours(3)->toDateTimeString()), $sami);
             $counted = $createLot->handle(new CreateWasteLotData(siteUlid: $sites['NAB']->ulid, zoneUlid: $stock->ulid, wasteTypeUlid: $cones->ulid, netWeightKg: null,
                 quantity: '240', unit: 'piece', packagingType: 'bale', generatedAt: now()->subDays(6)->setTime(10, 0)->toDateTimeString()), $sami);
             $weighed = $createLot->handle(new CreateWasteLotData(siteUlid: $sites['NAB']->ulid, zoneUlid: $stock->ulid, wasteTypeUlid: $types['CARTON']->ulid, netWeightKg: '62',

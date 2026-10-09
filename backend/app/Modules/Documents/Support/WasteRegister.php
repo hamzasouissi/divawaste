@@ -63,8 +63,8 @@ final class WasteRegister
             'waste_type' => $row->waste_type,
             'regulatory_code' => $row->regulatory_code,
             'is_hazardous' => (bool) $row->is_hazardous,
-            'net_weight_kg' => (string) $row->net_weight_kg,
-            // 'unknown' = waste counted in pieces or litres that nobody weighed: read its quantity, not the 0 kg.
+            'net_weight_kg' => $row->net_weight_kg === null ? null : (string) $row->net_weight_kg,
+            // 'unknown' = nobody weighed the lot (the weight is then null); 'estimated' = a guess, not a reading.
             'weight_basis' => $row->weight_basis,
             'quantity' => $row->quantity === null ? null : (string) $row->quantity,
             'unit' => $row->unit,
@@ -89,7 +89,11 @@ final class WasteRegister
 
         return [
             $date($row->generated_at), $row->lot_number, $row->site, $row->zone, $row->waste_type, $row->regulatory_code,
-            __($row->is_hazardous ? 'documents.yes' : 'documents.no'), (float) $row->net_weight_kg, __('exports.origin.'.$row->origin_type), __('exports.lot_status.'.$row->status),
+            __($row->is_hazardous ? 'documents.yes' : 'documents.no'),
+            // An empty cell is a lot nobody weighed: it is not 0 kg. What was declared in pieces or litres stands beside it.
+            $row->net_weight_kg === null ? null : (float) $row->net_weight_kg,
+            $row->quantity === null || in_array($row->unit, [null, 'kg', 't'], true) ? null : rtrim(rtrim(number_format((float) $row->quantity, 3, ',', ' '), '0'), ',').' '.__('documents.units.'.$row->unit),
+            __('exports.origin.'.$row->origin_type), __('exports.lot_status.'.$row->status),
             $row->pickup_number, $date($row->collected_at), $row->provider,
             $row->received_weight_kg === null ? null : (float) $row->received_weight_kg,
             $row->channel_name === null ? null : (json_decode((string) $row->channel_name, true)['fr'] ?? $row->channel),
