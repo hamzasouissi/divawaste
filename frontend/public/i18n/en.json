@@ -322,7 +322,8 @@
     "alert": {
       "warning": "Limit nearly reached",
       "exceeded": "Limit exceeded",
-      "ok": "Normal"
+      "ok": "Normal",
+      "unverifiable": "Not verifiable"
     },
     "manifest": {
       "draft": "Draft",
@@ -390,6 +391,12 @@
       "blocking": "Approval required",
       "no_reference": "No reference",
       "not_measured": "Not measured"
+    },
+    "limit": {
+      "respected": "Respected",
+      "warning": "Attention",
+      "exceeded": "Exceeded",
+      "unverifiable": "Not verifiable"
     }
   },
   "channels": {
@@ -453,7 +460,11 @@
     "ACCREDITATION_ALREADY_REVIEWED": "This accreditation already has that status.",
     "DEVICE_REVOKED": "This device was revoked by an administrator.",
     "COLOR_IN_USE": "This colour is used by lots, waste types, materials or zones. Withdraw it from the list instead.",
-    "RECEIVED_LOT_IN_USE": "The number of a received lot cannot change once an order or a waste lot names it."
+    "RECEIVED_LOT_IN_USE": "The number of a received lot cannot change once an order or a waste lot names it.",
+    "AUTHORIZATION_EXCEEDED": "The authorisation does not cover this pickup: one of its limits would be exceeded. Each limit is detailed on the Authorisations page.",
+    "AUTHORIZATION_UNVERIFIABLE": "The authorisation cannot be verified: some lots have no measured weight. Weigh them, then try again.",
+    "AUTHORIZATION_PACKAGING": "The authorisation is stated in packages only and some lots are loose or in a packaging it does not name: it cannot be verified for them.",
+    "AUTHORIZATION_MISSING": "No authorisation covers this waste on this date. Record one before requesting the pickup."
   },
   "notifications": {
     "title": "Notifications",
@@ -669,7 +680,8 @@
       "variance": "{{count}} pickup(s) with a weight variance to review",
       "requested": "{{count}} pickup request(s) awaiting the provider's answer",
       "accreditationExpired": "Accreditation expired: {{provider}} can no longer be chosen",
-      "accreditationExpiring": "Accreditation of {{provider}}: expires in {{days}} day(s)"
+      "accreditationExpiring": "Accreditation of {{provider}}: expires in {{days}} day(s)",
+      "unverifiable": "{{count}} stock limit(s) cannot be verified: some lots are not weighed"
     },
     "production": "Origin of the waste in production",
     "productionHint": "The manufacturing orders that produced the most waste over the period.",
@@ -792,7 +804,6 @@
     "total": "Total stock",
     "awaiting": "of which awaiting pickup",
     "oldest": "Oldest lot",
-    "zoneFill": "Zone fill level",
     "thresholds": "Stock limits",
     "addThreshold": "Add a limit",
     "editThreshold": "Edit the limit",
@@ -808,8 +819,6 @@
     "thresholdSaved": "Limit saved.",
     "thresholdDeleted": "Limit deleted.",
     "remaining": "Left:",
-    "uncounted": "{{count}} lot(s) not counted",
-    "uncountedHint": "These lots are loose, or in a packaging the capacity of the zone does not plan for. They are not in the percentage.",
     "misplaced": "{{count}} lot(s) out of place",
     "misplacedHint": "The waste type or the colour of these lots is not planned in this zone.",
     "capacity": "Capacity",
@@ -832,10 +841,10 @@
       "siteType": "this type on the whole site",
       "site": "whole site"
     },
-    "unverifiable": "Cannot be verified: some lots are not weighed",
     "holds": "Holds:",
     "unconfirmed": "{{count}} lot(s) with a default number of packages",
-    "unconfirmedHint": "These lots count as one package for want of a figure. Correct their number of packages if they hold several."
+    "unconfirmedHint": "These lots count as one package for want of a figure. Correct their number of packages if they hold several.",
+    "zoneFill": "Zone fill level"
   },
   "sites": {
     "title": "Sites and zones",
@@ -960,8 +969,9 @@
         "missing": "no authorisation covers this waste on that date. Record one before requesting the pickup.",
         "exceeded": "authorisation {{reference}} has not enough quantity left. Record a new authorisation.",
         "packaging": "authorisation {{reference}} is stated in packages only; these lots are loose or in a packaging it does not name: {{lots}}. It cannot be checked for them.",
-        "covered": "authorisation {{reference}}: {{after}} % used after this pickup, {{left}} % will be left.",
-        "unverifiable": "authorisation {{reference}} is limited in weight and these lots have no measured weight: {{lots}}. Weigh them before requesting the pickup."
+        "covered": "covered by authorisation {{reference}}. Each limit after this pickup:",
+        "unverifiable": "authorisation {{reference}} is limited in weight and these lots have no measured weight: {{lots}}. Weigh them before requesting the pickup.",
+        "blocked": "Request blocked — limit(s) concerned: {{limits}}."
       }
     },
     "actions": {
@@ -2104,7 +2114,8 @@
       "upcoming": "Upcoming",
       "ended": "Ended",
       "withdrawn": "Withdrawn"
-    }
+    },
+    "blocked": "No further pickup is possible on this authorisation while a limit is exceeded or cannot be verified."
   },
   "production": {
     "reference": "Reference",
@@ -2560,7 +2571,7 @@
     "hide": "Hide",
     "stock": {
       "title": "How to read the stock",
-      "text": "The stock is calculated at each display from the lots present on site: nothing is typed here.\nCapacity: the room available in a zone, as a number of packages per packaging (one lot may hold several packages) and/or a weight. It is set on the page of the site.\nLimit: a maximum weight you set for a site, a zone or a waste type. You are warned before it is reached, then when it is exceeded.\n\"No limit\" or \"Capacity not defined\" means nothing watches this line: click \"Define\" to add one."
+      "text": "The stock is calculated at each display from the lots present on site: nothing is typed here.\nCapacity: the room available in a zone, as a number of packages per packaging (one lot may hold several packages) and/or a weight. Room (packages) and load (weight) are two separate limits: each has its own line, figures and result, never a shared percentage. It is set on the page of the site.\nLimit: a maximum weight you set for a site, a zone or a waste type. You are warned before it is reached, then when it is exceeded.\n\"No limit\" or \"Capacity not defined\" means nothing watches this line: click \"Define\" to add one."
     },
     "lots": {
       "title": "Waste lots",
@@ -2741,5 +2752,23 @@
       "repeated": "Repeated gaps"
     },
     "indicative": "(indicative)"
+  },
+  "limits": {
+    "name": {
+      "weight": "Weight",
+      "packages": "Packages",
+      "lots": "Lots",
+      "space": "Room",
+      "load": "Load",
+      "stock": "Stock limit"
+    },
+    "lotsOf": "{{used}} / {{max}} lot(s)",
+    "atLeast": "at least {{pct}} %",
+    "over": "Exceeded by {{by}}",
+    "overShare": "Exceeded by {{pct}} % of the allowed quantity",
+    "onKnown": "(on what is known)",
+    "missingWeight": "{{count}} lot(s) without a measured weight:",
+    "missingPackages": "{{count}} lot(s) loose or in a packaging that is not planned:",
+    "outside": "{{count}} lot(s) outside the packagings named, covered by another limit of the document:"
   }
 }

@@ -39,6 +39,10 @@ interface AppliedLimit {
   max: number;
   pct: number;
   level: 'warning' | 'exceeded' | null;
+  /** The limit answered on its own: below it with lots nobody weighed is 'unverifiable', never 'respected'. */
+  outcome: 'respected' | 'warning' | 'exceeded' | 'unverifiable';
+  missing: number;
+  missingLots: string;
   /** What the limit covers, when it is wider than the line: the whole zone, this type on the whole site, the whole site. */
   scope: 'zone' | 'siteType' | 'site' | null;
 }
@@ -190,6 +194,7 @@ export class ThresholdDialog {
               <dw-kpi [label]="t('stock.awaiting')" [value]="awaiting() | dwKg: 'auto'" />
               <dw-kpi [label]="t('status.alert.exceeded')" [value]="exceeded()" [tone]="exceeded() > 0 ? 'danger' : 'neutral'" [hint]="limitsHint(t)" />
               <dw-kpi [label]="t('status.alert.warning')" [value]="warnings()" [tone]="warnings() > 0 ? 'warning' : 'neutral'" />
+              @if (unverifiable() > 0) { <dw-kpi [label]="t('status.alert.unverifiable')" [value]="unverifiable()" tone="warning" [hint]="t('lots.toWeigh')" /> }
             </div>
 
             <dw-state [empty]="groups().length === 0" icon="warehouse" [emptyTitle]="t('stock.emptyTitle')" [emptyHint]="t('stock.emptyHint')">
@@ -204,7 +209,7 @@ export class ThresholdDialog {
                           <span class="dw-muted">{{ zone.total | dwKg }}</span>
                           <span class="what">{{ t('stock.capacity') }}</span>
                           <dw-zone-fill [fill]="zone.fill" />
-                          @if (zone.fill.pct === null) {
+                          @if (zone.fill.constraints.length === 0) {
                             <span class="none"><dw-icon aria-hidden="true">info</dw-icon>{{ t('stock.noCapacity') }}</span>
                             @if (session.can('zones.manage', group.site)) { <a class="define" [routerLink]="['/sites', group.site]">{{ t('stock.defineCapacity') }}</a> }
                           }
@@ -230,9 +235,10 @@ export class ThresholdDialog {
                                       <div class="limit">
                                         <span class="meter" role="meter" [attr.aria-label]="t('stock.limit')" [attr.aria-valuenow]="applied.pct" aria-valuemin="0" aria-valuemax="100"><span class="bar" [class]="applied.level ?? 'ok'" [style.inline-size.%]="applied.pct"></span></span>
                                         <strong>{{ applied.pct }} %</strong>
-                                        @if (applied.level) { <dw-status kind="alert" [value]="applied.level" /> }
+                                        @if (applied.outcome !== 'respected') { <dw-status kind="limit" [value]="applied.outcome" /> }
                                       </div>
                                       <div class="dw-faint">{{ applied.quantity | dwKg }} / {{ applied.max | dwKg }}@if (applied.scope) { — {{ t('stock.scope.' + applied.scope) }} }</div>
+                                      @if (applied.missing > 0) { <div class="unverifiable" [title]="applied.missingLots">{{ t('limits.missingWeight', { count: applied.missing }) }} {{ applied.missingLots }}</div> }
                                     } @else {
                                       <span class="none"><dw-icon aria-hidden="true">info</dw-icon>{{ t('stock.noLimit') }}</span>
                                       @if (session.can('stock.thresholds.manage', row.site)) { <button type="button" class="define" (click)="define(row)">{{ t('stock.defineLimit') }}</button> }
@@ -271,10 +277,13 @@ export class ThresholdDialog {
                               <strong>{{ usage(threshold) }} %</strong>
                             </div>
                             <div class="dw-faint">{{ current(threshold.ulid)?.quantity_kg | dwKgKnown: current(threshold.ulid)?.unweighed_lots }}</div>
-                            @if ((current(threshold.ulid)?.unweighed_lots ?? 0) > 0 && current(threshold.ulid)?.alert_level !== 'exceeded') { <div class="unverifiable">{{ t('stock.unverifiable') }}</div> }
+                            @if (current(threshold.ulid)?.constraint; as limit) {
+                              @if (limit.outcome === 'exceeded') { <div class="over">{{ t('limits.over', { by: (limit.excess | dwKg) }) }}</div> }
+                              @if (limit.missing_count > 0) { <div class="unverifiable">{{ t('limits.missingWeight', { count: limit.missing_count }) }} {{ limit.missing_lots.join(', ') }}</div> }
+                            }
                           </td>
                           <td class="dw-num">{{ threshold.max_quantity_kg | dwKg }} <div class="dw-faint">{{ t('stock.warnAt', { pct: threshold.warning_pct }) }}</div></td>
-                          <td>@if (!threshold.is_active) { <dw-status kind="member" value="suspended" [label]="t('common.inactive')" tone="neutral" /> } @else { <dw-status kind="alert" [value]="current(threshold.ulid)?.alert_level ?? 'ok'" /> }</td>
+                          <td>@if (!threshold.is_active) { <dw-status kind="member" value="suspended" [label]="t('common.inactive')" tone="neutral" /> } @else { <dw-status kind="limit" [value]="current(threshold.ulid)?.constraint?.outcome ?? 'respected'" /> }</td>
                           <td class="dw-num">
                             @if (session.can('stock.thresholds.manage', threshold.site)) {
                               <button pButton text rounded severity="secondary" size="small" class="dw-icon-btn" type="button" (click)="menu.open($event, thresholdActions(threshold))" [attr.aria-label]="t('common.actions')" aria-haspopup="menu"><dw-icon>more_horiz</dw-icon></button>
@@ -309,7 +318,8 @@ export class ThresholdDialog {
     .zone th:nth-child(4) { width: 13%; } .zone th:nth-child(5) { width: 14%; } .zone th:nth-child(6) { width: 28%; }
     .strong { font-weight: 600; }
     .hazard { font-size: 15px; width: 15px; height: 15px; color: var(--dw-warning); vertical-align: -2px; }
-    .limit { display: flex; align-items: center; gap: var(--dw-2); } .unverifiable { color: var(--dw-warning); font-size: 12.5px; font-weight: 600; }
+    .limit { display: flex; align-items: center; gap: var(--dw-2); } .unverifiable { color: var(--dw-warning); font-size: 12.5px; font-weight: 600; overflow-wrap: anywhere; }
+    .over { color: var(--dw-danger); font-size: 12.5px; font-weight: 600; }
     .meter { flex: 0 0 110px; height: 8px; border-radius: 4px; background: var(--dw-line-soft); overflow: hidden; }
     .bar { display: block; height: 100%; max-inline-size: 100%; background: var(--dw-success); }
     .bar.warning { background: #d68a00; } .bar.exceeded { background: var(--dw-danger); }
@@ -340,6 +350,8 @@ export class StockPage {
   protected readonly awaiting = computed(() => (this.stock()?.data ?? []).reduce((sum, row) => sum + Number(row.awaiting_pickup_kg), 0));
   protected readonly exceeded = computed(() => (this.stock()?.thresholds ?? []).filter((item) => item.alert_level === 'exceeded').length);
   protected readonly warnings = computed(() => (this.stock()?.thresholds ?? []).filter((item) => item.alert_level === 'warning').length);
+  /** Limits nobody can call respected: the known weight is below them, but lots are not weighed. */
+  protected readonly unverifiable = computed(() => (this.stock()?.thresholds ?? []).filter((item) => item.constraint?.outcome === 'unverifiable').length);
 
   /** Rows grouped site → zone, in the order the API returns them (by name). */
   protected readonly groups = computed<SiteGroup[]>(() => {
@@ -416,6 +428,7 @@ export class StockPage {
 
     return {
       limit, quantity, max, pct: max > 0 ? Math.round((quantity / max) * 100) : 0, level: state?.alert_level ?? null,
+      outcome: state?.constraint?.outcome ?? 'respected', missing: state?.constraint?.missing_count ?? 0, missingLots: (state?.constraint?.missing_lots ?? []).join(', '),
       scope: limit.zone && limit.waste_type ? null : limit.zone ? 'zone' : limit.waste_type ? 'siteType' : 'site',
     };
   }
