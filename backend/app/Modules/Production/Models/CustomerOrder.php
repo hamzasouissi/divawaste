@@ -18,7 +18,7 @@ class CustomerOrder extends Model
     use BelongsToCompany;
     use HasPublicUlid;
 
-    protected $fillable = ['ulid', 'order_number', 'production_client_id', 'ordered_on', 'due_on', 'status', 'notes'];
+    protected $fillable = ['ulid', 'order_number', 'production_client_id', 'ordered_on', 'due_on', 'status', 'currency_code', 'discount_amount', 'notes'];
 
     protected function casts(): array
     {
