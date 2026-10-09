@@ -55,6 +55,8 @@ class StoreWasteLotRequest extends FormRequest
             'gross_weight_kg' => ['nullable', 'decimal:0,3', 'gte:0', 'lte:999999'],
             'tare_weight_kg' => ['nullable', 'decimal:0,3', 'gte:0', 'lte:999999'],
             'packaging_type' => ['nullable', 'string', $ref('packaging_types')],
+            // One lot may be several packages. Without a packaging type (loose waste) there is no count.
+            'package_count' => ['nullable', 'integer', 'between:1,100000'],
             'quantity' => ['nullable', 'decimal:0,3', 'gt:0', 'required_with:unit'],
             'unit' => ['nullable', 'string', Rule::exists('units', 'code')->whereNot('dimension', 'length')],
             'color_family' => ['nullable', 'string', Colors::rule(app(TenantContext::class)->companyId())],
@@ -111,6 +113,7 @@ class StoreWasteLotRequest extends FormRequest
             rawMaterial: $v('raw_material'),
             rawMaterialBatch: $v('raw_material_batch'),
             weightEstimated: (bool) ($validated['weight_estimated'] ?? false),
+            packageCount: isset($validated['package_count']) ? (int) $validated['package_count'] : null,
         );
     }
 }

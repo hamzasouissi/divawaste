@@ -191,6 +191,7 @@ return [
         ],
         'tolerance' => ['order' => 'The blocking limit cannot be below the warning limit.', 'duplicate' => 'A rule already exists for this waste type and this channel.'],
         'measure' => ['unit' => 'This waste type is declared in :unit: give the quantity in that unit.', 'weight' => 'The net weight is required for weighed waste.'],
+        'packages' => ['loose' => 'A lot without packaging (loose) has no number of packages.', 'reason' => 'The lot has left the site: give the reason for the correction.'],
         'composition' => ['total' => 'The composition percentages must add up to 100.'],
         'email_verification' => ['invalid' => 'This confirmation link is invalid or has expired.'],
         'invitation' => ['invalid' => 'This invitation is invalid, has expired or was already used.'],

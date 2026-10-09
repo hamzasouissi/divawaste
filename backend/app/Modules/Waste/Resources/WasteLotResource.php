@@ -36,6 +36,9 @@ class WasteLotResource extends JsonResource
             'is_hazardous' => $this->is_hazardous,
             'regulatory_code' => self::code('regulatory_waste_codes', $this->regulatory_waste_code_id),
             'packaging_type' => self::code('packaging_types', $this->packaging_type_id),
+            // How many packages the lot is made of; null for loose waste. Not confirmed = the default of one, nobody counted.
+            'package_count' => $this->package_count,
+            'package_count_confirmed' => (bool) $this->package_count_confirmed,
             'net_weight_kg' => $this->net_weight_kg,
             // null = nobody weighed the lot yet. 'measured' on a scale, 'computed' from the quantity, 'estimated' by the person, 'unknown'.
             'weight_basis' => $this->weight_basis ?? 'measured',

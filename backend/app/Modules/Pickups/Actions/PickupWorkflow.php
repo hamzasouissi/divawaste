@@ -184,12 +184,18 @@ final class PickupWorkflow
                 $departure = $mass ? $line->departure_weight_kg : $line->departure_quantity;
                 $reference = $departure === null ? null : (string) $departure;
                 $result = Tolerance::evaluate($reference, $mass ? $kg : $quantity, $rule);
+                // A weight that left as an estimate is no measure: the gap is shown as an indication, and the tolerance
+                // is not said to be met. Someone looks at it, as for a lot that left with no weight at all.
+                $estimated = $mass && $reference !== null && $line->weight_basis === 'estimated';
+                if ($estimated) {
+                    $result['status'] = Tolerance::NO_REFERENCE;
+                }
                 $line->forceFill([
                     'line_status' => 'received', 'received_weight_kg' => $kg, 'received_quantity' => $mass ? null : $quantity,
                     'weight_variance_kg' => $mass ? $result['difference'] : null, 'weight_variance_pct' => $mass ? $result['pct'] : null,
                     'quantity_variance' => $mass ? null : $result['difference'],
                     'variance_flagged' => Tolerance::needsReview($result['status']), 'tolerance_status' => $result['status'],
-                    'tolerance_rule' => $rule + ['unit' => $line->unit_code ?? 'kg', 'reference_quantity' => $reference, 'measured_quantity' => $mass ? $kg : $quantity,
+                    'tolerance_rule' => $rule + ['unit' => $line->unit_code ?? 'kg', 'reference_basis' => $estimated ? 'estimated' : 'measured', 'reference_quantity' => $reference, 'measured_quantity' => $mass ? $kg : $quantity,
                         'difference' => $result['difference'], 'pct' => $result['pct'], 'pct_abs' => $result['pct_abs']],
                     'received_at' => now(), 'received_by_user_id' => $actor->id,
                 ])->save();
@@ -423,6 +429,8 @@ final class PickupWorkflow
         // What the lot declares is a reference only in the dimension of its type: a count is never read as a weight.
         $declared = $dimension !== 'mass' && $lot->quantity !== null && UnitConversion::dimension($lotUnit) === $dimension;
         PickupLot::query()->create([
+            'packaging_code' => $lot->packaging_type_id === null ? null : DB::table('packaging_types')->where('id', $lot->packaging_type_id)->value('code'),
+            'package_count' => $lot->packaging_type_id === null ? null : ($lot->package_count ?? 1),
             'measure_dimension' => $dimension, 'unit_code' => $dimension === 'mass' ? 'kg' : ($declared ? $lotUnit : $type->unit),
             'declared_quantity' => $declared ? $lot->quantity : null,
             'planned_treatment_channel_id' => $channelId ?? $type->default_treatment_channel_id,
