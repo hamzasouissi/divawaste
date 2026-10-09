@@ -218,6 +218,26 @@ defaults shared by everyone, then yours. The search box filters by name, code or
   **Supprimer** (only while no lot, waste type, material or zone uses it).
 
 The tints are unverified screen approximations and do not replace a physical colour guide.
+
+**How a type is measured.** The unit of a type decides what its lots are declared and compared in: kg or tonnes = a
+weight, pieces = a count, litres or m³ = a volume. **Mode de mesure** says how the figure is obtained (pesé, compté,
+mesuré, estimé). A lot of a counted type is declared by its quantity; its weight is optional. Left empty, the weight
+is computed when the type states the weight of one piece (or its density), and otherwise stays **non mesuré** — it is
+never guessed, and pieces are never compared with kilograms.
+
+Tab **Tolérances** — the gap accepted between what left and what was received, as a percentage of what left:
+
+- A rule is for a waste type, a treatment channel, both, or every waste. The most precise one applies: type + channel,
+  then the type, then the channel, then "Tous les déchets". Below all of them stands the percentage of the company
+  settings (5 % unless you changed it), shown on the last line "Tout autre cas".
+- **Seuil d'alerte**: above it the gap must be explained before the pickup is closed. **Seuil bloquant**: above it the
+  gap must be accepted by a person holding "Accepter un écart au-dessus du seuil bloquant" (pickups.authorize_variance),
+  with a reason. Either may be left empty. Nothing is ever rejected or altered automatically.
+- **Écarts surveillés**: both ways, excesses only, or shortages only. The signed gap is always shown.
+- **Nature de la règle**: an internal rule, or a regulatory requirement — which must name its text. No regulatory
+  percentage ships with the application: enter the ones that apply to you.
+- A changed rule applies to the next receptions. Receptions already recorded keep the rule applied to them, and every
+  creation, change and deletion of a rule is in the audit trail.
 ### Prestataires — `/providers`
 
 *View: providers.view. Partners: providers.partnerships.manage.*
@@ -380,10 +400,28 @@ The lots become "En attente d'enlèvement". The pickup then moves through:
 | Clôturé         | Client                | Closes: lots become Clôturé                                                               |
 | Refusé / Annulé | —                     | Lots return to stock                                                                      |
 
-**Weight discrepancy.** If the received weight differs by more than 5 % from the departure weight — on the
-total or on any line — a red banner appears and the client must click **Prendre en compte l'écart** before
-closing.
+**Gaps at reception.** Each lot is compared in its own unit — kilograms for weighed waste, pieces or litres for
+counted waste — between what left and what was received:
 
+    gap % = |received − left| ÷ left × 100
+
+with the tolerance that applies to this waste type and this channel (tab Tolérances of the waste types). **Filière
+prévue**, on the request, replaces the channel each type plans. The block **Écarts à la réception** of the pickup says
+it in words for each lot: Parti, Reçu, Différence (signed), Écart, the tolerance applied and where it comes from, and why.
+
+| Result | Meaning | What to do |
+|---|---|---|
+| Dans la tolérance | Gap within the limit, or on the side the rule does not watch | Nothing |
+| À justifier | Above the warning limit | **Prendre en compte l'écart**, with an explanation (pickups.complete) |
+| Accord requis | Above the blocking limit | **Accepter l'écart**, with its reason (pickups.authorize_variance) |
+| Référence manquante | Nothing reliable left (0 or unknown): no percentage is computed | Check what left, then explain |
+
+The pickup cannot be closed while a gap waits. What was declared, what left and what was received stay three separate
+figures. A lot that left but was not received shows in the total of the weighed lots. Under the list of pickups,
+**Écarts à la réception par type de déchet** counts the receptions per type and marks repeated gaps.
+
+Limits: counted lots cannot be split or grouped (those share out a weight); a counted lot is priced as a flat amount
+unless it has a weight; stock limits and waste authorisations remain in kilograms.
 ![Pickup with discrepancy](screenshots/manager/10-pickup-variance.png)
 ![Acknowledge the discrepancy](screenshots/manager/11-variance-acknowledge.png)
 ![Enter prices](screenshots/manager/12-pricing-dialog.png)
@@ -665,6 +703,8 @@ The black band on top always shows the connection and what is waiting to be sent
 | ![Home](screenshots/operator/01-home.png) | **Accueil.** *Nouveau lot*, *Scanner*, *Charger un enlèvement*, then "Mes derniers lots" with their state (Synchronisé / À synchroniser). |
 
 ### Create a lot — three taps and a weight
+
+For a waste type counted in pieces or litres, the keypad asks for the quantity in that unit instead of the weight.
 
 | 1. Zone | 2. Waste type | 3. Weight | 4. Done |
 |---|---|---|---|

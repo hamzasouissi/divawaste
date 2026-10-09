@@ -2,6 +2,7 @@
 
 namespace App\Modules\Pickups\Actions;
 
+use App\Modules\Catalog\Support\UnitConversion;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Support\NumberSequence;
 use App\Modules\Documents\Support\AuthorizationQuota;
@@ -15,6 +16,8 @@ use App\Modules\Tenancy\TenantContext;
 use App\Modules\Waste\Actions\TransitionLot;
 use App\Modules\Waste\Enums\LotStatus;
 use App\Modules\Waste\Models\WasteLot;
+use App\Modules\Waste\Support\Tolerance;
+use App\Modules\Waste\Support\ToleranceRules;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -24,9 +27,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class PickupWorkflow
 {
-    private const DEFAULT_VARIANCE_THRESHOLD = '5.00';
-
-    public function __construct(private readonly TenantContext $context, private readonly TransitionLot $lots, private readonly AuthorizationQuota $authorizations) {}
+    public function __construct(private readonly TenantContext $context, private readonly TransitionLot $lots, private readonly AuthorizationQuota $authorizations,
+        private readonly ToleranceRules $rules) {}
 
     /**
      * The receiver and the transporter are each a company of the platform or a partner without an account.
@@ -34,10 +36,11 @@ final class PickupWorkflow
      *
      * @param  array{provider_company_id?: int|null, external_provider_id?: int|null, transporter_company_id?: int|null, external_transporter_id?: int|null}  $parties
      * @param  list<string>  $lotUlids
+     * @param  int|null  $channelId  what the receiver is to do with the waste; by default what each waste type plans
      */
-    public function create(int $siteId, array $parties, string $requestedDate, array $lotUlids, User $actor): Pickup
+    public function create(int $siteId, array $parties, string $requestedDate, array $lotUlids, User $actor, ?int $channelId = null): Pickup
     {
-        return DB::transaction(function () use ($siteId, $parties, $requestedDate, $lotUlids, $actor) {
+        return DB::transaction(function () use ($siteId, $parties, $requestedDate, $lotUlids, $actor, $channelId) {
             $year = now()->format('Y');
             $pickup = Pickup::query()->create([
                 'pickup_number' => NumberSequence::next($this->context->companyId(), 'pickup', "ENL-{$year}-", $year, 4),
@@ -58,7 +61,7 @@ final class PickupWorkflow
                 if (PickupLot::query()->where('waste_lot_id', $lot->id)->where('is_active_flag', true)->exists()) {
                     throw new BusinessRuleViolation('LOT_IN_PICKUP', "Lot {$lot->lot_number} is already in an active pickup.");
                 }
-                $this->addLine($pickup, $lot);
+                $this->addLine($pickup, $lot, $channelId);
             }
 
             return $pickup;
@@ -108,11 +111,14 @@ final class PickupWorkflow
     /**
      * Loading: listed lots are collected with their departure weight (default = lot net weight); others go back to stock.
      *
+     * Waste counted in pieces or litres leaves with a quantity in its own unit (default = what the lot declares).
+     *
      * @param  array<string, string|null>  $loaded  lot ULID => departure weight kg
+     * @param  array<string, string>  $quantities  lot ULID => departure quantity, in the unit of the line
      */
-    public function collect(Pickup $pickup, array $loaded, User $actor): Pickup
+    public function collect(Pickup $pickup, array $loaded, User $actor, array $quantities = []): Pickup
     {
-        return $this->step($pickup, [PickupStatus::Confirmed], PickupStatus::Collected, function (Pickup $p) use ($loaded, $actor) {
+        return $this->step($pickup, [PickupStatus::Confirmed], PickupStatus::Collected, function (Pickup $p) use ($loaded, $actor, $quantities) {
             $total = '0';
             foreach ($this->lines($p) as $line) {
                 $lot = WasteLot::query()->findOrFail($line->waste_lot_id);
@@ -123,7 +129,8 @@ final class PickupWorkflow
                     continue;
                 }
                 $weight = $loaded[$lot->ulid] ?? (string) $lot->net_weight_kg;
-                $line->forceFill(['line_status' => 'loaded', 'departure_weight_kg' => $weight, 'loaded_at' => now(), 'loaded_by_user_id' => $actor->id])->save();
+                $line->forceFill(['line_status' => 'loaded', 'departure_weight_kg' => $weight, 'loaded_at' => now(), 'loaded_by_user_id' => $actor->id,
+                    'departure_quantity' => $line->measure_dimension === 'mass' ? null : ($quantities[$lot->ulid] ?? $line->declared_quantity)])->save();
                 $this->lots->handle($lot, LotStatus::Collected, $actor);
                 $total = bcadd($total, (string) $weight, 3);
             }
@@ -132,45 +139,92 @@ final class PickupWorkflow
     }
 
     /**
-     * Provider reception (M4-04): per-lot received weights; variance flagged above the threshold (5 % by default), both directions.
+     * Reception (M4-04). Each lot is compared in the unit its waste type is counted in — the received weight against
+     * the weight that left, or the received pieces against the pieces that left — with the tolerance that applies to
+     * this type handled this way. The rule and the figures are stored with the line: the decision stays explainable.
      *
      * @param  array<string, string>  $received  lot number => received weight kg
+     * @param  array<string, string>  $quantities  lot number => received quantity, in the unit of the line
      */
-    public function receive(Pickup $pickup, array $received, User $actor): Pickup
+    public function receive(Pickup $pickup, array $received, User $actor, array $quantities = []): Pickup
     {
-        return $this->step($pickup, [PickupStatus::Collected], PickupStatus::Received, function (Pickup $p) use ($received, $actor) {
-            $threshold = $this->varianceThreshold((int) $p->company_id);
+        return $this->step($pickup, [PickupStatus::Collected], PickupStatus::Received, function (Pickup $p) use ($received, $actor, $quantities) {
             $total = '0';
-            $lineFlagged = false;
+            $weighed = ['departure' => '0', 'received' => '0', 'missing' => false];
+            $statuses = [];
             foreach ($this->lines($p) as $line) {
-                if ($line->line_status !== 'loaded' || ! isset($received[$line->lot_number_snapshot])) {
+                if ($line->line_status !== 'loaded') {
                     continue;
                 }
-                [$kg, $pct, $flag] = self::variance((string) $line->departure_weight_kg, $received[$line->lot_number_snapshot], $threshold);
-                $line->forceFill(['line_status' => 'received', 'received_weight_kg' => $received[$line->lot_number_snapshot], 'weight_variance_kg' => $kg,
-                    'weight_variance_pct' => $pct, 'variance_flagged' => $flag, 'received_at' => now(), 'received_by_user_id' => $actor->id])->save();
-                $total = bcadd($total, $received[$line->lot_number_snapshot], 3);
-                $lineFlagged = $lineFlagged || $flag;
+                $mass = $line->measure_dimension === 'mass';
+                $kg = $received[$line->lot_number_snapshot] ?? null;
+                $quantity = $quantities[$line->lot_number_snapshot] ?? null;
+                if ($mass) {
+                    $weighed['departure'] = bcadd($weighed['departure'], (string) $line->departure_weight_kg, 3);
+                }
+                if ($kg === null && $quantity === null) {
+                    $weighed['missing'] = $weighed['missing'] || $mass;
+
+                    continue;
+                }
+                // Pieces are not judged on a weight, nor a weight on a count: the line needs the measure of its type.
+                if (($mass ? $kg : $quantity) === null) {
+                    throw new BusinessRuleViolation('MEASURE_REQUIRED', $mass
+                        ? "Lot {$line->lot_number_snapshot} is weighed: its received weight is required."
+                        : "Lot {$line->lot_number_snapshot} is counted in {$line->unit_code}: the received quantity is required, a weight cannot replace it.");
+                }
+
+                $rule = $this->rules->resolve((int) $p->company_id, (int) DB::table('waste_lots')->where('id', $line->waste_lot_id)->value('waste_type_id'), $line->planned_treatment_channel_id);
+                $reference = $mass ? (string) $line->departure_weight_kg : ($line->departure_quantity === null ? null : (string) $line->departure_quantity);
+                $result = Tolerance::evaluate($reference, $mass ? $kg : $quantity, $rule);
+                $line->forceFill([
+                    'line_status' => 'received', 'received_weight_kg' => $kg, 'received_quantity' => $mass ? null : $quantity,
+                    'weight_variance_kg' => $mass ? $result['difference'] : null, 'weight_variance_pct' => $mass ? $result['pct'] : null,
+                    'quantity_variance' => $mass ? null : $result['difference'],
+                    'variance_flagged' => Tolerance::needsReview($result['status']), 'tolerance_status' => $result['status'],
+                    'tolerance_rule' => $rule + ['unit' => $line->unit_code ?? 'kg', 'reference_quantity' => $reference, 'measured_quantity' => $mass ? $kg : $quantity,
+                        'difference' => $result['difference'], 'pct' => $result['pct'], 'pct_abs' => $result['pct_abs']],
+                    'received_at' => now(), 'received_by_user_id' => $actor->id,
+                ])->save();
+                $statuses[] = $result['status'];
+                $total = bcadd($total, (string) ($kg ?? '0'), 3);
+                if ($mass) {
+                    $weighed['received'] = bcadd($weighed['received'], (string) $kg, 3);
+                }
             }
-            // A gap on one lot must not be hidden by the others: the pickup is flagged when its total or any of its lots is off.
-            [$kg, $pct, $flag] = self::variance((string) $p->departure_weight_kg, $total, $threshold);
-            $p->forceFill(['received_weight_kg' => $total, 'weight_variance_kg' => $kg, 'weight_variance_pct' => $pct,
-                'variance_threshold_pct' => $threshold, 'variance_flagged' => $flag || $lineFlagged, 'received_at' => now(), 'received_by_user_id' => $actor->id]);
+
+            // The weighed lots as a whole, for the record. It decides something only when a weighed lot that left was
+            // not received at all — each lot received was already judged by its own rule.
+            $default = $this->rules->companyDefault((int) $p->company_id);
+            $whole = Tolerance::evaluate($weighed['departure'], $weighed['received'], $default);
+            if ($weighed['missing']) {
+                $statuses[] = $whole['status'];
+            }
+            $status = Tolerance::worst($statuses);
+            $p->forceFill(['received_weight_kg' => $total, 'weight_variance_kg' => $whole['difference'] ?? bcsub($weighed['received'], $weighed['departure'], 3),
+                'weight_variance_pct' => $whole['pct'], 'variance_threshold_pct' => $default['warning_pct'], 'tolerance_status' => $status,
+                'variance_flagged' => Tolerance::needsReview($status), 'received_at' => now(), 'received_by_user_id' => $actor->id]);
             $p->save();
         });
     }
 
     /**
-     * The industrial acknowledges a flagged weight discrepancy (M4-04) before the pickup can be closed.
+     * Before the pickup can be closed, a gap that was flagged is explained (M4-04). Above the blocking limit of the
+     * rule an explanation is not enough: someone entitled to accept it must do so, and the reason is kept.
      */
-    public function acknowledgeVariance(Pickup $pickup, string $comment, User $actor): Pickup
+    public function acknowledgeVariance(Pickup $pickup, string $comment, User $actor, bool $mayAuthorize = true): Pickup
     {
-        return DB::transaction(function () use ($pickup, $comment, $actor) {
+        return DB::transaction(function () use ($pickup, $comment, $actor, $mayAuthorize) {
             $pickup = Pickup::query()->whereKey($pickup->id)->lockForUpdate()->firstOrFail();
             if (! $pickup->variance_flagged || $pickup->status !== PickupStatus::Received) {
                 throw new BusinessRuleViolation('NO_VARIANCE_TO_ACKNOWLEDGE', 'This pickup has no weight discrepancy waiting for acknowledgement.');
             }
-            $pickup->forceFill(['variance_acknowledged_at' => now(), 'variance_acknowledged_by_user_id' => $actor->id, 'variance_comment' => $comment])->save();
+            $blocking = $pickup->tolerance_status === Tolerance::BLOCKING;
+            if ($blocking && ! $mayAuthorize) {
+                throw new BusinessRuleViolation('VARIANCE_NEEDS_AUTHORIZATION', 'The gap is above the blocking limit: it must be accepted by someone authorised to.');
+            }
+            $pickup->forceFill(['variance_acknowledged_at' => now(), 'variance_acknowledged_by_user_id' => $actor->id, 'variance_comment' => $comment,
+                'variance_decision' => $blocking ? 'authorized' : 'acknowledged'])->save();
 
             return $pickup;
         });
@@ -272,15 +326,9 @@ final class PickupWorkflow
      */
     public static function variance(string $departure, string $received, string $thresholdPct): array
     {
-        $kg = bcsub($received, $departure, 3);
-        if (bccomp($departure, '0', 3) === 0) {
-            return [$kg, null, false];
-        }
+        $result = Tolerance::evaluate($departure, $received, ['warning_pct' => $thresholdPct]);
 
-        $raw = bcdiv(bcmul($kg, '100', 6), $departure, 6);
-        $pct = number_format((float) $raw, 2, '.', '');
-
-        return [$kg, $pct, abs((float) $raw) > (float) $thresholdPct];
+        return [bcsub($received, $departure, 3), $result['pct'], $result['status'] === Tolerance::WARNING];
     }
 
     /**
@@ -351,10 +399,19 @@ final class PickupWorkflow
         });
     }
 
-    private function addLine(Pickup $pickup, WasteLot $lot): void
+    private function addLine(Pickup $pickup, WasteLot $lot, ?int $channelId): void
     {
         $code = $lot->regulatory_waste_code_id === null ? null : DB::table('regulatory_waste_codes')->where('id', $lot->regulatory_waste_code_id)->value('code');
+        $type = DB::table('waste_types as t')->join('units as u', 'u.id', '=', 't.default_unit_id')->where('t.id', $lot->waste_type_id)
+            ->first(['t.default_treatment_channel_id', 'u.code as unit', 'u.dimension']);
+        $dimension = in_array($type->dimension, ['count', 'volume'], true) ? $type->dimension : 'mass';
+        $lotUnit = $lot->unit_id === null ? null : DB::table('units')->where('id', $lot->unit_id)->value('code');
+        // What the lot declares is a reference only in the dimension of its type: a count is never read as a weight.
+        $declared = $dimension !== 'mass' && $lot->quantity !== null && UnitConversion::dimension($lotUnit) === $dimension;
         PickupLot::query()->create([
+            'measure_dimension' => $dimension, 'unit_code' => $dimension === 'mass' ? 'kg' : ($declared ? $lotUnit : $type->unit),
+            'declared_quantity' => $declared ? $lot->quantity : null,
+            'planned_treatment_channel_id' => $channelId ?? $type->default_treatment_channel_id,
             'pickup_id' => $pickup->id, 'waste_lot_id' => $lot->id, 'provider_company_id' => $pickup->provider_company_id,
             'transporter_company_id' => $pickup->transporter_company_id, 'lot_number_snapshot' => $lot->lot_number,
             'qr_tag_value_snapshot' => DB::table('lot_tags')->where('waste_lot_id', $lot->id)->where('tag_type', 'qr')->where('is_active_flag', true)->value('tag_value'),
@@ -383,12 +440,5 @@ final class PickupWorkflow
     private function lines(Pickup $pickup): Collection
     {
         return PickupLot::query()->where('pickup_id', $pickup->id)->orderBy('id')->get();
-    }
-
-    private function varianceThreshold(int $companyId): string
-    {
-        $settings = json_decode((string) DB::table('companies')->where('id', $companyId)->value('settings'), true);
-
-        return bcadd((string) ($settings['weight_variance_threshold_pct'] ?? self::DEFAULT_VARIANCE_THRESHOLD), '0', 2);
     }
 }

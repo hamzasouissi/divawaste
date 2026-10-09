@@ -64,6 +64,7 @@ final class PermissionCatalog
             'pickups.price' => [self::S, $ind],
             'pickups.complete' => [self::S, $ind],
             'pickups.override_eligibility' => [self::S, $ind],
+            'pickups.authorize_variance' => [self::S, $ind],
             'providers.view' => [self::C, $ind],
             'providers.partnerships.manage' => [self::C, $ind],
             'documents.view' => [self::S, $ind],

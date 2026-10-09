@@ -189,6 +189,8 @@ return [
             'amount_mismatch' => 'The amount does not match the quantity multiplied by the unit price.',
             'batch_of_material' => 'This received lot is not a lot of this material.',
         ],
+        'tolerance' => ['order' => 'The blocking limit cannot be below the warning limit.', 'duplicate' => 'A rule already exists for this waste type and this channel.'],
+        'measure' => ['unit' => 'This waste type is declared in :unit: give the quantity in that unit.', 'weight' => 'The net weight is required for weighed waste.'],
         'composition' => ['total' => 'The composition percentages must add up to 100.'],
         'email_verification' => ['invalid' => 'This confirmation link is invalid or has expired.'],
         'invitation' => ['invalid' => 'This invitation is invalid, has expired or was already used.'],

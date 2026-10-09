@@ -25,7 +25,7 @@ final class DemoData
         'lot' => ['waste_lots', 'ulid'], 'pickup' => ['pickups', 'ulid'], 'site' => ['sites', 'ulid'], 'zone' => ['zones', 'ulid'],
         'wasteType' => ['waste_types', 'ulid'], 'invoice' => ['invoices', 'ulid'], 'document' => ['documents', 'ulid'],
         'manifest' => ['hazardous_waste_manifests', 'ulid'], 'declaration' => ['annual_declarations', 'ulid'], 'report' => ['generated_reports', 'ulid'],
-        'threshold' => ['stock_thresholds', 'ulid'], 'invitation' => ['user_invitations', 'ulid'], 'partnership' => ['provider_partnerships', 'ulid'],
+        'threshold' => ['stock_thresholds', 'ulid'], 'toleranceRule' => ['waste_tolerance_rules', 'ulid'], 'invitation' => ['user_invitations', 'ulid'], 'partnership' => ['provider_partnerships', 'ulid'],
         'accreditation' => ['provider_accreditations', 'ulid'], 'payment' => ['payments', 'ulid'], 'tag' => ['lot_tags', 'tag_value'],
     ];
 

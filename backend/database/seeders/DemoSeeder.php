@@ -9,6 +9,7 @@ use App\Modules\Billing\DTOs\DeclareBankTransferData;
 use App\Modules\Billing\Models\Invoice;
 use App\Modules\Catalog\Actions\CreateWasteType;
 use App\Modules\Catalog\DTOs\CreateWasteTypeData;
+use App\Modules\Catalog\Models\WasteToleranceRule;
 use App\Modules\Common\Support\FileStorage;
 use App\Modules\Documents\Actions\ManifestWorkflow;
 use App\Modules\Documents\Models\WasteAuthorization;
@@ -376,6 +377,26 @@ class DemoSeeder extends Seeder
             }
             $confirmed = $pickups->confirm($pickups->submit($pickups->create($sites['NAB']->id, ['provider_company_id' => $provider->id], now()->toDateString(), $ready, $sami), $sami), now()->toDateString(), $karim);
             $manifests->generate($confirmed, $sami);
+
+            // Waste that is counted, not weighed: yarn cones, in pieces. And tolerances that differ by waste and by handling:
+            // a received count 9 % above what left is over the blocking limit of the cones and waits for an authorised decision.
+            $cones = $createType->handle(new CreateWasteTypeData(code: 'CONES', catalogItem: 'cones', unit: 'piece', treatmentChannel: 'reuse'), $amira);
+            $cones->forceFill(['measurement_method' => 'counted'])->save();
+            $channelId = fn (string $code) => (int) DB::table('treatment_channels')->where('code', $code)->value('id');
+            foreach ([[$cones->id, null, '3', '8', 'both'], [$types['CHUTES']->id, null, '5', '10', 'both'], [$types['CARTON']->id, $channelId('recycling'), '8', null, 'shortage'],
+                [null, $channelId('landfill'), '2', '6', 'both']] as [$typeId, $channel, $warning, $blocking, $direction]) {
+                WasteToleranceRule::query()->create(['waste_type_id' => $typeId, 'treatment_channel_id' => $channel, 'warning_pct' => $warning, 'blocking_pct' => $blocking,
+                    'direction' => $direction, 'created_by_user_id' => $amira->id]);
+            }
+            $stock = Zone::query()->where('site_id', $sites['NAB']->id)->where('code', 'STOCK')->firstOrFail();
+            $counted = $createLot->handle(new CreateWasteLotData(siteUlid: $sites['NAB']->ulid, zoneUlid: $stock->ulid, wasteTypeUlid: $cones->ulid, netWeightKg: null,
+                quantity: '240', unit: 'piece', packagingType: 'bale', generatedAt: now()->subDays(6)->setTime(10, 0)->toDateTimeString()), $sami);
+            $weighed = $createLot->handle(new CreateWasteLotData(siteUlid: $sites['NAB']->ulid, zoneUlid: $stock->ulid, wasteTypeUlid: $types['CARTON']->ulid, netWeightKg: '62',
+                packagingType: 'bale', generatedAt: now()->subDays(6)->setTime(10, 20)->toDateTimeString()), $sami);
+            $mixed = $pickups->confirm($pickups->submit($pickups->create($sites['NAB']->id, ['provider_company_id' => $provider->id], now()->subDays(2)->toDateString(),
+                [$counted->ulid, $weighed->ulid], $sami), $sami), now()->subDays(2)->toDateString(), $karim);
+            $mixed = $pickups->collect($mixed, [$counted->ulid => null, $weighed->ulid => null], $sami);
+            $pickups->receive($mixed, [$weighed->lot_number => '60.5'], $karim, [$counted->lot_number => '262']);
 
             foreach ([2, 1, 0] as $monthsAgo) {
                 foreach ($sites as $siteCode => $site) {

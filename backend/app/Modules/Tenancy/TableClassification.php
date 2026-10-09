@@ -15,7 +15,7 @@ final class TableClassification
         'company_textile_activities', 'company_users', 'number_sequences', 'sites', 'zones',
         'zone_capacities', 'zone_accepted_waste_types', 'zone_accepted_colors',
         'user_role_assignments', 'user_invitations', 'company_subscriptions', 'invoices',
-        'invoice_items', 'payments', 'waste_types', 'stock_thresholds', 'devices', 'sync_operations', 'waste_lots',
+        'invoice_items', 'payments', 'waste_types', 'waste_tolerance_rules', 'stock_thresholds', 'devices', 'sync_operations', 'waste_lots',
         'waste_lot_compositions', 'lot_tags', 'waste_lot_operations', 'waste_lot_lineage', 'waste_lot_events',
         // Provider-owned, read by industrials through the directory.
         'provider_profiles', 'provider_accepted_wastes', 'provider_accreditations', 'provider_partnerships',

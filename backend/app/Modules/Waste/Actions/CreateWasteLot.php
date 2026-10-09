@@ -3,6 +3,7 @@
 namespace App\Modules\Waste\Actions;
 
 use App\Modules\Catalog\Models\WasteType;
+use App\Modules\Catalog\Support\UnitConversion;
 use App\Modules\Common\Support\NumberSequence;
 use App\Modules\Identity\Models\User;
 use App\Modules\Production\Support\LotOrigin;
@@ -14,6 +15,7 @@ use App\Modules\Waste\Models\LotTag;
 use App\Modules\Waste\Models\WasteLot;
 use App\Modules\Waste\Models\WasteLotEvent;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * M2-01/02: creates a lot with server lot number, QR tag (device ULID by default), composition and 'created' event.
@@ -29,7 +31,9 @@ final class CreateWasteLot
             $site = Site::query()->where('ulid', $data->siteUlid)->firstOrFail(['id']);
             $zoneId = Zone::query()->where('ulid', $data->zoneUlid)->where('site_id', $site->id)->valueOrFail('id');
             $type = WasteType::query()->where('ulid', $data->wasteTypeUlid)
-                ->firstOrFail(['id', 'is_hazardous', 'regulatory_waste_code_id', 'default_packaging_type_id', 'default_color_family_id', 'default_grammage_gsm', 'default_composition']);
+                ->firstOrFail(['id', 'is_hazardous', 'regulatory_waste_code_id', 'default_packaging_type_id', 'default_color_family_id', 'default_grammage_gsm', 'default_composition',
+                    'default_unit_id', 'density_kg_m3', 'unit_weight_kg']);
+            [$netWeightKg, $weightBasis] = $this->weight($type, $data);
             $year = now()->format('Y');
             $origin = $this->origin->resolve(['production_order' => $data->productionOrder, 'production_step' => $data->productionStep,
                 'raw_material' => $data->rawMaterial, 'raw_material_batch' => $data->rawMaterialBatch], (int) $site->id, (int) $zoneId);
@@ -47,7 +51,8 @@ final class CreateWasteLot
                 'regulatory_waste_code_id' => $type->regulatory_waste_code_id,
                 'gross_weight_kg' => $data->grossWeightKg,
                 'tare_weight_kg' => $data->tareWeightKg,
-                'net_weight_kg' => $data->netWeightKg,
+                'net_weight_kg' => $netWeightKg,
+                'weight_basis' => $weightBasis,
                 'quantity' => $data->quantity,
                 'unit_id' => $this->ref('units', $data->unit),
                 'color_family_id' => $this->ref('color_families', $data->colorFamily) ?? $material['color_family_id'] ?? $type->default_color_family_id,
@@ -65,12 +70,41 @@ final class CreateWasteLot
                 'assigned_at' => now(), 'assigned_by_user_id' => $actor->id]);
             WasteLotEvent::record($lot, 'created', [
                 'to_status' => $lot->status, 'to_site_id' => $site->id, 'to_zone_id' => $zoneId, 'weight_kg' => $lot->net_weight_kg,
-                'gross_weight_kg' => $data->grossWeightKg, 'tare_weight_kg' => $data->tareWeightKg, 'weight_source' => 'manual',
+                'gross_weight_kg' => $data->grossWeightKg, 'tare_weight_kg' => $data->tareWeightKg, 'weight_source' => $weightBasis === 'measured' ? 'manual' : 'computed',
+                'payload' => $weightBasis === 'measured' ? null : ['weight_basis' => $weightBasis, 'quantity' => $data->quantity, 'unit' => $data->unit],
                 'source' => $data->source, 'device_id' => $data->deviceId, 'user_id' => $actor->id,
             ]);
 
             return $lot;
         });
+    }
+
+    /**
+     * The weight of the lot and where it comes from. Weighed waste needs its weight. Waste counted in pieces or litres
+     * needs its quantity in a unit of that kind; its weight is then what was weighed, else what the conversion of the
+     * type gives, else unknown — recorded as 0 kg and marked as such, never guessed.
+     *
+     * @return array{string, string}
+     */
+    private function weight(WasteType $type, CreateWasteLotData $data): array
+    {
+        $typeUnit = (string) DB::table('units')->where('id', $type->default_unit_id)->value('code');
+        if (UnitConversion::dimension($typeUnit) === 'mass') {
+            if ($data->netWeightKg === null) {
+                throw ValidationException::withMessages(['net_weight_kg' => [__('validation.custom.measure.weight')]]);
+            }
+
+            return [$data->netWeightKg, 'measured'];
+        }
+        if ($data->quantity === null || ! UnitConversion::comparable($data->unit, $typeUnit)) {
+            throw ValidationException::withMessages(['quantity' => [__('validation.custom.measure.unit', ['unit' => $typeUnit])]]);
+        }
+        if ($data->netWeightKg !== null) {
+            return [$data->netWeightKg, 'measured'];
+        }
+        $computed = UnitConversion::toKg($data->quantity, $data->unit, $type->density_kg_m3, $type->unit_weight_kg);
+
+        return $computed === null ? ['0', 'unknown'] : [$computed, 'computed'];
     }
 
     private function ref(string $table, ?string $code): ?int

@@ -3,6 +3,7 @@
 namespace App\Modules\Catalog\Resources;
 
 use App\Modules\Catalog\Models\WasteType;
+use App\Modules\Catalog\Support\UnitConversion;
 use App\Modules\Common\Support\ReferenceCodes;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -32,6 +33,9 @@ class WasteTypeResource extends JsonResource
             'requires_authorization' => $this->requires_authorization,
             // M1-05: weights are stored in kg; the unit is how this type is usually counted.
             'unit' => $codes->code('units', $this->default_unit_id),
+            // What a lot of this type is declared and compared in: mass (a weight), count (pieces) or volume.
+            'measure_dimension' => UnitConversion::dimension($codes->code('units', $this->default_unit_id)) ?? 'mass',
+            'measurement_method' => $this->measurement_method,
             'packaging_type' => $codes->code('packaging_types', $this->default_packaging_type_id),
             'color_family' => $codes->code('color_families', $this->default_color_family_id),
             'treatment_channel' => $codes->code('treatment_channels', $this->default_treatment_channel_id),

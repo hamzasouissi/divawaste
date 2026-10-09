@@ -2,6 +2,7 @@
 
 // Texts of the generated documents: label, register, tracking slip, declaration, reports, invoice (PDF and Excel).
 return [
+    'units' => ['piece' => 'pieces', 'l' => 'l', 'm3' => 'm³', 'kg' => 'kg', 't' => 't'],
     'colon' => ': ',
     'yes' => 'Yes',
     'no' => 'No',
@@ -61,6 +62,9 @@ return [
         'packages' => 'Number of packages',
         'departure_weight' => 'Weight at departure',
         'received_weight' => 'Weight received',
+        'departure_quantity' => 'Quantity at departure',
+        'received_quantity' => 'Quantity received',
+        'not_weighed' => 'not weighed (counted waste)',
         'lot_number' => 'Lot no.',
         'signatures' => 'Signatures',
         'method' => 'Method',

@@ -273,9 +273,13 @@ final class ManifestWorkflow
             'transporter' => $manifest->transporter_snapshot,
             'receiver' => $manifest->receiver_snapshot,
             'lots' => DB::table('pickup_lots')->where('hazardous_waste_manifest_id', $manifest->id)->orderBy('id')
-                ->get(['lot_number_snapshot', 'declared_weight_kg', 'departure_weight_kg', 'received_weight_kg'])
+                ->get(['lot_number_snapshot', 'declared_weight_kg', 'departure_weight_kg', 'received_weight_kg', 'measure_dimension', 'unit_code', 'declared_quantity', 'departure_quantity', 'received_quantity'])
                 ->map(fn ($line) => ['lot_number' => $line->lot_number_snapshot, 'weight_kg' => (string) ($line->departure_weight_kg ?? $line->declared_weight_kg),
-                    'received_weight_kg' => $line->received_weight_kg === null ? null : (string) $line->received_weight_kg])->all(),
+                    'received_weight_kg' => $line->received_weight_kg === null ? null : (string) $line->received_weight_kg,
+                    // Waste counted in pieces or litres travels with its quantity; its weight is printed only when known.
+                    'unit' => $line->measure_dimension === 'mass' ? null : $line->unit_code,
+                    'quantity' => $line->measure_dimension === 'mass' ? null : ($line->departure_quantity ?? $line->declared_quantity),
+                    'received_quantity' => $line->received_quantity])->all(),
         ];
     }
 

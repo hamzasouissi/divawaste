@@ -33,7 +33,7 @@ final class WasteRegister
     {
         return DB::table('waste_lots as l')
             ->join('sites as s', 's.id', '=', 'l.site_id')->join('zones as z', 'z.id', '=', 'l.zone_id')->join('waste_types as t', 't.id', '=', 'l.waste_type_id')
-            ->leftJoin('regulatory_waste_codes as rc', 'rc.id', '=', 'l.regulatory_waste_code_id')
+            ->leftJoin('regulatory_waste_codes as rc', 'rc.id', '=', 'l.regulatory_waste_code_id')->leftJoin('units as lu', 'lu.id', '=', 'l.unit_id')
             // The line of the pickup that actually took the lot (a refused or cancelled pickup leaves no exit).
             ->leftJoin('pickup_lots as pl', fn ($join) => $join->on('pl.waste_lot_id', '=', 'l.id')->whereIn('pl.line_status', ['loaded', 'received', 'treated']))
             ->leftJoin('pickups as p', 'p.id', '=', 'pl.pickup_id')
@@ -45,7 +45,7 @@ final class WasteRegister
             ->when($hazardous !== null, fn (Builder $query) => $query->where('l.is_hazardous', $hazardous))
             ->orderBy('l.generated_at')->orderBy('l.id')
             ->select(['l.ulid', 'l.generated_at', 'l.lot_number', 's.name as site', 'z.name as zone', 't.name as waste_type', 'rc.code as regulatory_code',
-                'l.is_hazardous', 'l.net_weight_kg', 'l.origin_type', 'l.status', 'p.pickup_number', 'p.collected_at', DB::raw('COALESCE(pc.legal_name, xp.legal_name) as provider'),
+                'l.is_hazardous', 'l.net_weight_kg', 'l.weight_basis', 'l.quantity', 'lu.code as unit', 'l.origin_type', 'l.status', 'p.pickup_number', 'p.collected_at', DB::raw('COALESCE(pc.legal_name, xp.legal_name) as provider'),
                 'pl.received_weight_kg', 'ch.code as channel', 'ch.name as channel_name']);
     }
 
@@ -64,6 +64,10 @@ final class WasteRegister
             'regulatory_code' => $row->regulatory_code,
             'is_hazardous' => (bool) $row->is_hazardous,
             'net_weight_kg' => (string) $row->net_weight_kg,
+            // 'unknown' = waste counted in pieces or litres that nobody weighed: read its quantity, not the 0 kg.
+            'weight_basis' => $row->weight_basis,
+            'quantity' => $row->quantity === null ? null : (string) $row->quantity,
+            'unit' => $row->unit,
             'origin_type' => $row->origin_type,
             'status' => $row->status,
             'pickup_number' => $row->pickup_number,

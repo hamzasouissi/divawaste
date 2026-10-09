@@ -2,6 +2,7 @@
 
 // Textes des documents générés : étiquette, registre, bordereau, déclaration, rapports, facture (PDF et Excel).
 return [
+    'units' => ['piece' => 'pièces', 'l' => 'l', 'm3' => 'm³', 'kg' => 'kg', 't' => 't'],
     'colon' => ' : ',
     'yes' => 'Oui',
     'no' => 'Non',
@@ -61,6 +62,9 @@ return [
         'packages' => 'Nombre de colis',
         'departure_weight' => 'Poids au départ',
         'received_weight' => 'Poids reçu',
+        'departure_quantity' => 'Quantité au départ',
+        'received_quantity' => 'Quantité reçue',
+        'not_weighed' => 'non pesé (déchet compté)',
         'lot_number' => 'N° de lot',
         'signatures' => 'Signatures',
         'method' => 'Mode',
