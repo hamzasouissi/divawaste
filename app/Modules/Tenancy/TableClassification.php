@@ -24,6 +24,7 @@ final class TableClassification
         'waste_authorizations', 'waste_authorization_limits',
         'production_clients', 'production_suppliers', 'raw_materials', 'raw_material_batches', 'articles', 'article_materials',
         'customer_orders', 'customer_order_lines', 'production_orders', 'production_order_steps', 'production_order_consumptions',
+        'produced_lots', 'production_order_expenses', 'customer_order_invoices',
         // Party-shared: owner company_id + provider/transporter columns.
         'pickups', 'pickup_lots',
         'documents',

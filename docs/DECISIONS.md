@@ -70,10 +70,20 @@ Seeded by `ProvisionalReferenceSeeder`, clearly separated from the stable refere
 | F37 | A reference is unique per owner, colour system and collection, never alone | The same reference exists in several collections with different colours |
 | F38 | Lab values are computed from the HEX value (sRGB, D65); imported colours are marked `unverified`; matches use CIEDE2000 and are labelled approximate | Nothing was measured on a physical sample: the application must not present a screen colour as a colour standard |
 | F39 | A company colour is deleted only while nothing uses it; otherwise it is withdrawn | Lots and documents keep naming their colour |
+| F40 | Received lot, produced lot and waste lot are three records. A received lot carries its own supplier (proposed from the material, never rewritten by it); a produced lot belongs to an OF and has no supplier | The supplier is a fact about a delivery, the client a fact about an order; mixing them breaks traceability |
+| F41 | Neither received nor produced lots are a stock: no balance, location or movement. "Consumed" on a received lot is the sum of what OFs declared; more than the lot held is flagged, not blocked | The cahier keeps raw-material inventory out of scope; a flag reveals a data error without stopping production records |
+| F42 | Material cost = quantity consumed × cost of the received lot (price paid + delivery cost spread over its quantity). Lot not specified = weighted average of the priced lots of the material, counted apart as "estimated". No priced lot at all = unknown, never zero | Actual lot cost is the only method that needs no assumption; the average is an explicit, labelled fallback; a silent zero would overstate every margin |
+| F43 | There is no invoicing module for sales (the Billing module is the platform's subscription). Selling prices sit on order lines; invoices and credit notes issued elsewhere are recorded by number, date and amount | The least disruptive way to tell "ordered" from "invoiced" without building accounting |
+| F44 | Invoices belong to an OF only when they name it or when the order has a single OF; otherwise they stay at order level | Any other split would invent a figure |
+| F45 | Recorded gain = produced quantity × net agreed price − recorded costs, given only when price, production and every consumption cost are known; the missing data is named | A partial margin presented as profit is worse than no margin |
+| F46 | Amounts are excluding tax in the company's currency; an amount in another currency is left out and reported. No exchange rates | No rate source exists; converting silently would falsify totals |
+| F47 | Money is behind `production.finance.view`: without it amounts are null in every answer, cannot be written (existing ones are kept), and money imports are refused | Workshop planners follow production without seeing prices or margins |
+| F48 | Imports of events (received lots, consumptions, produced lots, expenses, invoices) require their parent to exist and never create or choose one; reference data imports still create clients/suppliers/articles and say so | A wrong parent created silently is worse than a rejected line |
 | F15 | Only French ships; the language switch, English and Arabic files and right-to-left were prepared, not delivered | Cahier §1: other languages are V2. All texts are already in translation files |
 
 ## Not done
 
+- Production: attachments (scanned invoice, delivery note) on received lots, expenses and invoices — only their reference is recorded. No labour or machine rates: such costs count only when entered as an expense. No currency conversion. Cost-and-gain figures are not in the queued "Rapports et exports" list (Excel export from their page).
 - **Personal data export and erasure** (non-functional requirement). No endpoint. Open.
 - Performance and volume measurements at the cahier's targets.
 - Production statistics in the queued "Rapports et exports" list (they are produced directly from their page, as PDF and Excel).

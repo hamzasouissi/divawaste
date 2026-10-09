@@ -81,6 +81,8 @@ final class PermissionCatalog
             'production.view' => [self::C, $ind],
             'production.manage' => [self::C, $ind],
             'production.stats.view' => [self::C, $ind],
+            // Purchase prices, selling prices, expenses and the gain of an order: not everyone who follows production sees money.
+            'production.finance.view' => [self::C, $ind],
             'sync_conflicts.resolve' => [self::S, $ind],
             'provider.profile.manage' => [self::C, $prv],
             'provider.accreditations.manage' => [self::C, $prv],

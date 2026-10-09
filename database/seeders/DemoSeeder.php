@@ -407,12 +407,16 @@ class DemoSeeder extends Seeder
             'color_label' => '19-4052 TCX', 'grammage_gsm' => 407, 'width_cm' => 150, 'composition' => [['material' => 'CO', 'pct' => '98.00'], ['material' => 'EL', 'pct' => '2.00']]]);
         $poplin = RawMaterial::query()->create(['reference' => 'POP-110', 'name' => 'Popeline 160 g', 'production_supplier_id' => $sahel->id, 'unit_id' => $unit('m'),
             'color_label' => 'Blanc optique', 'grammage_gsm' => 160, 'width_cm' => 150, 'composition' => [['material' => 'CO', 'pct' => '100.00']]]);
-        $batch = fn (RawMaterial $material, string $number, int $daysAgo, int $metres) => DB::table('raw_material_batches')->insertGetId(['ulid' => strtoupper((string) Str::ulid()),
-            'company_id' => $material->getAttribute('company_id'), 'raw_material_id' => $material->id, 'batch_number' => $number, 'received_on' => now()->subDays($daysAgo)->toDateString(),
-            'quantity' => $metres, 'created_at' => now(), 'updated_at' => now()]);
-        $roll = $batch($denim, 'R-0412', 60, 32000);
-        $batch($denim, 'R-0455', 20, 24000);
-        $bolt = $batch($poplin, 'P-2231', 45, 26000);
+        $currency = (string) DB::table('companies')->where('id', $denim->getAttribute('company_id'))->value('currency_code');
+        // Each delivery has its own supplier and its own price: the second roll of denim came from another mill, dearer.
+        $batch = fn (RawMaterial $material, ProductionSupplier $supplier, string $number, int $daysAgo, int $metres, ?string $price, ?string $delivery = null) => DB::table('raw_material_batches')->insertGetId([
+            'ulid' => strtoupper((string) Str::ulid()), 'company_id' => $material->getAttribute('company_id'), 'raw_material_id' => $material->id, 'production_supplier_id' => $supplier->id,
+            'batch_number' => $number, 'supplier_batch_reference' => 'S'.$number, 'received_on' => now()->subDays($daysAgo)->toDateString(), 'quantity' => $metres,
+            'unit_price' => $price, 'total_amount' => $price === null ? null : bcmul($price, (string) $metres, 3), 'delivery_cost' => $delivery, 'currency_code' => $price === null ? null : $currency,
+            'delivery_note' => 'BL-'.$number, 'created_at' => now(), 'updated_at' => now()]);
+        $roll = $batch($denim, $mills, 'R-0412', 110, 32000, '9.8000', '640.000');
+        $roll2 = $batch($denim, $sahel, 'R-0455', 100, 24000, '10.2000');
+        $bolt = $batch($poplin, $sahel, 'P-2231', 105, 26000, '5.4000');
 
         $jean = Article::query()->create(['reference' => 'JEAN-501', 'name' => 'Jean droit 5 poches', 'family' => 'Jean', 'production_client_id' => $levant->id]);
         $shirt = Article::query()->create(['reference' => 'CHEM-220', 'name' => 'Chemise popeline', 'family' => 'Chemise', 'production_client_id' => $nordic->id]);
@@ -421,16 +425,16 @@ class DemoSeeder extends Seeder
                 'quantity_per_piece' => $perPiece, 'created_at' => now(), 'updated_at' => now()]);
         }
 
-        $order = function (string $number, ProductionClient $client, Article $article, int $quantity, int $daysAgo, string $status) {
+        $order = function (string $number, ProductionClient $client, Article $article, int $quantity, int $daysAgo, string $status, string $price) {
             $order = CustomerOrder::query()->create(['order_number' => $number, 'production_client_id' => $client->id, 'ordered_on' => now()->subDays($daysAgo)->toDateString(),
                 'due_on' => now()->subDays($daysAgo)->addDays(75)->toDateString(), 'status' => $status]);
             DB::table('customer_order_lines')->insert(['company_id' => $order->getAttribute('company_id'), 'customer_order_id' => $order->id, 'article_id' => $article->id, 'quantity' => $quantity,
-                'created_at' => now(), 'updated_at' => now()]);
+                'unit_price' => $price, 'created_at' => now(), 'updated_at' => now()]);
 
             return $order;
         };
-        $jeans = $order('CMD-2026-088', $levant, $jean, 24000, 70, 'in_progress');
-        $shirts = $order('CMD-2026-091', $nordic, $shirt, 15000, 55, 'completed');
+        $jeans = $order('CMD-2026-088', $levant, $jean, 24000, 120, 'in_progress', '38.5000');
+        $shirts = $order('CMD-2026-091', $nordic, $shirt, 15000, 115, 'completed', '21.0000');
 
         $of = function (string $number, Article $article, CustomerOrder $order, int $planned, ?int $produced, ?int $startedDaysAgo, ?int $finishedDaysAgo, array $steps, array $consumed) use ($step) {
             $of = ProductionOrder::query()->create(['order_number' => $number, 'article_id' => $article->id, 'customer_order_id' => $order->id, 'quantity_planned' => $planned,
@@ -442,14 +446,38 @@ class DemoSeeder extends Seeder
                 DB::table('production_order_steps')->insert($base + ['production_step_id' => $step($code), 'site_id' => $site->id, 'sequence' => $index + 1, 'pieces_done' => $pieces]);
             }
             foreach ($consumed as [$material, $batchId, $quantity]) {
-                DB::table('production_order_consumptions')->insert($base + ['raw_material_id' => $material->id, 'raw_material_batch_id' => $batchId, 'quantity' => $quantity]);
+                DB::table('production_order_consumptions')->insert($base + ['raw_material_id' => $material->id, 'raw_material_batch_id' => $batchId, 'quantity' => $quantity,
+                    'production_step_id' => $step('cutting'), 'site_id' => $steps[0][1]->id]);
             }
+
+            return $of;
         };
         $nabeul = $sites['NAB'];
         $other = collect($sites)->first(fn (Site $site) => $site->id !== $nabeul->id) ?? $nabeul;
         // Cut in Nabeul, sewn on the other site: 12 000 planned × 1.35 m = 16 200 m expected, 17 050 m consumed.
-        $of('OF-2026-014', $jean, $jeans, 12000, 11600, 95, null, [['cutting', $nabeul, 12000], ['sewing', $other, 11600], ['washing', $other, 11000]], [[$denim, $roll, 17050]]);
+        // The first OF took its denim from two deliveries, and 300 m more that nobody tied to a roll.
+        $first = $of('OF-2026-014', $jean, $jeans, 12000, 11600, 95, null, [['cutting', $nabeul, 12000], ['sewing', $other, 11600], ['washing', $other, 11000]],
+            [[$denim, $roll, 14700], [$denim, $roll2, 2050], [$denim, null, 300]]);
         $of('OF-2026-015', $jean, $jeans, 12000, null, null, null, [['cutting', $nabeul, null], ['sewing', $other, null]], []);
-        $of('OF-2026-016', $shirt, $shirts, 15000, 14800, 95, 12, [['cutting', $nabeul, 15000], ['sewing', $nabeul, 14800], ['finishing', $nabeul, 14800]], [[$poplin, $bolt, 24600]]);
+        $third = $of('OF-2026-016', $shirt, $shirts, 15000, 14800, 95, 12, [['cutting', $nabeul, 15000], ['sewing', $nabeul, 14800], ['finishing', $nabeul, 14800]], [[$poplin, $bolt, 24600]]);
+
+        // Produced lots: what each OF made, batch by batch, for its client. Delivered or still in the workshop.
+        $produced = fn (ProductionOrder $of, string $number, int $quantity, int $daysAgo, string $status, Site $site) => DB::table('produced_lots')->insert(['ulid' => strtoupper((string) Str::ulid()),
+            'company_id' => $of->getAttribute('company_id'), 'production_order_id' => $of->id, 'lot_number' => $number, 'quantity' => $quantity, 'unit_id' => $unit('piece'),
+            'produced_on' => now()->subDays($daysAgo)->toDateString(), 'site_id' => $site->id, 'status' => $status, 'delivered_on' => $status === 'delivered' ? now()->subDays($daysAgo - 3)->toDateString() : null,
+            'created_at' => now(), 'updated_at' => now()]);
+        $produced($first, 'LF-2026-014-A', 6000, 40, 'delivered', $other);
+        $produced($first, 'LF-2026-014-B', 5600, 9, 'produced', $other);
+        $produced($third, 'LF-2026-016-A', 14800, 12, 'delivered', $nabeul);
+
+        // What the first OF cost beside its denim, and what was invoiced so far.
+        DB::table('production_order_expenses')->insert(['ulid' => strtoupper((string) Str::ulid()), 'company_id' => $first->getAttribute('company_id'), 'production_order_id' => $first->id,
+            'category' => 'subcontracting', 'description' => 'Délavage stone — sous-traitance', 'amount' => '8700.000', 'currency_code' => $currency, 'incurred_on' => now()->subDays(30)->toDateString(),
+            'reference' => 'FA-ST-0771', 'created_at' => now(), 'updated_at' => now()]);
+        foreach ([[$shirts, $third, 'FV-2026-0231', '310800.000', 10], [$jeans, $first, 'FV-2026-0198', '231000.000', 35]] as [$customerOrder, $manufacturingOrder, $number, $amount, $daysAgo]) {
+            DB::table('customer_order_invoices')->insert(['ulid' => strtoupper((string) Str::ulid()), 'company_id' => $customerOrder->getAttribute('company_id'), 'customer_order_id' => $customerOrder->id,
+                'production_order_id' => $manufacturingOrder->id, 'kind' => 'invoice', 'number' => $number, 'issued_on' => now()->subDays($daysAgo)->toDateString(), 'amount' => $amount,
+                'currency_code' => $currency, 'created_at' => now(), 'updated_at' => now()]);
+        }
     }
 }

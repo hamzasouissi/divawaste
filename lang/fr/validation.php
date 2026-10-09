@@ -56,6 +56,10 @@ return [
             'taken' => 'Une couleur porte déjà ce nom.', 'code_taken' => 'Une de vos couleurs porte déjà ce code.',
             'hex' => 'Indiquez une couleur au format HEX, par exemple #0F4C81.', 'rgb_mismatch' => 'Les valeurs RVB ne correspondent pas à la valeur HEX.',
         ],
+        'production' => [
+            'amount_mismatch' => 'Le montant ne correspond pas à la quantité multipliée par le prix unitaire.',
+            'batch_of_material' => 'Ce lot reçu n\'est pas un lot de cette matière.',
+        ],
         'composition' => ['total' => 'La somme des pourcentages de composition doit être égale à 100.'],
         'email_verification' => ['invalid' => 'Ce lien de confirmation est invalide ou expiré.'],
         'invitation' => ['invalid' => 'Cette invitation est invalide, expirée ou déjà utilisée.'],

@@ -185,6 +185,10 @@ return [
             'taken' => 'A colour already has this name.', 'code_taken' => 'One of your colours already has this code.',
             'hex' => 'Give a colour in HEX format, for example #0F4C81.', 'rgb_mismatch' => 'The RGB values do not match the HEX value.',
         ],
+        'production' => [
+            'amount_mismatch' => 'The amount does not match the quantity multiplied by the unit price.',
+            'batch_of_material' => 'This received lot is not a lot of this material.',
+        ],
         'composition' => ['total' => 'The composition percentages must add up to 100.'],
         'email_verification' => ['invalid' => 'This confirmation link is invalid or has expired.'],
         'invitation' => ['invalid' => 'This invitation is invalid, has expired or was already used.'],

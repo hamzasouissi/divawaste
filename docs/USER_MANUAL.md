@@ -395,12 +395,79 @@ Other actions on a pickup: **Saisir les prix** (per line: sale or cost, per kg /
 
 ## Production — clients, materials, orders and manufacturing orders
 
-*View: production.view. Change and import: production.manage.*
+*View: production.view. Change and import: production.manage. Prices, costs, invoices and gains:
+production.finance.view (without it every amount is hidden and cannot be written).*
 
-Optional. It exists to say **where each waste comes from**: which manufacturing order (OF), order, client, raw
-material and supplier. It is not an ERP: no planning, purchasing, stock or prices. A company that does not use it
-keeps working exactly as before. Nothing is deleted here: what is no longer used is switched off or closed.
+Optional. It says **where each waste comes from** — manufacturing order (OF), order, client, raw material, received
+lot and supplier — and **what an OF cost and is worth**. It is not an ERP: no planning, no purchasing workflow, no
+stock. A company that does not use it keeps working exactly as before.
 
+**Three kinds of lot, never to be confused:**
+
+| | Lot reçu | Lot fabriqué | Lot de déchets |
+|---|---|---|---|
+| What | A delivery of raw material | Finished goods made by an OF | Waste from production |
+| Belongs to | A material, **from a supplier** | An OF, **for its client and order** | The waste register |
+| Where | Material page, "Lots reçus et fabriqués" | OF page, "Lots reçus et fabriqués" | Opérations → Lots de déchets |
+
+None of the first two is a stock: no balance, no location, no movement. A produced lot has no supplier.
+
+### A raw material — `/production/catalog/:id`
+
+Clicking a material opens its page. Four figures on top: lots received, quantity consumed (and in how many OFs),
+quantity consumed **without a lot specified**, and the average purchase price. Tabs:
+
+- **Aperçu**: reference, category, unit, default supplier, composition, colour, grammage, width, waste that came from it.
+- **Lots reçus**: each delivery with **its own supplier**, the supplier's lot number, date, quantity, what the OFs
+  declared taking from it, its unit cost, its purchase value and the value consumed. **Nouveau lot reçu** proposes the
+  supplier of the material; choose another one when this delivery came from someone else. Type the unit price *or* the
+  amount: the other is computed from the quantity (two figures that disagree are refused). Delivery costs are spread
+  over the quantity of the lot. Changing the default supplier of the material later never changes the lots already
+  received. A red figure means the OFs declared more than the lot held.
+- **Consommations**: the last 200 consumptions, each with its OF and the lot it came from.
+- **Prix d'achat**: the cost of each delivery over time, and the average weighted by quantities.
+
+### A manufacturing order — `/production/manufacturing-orders/:id`
+
+Clicking an OF opens its page: the chain client → order → OF → article, then
+
+- **Étapes**: the stages, each on its site, with the pieces done.
+- **Matières consommées**: for each material, planned (consumption per piece × planned quantity), consumed, the gap,
+  and one line per **received lot** with its supplier, stage, date, quantity and cost. **Modifier les consommations**
+  edits them: 12 kg of lot A and 8 kg of lot B are two lines; if nobody knows which lot was used, leave **Lot non
+  précisé** — the application never picks one.
+- **Lots fabriqués**: the batches of finished goods, each with its number, date, quantity and status (fabriqué, livré,
+  annulé). As soon as an OF has produced lots, its produced quantity is their sum.
+- **Lots de déchets**: the ordinary waste lots that name this OF, with a link to each; **Enregistrer un déchet** opens
+  the usual lot form with the OF already chosen. The waste rate is given only when every consumption can be expressed in kg.
+- **Coûts, chiffre d'affaires et gain** (amounts excluding tax):
+  - *Coût matière réel* = quantity consumed × cost of the received lot it came from. A lot used by several OFs is
+    charged to each for what it consumed, never in full.
+  - *Coût matière estimé* = lots not specified, at the average price of the material. Shown apart, tagged "estimé".
+  - A consumption whose material has no priced lot at all is **inconnu** — never zero — and makes the cost incomplete.
+  - *Autres dépenses*: subcontracting, services, purchases, transport, labour if you enter it. Add, edit, delete.
+  - *Valeur de la production* = pieces made × the price agreed on the order line (discount of the order spread pro rata).
+  - *Facturé*: the invoices recorded on the order, less credit notes. They are the OF's when the invoice names it or
+    when the order has one OF only; otherwise they stay with the order and nothing is shared out.
+  - *Gain enregistré* = value of the production − recorded costs. Given only when price, production and every cost
+    are known; otherwise the page says what is missing. It is a gross figure on entered costs, not an accounting result.
+
+### An order — `/production/orders/:id`
+
+The articles with their agreed unit price, an optional discount, the OFs of the order with their cost, value and gain,
+and **Factures et avoirs**: number, date and amount of what was issued elsewhere. The page shows three different
+amounts: value of the order, invoiced, still to invoice.
+
+### Lots reçus et fabriqués — `/production/lots`
+
+Two lists side by side: every received lot (search, supplier, with or without a price) and every produced lot
+(search, client, status). A row opens the material or the OF.
+
+### Coûts et gains — `/production/finance`
+
+*production.finance.view.* For a period: recorded cost, value of the production, invoiced amount and gain, by OF, by
+client, by material (planned against consumed, quantity without a lot) and by supplier. A box lists the OFs whose
+gain could not be calculated and why; totals only add the gains that exist. **Exporter (Excel)** gives the OF table.
 ![Manufacturing orders](screenshots/production/01-manufacturing-orders.png)
 
 - **Clients et fournisseurs** — `/production/partners`: code, name, country, contact.
@@ -465,6 +532,13 @@ finished OFs: the produced quantity, in the month the OF finished, on the site o
 hand is never overwritten.
 
 ### Import — `/production/import`
+
+Eleven kinds of file, best imported in this order: matières premières, **lots reçus** (supplier, quantity, price),
+articles, commandes (with unit price), OF, **matières consommées** (OF, material, quantity, received lot or empty),
+**lots fabriqués**, **dépenses**, **factures**, clients, fournisseurs. Each column shows an example of what is
+expected. Lots, consumptions, produced lots, expenses and invoices require their parent (material, OF, order) to
+exist: an unknown one is an error on its line, with the line number — nothing is created or chosen in its place.
+Importing the same file twice changes nothing. Amounts are imported only by who may see them.
 Any Excel or CSV file can be imported; its columns need no particular names or order.
 
 ![Import](screenshots/production/03-import.png)
