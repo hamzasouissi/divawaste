@@ -20,7 +20,11 @@ export function measure(line: PickupLine, stage: Stage): { value: string | null;
 }
 
 /** Why the outcome is what it is, as a translation key and its parameters: screens never show a formula. */
-export function reason(decision: Pick<ToleranceDecision, 'warning_pct' | 'blocking_pct' | 'direction' | 'difference'>, status: ToleranceStatus): { key: string; limit: string | null } {
+export function reason(decision: Pick<ToleranceDecision, 'warning_pct' | 'blocking_pct' | 'direction' | 'difference' | 'reference_basis'>, status: ToleranceStatus): { key: string; limit: string | null } {
+  // An estimate cannot meet a tolerance, whatever the gap against it.
+  if (decision.reference_basis === 'estimated') {
+    return { key: 'tolerance.reasons.estimated_reference', limit: null };
+  }
   switch (status) {
     case 'blocking':
       return { key: 'tolerance.reasons.blocking', limit: decision.blocking_pct };
@@ -95,10 +99,10 @@ export class ToleranceRuleText {
             <dw-status kind="tolerance" [value]="line().tolerance_status ?? 'within'" />
           </header>
           <dl>
-            <div><dt>{{ t('tolerance.left') }}</dt><dd>{{ d.reference_quantity | dwQty: d.unit }}</dd></div>
+            <div><dt>{{ t('tolerance.left') }}</dt><dd>{{ d.reference_quantity | dwQty: d.unit }}@if (d.reference_basis === 'estimated') { <span class="dw-faint"> {{ t('lots.estimatedTag') }}</span> }</dd></div>
             <div><dt>{{ t('tolerance.arrived') }}</dt><dd>{{ d.measured_quantity | dwQty: d.unit }}</dd></div>
             <div><dt>{{ t('tolerance.difference') }}</dt><dd>{{ d.difference | dwQty: d.unit : true }}</dd></div>
-            <div><dt>{{ t('tolerance.gap') }}</dt><dd>@if (d.pct_abs !== null) { {{ d.pct_abs | dwNumber: 2 : ' %' }} } @else { {{ t('tolerance.noPercentage') }} }</dd></div>
+            <div><dt>{{ t('tolerance.gap') }}</dt><dd>@if (d.pct_abs !== null) { {{ d.pct_abs | dwNumber: 2 : ' %' }}@if (d.reference_basis === 'estimated') { <span class="dw-faint"> {{ t('tolerance.indicative') }}</span> } } @else { {{ t('tolerance.noPercentage') }} }</dd></div>
             <div class="wide"><dt>{{ t('tolerance.applicable') }}</dt><dd><dw-tolerance-rule [rule]="d" /></dd></div>
             <div class="wide"><dt>{{ t('tolerance.reason') }}</dt><dd>{{ t(why().key, { pct: (why().limit | dwNumber: 2) }) }}</dd></div>
           </dl>

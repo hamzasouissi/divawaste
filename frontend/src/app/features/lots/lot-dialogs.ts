@@ -14,7 +14,7 @@ import { Lot, OpenOrder, Zone } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
-import { LocalizedPipe, NumberPipe } from '../../core/format/pipes';
+import { CodePipe, LocalizedPipe, NumberPipe } from '../../core/format/pipes';
 import { CheckboxComponent } from '../../ui/checkbox';
 import { DIALOG_PARTS, DialogRef, dialogData } from '../../ui/dialog';
 import { FIELD } from '../../ui/field';
@@ -25,6 +25,7 @@ import { COLOR } from '../../ui/swatch';
 
 const DIALOG = [ReactiveFormsModule, TranslocoDirective] as const;
 const WEIGHT = [Validators.required, Validators.min(0), Validators.max(999999), Validators.pattern(/^\d+([.,]\d{1,3})?$/)];
+const PACKAGES = [Validators.pattern(/^[1-9]\d{0,5}$/)];
 const AMOUNT = [Validators.min(0), Validators.max(999999), Validators.pattern(/^\d+([.,]\d{1,3})?$/)];
 const decimal = (value: string | number): string => String(value).replace(',', '.');
 
@@ -33,7 +34,7 @@ const decimal = (value: string | number): string => String(value).replace(',', '
  * defaults of the waste type. The lot ULID is generated here so a double submission cannot create two lots.
  */
 @Component({
-  imports: [...DIALOG, LocalizedPipe, ButtonDirective, InputText, Textarea, CheckboxComponent, ...FIELD, ...SELECT, ...COLOR, ...DIALOG_PARTS, AutoFocus],
+  imports: [...DIALOG, LocalizedPipe, CodePipe, ButtonDirective, InputText, Textarea, CheckboxComponent, ...FIELD, ...SELECT, ...COLOR, ...DIALOG_PARTS, AutoFocus],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -99,6 +100,13 @@ const decimal = (value: string | number): string => String(value).replace(',', '
                 @for (packaging of vocabulary()?.packaging_types ?? []; track packaging.code) { <dw-option [value]="packaging.code" [label]="packaging.name | dwLocalized" /> }
               </dw-select>
             </dw-field>
+            @if (packaging(); as kind) {
+              <!-- One lot may be several bags or bales. Left empty, the lot counts as one, marked as a default. -->
+              <dw-field [label]="t('lots.packageCount', { packaging: (kind | dwCode: 'packaging') })">
+                <input pInputText formControlName="package_count" inputmode="numeric" placeholder="1" />
+                <small dwHint>{{ t('lots.packageCountHint') }}</small>
+              </dw-field>
+            }
             <dw-field [label]="t('lots.color')">
               <dw-select formControlName="color_family">
                 <dw-option [value]="null" label="—" />
@@ -143,6 +151,7 @@ export class CreateLotDialog {
     quantity: ['', AMOUNT],
     // A guess of the person, not a reading of a scale: kept as such, and not accepted where a measure is required.
     weight_estimated: [false],
+    package_count: ['', [Validators.pattern(/^[1-9]\d{0,5}$/)]],
     // Opened from the page of an OF: that OF is proposed.
     production_order: [(dialogData<{ production_order?: string } | undefined>()?.production_order ?? null) as string | null],
     raw_material: [null as string | null],
@@ -159,6 +168,8 @@ export class CreateLotDialog {
   /** The materials of the chosen OF: with a single one, the lot takes it without asking. */
   protected readonly materials = computed(() => this.openOrders().find((order) => order.ulid === this.chosen().production_order)?.materials ?? []);
   private readonly chosenType = computed(() => this.types().find((type) => type.ulid === this.chosen().waste_type));
+  /** How the lot will be packed: what is chosen here, else what the waste type plans; null = loose, no packages to count. */
+  protected readonly packaging = computed(() => this.chosen().packaging_type ?? this.chosenType()?.packaging_type ?? null);
   /** The unit of a type counted in pieces or litres; null for weighed waste. */
   protected readonly countedUnit = computed(() => ((this.chosenType()?.measure_dimension ?? 'mass') === 'mass' ? null : (this.chosenType()?.unit ?? 'piece')));
   /** The type says how much one piece (or one m³) weighs: the weight is then computed when none is typed. */
@@ -201,6 +212,7 @@ export class CreateLotDialog {
       const lot = await firstValueFrom(this.api.post<Lot>('lots', {
         ...value, ulid: this.lotUlid, net_weight_kg: value.net_weight_kg ? decimal(value.net_weight_kg) : null,
         weight_estimated: value.net_weight_kg ? value.weight_estimated : false,
+        package_count: this.packaging() && value.package_count ? Number(value.package_count) : null,
         quantity: unit ? decimal(value.quantity) : null, unit, grammage_gsm: value.grammage_gsm ? decimal(value.grammage_gsm) : null, notes: value.notes || null,
       }));
       this.toast.success('lots.created', { number: lot.lot_number });
@@ -408,7 +420,7 @@ export class WeighLotDialog {
       <dw-dialog-title>{{ t('lots.split') }} — {{ data.lot.lot_number }}</dw-dialog-title>
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <div class="dw-dialog-body dw-stack-sm">
-          <p class="dw-muted">{{ t('lots.splitHint') }}</p>
+          <p class="dw-muted">{{ t('lots.splitHint') }}@if (data.lot.packaging_type) { {{ t('lots.splitPackagesHint', { count: data.lot.package_count ?? 1 }) }} }</p>
           <div formArrayName="outputs" class="outputs">
             @for (control of outputs.controls; track control; let index = $index) {
               <div class="output">
@@ -416,8 +428,14 @@ export class WeighLotDialog {
                   <span dwLabel>{{ t('lots.splitOutput', { index: index + 1 }) }}</span>
                   <input pInputText [formControlName]="index" inputmode="decimal" required />
                 </dw-field>
+                @if (data.lot.packaging_type) {
+                  <dw-field class="packages">
+                    <span dwLabel>{{ t('lots.packages') }}</span>
+                    <input pInputText [formControl]="packages.at(index)" inputmode="numeric" placeholder="1" />
+                  </dw-field>
+                }
                 @if (outputs.length > 2) {
-                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="outputs.removeAt(index); recompute()" [attr.aria-label]="t('common.remove')"><dw-icon>close</dw-icon></button>
+                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="outputs.removeAt(index); packages.removeAt(index); recompute()" [attr.aria-label]="t('common.remove')"><dw-icon>close</dw-icon></button>
                 }
               </div>
             }
@@ -440,7 +458,7 @@ export class WeighLotDialog {
   styles: `
     .dw-dialog-body { min-width: min(460px, 82vw); }
     .outputs { display: grid; gap: var(--dw-1); } .output { display: flex; align-items: center; gap: var(--dw-2); }
-    .add { justify-self: start; } .gap { color: var(--dw-warning); font-weight: 600; }
+    .add { justify-self: start; } .gap { color: var(--dw-warning); font-weight: 600; } .packages { max-width: 110px; }
   `,
 })
 export class SplitLotDialog {
@@ -451,6 +469,8 @@ export class SplitLotDialog {
   private readonly ref = inject(DialogRef);
 
   protected readonly form = this.fb.group({ outputs: this.fb.array([this.fb.control('', WEIGHT), this.fb.control('', WEIGHT)]), notes: [''] });
+  /** The packages of each new lot, as counted after the split: never copied from the lot that is split. Empty = one, as a default. */
+  protected readonly packages = this.fb.array([this.fb.control('', PACKAGES), this.fb.control('', PACKAGES)]);
   protected readonly busy = signal(false);
   protected readonly total = signal(0);
   /** Beyond 2 % of difference with the original weight, the API requires an explanation. */
@@ -470,6 +490,7 @@ export class SplitLotDialog {
 
   protected add(): void {
     this.outputs.push(this.fb.control('', WEIGHT));
+    this.packages.push(this.fb.control('', PACKAGES));
   }
 
   protected recompute(): void {
@@ -477,16 +498,18 @@ export class SplitLotDialog {
   }
 
   protected async submit(): Promise<void> {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.packages.invalid) {
       this.form.markAllAsTouched();
+      this.packages.markAllAsTouched();
 
       return;
     }
     this.busy.set(true);
     const value = this.form.getRawValue();
+    const packages = this.packages.getRawValue();
     try {
       const lots = await firstValueFrom(this.api.post<Lot[]>(`lots/${this.data.lot.ulid}/split`, {
-        outputs: value.outputs.map((weight) => ({ net_weight_kg: decimal(weight) })), notes: value.notes.trim() || null,
+        outputs: value.outputs.map((weight, index) => ({ net_weight_kg: decimal(weight), package_count: this.data.lot.packaging_type && packages[index] ? Number(packages[index]) : null })), notes: value.notes.trim() || null,
       }));
       this.toast.success('lots.splitDone', { count: lots.length });
       this.ref.close(lots);
@@ -503,7 +526,7 @@ export interface GroupLotsData {
 }
 
 @Component({
-  imports: [...DIALOG, NumberPipe, ButtonDirective, ...FIELD, ...SELECT, ...DIALOG_PARTS],
+  imports: [...DIALOG, NumberPipe, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -516,6 +539,12 @@ export interface GroupLotsData {
             @for (item of zones(); track item.ulid) { <dw-option [value]="item.ulid" [label]="item.name" /> }
           </dw-select>
         </dw-field>
+        @if (data.lots[0].packaging_type) {
+          <dw-field [label]="t('lots.groupPackages')">
+            <input pInputText [formControl]="packages" inputmode="numeric" placeholder="1" />
+            <small dwHint>{{ t('lots.groupPackagesHint') }}</small>
+          </dw-field>
+        }
       </div>
       <div class="dw-dialog-foot">
         <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
@@ -534,16 +563,85 @@ export class GroupLotsDialog {
   protected readonly total = this.data.lots.reduce((sum, lot) => sum + Number(lot.net_weight_kg), 0);
   protected readonly zones = toSignal(inject(ReferenceData).zones(this.data.lots[0].site?.ulid ?? ''), { initialValue: [] });
   protected readonly zone = inject(FormBuilder).nonNullable.control(this.data.lots[0].zone?.ulid ?? '', Validators.required);
+  /** The packages of the grouped lot, as counted: three lots put in one bale are one package, not three. */
+  protected readonly packages = inject(FormBuilder).nonNullable.control('', PACKAGES);
   protected readonly busy = signal(false);
 
   protected async submit(): Promise<void> {
     this.busy.set(true);
     try {
-      const lot = await firstValueFrom(this.api.post<Lot>('lots/group', { lots: this.data.lots.map((item) => item.ulid), zone: this.zone.value }));
+      const lot = await firstValueFrom(this.api.post<Lot>('lots/group', { lots: this.data.lots.map((item) => item.ulid), zone: this.zone.value, package_count: this.data.lots[0].packaging_type && this.packages.valid && this.packages.value ? Number(this.packages.value) : null }));
       this.toast.success('lots.groupDone', { number: lot.lot_number });
       this.ref.close(lot);
     } catch (error) {
       this.toast.error(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+}
+
+/**
+ * How many packages the lot is made of. On site it is a simple entry; once the lot has left it is a correction, with
+ * its reason: the figure the pickup and the authorisation were decided with is kept, the corrected one stands beside it.
+ */
+@Component({
+  imports: [...DIALOG, CodePipe, ButtonDirective, InputText, Textarea, ...FIELD, ...DIALOG_PARTS, AutoFocus],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <ng-container *transloco="let t">
+      <dw-dialog-title>{{ t('lots.packagesTitle') }} — {{ data.lot.lot_number }}</dw-dialog-title>
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div class="dw-dialog-body dw-stack-sm">
+          <p class="dw-muted">{{ t(departed ? 'lots.packagesAfterDeparture' : 'lots.packagesOnSite') }}</p>
+          <dw-field [label]="t('lots.packageCount', { packaging: (data.lot.packaging_type | dwCode: 'packaging') })">
+            <input pInputText formControlName="package_count" inputmode="numeric" required [pAutoFocus]="true" />
+            @if (!data.lot.package_count_confirmed) { <small dwHint>{{ t('lots.packagesDefaultHint') }}</small> }
+          </dw-field>
+          @if (departed) {
+            <dw-field [label]="t('lots.packagesReason')">
+              <textarea pTextarea formControlName="reason" rows="2" maxlength="500" required></textarea>
+            </dw-field>
+          }
+        </div>
+        <div class="dw-dialog-foot">
+          <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+          <button pButton type="submit" [disabled]="busy() || form.invalid">{{ t('common.save') }}</button>
+        </div>
+      </form>
+    </ng-container>
+  `,
+  styles: '.dw-dialog-body { min-width: min(420px, 82vw); }',
+})
+export class LotPackagesDialog {
+  protected readonly data = dialogData<LotActionData>();
+  private readonly api = inject(Api);
+  private readonly toast = inject(Toast);
+  private readonly ref = inject(DialogRef);
+
+  /** The lot has left the site: the count is corrected, not edited, and the correction says why. */
+  protected readonly departed = !['created', 'stored', 'awaiting_pickup'].includes(this.data.lot.status);
+  protected readonly busy = signal(false);
+  protected readonly form = inject(FormBuilder).nonNullable.group({
+    package_count: [String(this.data.lot.package_count ?? 1), [Validators.required, ...PACKAGES]],
+    reason: ['', this.departed ? [Validators.required] : []],
+  });
+
+  protected async submit(): Promise<void> {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+
+      return;
+    }
+    this.busy.set(true);
+    const value = this.form.getRawValue();
+    try {
+      this.ref.close(await firstValueFrom(this.api.put<Lot>(`lots/${this.data.lot.ulid}/packages`, { package_count: Number(value.package_count), reason: value.reason.trim() || null })));
+      this.toast.success('lots.packagesSaved');
+    } catch (error) {
+      if (!this.toast.applyValidation(this.form, error)) {
+        this.toast.error(error);
+      }
     } finally {
       this.busy.set(false);
     }

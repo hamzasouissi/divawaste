@@ -36,6 +36,9 @@ describe('tolerance: what a line is measured in and what its outcome asks for', 
     // A shortage under a rule that only watches excesses is accepted whatever its size — and said to be for that reason.
     expect(reason(decision({ direction: 'excess', difference: '-20.000' }), 'within').key).toBe('tolerance.reasons.ignored_side');
     expect(reason(decision({ direction: 'shortage', difference: '20.000' }), 'within').key).toBe('tolerance.reasons.ignored_side');
+    // What left was only an estimate: whatever the gap, the tolerance is not said to be met.
+    expect(reason(decision({ reference_basis: 'estimated', difference: '-1.000' }), 'no_reference')).toEqual({ key: 'tolerance.reasons.estimated_reference', limit: null });
+    expect(reason(decision({ reference_basis: 'measured', difference: '3.000' }), 'within').key).toBe('tolerance.reasons.within');
     // A rule that only blocks states its blocking limit.
     expect(reason(decision({ warning_pct: null, difference: '3.000' }), 'within').limit).toBe('10.00');
   });

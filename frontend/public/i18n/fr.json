@@ -730,7 +730,8 @@
       "split_into": "Fractionné",
       "split_from": "Issu d'un fractionnement",
       "grouped_into": "Regroupé",
-      "grouped_from": "Issu d'un regroupement"
+      "grouped_from": "Issu d'un regroupement",
+      "packages_corrected": "Nombre de colis modifié"
     },
     "by": "par {{actor}}",
     "previousWeight": "poids précédent {{kg}} kg",
@@ -765,7 +766,25 @@
     "weightEstimated": "Ce poids est une estimation, pas une pesée",
     "weighNow": "Peser",
     "unweighedOnly": "À peser",
-    "estimatedTag": "(estimé)"
+    "estimatedTag": "(estimé)",
+    "packages": "Colis",
+    "packageCount": "Nombre de colis ({{packaging}})",
+    "packageCountHint": "Un lot peut contenir plusieurs sacs, balles ou cartons. Laissé vide : 1 colis, noté « par défaut ».",
+    "packagesDefault": "par défaut",
+    "packagesCorrect": "Corriger",
+    "loose": "Vrac (pas de colis)",
+    "packagesTitle": "Nombre de colis",
+    "packagesSaved": "Nombre de colis enregistré.",
+    "packagesOnSite": "Indiquez le nombre réel de colis du lot. Un enlèvement en préparation reprend ce nombre.",
+    "packagesAfterDeparture": "Le lot a quitté le site : c’est une correction. Le nombre avec lequel l’enlèvement et l’autorisation ont été décidés est conservé ; le nombre corrigé est affiché à côté et noté dans l’historique.",
+    "packagesDefaultHint": "Le nombre actuel est une valeur par défaut : personne ne l’a encore confirmé.",
+    "packagesReason": "Motif de la correction",
+    "packagesCorrected": "corrigé après départ : {{count}}",
+    "splitPackagesHint": "Le lot d’origine compte {{count}} colis : indiquez les colis de chaque nouveau lot, tels que vous les comptez.",
+    "groupPackages": "Nombre de colis du lot regroupé",
+    "groupPackagesHint": "Comptez le résultat : trois lots mis dans une seule balle font un colis. Laissé vide : 1, par défaut.",
+    "packagesChange": "{{from}} → {{to}} colis",
+    "afterDeparture": "après départ"
   },
   "stock": {
     "title": "Stock de déchets",
@@ -790,7 +809,7 @@
     "thresholdDeleted": "Limite supprimée.",
     "remaining": "Reste :",
     "uncounted": "{{count}} lot(s) non compté(s)",
-    "uncountedHint": "Ces lots n'ont pas de conditionnement, ou un conditionnement que la capacité de la zone ne prévoit pas. Ils ne sont pas dans le pourcentage.",
+    "uncountedHint": "Ces lots sont en vrac, ou dans un conditionnement que la capacité de la zone ne prévoit pas. Ils ne sont pas dans le pourcentage.",
     "misplaced": "{{count}} lot(s) hors affectation",
     "misplacedHint": "Le type de déchet ou la couleur de ces lots n'est pas prévu dans cette zone.",
     "capacity": "Capacité",
@@ -813,7 +832,10 @@
       "siteType": "ce type sur tout le site",
       "site": "tout le site"
     },
-    "unverifiable": "Non vérifiable : des lots ne sont pas pesés"
+    "unverifiable": "Non vérifiable : des lots ne sont pas pesés",
+    "holds": "Contient :",
+    "unconfirmed": "{{count}} lot(s) au nombre de colis par défaut",
+    "unconfirmedHint": "Ces lots comptent pour un colis faute d’indication. Corrigez leur nombre de colis s’ils en contiennent plusieurs."
   },
   "sites": {
     "title": "Sites et zones",
@@ -937,7 +959,7 @@
       "authorization": {
         "missing": "aucune autorisation ne couvre ce déchet à cette date. Saisissez-en une avant de demander l'enlèvement.",
         "exceeded": "l'autorisation {{reference}} n'a plus assez de quantité disponible. Saisissez une nouvelle autorisation.",
-        "packaging": "l'autorisation {{reference}} ne prévoit pas le conditionnement de certains lots.",
+        "packaging": "l’autorisation {{reference}} est exprimée en colis uniquement ; ces lots sont en vrac ou dans un conditionnement qu’elle ne nomme pas : {{lots}}. Elle ne peut pas être vérifiée pour eux.",
         "covered": "autorisation {{reference}} : utilisée à {{after}} % après cet enlèvement, il restera {{left}} %.",
         "unverifiable": "l’autorisation {{reference}} est limitée en poids et ces lots n’ont pas de poids mesuré : {{lots}}. Pesez-les avant de demander l’enlèvement."
       }
@@ -2063,7 +2085,7 @@
     "validUntil": "Jusqu'au",
     "issuedOn": "Date du document",
     "quantity": "Quantité autorisée",
-    "quantityHint": "Saisissez la quantité comme le document l'indique : un poids, un nombre de lots, ou un nombre de lots par conditionnement (« 40 balles », « 100 sacs »). Les conditionnements mélangés s'additionnent ; si plusieurs limites sont données, la plus utilisée est celle qui compte.",
+    "quantityHint": "Saisissez la quantité comme le document l'indique : un poids, un nombre de lots, ou un nombre de colis par conditionnement (« 40 balles », « 100 sacs »). Un lot compte pour autant de colis qu'il en contient. Les conditionnements mélangés s'additionnent ; si plusieurs limites sont données, la plus utilisée est celle qui compte.",
     "quantityRequired": "Indiquez au moins une quantité : un poids, un nombre de lots ou un conditionnement.",
     "maxKg": "Poids maximal (kg)",
     "maxLots": "Nombre maximal de lots",
@@ -2538,7 +2560,7 @@
     "hide": "Masquer",
     "stock": {
       "title": "Comment lire le stock",
-      "text": "Le stock est calculé à chaque affichage à partir des lots présents sur site : rien n'est saisi ici.\nCapacité : la place disponible dans une zone, en nombre de lots par conditionnement et/ou en poids. Elle se règle sur la page du site.\nLimite : un poids maximal que vous fixez pour un site, une zone ou un type de déchet. Vous êtes prévenu avant qu'elle soit atteinte, puis quand elle est dépassée.\n« Aucune limite » ou « Capacité non définie » signifie que rien ne surveille cette ligne : cliquez « Définir » pour en ajouter une."
+      "text": "Le stock est calculé à chaque affichage à partir des lots présents sur site : rien n'est saisi ici.\nCapacité : la place disponible dans une zone, en nombre de colis par conditionnement (un lot peut contenir plusieurs colis) et/ou en poids. Elle se règle sur la page du site.\nLimite : un poids maximal que vous fixez pour un site, une zone ou un type de déchet. Vous êtes prévenu avant qu'elle soit atteinte, puis quand elle est dépassée.\n« Aucune limite » ou « Capacité non définie » signifie que rien ne surveille cette ligne : cliquez « Définir » pour en ajouter une."
     },
     "lots": {
       "title": "Les lots de déchets",
@@ -2578,7 +2600,7 @@
     },
     "authorizations": {
       "title": "Les autorisations de sortie",
-      "text": "Seuls les types de déchets marqués « sous autorisation » sont concernés (case à cocher sur le type de déchet).\nUne autorisation donne une période et une quantité : un poids, un nombre de lots, ou des lots par conditionnement.\nChaque demande d'enlèvement réserve sa part. Sans autorisation valable ou avec une quantité insuffisante, la demande est bloquée.\nVous êtes prévenu quand l'autorisation est presque épuisée et avant sa fin de validité."
+      "text": "Seuls les types de déchets marqués « sous autorisation » sont concernés (case à cocher sur le type de déchet).\nUne autorisation donne une période et une quantité : un poids, un nombre de lots, ou des colis par conditionnement.\nChaque demande d'enlèvement réserve sa part. Sans autorisation valable ou avec une quantité insuffisante, la demande est bloquée.\nVous êtes prévenu quand l'autorisation est presque épuisée et avant sa fin de validité."
     },
     "productionPartners": {
       "title": "Clients et fournisseurs",
@@ -2660,7 +2682,8 @@
       "warning": "L’écart dépasse la tolérance de {{pct}} % : une explication est demandée.",
       "blocking": "L’écart dépasse la limite de {{pct}} % : il doit être accepté par une personne autorisée.",
       "no_reference": "Aucune quantité de départ fiable : le pourcentage ne peut pas être calculé. Vérifiez ce qui est parti.",
-      "not_measured": "La quantité reçue n’a pas été saisie."
+      "not_measured": "La quantité reçue n’a pas été saisie.",
+      "estimated_reference": "Le poids au départ était une estimation, pas une pesée : l’écart est indicatif et la tolérance ne peut pas être vérifiée. Une explication est demandée."
     },
     "banner": {
       "within": "Réception dans les tolérances.",
@@ -2716,6 +2739,7 @@
       "hint": "Nombre de lots reçus et ce que leur comparaison a donné.",
       "received": "Lots reçus",
       "repeated": "Écarts répétés"
-    }
+    },
+    "indicative": "(indicatif)"
   }
 }
