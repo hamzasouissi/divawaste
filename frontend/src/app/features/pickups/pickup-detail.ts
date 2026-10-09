@@ -6,10 +6,10 @@ import { Observable, firstValueFrom, forkJoin, of } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 
 import { Api, Page, openBlob } from '../../core/api/api';
-import { DocumentRecord, Manifest, Pickup } from '../../core/api/models';
+import { DocumentRecord, Manifest, Pickup, PickupLine } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe, KgPipe, MoneyPipe, NumberPipe, QuantityPipe } from '../../core/format/pipes';
+import { DatePipe, KnownWeightPipe, MoneyPipe, NumberPipe, QuantityPipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
@@ -51,7 +51,7 @@ export class ConfirmDateDialog {
  * current status and the user's permissions allow; everything else about the pickup is on the page.
  */
 @Component({
-  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, MoneyPipe, NumberPipe, QuantityPipe, ToleranceDecisionCard, IconComponent, ButtonDirective],
+  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KnownWeightPipe, MoneyPipe, NumberPipe, QuantityPipe, ToleranceDecisionCard, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -94,8 +94,8 @@ export class ConfirmDateDialog {
                 <div><dt>{{ t('pickups.transporter') }}</dt><dd>{{ p.transporter?.legal_name ?? t('pickups.receiverTransports') }} @if (p.transporter?.external) { <dw-status kind="member" value="suspended" tone="neutral" [label]="t('partners.noAccount')" /> }</dd></div>
                 <div><dt>{{ t('pickups.requestedDate') }}</dt><dd>{{ p.requested_date | dwDate }}</dd></div>
                 <div><dt>{{ t('pickups.confirmedDate') }}</dt><dd>{{ p.confirmed_date | dwDate }}</dd></div>
-                <div><dt>{{ t('pickups.departure') }}</dt><dd>{{ p.departure_weight_kg | dwKg }} @if (p.collected_at) { <span class="dw-faint">· {{ p.collected_at | dwDate: 'datetime' }}</span> }</dd></div>
-                <div><dt>{{ t('pickups.received') }}</dt><dd>{{ p.received_weight_kg | dwKg }} @if (p.received_at) { <span class="dw-faint">· {{ p.received_at | dwDate: 'datetime' }}</span> }</dd></div>
+                <div><dt>{{ t('pickups.departure') }}</dt><dd>{{ p.departure_weight_kg | dwKgKnown: (p.received_at ? 0 : p.unweighed_lots) }} @if (p.collected_at) { <span class="dw-faint">· {{ p.collected_at | dwDate: 'datetime' }}</span> }</dd></div>
+                <div><dt>{{ t('pickups.received') }}</dt><dd>{{ p.received_weight_kg | dwKgKnown: (p.received_at ? p.unweighed_lots : 0) }} @if (p.received_at) { <span class="dw-faint">· {{ p.received_at | dwDate: 'datetime' }}</span> }</dd></div>
                 @if (!provider && p.net_amount !== null && p.net_amount !== undefined) {
                   <div><dt>{{ t('pickups.netAmount') }}</dt><dd [class.neg]="+p.net_amount < 0"><strong>{{ p.net_amount | dwMoney: p.currency_code }}</strong></dd></div>
                 }
@@ -122,7 +122,10 @@ export class ConfirmDateDialog {
                         </td>
                         <td>{{ line.waste_type_label_snapshot }}</td><td class="dw-mono">{{ line.regulatory_code_snapshot ?? '—' }}</td>
                         @for (stage of stages; track stage) {
-                          <td class="dw-num">{{ measure(line, stage).value | dwQty: measure(line, stage).unit }}</td>
+                          <td class="dw-num">
+                            @if (measure(line, stage).value === null && unweighed(line, stage)) { <span class="dw-faint">{{ t('lots.toWeigh') }}</span> }
+                            @else { {{ measure(line, stage).value | dwQty: measure(line, stage).unit }}@if (stage !== 'received' && line.weight_basis === 'estimated' && measure(line, stage).unit === 'kg') { <span class="dw-faint"> {{ t('lots.estimatedTag') }}</span> } }
+                          </td>
                         }
                         <td class="dw-num" [class.neg]="line.variance_flagged">
                           {{ (line.tolerance?.pct ?? line.weight_variance_pct) | dwNumber: 1 : ' %' }}
@@ -209,6 +212,11 @@ export class PickupDetailPage implements OnInit {
   protected readonly error = signal<unknown>(null);
   protected readonly stages = ['declared', 'departure', 'received'] as const;
   protected readonly measure = measure;
+
+  /** A weighed lot with no weight at a stage it has reached: said in words, an empty cell would look like a forgotten figure. */
+  protected unweighed(line: PickupLine, stage: 'declared' | 'departure' | 'received'): boolean {
+    return (line.measure_dimension ?? 'mass') === 'mass' && (stage === 'declared' || (stage === 'departure' && line.line_status !== 'planned' && line.line_status !== 'not_loaded'));
+  }
 
   /** The lots judged against a tolerance at reception, and among them the ones someone has to look at. */
   protected readonly judged = computed(() => (this.pickup()?.lots ?? []).filter((line) => line.tolerance && line.tolerance_status));

@@ -59,7 +59,7 @@ interface ProductionSummary {
           <div class="dw-stack">
             <!-- 1. Figures of the period -->
             <div class="dw-stats">
-              <dw-kpi [label]="t('dashboard.generated')" [value]="d.totals.generated_kg | dwKg: 'auto'" [hint]="t('dashboard.lots', { count: d.totals.generated_lots })" />
+              <dw-kpi [label]="t('dashboard.generated')" [value]="d.totals.generated_kg | dwKg: 'auto'" [hint]="t('dashboard.lots', { count: d.totals.generated_lots }) + ((d.totals.unweighed_lots ?? 0) > 0 ? ' · ' + t('lots.unweighedCount', { count: d.totals.unweighed_lots }) : '')" />
               <dw-kpi [label]="t('dashboard.stock')" [value]="stock()?.meta?.total_kg | dwKg: 'auto'" [hint]="t('dashboard.stockHint')" />
               <dw-kpi [label]="t('dashboard.recoveryRate')" [value]="d.totals.recovery_rate_pct | dwNumber: 1 : ' %'" [hint]="t('dashboard.recovered', { kg: (d.totals.recovered_kg | dwKg: 'auto') })" tone="success" />
               <dw-kpi [label]="t('dashboard.landfillShare')" [value]="d.totals.landfill_share_pct | dwNumber: 1 : ' %'" [hint]="t('dashboard.landfilled', { kg: (d.totals.landfill_kg | dwKg: 'auto') })"

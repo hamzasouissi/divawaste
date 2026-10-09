@@ -224,6 +224,10 @@ const LAST_OF = 'dw.workshop.lastOf';
               @for (key of keys; track key) { <button type="button" class="key" (click)="press(key)" [attr.aria-label]="key === '⌫' ? t('common.remove') : key">{{ key }}</button> }
             </div>
             <button pButton type="button" class="big" [disabled]="!valid() || busy()" (click)="create()"><dw-icon>check</dw-icon>{{ t('mobile.createLot') }}</button>
+            @if (!countedUnit()) {
+              <!-- No scale at hand: the lot is registered now and weighed later. Its weight stays unknown, it is not zero. -->
+              <button pButton severity="secondary" outlined type="button" class="big" [disabled]="busy()" (click)="create(true)"><dw-icon>schedule</dw-icon>{{ t('mobile.weighLater') }}</button>
+            }
           }
           @case ('done') {
             @if (operation(); as op) {
@@ -385,18 +389,21 @@ export class MobileNewLotPage {
     });
   }
 
-  protected async create(): Promise<void> {
+  protected async create(later = false): Promise<void> {
     const site = this.site();
     const zone = this.zone();
     const type = this.type();
-    if (!site || !zone || !type || !this.valid()) {
+    if (!site || !zone || !type || (!later && !this.valid())) {
       return;
+    }
+    if (later) {
+      this.weight.set('');
     }
     this.busy.set(true);
     const operation = await this.offline.createLot(
       { site: site.ulid, zone: zone.ulid, waste_type: type.ulid, production_order: this.order()?.ulid ?? null,
-        ...(this.countedUnit() ? { quantity: this.weight().replace(',', '.'), unit: this.countedUnit() } : { net_weight_kg: this.weight().replace(',', '.') }) },
-      `${type.name} — ${this.weight()} ${this.countedUnit() === 'piece' ? 'pc' : (this.countedUnit() ?? 'kg')} — ${zone.name}${this.order() ? ` — ${this.order()?.order_number}` : ''}`,
+        ...(later ? {} : this.countedUnit() ? { quantity: this.weight().replace(',', '.'), unit: this.countedUnit() } : { net_weight_kg: this.weight().replace(',', '.') }) },
+      `${type.name} — ${later ? this.toast.text('lots.toWeigh') : `${this.weight()} ${this.countedUnit() === 'piece' ? 'pc' : (this.countedUnit() ?? 'kg')}`} — ${zone.name}${this.order() ? ` — ${this.order()?.order_number}` : ''}`,
     );
     navigator.vibrate?.(80);
     this.operationId.set(operation.id);

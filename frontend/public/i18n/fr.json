@@ -755,8 +755,17 @@
     "weightUnknown": "Laissé vide, le poids reste inconnu : il n’est pas estimé.",
     "weightBasis": {
       "unknown": "Poids non mesuré",
-      "computed": "Poids calculé à partir de la quantité"
-    }
+      "computed": "Poids calculé à partir de la quantité",
+      "estimated": "Poids estimé, non pesé"
+    },
+    "toWeigh": "À peser",
+    "unweighedCount": "{{count}} lot(s) non pesé(s)",
+    "plusUnweighed": "+ {{count}} lot(s) non pesé(s), non compris",
+    "weighLaterHint": "Laissez vide si le lot n’est pas encore pesé : son poids restera « à peser », jamais zéro.",
+    "weightEstimated": "Ce poids est une estimation, pas une pesée",
+    "weighNow": "Peser",
+    "unweighedOnly": "À peser",
+    "estimatedTag": "(estimé)"
   },
   "stock": {
     "title": "Stock de déchets",
@@ -803,7 +812,8 @@
       "zone": "toute la zone",
       "siteType": "ce type sur tout le site",
       "site": "tout le site"
-    }
+    },
+    "unverifiable": "Non vérifiable : des lots ne sont pas pesés"
   },
   "sites": {
     "title": "Sites et zones",
@@ -928,7 +938,8 @@
         "missing": "aucune autorisation ne couvre ce déchet à cette date. Saisissez-en une avant de demander l'enlèvement.",
         "exceeded": "l'autorisation {{reference}} n'a plus assez de quantité disponible. Saisissez une nouvelle autorisation.",
         "packaging": "l'autorisation {{reference}} ne prévoit pas le conditionnement de certains lots.",
-        "covered": "autorisation {{reference}} : utilisée à {{after}} % après cet enlèvement, il restera {{left}} %."
+        "covered": "autorisation {{reference}} : utilisée à {{after}} % après cet enlèvement, il restera {{left}} %.",
+        "unverifiable": "l’autorisation {{reference}} est limitée en poids et ces lots n’ont pas de poids mesuré : {{lots}}. Pesez-les avant de demander l’enlèvement."
       }
     },
     "actions": {
@@ -949,7 +960,7 @@
     "cancelReason": "Motif de l'annulation",
     "refuseReason": "Motif du refus",
     "ackComment": "Explication de l'écart",
-    "collectHint": "Cochez les lots effectivement chargés et vérifiez ce qui part, dans l’unité du lot. Un lot non coché retourne en stock.",
+    "collectHint": "Cochez les lots effectivement chargés et vérifiez ce qui part, dans l’unité du lot. Un poids laissé vide reste inconnu. Un lot non coché retourne en stock.",
     "loaded": "Chargé",
     "receiveHint": "Saisissez ce qui a été reçu pour chaque lot, dans son unité (poids, pièces ou litres). Un écart supérieur à la tolérance du déchet est signalé à l’industriel.",
     "treatHint": "Indiquez la filière de traitement de chaque lot reçu.",
@@ -1014,7 +1025,8 @@
       "declared": "Annoncé",
       "departure": "Parti",
       "received": "Reçu"
-    }
+    },
+    "priceNeedsWeight": "Non calculable : lot non pesé. Choisissez « forfait »."
   },
   "providers": {
     "title": "Prestataires",
@@ -1608,7 +1620,8 @@
     "scanOf": "Scanner la fiche de l'OF",
     "ofList": "Choisir dans la liste",
     "ofNotFound": "Aucun OF ouvert ne porte le numéro « {{code}} » sur ce site.",
-    "enterQuantity": "Quantité"
+    "enterQuantity": "Quantité",
+    "weighLater": "Peser plus tard"
   },
   "validation": {
     "required": "Ce champ est obligatoire.",

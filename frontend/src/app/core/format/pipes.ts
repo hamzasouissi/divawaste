@@ -69,17 +69,41 @@ export class QuantityPipe implements PipeTransform {
 export class LotMeasurePipe implements PipeTransform {
   private readonly quantity = new QuantityPipe();
   private readonly kg = new KgPipe();
+  private readonly transloco = inject(TranslocoService);
 
   transform(lot: { net_weight_kg: Numeric; weight_basis?: string | null; quantity?: Numeric; unit?: string | null } | null | undefined): string {
     if (!lot) {
       return EMPTY;
     }
+    const known = toNumber(lot.net_weight_kg) !== null;
+    // A computed or estimated weight is shown as an approximation; a missing one is said, never shown as 0 kg.
+    const weight = known ? `${['computed', 'estimated'].includes(lot.weight_basis ?? '') ? '≈' + NBSP : ''}${this.kg.transform(lot.net_weight_kg)}` : null;
     if (toNumber(lot.quantity) === null || !['piece', 'l', 'm3'].includes(lot.unit ?? '')) {
-      return this.kg.transform(lot.net_weight_kg);
+      return weight ?? this.transloco.translate('lots.toWeigh');
     }
     const counted = this.quantity.transform(lot.quantity, lot.unit);
 
-    return lot.weight_basis === 'unknown' || toNumber(lot.net_weight_kg) === 0 ? counted : `${counted} · ${lot.weight_basis === 'computed' ? '≈' + NBSP : ''}${this.kg.transform(lot.net_weight_kg)}`;
+    return weight === null ? counted : `${counted} · ${weight}`;
+  }
+}
+
+/**
+ * A weight that may be missing: `{ kg, unweighed } | dwKgKnown` → "950 kg + 2 lots non pesés". The lots without a
+ * weight are counted beside the total, never inside it as zeros.
+ */
+@Pipe({ name: 'dwKgKnown', pure: false })
+export class KnownWeightPipe implements PipeTransform {
+  private readonly kg = new KgPipe();
+  private readonly transloco = inject(TranslocoService);
+
+  transform(value: Numeric, unweighed: number | null | undefined, unit: 'kg' | 't' | 'auto' = 'kg'): string {
+    const missing = unweighed ?? 0;
+    if (missing === 0) {
+      return this.kg.transform(value, unit);
+    }
+    const note = this.transloco.translate('lots.unweighedCount', { count: missing });
+
+    return toNumber(value) === null || toNumber(value) === 0 ? note : `${this.kg.transform(value, unit)} + ${note}`;
   }
 }
 

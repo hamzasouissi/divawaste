@@ -488,7 +488,7 @@ export class ExpenseDialog {
                           <td>{{ lot.step_name ? (lot.step_name | dwLocalized) : '—' }}<span class="dw-faint"> · {{ lot.site_name }}</span></td>
                           <td>@if (lot.material) { <span class="dw-mono">{{ lot.material }}</span>@if (lot.batch_number) { · <span class="dw-mono">{{ lot.batch_number }}</span> } } @else { <span class="dw-faint">{{ t('production.waste.ofOnly') }}</span> }</td>
                           <td>{{ lot.generated_at | dwDate }}</td>
-                          <td class="num">{{ lot.net_weight_kg | dwKg }}</td>
+                          <td class="num">@if (lot.net_weight_kg === null) { <span class="dw-faint">{{ t('lots.toWeigh') }}</span> } @else { {{ lot.net_weight_kg | dwKg }} }</td>
                           <td><dw-status kind="lot" [value]="lot.status" /></td>
                         </tr>
                       }

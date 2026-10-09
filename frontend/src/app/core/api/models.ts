@@ -225,9 +225,10 @@ export interface Lot {
   is_hazardous: boolean;
   regulatory_code: string | null;
   packaging_type: string | null;
-  net_weight_kg: string;
-  /** 'unknown': waste counted in pieces or litres that nobody weighed — the weight is then 0 and must not be read as one. */
-  weight_basis?: 'measured' | 'computed' | 'unknown';
+  /** null = nobody weighed the lot yet. Never to be read as 0 kg. */
+  net_weight_kg: string | null;
+  /** Where the weight comes from: a scale, the quantity × the conversion of the type, a guess of the person, or nothing yet. */
+  weight_basis?: 'measured' | 'computed' | 'estimated' | 'unknown';
   gross_weight_kg: string | null;
   tare_weight_kg: string | null;
   quantity?: string | null;
@@ -284,6 +285,8 @@ export interface StockRow {
   quantity_kg: string;
   awaiting_pickup_kg: string;
   lots: number;
+  /** Lots of the line nobody weighed: in `lots`, not in `quantity_kg`. */
+  unweighed_lots?: number;
   oldest_lot_at: string;
   zone_quantity_kg: string;
   zone_capacity_kg: string | null;
@@ -293,8 +296,8 @@ export interface StockRow {
 
 export interface StockResponse {
   data: StockRow[];
-  thresholds: { ulid: string; quantity_kg: string; max_quantity_kg: string; alert_level: 'warning' | 'exceeded' | null }[];
-  meta: { total_kg: string; generated_at: string };
+  thresholds: { ulid: string; quantity_kg: string; unweighed_lots?: number; max_quantity_kg: string; alert_level: 'warning' | 'exceeded' | null }[];
+  meta: { total_kg: string; unweighed_lots?: number; generated_at: string };
 }
 
 export interface StockThreshold {
@@ -323,7 +326,9 @@ export interface PickupLine {
   regulatory_code_snapshot: string | null;
   is_hazardous: boolean;
   line_status: 'planned' | 'loaded' | 'not_loaded' | 'received' | 'rejected' | 'treated';
-  declared_weight_kg: string;
+  declared_weight_kg: string | null;
+  /** 'estimated': the weight the lot left with is a guess; a price per kilogram cannot be based on it. */
+  weight_basis?: 'measured' | 'computed' | 'estimated' | 'unknown' | null;
   departure_weight_kg: string | null;
   received_weight_kg: string | null;
   weight_variance_pct: string | null;
@@ -372,6 +377,8 @@ export interface Pickup {
   variance_comment: string | null;
   currency_code: string;
   lots_count?: number;
+  /** Lots of the pickup whose weight is not known: its weights are the sum of the others. */
+  unweighed_lots?: number;
   declared_weight_kg?: string;
   net_amount?: string | null;
   lots?: PickupLine[];
@@ -468,7 +475,9 @@ export interface AuthorizationCheck {
   waste_type: string;
   reference: string | null;
   valid_until: string | null;
-  reason: 'missing' | 'exceeded' | 'packaging' | null;
+  /** 'unverifiable': the authorisation is limited in weight and the lots listed in `unweighed` have no measured weight. */
+  reason: 'missing' | 'exceeded' | 'packaging' | 'unverifiable' | null;
+  unweighed?: string[];
   before_pct: number | null;
   after_pct: number | null;
 }
@@ -478,6 +487,8 @@ export interface Dashboard {
   totals: {
     generated_kg: string;
     generated_lots: number;
+    /** Lots nobody weighed: counted as lots, in none of the weights. */
+    unweighed_lots?: number;
     hazardous_kg: string;
     evacuated_kg: string;
     recovered_kg: string;
