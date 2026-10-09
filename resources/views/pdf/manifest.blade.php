@@ -53,7 +53,7 @@
     @if ($payload['waste_code'] ?? null)
         {{ __('documents.manifest.code') }}{{ __('documents.colon') }}<strong>{{ $payload['waste_code'] }}</strong> — {{ $payload['waste_label'] }}<br>
     @endif
-    {{ __('documents.manifest.designation') }}{{ __('documents.colon') }}{{ $payload['waste_type'] }} · {{ __('documents.manifest.packages') }}{{ __('documents.colon') }}{{ $payload['package_count'] }} · {{ __('documents.manifest.departure_weight') }}{{ __('documents.colon') }}<strong>{{ $weighed ? $kg($payload['declared_weight_kg']) : __($counted ? 'documents.manifest.not_weighed' : 'documents.manifest.not_weighed_lot') }}</strong>@if ($weighed && $unweighed > 0) {{ __('documents.manifest.plus_unweighed', ['count' => $unweighed]) }}@endif
+    {{ __('documents.manifest.designation') }}{{ __('documents.colon') }}{{ $payload['waste_type'] }} · {{ __('documents.manifest.packages') }}{{ __('documents.colon') }}{{ $payload['package_count'] ?? __('documents.manifest.loose') }} · {{ __('documents.manifest.departure_weight') }}{{ __('documents.colon') }}<strong>{{ $weighed ? $kg($payload['declared_weight_kg']) : __($counted ? 'documents.manifest.not_weighed' : 'documents.manifest.not_weighed_lot') }}</strong>@if ($weighed && $unweighed > 0) {{ __('documents.manifest.plus_unweighed', ['count' => $unweighed]) }}@endif
 </div>
 
 <table class="data">

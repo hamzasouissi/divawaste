@@ -2,12 +2,16 @@
 
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Support\DocumentLanguage;
+use App\Modules\Documents\Support\AuthorizationQuota;
 use App\Modules\Identity\Authorization\AccessResolver;
+use App\Modules\Pickups\Enums\PickupStatus;
+use App\Modules\Pickups\Models\Pickup;
 use App\Modules\Production\Models\ProductionOrder;
 use App\Modules\Production\Models\RawMaterial;
 use App\Modules\Production\Support\LotOrigin;
 use App\Modules\Sites\Actions\EvaluateStockThresholds;
 use App\Modules\Sites\Models\Zone;
+use App\Modules\Sites\Support\StockQuery;
 use App\Modules\Tenancy\Rules\TenantExists;
 use App\Modules\Waste\Actions\CreateWasteLot;
 use App\Modules\Waste\Actions\TransformLots;
@@ -24,6 +28,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     /*
@@ -217,6 +222,53 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         return new WasteLotResource($lot);
     })->name('lots.weigh');
 
+    /*
+     * How many packages the lot is made of. While the lot is on site it is simply edited (and the pickup that is being
+     * prepared follows). Once it has left, it is a correction: a reason is required, the figure the pickup and the
+     * authorisation were decided with stays where it is, and the corrected one is kept beside it. Either way the
+     * previous and the new count, the person, the time and the reason are in the trail of the lot.
+     */
+    Route::put('lots/{lot}/packages', function (Request $request, WasteLot $lot, AuthorizationQuota $authorizations) {
+        abort_unless($request->user()->can('lots.update', $lot->site_id), 403);
+        $input = $request->validate(['package_count' => ['required', 'integer', 'between:1,100000'], 'reason' => ['nullable', 'string', 'max:500']]);
+
+        $lot = DB::transaction(function () use ($lot, $input, $request, $authorizations) {
+            $lot = WasteLot::query()->whereKey($lot->id)->lockForUpdate()->firstOrFail();
+            if ($lot->packaging_type_id === null) {
+                throw new BusinessRuleViolation('LOT_NOT_PACKAGED', "Lot {$lot->lot_number} has no packaging type (loose waste): it has no number of packages.");
+            }
+            $departed = ! in_array($lot->status, StockQuery::ON_SITE, true);
+            $reason = trim((string) ($input['reason'] ?? ''));
+            if ($departed && $reason === '') {
+                throw ValidationException::withMessages(['reason' => [__('validation.custom.packages.reason')]]);
+            }
+            $previous = ['package_count' => $lot->package_count, 'confirmed' => (bool) $lot->package_count_confirmed];
+            $lot->forceFill(['package_count' => (int) $input['package_count'], 'package_count_confirmed' => true, 'updated_by_user_id' => $request->user()->id])->save();
+            WasteLotEvent::record($lot, 'packages_corrected', ['user_id' => $request->user()->id, 'payload' => [
+                'previous_package_count' => $previous['package_count'], 'previous_confirmed' => $previous['confirmed'], 'package_count' => (int) $input['package_count'],
+                'reason' => $reason === '' ? null : $reason, 'after_departure' => $departed,
+            ]]);
+
+            if ($departed) {
+                DB::table('pickup_lots')->where('waste_lot_id', $lot->id)->whereIn('line_status', ['loaded', 'received', 'treated'])
+                    ->update(['corrected_package_count' => (int) $input['package_count'], 'updated_at' => now()]);
+
+                return $lot;
+            }
+            // Still on site: a pickup that has not left yet carries the new count, and its authorisation is asked again.
+            $lines = DB::table('pickup_lots')->where('waste_lot_id', $lot->id)->where('is_active_flag', true)->where('line_status', 'planned');
+            $pickupIds = (clone $lines)->pluck('pickup_id');
+            $lines->update(['package_count' => (int) $input['package_count'], 'updated_at' => now()]);
+            foreach (Pickup::query()->whereIn('id', $pickupIds)->whereIn('status', [PickupStatus::Requested, PickupStatus::Confirmed])->get() as $pickup) {
+                $authorizations->reserve($pickup);
+            }
+
+            return $lot;
+        });
+
+        return new WasteLotResource($lot);
+    })->name('lots.packages');
+
     // M2-06.
     Route::post('lots/{lot}/split', function (Request $request, WasteLot $lot, TransformLots $action, EvaluateStockThresholds $thresholds) {
         abort_unless($request->user()->can('lots.split', $lot->site_id), 403);
@@ -224,9 +276,12 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'outputs' => ['required', 'array', 'min:2', 'max:50'],
             'outputs.*.net_weight_kg' => ['required', 'decimal:0,3', 'gt:0'],
             'outputs.*.zone' => ['nullable', 'string', new TenantExists(Zone::class, fn ($q) => $q->where('site_id', $lot->site_id))],
+            // The packages of each new lot, as counted after the split; left out = one, marked as a default.
+            'outputs.*.package_count' => ['nullable', 'integer', 'between:1,100000'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
-        $outputs = array_map(fn (array $o) => ['net_weight_kg' => (string) $o['net_weight_kg'], 'zone' => isset($o['zone']) ? strtoupper($o['zone']) : null], $input['outputs']);
+        $outputs = array_map(fn (array $o) => ['net_weight_kg' => (string) $o['net_weight_kg'], 'zone' => isset($o['zone']) ? strtoupper($o['zone']) : null,
+            'package_count' => isset($o['package_count']) ? (int) $o['package_count'] : null], $input['outputs']);
         $children = $action->split($lot, new SplitWasteLotData($outputs, $input['notes'] ?? null), $request->user());
         $thresholds->forSite($lot->site_id);
 
@@ -238,12 +293,14 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'lots' => ['required', 'array', 'min:2', 'max:200'],
             'lots.*' => ['required', 'string', new TenantExists(WasteLot::class)],
             'zone' => ['required', 'string', new TenantExists(Zone::class)],
+            // The packages of the grouped lot, as counted; left out = one, marked as a default.
+            'package_count' => ['nullable', 'integer', 'between:1,100000'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
         $ulids = array_map('strtoupper', $input['lots']);
         $siteId = (int) WasteLot::query()->where('ulid', $ulids[0])->value('site_id');
         abort_unless($request->user()->can('lots.group', $siteId), 403);
-        $group = $action->group(new GroupWasteLotsData($ulids, strtoupper($input['zone']), $input['notes'] ?? null), $request->user());
+        $group = $action->group(new GroupWasteLotsData($ulids, strtoupper($input['zone']), $input['notes'] ?? null, isset($input['package_count']) ? (int) $input['package_count'] : null), $request->user());
         $thresholds->forSite($siteId);
 
         return (new WasteLotResource($group))->response()->setStatusCode(201);

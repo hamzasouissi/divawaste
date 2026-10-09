@@ -68,6 +68,7 @@ return [
         'received_quantity' => 'Quantity received',
         'not_weighed' => 'not weighed (counted waste)',
         'not_weighed_lot' => 'not weighed',
+        'loose' => 'loose',
         'plus_unweighed' => '+ :count lot(s) not weighed',
         'lot_number' => 'Lot no.',
         'signatures' => 'Signatures',

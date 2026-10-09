@@ -32,7 +32,7 @@ class WasteLot extends Model
 
     protected $fillable = [
         'ulid', 'lot_number', 'site_id', 'zone_id', 'waste_type_id', 'packaging_type_id', 'origin_type', 'is_hazardous',
-        'regulatory_waste_code_id', 'gross_weight_kg', 'tare_weight_kg', 'net_weight_kg', 'weight_basis', 'quantity', 'unit_id',
+        'regulatory_waste_code_id', 'gross_weight_kg', 'tare_weight_kg', 'net_weight_kg', 'weight_basis', 'package_count', 'package_count_confirmed', 'quantity', 'unit_id',
         'color_family_id', 'color_label', 'grammage_gsm', 'composition_label', 'extra_attributes', 'notes', 'generated_at',
         'created_by_user_id', 'created_device_id', 'production_order_id', 'production_step_id', 'raw_material_id', 'raw_material_batch_id',
     ];
@@ -42,6 +42,8 @@ class WasteLot extends Model
         return [
             'status' => LotStatus::class,
             'is_hazardous' => 'boolean',
+            'package_count' => 'integer',
+            'package_count_confirmed' => 'boolean',
             'gross_weight_kg' => 'decimal:3',
             'tare_weight_kg' => 'decimal:3',
             'net_weight_kg' => 'decimal:3',

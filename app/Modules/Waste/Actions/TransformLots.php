@@ -50,7 +50,7 @@ final class TransformLots
             foreach ($data->outputs as $output) {
                 $zoneId = $output['zone'] === null ? $lot->zone_id
                     : Zone::query()->where('ulid', $output['zone'])->where('site_id', $lot->site_id)->valueOrFail('id');
-                $child = $this->derive($lot, 'split', (string) $output['net_weight_kg'], (int) $zoneId, $actor, $composition, $lot->only(LotOrigin::FIELDS));
+                $child = $this->derive($lot, 'split', (string) $output['net_weight_kg'], (int) $zoneId, $actor, $composition, $lot->only(LotOrigin::FIELDS), $output['package_count'] ?? null);
                 $this->link($operation, $lot, $child, 'split', (string) $output['net_weight_kg'], $actor);
                 $outputs[] = $child;
             }
@@ -86,7 +86,7 @@ final class TransformLots
             foreach (LotOrigin::FIELDS as $field) {
                 $origin[$field] = $inputs->pluck($field)->unique()->count() === 1 ? $first->getAttribute($field) : null;
             }
-            $group = $this->derive($first, 'grouping', $total, $zoneId, $actor, LotComposition::weightedAverage($inputs->all(), $total), $origin);
+            $group = $this->derive($first, 'grouping', $total, $zoneId, $actor, LotComposition::weightedAverage($inputs->all(), $total), $origin, $data->packageCount);
             $group = $this->transition->handle($group, LotStatus::Stored, $actor);
 
             foreach ($inputs as $input) {
@@ -123,14 +123,19 @@ final class TransformLots
     /**
      * @param  list<array{material: string, pct: string}>  $composition
      * @param  array<string, int|null>  $origin  production origin of the new lot (OF, stage, material, delivery)
+     * @param  int|null  $packages  how many packages the new lot is made of, as counted by the operator. It is never taken
+     *                              from the lots it comes from: twelve bags split in two are not twelve and twelve, and
+     *                              three lots regrouped in one bale are one package. Not given = one, marked as a default.
      */
-    private function derive(WasteLot $template, string $originType, string $netKg, int $zoneId, User $actor, array $composition, array $origin): WasteLot
+    private function derive(WasteLot $template, string $originType, string $netKg, int $zoneId, User $actor, array $composition, array $origin, ?int $packages = null): WasteLot
     {
         $year = now()->format('Y');
         $lot = WasteLot::query()->create([
             'lot_number' => NumberSequence::next($this->context->companyId(), 'lot', "L-{$year}-", $year),
             'origin_type' => $originType,
             'net_weight_kg' => $netKg,
+            'package_count' => $template->packaging_type_id === null ? null : ($packages ?? 1),
+            'package_count_confirmed' => $template->packaging_type_id !== null && $packages !== null,
             'zone_id' => $zoneId,
             'generated_at' => now(),
             'created_by_user_id' => $actor->id,

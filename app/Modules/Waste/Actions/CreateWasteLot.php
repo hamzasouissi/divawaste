@@ -40,13 +40,21 @@ final class CreateWasteLot
             // What the lot is made of comes from its raw material when it has one, before the defaults of the waste type.
             $material = $this->origin->fromMaterial($origin['raw_material_id']);
 
+            $packagingId = $this->ref('packaging_types', $data->packagingType) ?? $type->default_packaging_type_id;
+            if ($packagingId === null && $data->packageCount !== null) {
+                throw ValidationException::withMessages(['package_count' => [__('validation.custom.packages.loose')]]);
+            }
+
             $lot = WasteLot::query()->create($origin + [
                 'ulid' => $data->ulid,
                 'lot_number' => NumberSequence::next($this->context->companyId(), 'lot', "L-{$year}-", $year),
                 'site_id' => $site->id,
                 'zone_id' => $zoneId,
                 'waste_type_id' => $type->id,
-                'packaging_type_id' => $this->ref('packaging_types', $data->packagingType) ?? $type->default_packaging_type_id,
+                'packaging_type_id' => $packagingId,
+                // One package unless said otherwise — and then only a default, until someone enters or corrects the count.
+                'package_count' => $packagingId === null ? null : ($data->packageCount ?? 1),
+                'package_count_confirmed' => $packagingId !== null && $data->packageCount !== null,
                 'is_hazardous' => $type->is_hazardous,
                 'regulatory_waste_code_id' => $type->regulatory_waste_code_id,
                 'gross_weight_kg' => $data->grossWeightKg,

@@ -36,5 +36,7 @@ final readonly class CreateWasteLotData
         public ?string $rawMaterialBatch = null,
         // The weight given is a guess of the person, not a reading of a scale.
         public bool $weightEstimated = false,
+        // How many packages (bags, bales…) the lot is made of; null = not said, one is assumed and marked as a default.
+        public ?int $packageCount = null,
     ) {}
 }

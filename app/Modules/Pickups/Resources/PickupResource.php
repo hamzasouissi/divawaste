@@ -92,6 +92,11 @@ class PickupResource extends JsonResource
                 'declared_quantity' => $line->declared_quantity,
                 'departure_quantity' => $line->departure_quantity,
                 'received_quantity' => $line->received_quantity,
+                // How the lot is packed and how many packages it was requested and loaded with; a count corrected after
+                // departure stands beside it, the original is not replaced.
+                'packaging_type' => $line->packaging_code,
+                'package_count' => $line->package_count,
+                'corrected_package_count' => $line->corrected_package_count,
                 'planned_channel' => $codes->code('treatment_channels', $line->planned_treatment_channel_id),
                 'tolerance_status' => $line->tolerance_status,
                 // The rule applied and the figures it was applied to, as they stood at reception.

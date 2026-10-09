@@ -59,7 +59,9 @@ final class ManifestWorkflow
         return DB::transaction(function () use ($pickup) {
             $lines = DB::table('pickup_lots as pl')->join('waste_lots as l', 'l.id', '=', 'pl.waste_lot_id')
                 ->where('pl.pickup_id', $pickup->id)->where('pl.line_status', '!=', 'not_loaded')
-                ->get(['pl.id', 'pl.regulatory_waste_code_id', 'pl.is_hazardous', 'pl.declared_weight_kg', 'pl.departure_weight_kg', 'l.waste_type_id', 'l.packaging_type_id']);
+                ->get(['pl.id', 'pl.regulatory_waste_code_id', 'pl.is_hazardous', 'pl.declared_weight_kg', 'pl.departure_weight_kg',
+                    // A slip issued after a count was corrected carries the corrected count; slips already issued are not touched.
+                    DB::raw('COALESCE(pl.corrected_package_count, pl.package_count) as package_count'), 'l.waste_type_id', 'l.packaging_type_id']);
 
             if ($lines->isEmpty()) {
                 throw new BusinessRuleViolation('MANIFEST_NO_LOTS', 'This pickup carries no lot: there is nothing to put on a slip.');
@@ -108,7 +110,8 @@ final class ManifestWorkflow
                     'status' => Status::PendingProducerSignature, 'regulatory_waste_code_id' => $first->regulatory_waste_code_id,
                     'is_hazardous' => (bool) $first->is_hazardous,
                     'waste_type_id' => $first->waste_type_id, 'packaging_type_id' => $first->packaging_type_id,
-                    'package_count' => $group->count(),
+                    // Packages, not lots; loose lots have none, and a slip of loose lots only states no number.
+                    'package_count' => $group->every(fn ($line) => $line->package_count === null) ? null : (int) $group->sum(fn ($line) => (int) ($line->package_count ?? 0)),
                     // The sum of the weights that are known; none known = no weight on the slip, not 0 kg.
                     'declared_weight_kg' => $group->every(fn ($line) => ($line->departure_weight_kg ?? $line->declared_weight_kg) === null) ? null
                         : $group->reduce(fn ($sum, $line) => bcadd($sum, (string) ($line->departure_weight_kg ?? $line->declared_weight_kg ?? '0'), 3), '0'),

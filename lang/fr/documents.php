@@ -68,6 +68,7 @@ return [
         'received_quantity' => 'Quantité reçue',
         'not_weighed' => 'non pesé (déchet compté)',
         'not_weighed_lot' => 'non pesé',
+        'loose' => 'vrac',
         'plus_unweighed' => '+ :count lot(s) non pesé(s)',
         'lot_number' => 'N° de lot',
         'signatures' => 'Signatures',

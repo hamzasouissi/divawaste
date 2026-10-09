@@ -338,8 +338,29 @@ The weight of a lot may be left empty when it is created: the lot is then **À p
   the dashboard, pickups, the register (empty weight cell, counted in the summary line), reports and the tracking slip.
 - A stock limit that is not exceeded while lots are unweighed is marked **Non vérifiable**.
 
-### A lot — `/lots/:id`
-![Lot detail](screenshots/manager/04-lot-detail.png)
+### Packages of a lot
+
+A lot is not a package: one lot may be 12 bags. Lot, packages, declared quantity and weight are four separate figures.
+
+- **Nombre de colis** appears on the lot form as soon as the lot has a packaging (chosen, or planned by the waste
+  type). Left empty, the lot counts as **1 colis, « par défaut »** until someone confirms or corrects it. A lot without
+  packaging is **Vrac**: it has no number of packages, and none is assumed.
+- **Zones** fill with packages, whatever the number of lots: a zone of "100 sacs ou 50 cartons" is full with 50 bags
+  and 25 boxes. The zone shows what it holds per packaging, the lots still at their default count, and — apart — the
+  loose lots and the packagings its capacity does not plan for.
+- **Authorisations** stated in packages draw the packages of each lot. One stated in weight only accepts any packaging.
+  One stated in packages only cannot be checked for loose waste or a packaging it does not name: the request says which lots.
+- On the lot page, **Modifier** changes the count while the lot is on site (a pickup being prepared follows, and its
+  authorisation is asked again). Once the lot has left, **Corriger** asks for a reason: the pickup keeps the count it
+  left with and shows "corrigé après départ" beside it, slips already issued are not changed, and the authorisation is
+  drawn by the corrected count. Every change is in the history of the lot: previous and new count, who, when, why.
+- **Fractionner / Regrouper**: the packages of each new lot are asked; they are never copied from the original lots.
+
+**Estimated departure weight.** When a lot left with a weight marked as an estimate (and was not weighed at loading),
+the gap at reception is shown as "(indicatif)" and the result is "Référence manquante": an estimate cannot prove that a
+tolerance is met, so an explanation is asked before closing.
+
+### A lot — `/lots/:id`![Lot detail](screenshots/manager/04-lot-detail.png)
 
 ![Split a lot](screenshots/manager/04b-lot-split.png)
 ![Select lots to group](screenshots/manager/04c-lots-selected.png)

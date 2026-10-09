@@ -7,5 +7,5 @@ final readonly class GroupWasteLotsData
     /**
      * @param  list<string>  $lotUlids
      */
-    public function __construct(public array $lotUlids, public string $zoneUlid, public ?string $notes = null) {}
+    public function __construct(public array $lotUlids, public string $zoneUlid, public ?string $notes = null, public ?int $packageCount = null) {}
 }

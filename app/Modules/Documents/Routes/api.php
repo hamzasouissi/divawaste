@@ -372,13 +372,13 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'lots.*' => ['required', 'string', new TenantExists(WasteLot::class)],
         ]);
         $lots = DB::table('waste_lots')->whereIn('ulid', array_map('strtoupper', $input['lots']))
-            ->where('company_id', app(TenantContext::class)->companyId())->get(['waste_type_id', 'packaging_type_id', 'net_weight_kg as kg', 'weight_basis', 'lot_number']);
+            ->where('company_id', app(TenantContext::class)->companyId())->get(['waste_type_id', 'packaging_type_id', 'package_count as packages', 'net_weight_kg as kg', 'weight_basis', 'lot_number']);
 
         return ['data' => array_map(fn (array $item) => [
             'waste_type' => $item['waste_type'], 'reference' => $item['authorization']?->reference, 'valid_until' => $item['authorization']?->valid_until->toDateString(),
             // null = covered; 'missing', 'exceeded', 'packaging' or 'unverifiable' (a weight limit and lots nobody weighed, listed
             // in `unweighed`) = the pickup would be refused.
-            'reason' => $item['reason'], 'unweighed' => $item['unweighed'], 'before_pct' => $item['before_pct'], 'after_pct' => $item['after_pct'],
+            'reason' => $item['reason'], 'unweighed' => $item['unweighed'], 'uncounted' => $item['uncounted'], 'before_pct' => $item['before_pct'], 'after_pct' => $item['after_pct'],
         ], $quota->cover($lots, (string) $input['date']))];
     })->name('waste-authorizations.check');
 });

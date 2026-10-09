@@ -392,9 +392,9 @@ class DemoSeeder extends Seeder
             // Registered at the end of the shift, to be weighed the next morning: its weight is unknown, not zero.
             $cutting = Zone::query()->where('site_id', $sites['NAB']->id)->where('code', 'COUPE')->firstOrFail();
             $createLot->handle(new CreateWasteLotData(siteUlid: $sites['NAB']->ulid, zoneUlid: $cutting->ulid, wasteTypeUlid: $types['CHUTES']->ulid, netWeightKg: null,
-                packagingType: 'bag', generatedAt: now()->subHours(3)->toDateTimeString()), $sami);
+                packagingType: 'bag', generatedAt: now()->subHours(3)->toDateTimeString(), packageCount: 12), $sami);
             $counted = $createLot->handle(new CreateWasteLotData(siteUlid: $sites['NAB']->ulid, zoneUlid: $stock->ulid, wasteTypeUlid: $cones->ulid, netWeightKg: null,
-                quantity: '240', unit: 'piece', packagingType: 'bale', generatedAt: now()->subDays(6)->setTime(10, 0)->toDateTimeString()), $sami);
+                quantity: '240', unit: 'piece', packagingType: 'bale', generatedAt: now()->subDays(6)->setTime(10, 0)->toDateTimeString(), packageCount: 4), $sami);
             $weighed = $createLot->handle(new CreateWasteLotData(siteUlid: $sites['NAB']->ulid, zoneUlid: $stock->ulid, wasteTypeUlid: $types['CARTON']->ulid, netWeightKg: '62',
                 packagingType: 'bale', generatedAt: now()->subDays(6)->setTime(10, 20)->toDateTimeString()), $sami);
             $mixed = $pickups->confirm($pickups->submit($pickups->create($sites['NAB']->id, ['provider_company_id' => $provider->id], now()->subDays(2)->toDateString(),
