@@ -755,8 +755,17 @@
     "weightUnknown": "Left empty, the weight stays unknown: it is not estimated.",
     "weightBasis": {
       "unknown": "Weight not measured",
-      "computed": "Weight computed from the quantity"
-    }
+      "computed": "Weight computed from the quantity",
+      "estimated": "Weight estimated, not weighed"
+    },
+    "toWeigh": "To be weighed",
+    "unweighedCount": "{{count}} lot(s) not weighed",
+    "plusUnweighed": "+ {{count}} lot(s) not weighed, not included",
+    "weighLaterHint": "Leave empty if the lot is not weighed yet: its weight will stay \"to be weighed\", never zero.",
+    "weightEstimated": "This weight is an estimate, not a weighing",
+    "weighNow": "Weigh",
+    "unweighedOnly": "To be weighed",
+    "estimatedTag": "(estimated)"
   },
   "stock": {
     "title": "Waste stock",
@@ -803,7 +812,8 @@
       "zone": "whole zone",
       "siteType": "this type on the whole site",
       "site": "whole site"
-    }
+    },
+    "unverifiable": "Cannot be verified: some lots are not weighed"
   },
   "sites": {
     "title": "Sites and zones",
@@ -928,7 +938,8 @@
         "missing": "no authorisation covers this waste on that date. Record one before requesting the pickup.",
         "exceeded": "authorisation {{reference}} has not enough quantity left. Record a new authorisation.",
         "packaging": "authorisation {{reference}} does not cover the packaging of some lots.",
-        "covered": "authorisation {{reference}}: {{after}} % used after this pickup, {{left}} % will be left."
+        "covered": "authorisation {{reference}}: {{after}} % used after this pickup, {{left}} % will be left.",
+        "unverifiable": "authorisation {{reference}} is limited in weight and these lots have no measured weight: {{lots}}. Weigh them before requesting the pickup."
       }
     },
     "actions": {
@@ -949,7 +960,7 @@
     "cancelReason": "Reason for the cancellation",
     "refuseReason": "Reason for the refusal",
     "ackComment": "Explanation of the variance",
-    "collectHint": "Tick the lots actually loaded and check what leaves, in the unit of the lot. A lot left unticked goes back to stock.",
+    "collectHint": "Tick the lots actually loaded and check what leaves, in the unit of the lot. A weight left empty stays unknown. A lot left unticked goes back to stock.",
     "loaded": "Loaded",
     "receiveHint": "Enter what was received for each lot, in its unit (weight, pieces or litres). A gap above the tolerance of the waste is reported to the industrial.",
     "treatHint": "Give the treatment channel of each lot received.",
@@ -1014,7 +1025,8 @@
       "declared": "Declared",
       "departure": "Left",
       "received": "Received"
-    }
+    },
+    "priceNeedsWeight": "Cannot be calculated: lot not weighed. Choose a flat amount."
   },
   "providers": {
     "title": "Providers",
@@ -1608,7 +1620,8 @@
     "scanOf": "Scan the order sheet",
     "ofList": "Choose in the list",
     "ofNotFound": "No open order has the number \"{{code}}\" on this site.",
-    "enterQuantity": "Quantity"
+    "enterQuantity": "Quantity",
+    "weighLater": "Weigh later"
   },
   "validation": {
     "required": "This field is required.",

@@ -13,7 +13,7 @@ import { StockResponse, StockRow, StockThreshold, Zone, ZoneFill } from '../../c
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
-import { CodePipe, DatePipe, KgPipe, NumberPipe } from '../../core/format/pipes';
+import { CodePipe, DatePipe, KgPipe, KnownWeightPipe, NumberPipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { KpiComponent, PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
@@ -163,7 +163,7 @@ export class ThresholdDialog {
  */
 @Component({
   imports: [
-    CodePipe, RouterLink, TranslocoDirective, ZoneFillComponent, HelpComponent, KpiComponent, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, NumberPipe, IconComponent, ButtonDirective, ...SELECT, MenuComponent,
+    CodePipe, RouterLink, TranslocoDirective, ZoneFillComponent, HelpComponent, KpiComponent, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, KnownWeightPipe, NumberPipe, IconComponent, ButtonDirective, ...SELECT, MenuComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -186,7 +186,7 @@ export class ThresholdDialog {
         @if (stock(); as s) {
           <div class="dw-stack">
             <div class="dw-stats">
-              <dw-kpi [label]="t('stock.total')" [value]="s.meta.total_kg | dwKg: 'auto'" [hint]="s.meta.generated_at | dwDate: 'datetime'" />
+              <dw-kpi [label]="t('stock.total')" [value]="s.meta.total_kg | dwKg: 'auto'" [hint]="(s.meta.unweighed_lots ?? 0) > 0 ? t('lots.plusUnweighed', { count: s.meta.unweighed_lots }) : (s.meta.generated_at | dwDate: 'datetime')" [tone]="(s.meta.unweighed_lots ?? 0) > 0 ? 'warning' : 'neutral'" />
               <dw-kpi [label]="t('stock.awaiting')" [value]="awaiting() | dwKg: 'auto'" />
               <dw-kpi [label]="t('status.alert.exceeded')" [value]="exceeded()" [tone]="exceeded() > 0 ? 'danger' : 'neutral'" [hint]="limitsHint(t)" />
               <dw-kpi [label]="t('status.alert.warning')" [value]="warnings()" [tone]="warnings() > 0 ? 'warning' : 'neutral'" />
@@ -220,7 +220,7 @@ export class ThresholdDialog {
                                 <tr>
                                   <td>{{ row.waste_type_name }} @if (row.is_hazardous) { <dw-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</dw-icon> }</td>
                                   <td class="dw-num">{{ row.lots }}</td>
-                                  <td class="dw-num strong">{{ row.quantity_kg | dwKg }}
+                                  <td class="dw-num strong">{{ row.quantity_kg | dwKgKnown: row.unweighed_lots }}
                                     @if (row.unit && row.unit !== 'kg' && row.quantity_in_unit) { <div class="dw-faint">{{ row.quantity_in_unit | dwNumber: 2 }} {{ row.unit | dwCode: 'unit' }}</div> }</td>
                                   <td class="dw-faint">{{ +row.awaiting_pickup_kg > 0 ? (row.awaiting_pickup_kg | dwKg) : '—' }}</td>
                                   <td class="dw-faint">{{ row.oldest_lot_at | dwDate }}</td>
@@ -269,7 +269,8 @@ export class ThresholdDialog {
                               <span class="meter" role="meter" [attr.aria-label]="t('stock.usage')" [attr.aria-valuenow]="usage(threshold)" aria-valuemin="0" aria-valuemax="100"><span class="bar" [class]="current(threshold.ulid)?.alert_level ?? 'ok'" [style.inline-size.%]="usage(threshold)"></span></span>
                               <strong>{{ usage(threshold) }} %</strong>
                             </div>
-                            <div class="dw-faint">{{ current(threshold.ulid)?.quantity_kg | dwKg }}</div>
+                            <div class="dw-faint">{{ current(threshold.ulid)?.quantity_kg | dwKgKnown: current(threshold.ulid)?.unweighed_lots }}</div>
+                            @if ((current(threshold.ulid)?.unweighed_lots ?? 0) > 0 && current(threshold.ulid)?.alert_level !== 'exceeded') { <div class="unverifiable">{{ t('stock.unverifiable') }}</div> }
                           </td>
                           <td class="dw-num">{{ threshold.max_quantity_kg | dwKg }} <div class="dw-faint">{{ t('stock.warnAt', { pct: threshold.warning_pct }) }}</div></td>
                           <td>@if (!threshold.is_active) { <dw-status kind="member" value="suspended" [label]="t('common.inactive')" tone="neutral" /> } @else { <dw-status kind="alert" [value]="current(threshold.ulid)?.alert_level ?? 'ok'" /> }</td>
@@ -307,7 +308,7 @@ export class ThresholdDialog {
     .zone th:nth-child(4) { width: 13%; } .zone th:nth-child(5) { width: 14%; } .zone th:nth-child(6) { width: 28%; }
     .strong { font-weight: 600; }
     .hazard { font-size: 15px; width: 15px; height: 15px; color: var(--dw-warning); vertical-align: -2px; }
-    .limit { display: flex; align-items: center; gap: var(--dw-2); }
+    .limit { display: flex; align-items: center; gap: var(--dw-2); } .unverifiable { color: var(--dw-warning); font-size: 12.5px; font-weight: 600; }
     .meter { flex: 0 0 110px; height: 8px; border-radius: 4px; background: var(--dw-line-soft); overflow: hidden; }
     .bar { display: block; height: 100%; max-inline-size: 100%; background: var(--dw-success); }
     .bar.warning { background: #d68a00; } .bar.exceeded { background: var(--dw-danger); }

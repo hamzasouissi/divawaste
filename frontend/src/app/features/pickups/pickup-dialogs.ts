@@ -38,6 +38,8 @@ interface Row {
 
 const decimal = (value: string): string => value.replace(',', '.');
 const valid = (value: string): boolean => /^\d+([.,]\d{1,3})?$/.test(value);
+/** At loading, a weighed lot may leave without a weight (it is then unknown, not zero); a counted lot leaves with its count. */
+const loadable = (row: Row): boolean => valid(row.weight) || (row.weight.trim() === '' && !counted(row.line));
 
 /**
  * The four per-lot steps of a pickup share one table: loading (industrial), reception and treatment (provider),
@@ -102,7 +104,10 @@ const valid = (value: string): boolean => /^\d+([.,]\d{1,3})?$/.test(value);
                         </dw-select>
                       </td>
                       <td><input pInputText class="cell" inputmode="decimal" [ngModel]="row.price" (ngModelChange)="patch(index, { price: $event })" [attr.aria-label]="t('pickups.unitPrice')" /></td>
-                      <td class="dw-num" [class.neg]="amount(row) < 0">{{ row.price ? (amount(row) | dwMoney: data.pickup.currency_code) : '—' }}</td>
+                      <td class="dw-num" [class.neg]="amount(row) < 0">
+                        @if (row.price && !priceable(row)) { <span class="neg">{{ t('pickups.priceNeedsWeight') }}</span> }
+                        @else { {{ row.price ? (amount(row) | dwMoney: data.pickup.currency_code) : '—' }} }
+                      </td>
                     }
                   }
                 </tr>
@@ -144,7 +149,7 @@ export class PickupLinesDialog {
         line, checked: true,
         // What is typed is the measure of the waste: a weight for weighed waste, a count for waste counted in pieces or litres.
         weight: this.initial(line),
-        channel: line.treatment_channel ?? '', direction: Number(line.net_amount ?? 0) < 0 ? 'cost' : 'sale', mode: line.pricing_mode ?? (counted(line) ? 'flat' : 'per_kg'), price: line.unit_price ? Number(line.unit_price).toString() : '',
+        channel: line.treatment_channel ?? '', direction: Number(line.net_amount ?? 0) < 0 ? 'cost' : 'sale', mode: line.pricing_mode ?? (this.weightOf(line) === null ? 'flat' : 'per_kg'), price: line.unit_price ? Number(line.unit_price).toString() : '',
       })),
   );
 
@@ -153,13 +158,13 @@ export class PickupLinesDialog {
     const rows = this.rows();
     switch (this.data.mode) {
       case 'collect':
-        return rows.some((row) => row.checked) && rows.every((row) => !row.checked || valid(row.weight));
+        return rows.some((row) => row.checked) && rows.every((row) => !row.checked || loadable(row));
       case 'receive':
         return rows.length > 0 && rows.every((row) => valid(row.weight));
       case 'treat':
         return rows.some((row) => row.channel !== '');
       case 'price':
-        return rows.some((row) => valid(row.price));
+        return rows.some((row) => valid(row.price)) && rows.every((row) => !valid(row.price) || this.priceable(row));
     }
   });
 
@@ -183,9 +188,23 @@ export class PickupLinesDialog {
     return value === null ? '' : Number(value).toString();
   }
 
+  /** The weight a price per kilogram can rest on: what was received, else what left — unless that is only an estimate. */
+  private weightOf(line: PickupLine): number | null {
+    if (line.received_weight_kg !== null) {
+      return Number(line.received_weight_kg);
+    }
+
+    return line.departure_weight_kg === null || line.weight_basis === 'estimated' ? null : Number(line.departure_weight_kg);
+  }
+
+  /** A flat amount needs nothing; a price by weight needs a weight that was measured or computed. */
+  protected priceable(row: Row): boolean {
+    return row.mode === 'flat' || this.weightOf(row.line) !== null;
+  }
+
   /** Same rule as the API: priced on the received weight when known, signed negative for a cost. */
   protected amount(row: Row): number {
-    const weight = Number(row.line.received_weight_kg ?? row.line.departure_weight_kg ?? 0);
+    const weight = this.weightOf(row.line) ?? 0;
     const price = Number(decimal(row.price)) || 0;
     const gross = row.mode === 'per_kg' ? weight * price : row.mode === 'per_tonne' ? (weight * price) / 1000 : price;
 
@@ -197,7 +216,7 @@ export class PickupLinesDialog {
     const number = (row: Row): string => row.line.lot_number_snapshot;
     const base = `pickups/${this.data.pickup.ulid}`;
     const request = {
-      collect: () => this.api.post<Pickup>(`${base}/collect`, { lots: rows.filter((row) => row.checked).map((row) => ({ lot: row.line.lot, [counted(row.line) ? 'departure_quantity' : 'departure_weight_kg']: decimal(row.weight) })) }),
+      collect: () => this.api.post<Pickup>(`${base}/collect`, { lots: rows.filter((row) => row.checked).map((row) => ({ lot: row.line.lot, [counted(row.line) ? 'departure_quantity' : 'departure_weight_kg']: row.weight.trim() === '' ? null : decimal(row.weight) })) }),
       receive: () => this.api.post<Pickup>(`${base}/receive`, { lots: rows.map((row) => ({ lot_number: number(row), [counted(row.line) ? 'received_quantity' : 'received_weight_kg']: decimal(row.weight) })) }),
       treat: () => this.api.post<Pickup>(`${base}/treat`, { lots: rows.filter((row) => row.channel).map((row) => ({ lot_number: number(row), channel: row.channel })) }),
       price: () => this.api.put<Pickup>(`${base}/pricing`, { lots: rows.filter((row) => valid(row.price)).map((row) => ({ lot_number: number(row), direction: row.direction, pricing_mode: row.mode, unit_price: decimal(row.price) })) }),

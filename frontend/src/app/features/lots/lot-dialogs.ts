@@ -15,6 +15,7 @@ import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
 import { LocalizedPipe, NumberPipe } from '../../core/format/pipes';
+import { CheckboxComponent } from '../../ui/checkbox';
 import { DIALOG_PARTS, DialogRef, dialogData } from '../../ui/dialog';
 import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
@@ -32,7 +33,7 @@ const decimal = (value: string | number): string => String(value).replace(',', '
  * defaults of the waste type. The lot ULID is generated here so a double submission cannot create two lots.
  */
 @Component({
-  imports: [...DIALOG, LocalizedPipe, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, ...COLOR, ...DIALOG_PARTS, AutoFocus],
+  imports: [...DIALOG, LocalizedPipe, ButtonDirective, InputText, Textarea, CheckboxComponent, ...FIELD, ...SELECT, ...COLOR, ...DIALOG_PARTS, AutoFocus],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -85,8 +86,12 @@ const decimal = (value: string | number): string => String(value).replace(',', '
               </dw-field>
             } @else {
               <dw-field [label]="t('fields.netWeight')">
-                <input pInputText formControlName="net_weight_kg" inputmode="decimal" required [pAutoFocus]="true" />
+                <input pInputText formControlName="net_weight_kg" inputmode="decimal" [pAutoFocus]="true" />
+                <small dwHint>{{ t('lots.weighLaterHint') }}</small>
               </dw-field>
+            }
+            @if (form.controls.net_weight_kg.value.trim() !== '') {
+              <dw-checkbox class="dw-span-2" formControlName="weight_estimated">{{ t('lots.weightEstimated') }}</dw-checkbox>
             }
             <dw-field [label]="t('lots.packaging')">
               <dw-select formControlName="packaging_type">
@@ -136,6 +141,8 @@ export class CreateLotDialog {
     // Required for weighed waste, optional for counted waste: checked on submit, once the type is known.
     net_weight_kg: ['', AMOUNT],
     quantity: ['', AMOUNT],
+    // A guess of the person, not a reading of a scale: kept as such, and not accepted where a measure is required.
+    weight_estimated: [false],
     // Opened from the page of an OF: that OF is proposed.
     production_order: [(dialogData<{ production_order?: string } | undefined>()?.production_order ?? null) as string | null],
     raw_material: [null as string | null],
@@ -179,9 +186,9 @@ export class CreateLotDialog {
 
   protected async submit(): Promise<void> {
     const unit = this.countedUnit();
-    const measure = unit ? this.form.controls.quantity : this.form.controls.net_weight_kg;
-    if (measure.value.trim() === '') {
-      measure.setErrors({ required: true });
+    // Counted waste needs its quantity. A weight is never required here: a lot may be registered before it is weighed.
+    if (unit && this.form.controls.quantity.value.trim() === '') {
+      this.form.controls.quantity.setErrors({ required: true });
     }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -193,6 +200,7 @@ export class CreateLotDialog {
     try {
       const lot = await firstValueFrom(this.api.post<Lot>('lots', {
         ...value, ulid: this.lotUlid, net_weight_kg: value.net_weight_kg ? decimal(value.net_weight_kg) : null,
+        weight_estimated: value.net_weight_kg ? value.weight_estimated : false,
         quantity: unit ? decimal(value.quantity) : null, unit, grammage_gsm: value.grammage_gsm ? decimal(value.grammage_gsm) : null, notes: value.notes || null,
       }));
       this.toast.success('lots.created', { number: lot.lot_number });
@@ -346,7 +354,7 @@ export class StoreLotDialog {
 
 /** M2-04: corrected weighing. The version is sent so two people cannot overwrite each other silently. */
 @Component({
-  imports: [...DIALOG, ButtonDirective, InputText, ...FIELD, ...DIALOG_PARTS, AutoFocus],
+  imports: [...DIALOG, ButtonDirective, InputText, CheckboxComponent, ...FIELD, ...DIALOG_PARTS, AutoFocus],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -355,6 +363,7 @@ export class StoreLotDialog {
         <dw-field [label]="t('lots.newWeight')">
           <input pInputText [formControl]="weight" inputmode="decimal" required [pAutoFocus]="true" (keydown.enter)="submit()" />
         </dw-field>
+        <dw-checkbox [formControl]="estimated">{{ t('lots.weightEstimated') }}</dw-checkbox>
       </div>
       <div class="dw-dialog-foot">
         <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
@@ -370,7 +379,8 @@ export class WeighLotDialog {
   private readonly toast = inject(Toast);
   private readonly ref = inject(DialogRef);
 
-  protected readonly weight = inject(FormBuilder).nonNullable.control(this.data.lot.net_weight_kg, WEIGHT);
+  protected readonly weight = inject(FormBuilder).nonNullable.control(this.data.lot.net_weight_kg ?? '', WEIGHT);
+  protected readonly estimated = inject(FormBuilder).nonNullable.control(this.data.lot.weight_basis === 'estimated');
   protected readonly busy = signal(false);
 
   protected async submit(): Promise<void> {
@@ -379,7 +389,7 @@ export class WeighLotDialog {
     }
     this.busy.set(true);
     try {
-      this.ref.close(await firstValueFrom(this.api.post<Lot>(`lots/${this.data.lot.ulid}/weigh`, { net_weight_kg: decimal(this.weight.value), version: this.data.lot.version })));
+      this.ref.close(await firstValueFrom(this.api.post<Lot>(`lots/${this.data.lot.ulid}/weigh`, { net_weight_kg: decimal(this.weight.value), estimated: this.estimated.value, version: this.data.lot.version })));
       this.toast.success('lots.weighed');
     } catch (error) {
       this.toast.error(error);

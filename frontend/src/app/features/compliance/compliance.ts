@@ -10,7 +10,7 @@ import { Declaration, DocumentRecord, Manifest, RegisterRow } from '../../core/a
 import { SignManifestDialog, SignedCopyDialog } from './manifest-dialogs';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe, KgPipe } from '../../core/format/pipes';
+import { DatePipe, KgPipe, LotMeasurePipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { Dialogs } from '../../ui/dialog';
 import { Column, TABLE } from '../../ui/data-table';
@@ -35,7 +35,7 @@ const FILTERS = `
 @Component({
   imports: [
     HelpComponent,
-    TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, PeriodFilterComponent, DatePipe, KgPipe, RouterLink, IconComponent, ButtonDirective, CheckboxComponent, FilterBarComponent,
+    TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, PeriodFilterComponent, DatePipe, LotMeasurePipe, RouterLink, IconComponent, ButtonDirective, CheckboxComponent, FilterBarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -61,7 +61,7 @@ const FILTERS = `
           <ng-template dwCell="type" let-row>
             {{ row.waste_type }} @if (row.is_hazardous) { <dw-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</dw-icon> }
           </ng-template>
-          <ng-template dwCell="weight" let-row>{{ row.net_weight_kg | dwKg }}</ng-template>
+          <ng-template dwCell="weight" let-row>{{ row | dwLotMeasure }}</ng-template>
           <ng-template dwCell="status" let-row><dw-status kind="lot" [value]="row.status" /></ng-template>
           <ng-template dwCell="exit" let-row>
             @if (row.pickup_number) { <span class="dw-mono">{{ row.pickup_number }}</span> <span class="dw-faint"> · {{ row.collected_at | dwDate }}</span> } @else { — }

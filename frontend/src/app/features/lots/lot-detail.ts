@@ -33,9 +33,9 @@ import { COLOR } from '../../ui/swatch';
               <button pButton severity="secondary" outlined type="button" (click)="act('store')"><dw-icon>move_down</dw-icon>{{ t(l.status === 'stored' ? 'lots.move' : 'lots.store') }}</button>
             }
             @if (transformable() && session.can('lots.weigh', l.site?.ulid)) {
-              <button pButton severity="secondary" outlined type="button" (click)="act('weigh')"><dw-icon>scale</dw-icon>{{ t('lots.weigh') }}</button>
+              <button pButton severity="secondary" outlined type="button" (click)="act('weigh')"><dw-icon>scale</dw-icon>{{ t(l.net_weight_kg === null ? 'lots.weighNow' : 'lots.weigh') }}</button>
             }
-            @if (transformable() && !['piece', 'l', 'm3'].includes(l.unit ?? '') && session.can('lots.split', l.site?.ulid)) {
+            @if (transformable() && l.net_weight_kg !== null && !['piece', 'l', 'm3'].includes(l.unit ?? '') && session.can('lots.split', l.site?.ulid)) {
               <button pButton severity="secondary" outlined type="button" (click)="act('split')"><dw-icon>call_split</dw-icon>{{ t('lots.split') }}</button>
             }
             @if (session.can('lots.update', l.site?.ulid)) {
@@ -53,7 +53,7 @@ import { COLOR } from '../../ui/swatch';
                 <div class="dw-panel-body">
                   <dl class="dw-facts">
                     <div><dt>{{ t('fields.wasteType') }}</dt><dd>{{ l.waste_type?.name }} @if (l.is_hazardous) { <dw-status kind="alert" value="warning" [label]="t('common.hazardous')" /> }</dd></div>
-                    <div><dt>{{ t('fields.weight') }}</dt><dd class="weight">{{ l | dwLotMeasure }}@if (l.weight_basis === 'unknown') { <div class="dw-faint basis">{{ t('lots.weightBasis.unknown') }}</div> } @else if (l.weight_basis === 'computed') { <div class="dw-faint basis">{{ t('lots.weightBasis.computed') }}</div> }</dd></div>
+                    <div><dt>{{ t('fields.weight') }}</dt><dd class="weight">{{ l | dwLotMeasure }}@if (l.weight_basis && l.weight_basis !== 'measured') { <div class="dw-faint basis">{{ t('lots.weightBasis.' + l.weight_basis) }}</div> }</dd></div>
                     <div><dt>{{ t('fields.site') }}</dt><dd>{{ l.site?.name }}</dd></div>
                     <div><dt>{{ t('fields.zone') }}</dt><dd>{{ l.zone?.name }}</dd></div>
                     <div><dt>{{ t('lots.regulatoryCode') }}</dt><dd class="dw-mono">{{ l.regulatory_code ?? '—' }}</dd></div>

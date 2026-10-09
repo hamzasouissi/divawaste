@@ -26,6 +26,7 @@ interface LotFilter {
   site?: string | null;
   waste_type?: string | null;
   hazardous?: boolean | null;
+  unweighed?: boolean | null;
   search?: string;
 }
 
@@ -70,6 +71,7 @@ const STATUSES: LotStatus[] = ['created', 'stored', 'awaiting_pickup', 'collecte
             @for (type of types(); track type.ulid) { <dw-option [value]="type.ulid" [label]="type.name" /> }
           </dw-select>
           <dw-checkbox [checked]="list.filter().hazardous === true" (checkedChange)="list.setFilter({ hazardous: $event ? true : null })">{{ t('lots.hazardousOnly') }}</dw-checkbox>
+          <dw-checkbox [checked]="list.filter().unweighed === true" (checkedChange)="list.setFilter({ unweighed: $event ? true : null })">{{ t('lots.unweighedOnly') }}</dw-checkbox>
         </dw-filter-bar>
 
         <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1"

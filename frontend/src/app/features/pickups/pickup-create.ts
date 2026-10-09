@@ -9,7 +9,7 @@ import { Api } from '../../core/api/api';
 import { AuthorizationCheck, DirectoryProvider, ExternalPartner, Lot, Pickup } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe, KgPipe, LotMeasurePipe } from '../../core/format/pipes';
+import { DatePipe, KnownWeightPipe, LotMeasurePipe } from '../../core/format/pipes';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
 import { CheckboxComponent } from '../../ui/checkbox';
@@ -33,7 +33,7 @@ function today(): string {
  */
 @Component({
   imports: [
-    FormsModule, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LotMeasurePipe, IconComponent, ButtonDirective, ...FIELD, ...SELECT, CheckboxComponent, DateComponent,
+    FormsModule, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KnownWeightPipe, LotMeasurePipe, IconComponent, ButtonDirective, ...FIELD, ...SELECT, CheckboxComponent, DateComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -72,7 +72,7 @@ function today(): string {
         <section class="dw-panel side">
           <div class="dw-panel-head"><h2 class="dw-h2">{{ t('pickups.create.provider') }}</h2></div>
           <div class="dw-panel-body dw-stack-sm">
-            <p class="summary" role="status">{{ t('pickups.create.selected', { count: selected().length, kg: (selectedKg() | dwKg) }) }}</p>
+            <p class="summary" role="status">{{ t('pickups.create.selected', { count: selected().length, kg: (selectedKg() | dwKgKnown: unweighed()) }) }}</p>
             @if (hazardous()) { <p class="warn"><dw-icon aria-hidden="true">warning</dw-icon>{{ t('pickups.create.hazardousWarning') }}</p> }
             @for (item of authorizations(); track item.waste_type) {
               <p class="cover" [class.bad]="item.reason" role="status">
@@ -80,6 +80,7 @@ function today(): string {
                 <span>
                   <strong>{{ item.waste_type }}</strong> —
                   @if (item.reason === 'missing') { {{ t('pickups.create.authorization.missing') }} }
+                  @else if (item.reason === 'unverifiable') { {{ t('pickups.create.authorization.unverifiable', { reference: item.reference, lots: (item.unweighed ?? []).join(', ') }) }} }
                   @else if (item.reason) { {{ t('pickups.create.authorization.' + item.reason, { reference: item.reference }) }} }
                   @else { {{ t('pickups.create.authorization.covered', { reference: item.reference, after: round(item.after_pct), left: 100 - round(item.after_pct) }) }} }
                 </span>
@@ -187,7 +188,9 @@ export class PickupCreatePage {
   protected readonly busy = signal(false);
 
   private readonly chosen = computed(() => this.lots().filter((lot) => this.selected().includes(lot.ulid)));
-  protected readonly selectedKg = computed(() => this.chosen().reduce((sum, lot) => sum + Number(lot.net_weight_kg), 0));
+  protected readonly selectedKg = computed(() => this.chosen().reduce((sum, lot) => sum + Number(lot.net_weight_kg ?? 0), 0));
+  /** Selected lots nobody weighed: said beside the total, never added to it as zeros. */
+  protected readonly unweighed = computed(() => this.chosen().filter((lot) => lot.net_weight_kg === null).length);
   protected readonly hazardous = computed(() => this.chosen().some((lot) => lot.is_hazardous));
   protected readonly allSelected = computed(() => this.lots().length > 0 && this.selected().length === this.lots().length);
   /** Whoever may carry the waste, other than the receiver already chosen. */
