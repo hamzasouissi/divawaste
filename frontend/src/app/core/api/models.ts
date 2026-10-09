@@ -632,11 +632,35 @@ export interface Subscription {
 export interface Color {
   code: string;
   name: Localized;
+  /** "custom", or the colour library the colour refers to ("pantone"). */
+  color_system: string;
+  /** Inside a library: coated, uncoated, metallic… */
+  collection: string | null;
+  /** The reference as the library writes it, or the company's own code for a custom colour. */
+  reference_code: string | null;
   hex_color: string | null;
-  /** Typed by the company, e.g. "19-4052 TCX". */
+  rgb: { r: number; g: number; b: number } | null;
+  /** Computed from the screen colour, not measured on a sample. */
+  lab: { l: number; a: number; b: number } | null;
+  /** Typed by the company, e.g. "19-4052 TCX", or the reference of the catalogue colour it was taken from. */
   pantone_reference: string | null;
+  source: 'platform' | 'import' | 'user';
+  verification_status: string;
+  /** Belongs to the company (added by hand or taken from the catalogue). */
   is_custom: boolean;
+  /** A row of the reference catalogue: read, never modified. */
+  is_catalogue: boolean;
   is_active: boolean;
+}
+
+/** A catalogue colour, with the code of the company colour taken from it, if any. */
+export interface CatalogueColor extends Color {
+  taken_as: string | null;
+}
+
+/** A catalogue colour near a given one; `delta_e` is the CIEDE2000 distance (0 = identical). */
+export interface ColorMatch extends Color {
+  delta_e: number;
 }
 
 export interface Reference {
@@ -647,7 +671,7 @@ export interface Reference {
   material_units: { code: string; name: Localized; symbol: string }[];
   waste_families: { code: string; name: Localized }[];
   materials: { code: string; name: Localized }[];
-  color_families: { code: string; name: Localized; hex_color: string | null; pantone_reference: string | null }[];
+  color_families: { code: string; name: Localized; hex_color: string | null; pantone_reference: string | null; color_system: string; collection: string | null }[];
   treatment_channels: { code: string; name: Localized; is_valorization: boolean; is_landfill: boolean }[];
   regulatory_waste_codes: { code: string; label: Localized; is_hazardous: boolean }[];
 }

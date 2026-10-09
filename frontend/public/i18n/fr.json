@@ -442,7 +442,8 @@
     "CERTIFICATE_PICKUP_NOT_READY": "Le certificat se dépose une fois les lots enlevés.",
     "INVALID_COMPANY_TRANSITION": "Cette société a déjà fait l'objet d'une décision.",
     "ACCREDITATION_ALREADY_REVIEWED": "Cet agrément a déjà ce statut.",
-    "DEVICE_REVOKED": "Cet appareil a été révoqué par un administrateur."
+    "DEVICE_REVOKED": "Cet appareil a été révoqué par un administrateur.",
+    "COLOR_IN_USE": "Cette couleur est utilisée par des lots, des types de déchets, des matières ou des zones. Retirez-la de la liste à la place."
   },
   "notifications": {
     "title": "Notifications",
@@ -1860,16 +1861,60 @@
   },
   "colors": {
     "title": "Couleurs",
-    "hint": "Les couleurs par défaut sont proposées à tous. Ajoutez les vôtres : elles ne sont visibles que par votre société.",
+    "hint": "Les couleurs proposées sur les lots, les types de déchets, les matières et les zones. Les couleurs par défaut sont communes à tous ; les vôtres ne sont visibles que par votre société.",
     "new": "Ajouter une couleur",
     "edit": "Modifier la couleur",
     "default": "Par défaut",
     "custom": "Ajoutée par votre société",
+    "fromCatalogue": "Catalogue Pantone · {{collection}}",
     "withTint": "Afficher une teinte à côté du nom",
     "tint": "Teinte",
+    "noTint": "Sans teinte",
+    "tintInvalid": "Indiquez une teinte au format HEX (#0F4C81) ou trois valeurs RVB de 0 à 255.",
     "saved": "Couleur enregistrée.",
+    "deleted": "Couleur supprimée.",
+    "search": "Nom, code ou HEX",
+    "noneFound": "Aucune couleur ne correspond.",
+    "code": "Code interne",
+    "codeHint": "Facultatif. Le code que votre société donne à cette couleur.",
     "pantone": "Référence Pantone",
-    "pantoneHint": "Facultatif. Saisissez le code de votre nuancier, par exemple 19-4052 TCX."
+    "pantoneHint": "Facultatif. Saisissez le code de votre nuancier, par exemple 19-4052 TCX.",
+    "collection": "Collection",
+    "withdraw": "Retirer de la liste",
+    "restore": "Remettre dans la liste",
+    "withdrawn": "retirée",
+    "lockedHint": "Cette couleur vient du catalogue : sa référence et sa teinte ne se modifient pas. Vous pouvez la renommer.",
+    "deleteTitle": "Supprimer « {{name}} » ?",
+    "deleteMessage": "Une couleur déjà utilisée par un lot, un type de déchet, une matière ou une zone ne peut pas être supprimée : retirez-la de la liste à la place.",
+    "disclaimer": "Les teintes affichées sont des approximations pour écran, non vérifiées : elles ne remplacent pas un nuancier physique. PANTONE® est une marque de Pantone LLC, sans lien avec DivaWaste.",
+    "collections": {
+      "coated": "Couché (C)",
+      "uncoated": "Non couché (U)",
+      "metallic": "Métallisé",
+      "pastels_neons": "Pastels et fluos",
+      "skin": "Tons chair",
+      "color_of_the_year": "Couleurs de l’année"
+    },
+    "catalogue": {
+      "open": "Catalogue Pantone",
+      "title": "Catalogue Pantone",
+      "search": "Référence ou HEX, par exemple 300 ou #005EB8",
+      "allCollections": "Toutes les collections",
+      "take": "Ajouter à mes couleurs",
+      "taken": "Dans vos couleurs",
+      "added": "Couleur ajoutée à votre liste.",
+      "none": "Aucune couleur trouvée",
+      "noneHint": "Essayez une autre référence ou une autre collection.",
+      "count": "{{total}} couleur(s)."
+    },
+    "match": {
+      "title": "Teintes proches dans le catalogue",
+      "find": "Chercher",
+      "none": "Le catalogue ne contient aucune couleur.",
+      "stale": "La teinte a changé : relancez la recherche.",
+      "approximate": "Suggestions approximatives, calculées sur la teinte à l’écran (ΔE CIEDE2000) : ce ne sont pas des équivalences Pantone officielles. Votre couleur n’est pas modifiée.",
+      "deltaHint": "Écart de couleur : 0 = identique, autour de 2 = à peine visible, plus de 10 = une autre couleur."
+    }
   },
   "titles": {
     "Abonnement": "Abonnement",

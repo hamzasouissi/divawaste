@@ -8,10 +8,9 @@ import { InputText } from 'primeng/inputtext';
 import { Tab, TabList, TabPanel, TabPanels, Tabs } from 'primeng/tabs';
 
 import { Api } from '../../core/api/api';
-import { Color, Localized, WasteType } from '../../core/api/models';
+import { Localized, WasteType } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
-import { Locale } from '../../core/i18n/i18n';
 import { Toast } from '../../core/feedback/toast';
 import { CodePipe, LocalizedPipe } from '../../core/format/pipes';
 import { Column, TABLE } from '../../ui/data-table';
@@ -26,75 +25,8 @@ import { IconComponent } from '../../ui/icon';
 import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
 import { HelpComponent } from '../../ui/help';
-
-/** A colour of the company: its name and, optionally, the tint shown next to it. */
-@Component({
-  imports: [ReactiveFormsModule, TranslocoDirective, ButtonDirective, InputText, ...FIELD, ...DIALOG_PARTS, CheckboxComponent],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <ng-container *transloco="let t">
-      <dw-dialog-title>{{ t(data ? 'colors.edit' : 'colors.new') }}</dw-dialog-title>
-      <form [formGroup]="form" (ngSubmit)="save()">
-        <div class="dw-dialog-body">
-          <dw-field [label]="t('fields.name')"><input pInputText formControlName="name" maxlength="60" /></dw-field>
-          <dw-checkbox formControlName="tinted">{{ t('colors.withTint') }}</dw-checkbox>
-          @if (form.controls.tinted.value) {
-            <label class="tint"><input type="color" formControlName="hex_color" [attr.aria-label]="t('colors.tint')" /><span class="dw-mono">{{ form.controls.hex_color.value }}</span></label>
-          }
-          <dw-field [label]="t('colors.pantone')">
-            <input pInputText formControlName="pantone_reference" maxlength="40" placeholder="19-4052 TCX" />
-            <small dwHint>{{ t('colors.pantoneHint') }}</small>
-          </dw-field>
-        </div>
-        <div class="dw-dialog-actions">
-          <button pButton text type="button" dwDialogClose>{{ t('common.cancel') }}</button>
-          <button pButton type="submit" [disabled]="busy()">{{ t('common.save') }}</button>
-        </div>
-      </form>
-    </ng-container>
-  `,
-  styles: `
-    .dw-dialog-body { display: grid; gap: var(--dw-3); min-width: min(380px, 80vw); }
-    .tint { display: flex; align-items: center; gap: var(--dw-3); }
-    .tint input { width: 56px; height: var(--dw-control); padding: 2px; border: 1px solid var(--dw-line); border-radius: var(--dw-radius); background: var(--dw-surface); cursor: pointer; }
-  `,
-})
-export class ColorDialog {
-  protected readonly data = dialogData<Color | null>();
-  private readonly ref = inject(DialogRef);
-  private readonly api = inject(Api);
-  private readonly toast = inject(Toast);
-  private readonly locale = inject(Locale);
-
-  protected readonly busy = signal(false);
-  protected readonly form = inject(FormBuilder).nonNullable.group({
-    name: [this.data ? this.locale.pick(this.data.name) : '', [Validators.required, Validators.maxLength(60)]],
-    tinted: [this.data ? this.data.hex_color !== null : true],
-    hex_color: [this.data?.hex_color ?? '#0F766E'],
-    pantone_reference: [this.data?.pantone_reference ?? ''],
-  });
-
-  protected async save(): Promise<void> {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-
-      return;
-    }
-    this.busy.set(true);
-    const value = this.form.getRawValue();
-    const body = { name: value.name.trim(), hex_color: value.tinted ? value.hex_color : null, pantone_reference: value.pantone_reference.trim() || null };
-    try {
-      this.ref.close(await firstValueFrom(this.data ? this.api.put<Color>(`colors/${this.data.code}`, body) : this.api.post<Color>('colors', body)));
-      this.toast.success('colors.saved');
-    } catch (error) {
-      if (!this.toast.applyValidation(this.form, error)) {
-        this.toast.error(error);
-      }
-    } finally {
-      this.busy.set(false);
-    }
-  }
-}
+import { COLOR } from '../../ui/swatch';
+import { ColorsComponent } from './colors';
 
 interface CatalogItem {
   code: string;
@@ -111,7 +43,7 @@ const num = (value: string | null): string | null => (!value || value.trim() ===
 
 /** M1-02 / M1-04: a company's own type, or the editable attributes of an existing one. */
 @Component({
-  imports: [ReactiveFormsModule, TranslocoDirective, LocalizedPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT, CheckboxComponent, ...DIALOG_PARTS],
+  imports: [ReactiveFormsModule, TranslocoDirective, LocalizedPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT, ...COLOR, CheckboxComponent, ...DIALOG_PARTS],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -163,7 +95,7 @@ const num = (value: string | null): string | null => (!value || value.trim() ===
             <dw-field [label]="t('lots.color')">
               <dw-select formControlName="color_family">
                 <dw-option [value]="null" label="—" />
-                @for (color of vocabulary()?.color_families ?? []; track color.code) { <dw-option [value]="color.code" [label]="color.name | dwLocalized" /> }
+                @for (color of vocabulary()?.color_families ?? []; track color.code) { <dw-option [value]="color.code" [label]="(color.name | dwLocalized) | dwColorName: color.pantone_reference" [swatch]="color.hex_color" /> }
               </dw-select>
             </dw-field>
             <dw-field [label]="t('lots.grammage')"><input pInputText formControlName="default_grammage_gsm" inputmode="decimal" /></dw-field>
@@ -283,7 +215,7 @@ export class WasteTypeDialog {
 /** M1-02 / M1-03: the company's waste types and the reference catalogue they come from. */
 @Component({
   imports: [
-    HelpComponent,
+    HelpComponent, ColorsComponent,
     CodePipe, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, LocalizedPipe, IconComponent, ButtonDirective, CheckboxComponent, FilterBarComponent, Tabs, TabList, Tab, TabPanels, TabPanel,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -349,32 +281,7 @@ export class WasteTypeDialog {
               </dw-state>
             </p-tabpanel>
             <p-tabpanel [value]="2">
-              <div class="colors-head">
-                <p class="dw-muted">{{ t('colors.hint') }}</p>
-                @if (canManage) { <button pButton type="button" (click)="editColor(null)"><dw-icon>add</dw-icon>{{ t('colors.new') }}</button> }
-              </div>
-              <dw-state [loading]="colorsLoading()" [error]="colorsError()" (retry)="loadColors()">
-                <ul class="catalog">
-                  @for (color of colors(); track color.code) {
-                    <li [class.off]="!color.is_active">
-                      <span class="swatch" [style.background]="color.hex_color ?? 'transparent'" [class.none]="!color.hex_color" aria-hidden="true"></span>
-                      <div class="what">
-                        <strong>{{ color.name | dwLocalized }}</strong>
-                        @if (color.pantone_reference) { <span class="dw-faint dw-mono">Pantone {{ color.pantone_reference }}</span> }
-                        @if (!color.is_active) { <dw-status kind="member" value="suspended" [label]="t('common.inactive')" /> }
-                      </div>
-                      @if (!color.is_custom) {
-                        <span class="dw-faint">{{ t('colors.default') }}</span>
-                      } @else if (canManage) {
-                        <button pButton text type="button" (click)="editColor(color)">{{ t('common.edit') }}</button>
-                        <button pButton text type="button" (click)="toggleColor(color)">{{ t(color.is_active ? 'common.deactivate' : 'common.activate') }}</button>
-                      } @else {
-                        <span class="dw-faint">{{ t('colors.custom') }}</span>
-                      }
-                    </li>
-                  }
-                </ul>
-              </dw-state>
+              <dw-colors />
             </p-tabpanel>
           </p-tabpanels>
         </p-tabs>
@@ -387,11 +294,6 @@ export class WasteTypeDialog {
     .catalog li { display: flex; align-items: center; gap: var(--dw-3); padding: 10px var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); min-height: 52px; }
     .catalog li:last-child { border-block-end: 0; }
     .what { flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .colors-head { display: flex; align-items: center; justify-content: space-between; gap: var(--dw-3); padding: var(--dw-3) var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); }
-    .colors-head p { margin: 0; }
-    .swatch { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--dw-line); }
-    .swatch.none { background: repeating-linear-gradient(45deg, var(--dw-surface-2) 0 4px, var(--dw-surface) 4px 8px) !important; }
-    .catalog li.off strong { color: var(--dw-ink-3); }
   `,
 })
 export class WasteTypesPage {
@@ -399,7 +301,6 @@ export class WasteTypesPage {
   private readonly dialog = inject(Dialogs);
   private readonly toast = inject(Toast);
   private readonly reference = inject(ReferenceData);
-  private readonly locale = inject(Locale);
 
   protected readonly canManage = inject(Session).can('waste_types.manage');
   protected readonly search = signal('');
@@ -409,9 +310,6 @@ export class WasteTypesPage {
   protected readonly catalogLoading = signal(false);
   protected readonly catalogError = signal<unknown>(null);
   protected readonly activating = signal<string | null>(null);
-  protected readonly colors = signal<Color[]>([]);
-  protected readonly colorsLoading = signal(false);
-  protected readonly colorsError = signal<unknown>(null);
   private readonly catalogLoaded = computed(() => this.catalog().length > 0);
 
   protected readonly columns: Column<WasteType>[] = [
@@ -427,44 +325,7 @@ export class WasteTypesPage {
   protected onTab(tab: unknown): void {
     if (tab === 1) {
       this.loadCatalog();
-    } else if (tab === 2 && this.colors().length === 0) {
-      this.loadColors();
     }
-  }
-
-  protected loadColors(): void {
-    this.colorsLoading.set(true);
-    this.colorsError.set(null);
-    this.api.get<Color[]>('colors').subscribe({
-      next: (colors) => {
-        this.colors.set(colors);
-        this.colorsLoading.set(false);
-      },
-      error: (error: unknown) => {
-        this.colorsError.set(error);
-        this.colorsLoading.set(false);
-      },
-    });
-  }
-
-  protected editColor(color: Color | null): void {
-    this.dialog.open<ColorDialog, Color | null, Color>(ColorDialog, { data: color }).afterClosed().subscribe((saved) => saved && this.colorsChanged());
-  }
-
-  /** Withdrawn colours are no longer offered; lots that already carry one keep it. */
-  protected async toggleColor(color: Color): Promise<void> {
-    try {
-      await firstValueFrom(this.api.put(`colors/${color.code}`, { name: this.locale.pick(color.name), hex_color: color.hex_color, pantone_reference: color.pantone_reference, is_active: !color.is_active }));
-      this.colorsChanged();
-    } catch (error) {
-      this.toast.error(error);
-    }
-  }
-
-  private colorsChanged(): void {
-    // The forms (lot, waste type) read colours from the shared vocabulary: drop it so they see the change.
-    this.reference.refreshVocabulary();
-    this.loadColors();
   }
 
   protected loadCatalog(force = false): void {

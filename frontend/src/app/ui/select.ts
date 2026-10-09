@@ -11,6 +11,8 @@ export class OptionComponent {
   readonly value = input<unknown>(null);
   readonly label = input.required<string, string | number>({ transform: (value) => String(value) });
   readonly disabled = input(false, { transform: booleanAttribute });
+  /** For a choice of colours: the tint shown before the label (`null` = a colour without a tint). */
+  readonly swatch = input<string | null | undefined>(undefined);
 }
 
 const SEARCH_FROM = 8;
@@ -29,10 +31,23 @@ const isEmpty = (value: unknown): boolean => value === null || value === undefin
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => SelectComponent), multi: true }],
   template: `
-    @if (multiple()) {
+    @if (multiple() && swatched()) {
+      <p-multiselect [options]="items()" optionLabel="label" optionValue="value" optionDisabled="disabled" [ngModel]="list()" (ngModelChange)="set($event)"
+        [placeholder]="hint()" [filter]="searchable()" [showHeader]="searchable()" [showToggleAll]="false" [maxSelectedLabels]="2" [showClear]="clearable() && list().length > 0"
+        [disabled]="off()" [fluid]="true" [ariaLabel]="ariaLabel() || hint()" [ariaLabelledBy]="labelledBy" [resetFilterOnHide]="true" scrollHeight="280px" (onPanelHide)="touched()">
+        <ng-template #item let-option><span class="tinted"><span class="tint" [class.none]="!option.swatch" [style.background]="option.swatch || null"></span>{{ option.label }}</span></ng-template>
+      </p-multiselect>
+    } @else if (multiple()) {
       <p-multiselect [options]="items()" optionLabel="label" optionValue="value" optionDisabled="disabled" [ngModel]="list()" (ngModelChange)="set($event)"
         [placeholder]="hint()" [filter]="searchable()" [showHeader]="searchable()" [showToggleAll]="false" [maxSelectedLabels]="2" [showClear]="clearable() && list().length > 0"
         [disabled]="off()" [fluid]="true" [ariaLabel]="ariaLabel() || hint()" [ariaLabelledBy]="labelledBy" [resetFilterOnHide]="true" scrollHeight="280px" (onPanelHide)="touched()" />
+    } @else if (swatched()) {
+      <p-select [options]="items()" optionLabel="label" optionValue="value" optionDisabled="disabled" [ngModel]="value()" (ngModelChange)="set($event)"
+        [placeholder]="hint()" [filter]="searchable()" [showClear]="canClear()" [disabled]="off()" [fluid]="true" [ariaLabel]="ariaLabel() || hint()"
+        [ariaLabelledBy]="labelledBy" [resetFilterOnHide]="true" [autoOptionFocus]="false" scrollHeight="280px" (onHide)="touched()">
+        <ng-template #item let-option><span class="tinted"><span class="tint" [class.none]="!option.swatch" [style.background]="option.swatch || null"></span>{{ option.label }}</span></ng-template>
+        <ng-template #selectedItem let-option><span class="tinted"><span class="tint" [class.none]="!option.swatch" [style.background]="option.swatch || null"></span>{{ option.label }}</span></ng-template>
+      </p-select>
     } @else {
       <p-select [options]="items()" optionLabel="label" optionValue="value" optionDisabled="disabled" [ngModel]="value()" (ngModelChange)="set($event)"
         [placeholder]="hint()" [filter]="searchable()" [showClear]="canClear()" [disabled]="off()" [fluid]="true" [ariaLabel]="ariaLabel() || hint()"
@@ -40,7 +55,12 @@ const isEmpty = (value: unknown): boolean => value === null || value === undefin
     }
     <ng-content />
   `,
-  styles: ':host { display: block; min-width: 0; }',
+  styles: `
+    :host { display: block; min-width: 0; }
+    .tinted { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+    .tint { flex: none; width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--dw-line); }
+    .tint.none { background: repeating-linear-gradient(45deg, var(--dw-surface-2) 0 3px, var(--dw-surface) 3px 6px); }
+  `,
   host: { class: 'dw-select', '[class.has-value]': 'filled()' },
 })
 export class SelectComponent<T = unknown> implements ControlValueAccessor {
@@ -56,7 +76,9 @@ export class SelectComponent<T = unknown> implements ControlValueAccessor {
 
   private readonly options = contentChildren(OptionComponent);
   private readonly blank = computed(() => this.options().find((option) => isEmpty(option.value())));
-  protected readonly items = computed(() => this.options().filter((option) => !isEmpty(option.value())).map((option) => ({ label: option.label(), value: option.value(), disabled: option.disabled() })));
+  protected readonly items = computed(() => this.options().filter((option) => !isEmpty(option.value())).map((option) => ({ label: option.label(), value: option.value(), disabled: option.disabled(), swatch: option.swatch() })));
+  /** A list of colours shows each tint next to its name. */
+  protected readonly swatched = computed(() => this.options().some((option) => option.swatch() !== undefined));
   protected readonly hint = computed(() => this.placeholder() || this.blank()?.label() || '');
   protected readonly searchable = computed(() => this.items().length > SEARCH_FROM);
   protected readonly list = computed(() => (Array.isArray(this.value()) ? (this.value() as unknown[]) : []));

@@ -14,13 +14,14 @@ import { StateComponent } from '../../ui/state';
 import { LotActionData, LotOriginDialog, SplitLotDialog, StoreLotDialog, WeighLotDialog } from './lot-dialogs';
 import { Dialogs } from '../../ui/dialog';
 import { IconComponent } from '../../ui/icon';
+import { COLOR } from '../../ui/swatch';
 
 /**
  * A lot and its whole story: what it is, where it is, every change with its time and author (M2-05),
  * where it came from and what it became (M2-06), and which pickup took it.
  */
 @Component({
-  imports: [TermPipe, CodePipe, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LocalizedPipe, IconComponent, ButtonDirective],
+  imports: [...COLOR, TermPipe, CodePipe, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LocalizedPipe, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -59,7 +60,7 @@ import { IconComponent } from '../../ui/icon';
                     <div><dt>{{ t('lots.origin') }}</dt><dd>{{ t('origin.' + l.origin_type) }}</dd></div>
                     <div><dt>{{ t('lots.generatedAt') }}</dt><dd>{{ l.generated_at | dwDate: 'datetime' }}</dd></div>
                     <div><dt>{{ t('lots.packaging') }}</dt><dd>{{ l.packaging_type | dwCode: 'packaging' }}</dd></div>
-                    <div><dt>{{ t('lots.color') }}</dt><dd>{{ l.color_label ?? (l.color_family | dwCode: 'color') }}</dd></div>
+                    <div><dt>{{ t('lots.color') }}</dt><dd>@if (l.color_family) { <dw-color [code]="l.color_family" /> }@if (l.color_family && l.color_label) { · }{{ l.color_label ?? (l.color_family ? '' : '—') }}</dd></div>
                     <div><dt>{{ t('lots.grammage') }}</dt><dd>{{ l.grammage_gsm ?? '—' }}</dd></div>
                     <div><dt>{{ t('lots.composition') }}</dt>
                       <dd>

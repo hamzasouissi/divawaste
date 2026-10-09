@@ -20,6 +20,7 @@ import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
 import { SELECT } from '../../ui/select';
 import { zoneMismatch } from '../../ui/zone-fill';
+import { COLOR } from '../../ui/swatch';
 
 const DIALOG = [ReactiveFormsModule, TranslocoDirective] as const;
 const WEIGHT = [Validators.required, Validators.min(0), Validators.max(999999), Validators.pattern(/^\d+([.,]\d{1,3})?$/)];
@@ -30,7 +31,7 @@ const decimal = (value: string | number): string => String(value).replace(',', '
  * defaults of the waste type. The lot ULID is generated here so a double submission cannot create two lots.
  */
 @Component({
-  imports: [...DIALOG, LocalizedPipe, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, ...DIALOG_PARTS, AutoFocus],
+  imports: [...DIALOG, LocalizedPipe, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, ...COLOR, ...DIALOG_PARTS, AutoFocus],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -84,7 +85,7 @@ const decimal = (value: string | number): string => String(value).replace(',', '
               <dw-select formControlName="color_family">
                 <dw-option [value]="null" label="—" />
                 @for (color of vocabulary()?.color_families ?? []; track color.code) {
-                  <dw-option [value]="color.code" [label]="(color.name | dwLocalized) + (color.pantone_reference ? ' — Pantone ' + color.pantone_reference : '')" />
+                  <dw-option [value]="color.code" [label]="(color.name | dwLocalized) | dwColorName: color.pantone_reference" [swatch]="color.hex_color" />
                 }
               </dw-select>
             </dw-field>
