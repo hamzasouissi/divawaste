@@ -30,6 +30,7 @@ final class ProblemDetails
             'code' => $code,
             'detail' => $detail,
             'errors' => $errors,
+            'context' => $e instanceof BusinessRuleViolation && $e->context !== [] ? $e->context : null,
             'request_id' => Context::get('request_id'),
         ], fn ($value) => $value !== null);
 

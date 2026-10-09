@@ -63,7 +63,7 @@ return [
     'authorization' => [
         'usage_high' => [
             'title' => 'Autorisation :reference bientôt épuisée',
-            'body' => 'L\'autorisation :reference (:waste_type) est utilisée à :pct %. Prévoyez une nouvelle autorisation : sans elle, les prochains enlèvements seront bloqués.',
+            'body' => 'Une limite de l\'autorisation :reference (:waste_type) est utilisée à :pct %. Prévoyez une nouvelle autorisation : sans elle, les prochains enlèvements seront bloqués.',
         ],
         'expiring_soon' => [
             'title' => 'Autorisation :reference : fin de validité le :date',

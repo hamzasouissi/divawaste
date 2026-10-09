@@ -52,4 +52,17 @@ final class StockQuery
             ->when($wasteTypeId !== null, fn (Builder $query) => $query->where('l.waste_type_id', $wasteTypeId))
             ->whereNull('l.net_weight_kg')->count();
     }
+
+    /**
+     * The same lots, by number.
+     *
+     * @return list<string>
+     */
+    public function unweighedNumbers(int $siteId, ?int $zoneId, ?int $wasteTypeId): array
+    {
+        return $this->lots([$siteId])
+            ->when($zoneId !== null, fn (Builder $query) => $query->where('l.zone_id', $zoneId))
+            ->when($wasteTypeId !== null, fn (Builder $query) => $query->where('l.waste_type_id', $wasteTypeId))
+            ->whereNull('l.net_weight_kg')->orderBy('l.id')->pluck('l.lot_number')->map(fn ($number) => (string) $number)->all();
+    }
 }

@@ -338,8 +338,31 @@ The weight of a lot may be left empty when it is created: the lot is then **À p
   the dashboard, pickups, the register (empty weight cell, counted in the summary line), reports and the tracking slip.
 - A stock limit that is not exceeded while lots are unweighed is marked **Non vérifiable**.
 
-### Packages of a lot
+### Limits, one by one
 
+A weight, a number of packages and a number of lots are different questions. Each limit is shown on its own line, with
+its own figures, unit and result; no percentage of one is ever taken for another.
+
+| Result | Meaning |
+|---|---|
+| **Respecté** | The limit is met, and every quantity it needs is known |
+| **Attention** | Met, but the alert percentage of that limit is reached |
+| **Dépassé** | What is known is already above the limit; the excess is given in the unit of the limit |
+| **Non vérifiable** | What is known is below the limit, but a quantity is missing: the lots concerned are named. Never read as "Respecté" |
+
+- **Authorisations** (page Autorisations, and the pickup request): one line per limit the document states — **Poids**,
+  **Colis**, **Lots**. Example: "Poids 450 kg / 500 kg — 90 % — Respecté" and "Colis 310 / 300 × Sac — Dépassé de
+  10 × Sac". The request is blocked as soon as one limit is exceeded or not verifiable, and says which
+  ("Demande bloquée — limite(s) en cause : Colis"); the other limits stay visible. Several packagings on one document
+  ("100 sacs ou 50 cartons") are one allowance they share.
+- **Zones** (Stock, Sites): **Place** (packages against what the zone holds) and **Charge** (kilograms against the
+  weight it bears) are two lines. A zone can be at 100 % of its room and 80 % of its load. A loose lot or an unplanned
+  packaging makes the room "Non vérifiable"; a lot nobody weighed does the same for the load. A zone alerts; it never
+  refuses a lot.
+- **Stock limits**: below the limit with unweighed lots is "Non vérifiable"; above it is "Dépassé", and the unweighed
+  lots are still listed. A stock limit alerts; it blocks nothing.
+
+### Packages of a lot
 A lot is not a package: one lot may be 12 bags. Lot, packages, declared quantity and weight are four separate figures.
 
 - **Nombre de colis** appears on the lot form as soon as the lot has a packaging (chosen, or planned by the waste

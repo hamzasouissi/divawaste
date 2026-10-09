@@ -378,7 +378,9 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'waste_type' => $item['waste_type'], 'reference' => $item['authorization']?->reference, 'valid_until' => $item['authorization']?->valid_until->toDateString(),
             // null = covered; 'missing', 'exceeded', 'packaging' or 'unverifiable' (a weight limit and lots nobody weighed, listed
             // in `unweighed`) = the pickup would be refused.
-            'reason' => $item['reason'], 'unweighed' => $item['unweighed'], 'uncounted' => $item['uncounted'], 'before_pct' => $item['before_pct'], 'after_pct' => $item['after_pct'],
+            'reason' => $item['reason'], 'unweighed' => $item['unweighed'], 'uncounted' => $item['uncounted'],
+            // Every limit of the document, each with its own figures and answer, before this pickup and with it.
+            'constraints' => $item['constraints'], 'before' => $item['before'],
         ], $quota->cover($lots, (string) $input['date']))];
     })->name('waste-authorizations.check');
 });
