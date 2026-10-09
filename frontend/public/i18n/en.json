@@ -383,6 +383,13 @@
       "synced": "Synchronised",
       "failed": "Refused",
       "conflict": "Conflict"
+    },
+    "tolerance": {
+      "within": "Within tolerance",
+      "warning": "To be explained",
+      "blocking": "Approval required",
+      "no_reference": "No reference",
+      "not_measured": "Not measured"
     }
   },
   "channels": {
@@ -740,7 +747,16 @@
     "materialOfOrder": "The one of the order",
     "editOrigin": "Origin",
     "originHint": "Where this lot comes from in production. Leave empty what you do not know: the stage is deduced from the zone, the material from the order.",
-    "stepOfZone": "The one of the zone"
+    "stepOfZone": "The one of the zone",
+    "quantityIn": "Quantity ({{unit}})",
+    "countedHint": "This waste is declared by quantity, not by weight.",
+    "weightIfKnown": "Net weight in kg (optional)",
+    "weightComputed": "Left empty, the weight is computed from the quantity.",
+    "weightUnknown": "Left empty, the weight stays unknown: it is not estimated.",
+    "weightBasis": {
+      "unknown": "Weight not measured",
+      "computed": "Weight computed from the quantity"
+    }
   },
   "stock": {
     "title": "Waste stock",
@@ -856,7 +872,20 @@
     "emptyTitle": "No type activated",
     "emptyHint": "Activate at least one type from the catalogue to be able to create lots.",
     "requiresAuthorization": "This waste only leaves the site under an authorisation (declaration signed by customs)",
-    "underAuthorization": "Under authorisation"
+    "underAuthorization": "Under authorisation",
+    "measure": "Measure",
+    "method": "Measurement method",
+    "methods": {
+      "weighed": "Weighed",
+      "counted": "Counted",
+      "measured": "Measured (volume)",
+      "estimated": "Estimated"
+    },
+    "unitHint": {
+      "mass": "Lots are declared by weight; gaps are judged in kilos.",
+      "count": "Lots are declared by number of pieces; gaps are judged in pieces, never converted to kilos.",
+      "volume": "Lots are declared by volume; gaps are judged in volume."
+    }
   },
   "pickups": {
     "title": "Pickups",
@@ -914,14 +943,15 @@
       "receive": "Record the reception",
       "treat": "Declare the treatment",
       "manifest": "Issue the tracking slips",
-      "certificate": "Upload a certificate"
+      "certificate": "Upload a certificate",
+      "authorize": "Accept the gap"
     },
     "cancelReason": "Reason for the cancellation",
     "refuseReason": "Reason for the refusal",
     "ackComment": "Explanation of the variance",
-    "collectHint": "Tick the lots actually loaded. An unticked lot goes back to stock.",
+    "collectHint": "Tick the lots actually loaded and check what leaves, in the unit of the lot. A lot left unticked goes back to stock.",
     "loaded": "Loaded",
-    "receiveHint": "Enter the weight received for each lot. A variance above the limit is reported to the manufacturer.",
+    "receiveHint": "Enter what was received for each lot, in its unit (weight, pieces or litres). A gap above the tolerance of the waste is reported to the industrial.",
     "treatHint": "Give the treatment channel of each lot received.",
     "channel": "Channel",
     "priceHint": "Sale price (revenue) or disposal cost, per lot. The amount is calculated on the weight received.",
@@ -976,7 +1006,15 @@
     "receiver": "Receiver",
     "transporter": "Transporter",
     "receiverTransports": "The receiver carries the waste",
-    "onBehalf": "{{name}} has no account: record its answer, the reception and the treatment of the lots yourself."
+    "onBehalf": "{{name}} has no account: record its answer, the reception and the treatment of the lots yourself.",
+    "plannedChannel": "Planned channel",
+    "plannedChannelHint": "It selects the tolerance applied at reception.",
+    "plannedChannelDefault": "The one planned for each waste type",
+    "quantity": {
+      "declared": "Declared",
+      "departure": "Left",
+      "received": "Received"
+    }
   },
   "providers": {
     "title": "Providers",
@@ -1569,7 +1607,8 @@
     "noOf": "No manufacturing order",
     "scanOf": "Scan the order sheet",
     "ofList": "Choose in the list",
-    "ofNotFound": "No open order has the number \"{{code}}\" on this site."
+    "ofNotFound": "No open order has the number \"{{code}}\" on this site.",
+    "enterQuantity": "Quantity"
   },
   "validation": {
     "required": "This field is required.",
@@ -1721,7 +1760,8 @@
       "waste_catalog_items": "Waste catalogue",
       "subscription_plans": "Plan",
       "certificates": "Certificate",
-      "stored_files": "File"
+      "stored_files": "File",
+      "waste_tolerance_rules": "Tolerance rule"
     },
     "events": {
       "created": "Creation",
@@ -1861,7 +1901,8 @@
     "production.view": "View production data",
     "production.manage": "Manage and import production data",
     "production.stats.view": "View production statistics",
-    "production.finance.view": "See production prices, costs and gains"
+    "production.finance.view": "See production prices, costs and gains",
+    "pickups.authorize_variance": "Accept a gap above the blocking limit"
   },
   "colors": {
     "title": "Colours",
@@ -2557,6 +2598,111 @@
     "productionFinance": {
       "title": "How to read costs and gains",
       "text": "Actual material cost: quantity consumed × cost of the received lot it comes from. A lot used by several orders is shared by what each one consumed.\nEstimated material cost: when the lot is not specified, the quantity is valued at the average price of the material — and counted apart.\nValue of production: pieces made × price agreed on the order. It is not what was invoiced.\nRecorded gain: value of production − recorded costs (materials + other expenses). It is computed only when everything is known; otherwise what is missing is listed.\nThis is not an accounting result: no overheads, no labour unless entered as an expense. Amounts exclude tax."
+    }
+  },
+  "units": {
+    "kg": "kg",
+    "t": "t",
+    "m3": "m³",
+    "l": "l",
+    "piece": "pieces",
+    "piece_one": "piece"
+  },
+  "tolerance": {
+    "title": "Gaps at reception",
+    "summary": "{{flagged}} to review out of {{total}} lot(s) compared",
+    "hint": "Each lot is compared in its own unit (kg, pieces, litres) between what left and what was received, with the tolerance set for this waste and this channel at the time of reception.",
+    "left": "Left",
+    "arrived": "Received",
+    "difference": "Difference",
+    "gap": "Gap",
+    "noPercentage": "cannot be calculated",
+    "applicable": "Tolerance applied",
+    "reason": "Why",
+    "showAll": "Also show the {{count}} lot(s) within tolerance",
+    "onlyFlagged": "Show only the lots to review",
+    "limits": {
+      "warning": "up to {{pct}} % without explanation",
+      "blocking": "above {{pct}} %, approval by an authorised person"
+    },
+    "direction": {
+      "excess": "only excesses count",
+      "shortage": "only shortages count"
+    },
+    "source": {
+      "type_channel": "rule of this waste for the channel {{channel}}",
+      "type": "rule of this waste type",
+      "channel": "rule of the channel {{channel}}",
+      "company": "general rule of the company",
+      "company_setting": "percentage of the company settings",
+      "default": "default value of 5 %, for want of a rule"
+    },
+    "basis": {
+      "operational": "Internal rule",
+      "legal": "Regulatory requirement"
+    },
+    "reasons": {
+      "within": "The gap stays within the {{pct}} % tolerance.",
+      "ignored_side": "The gap is on the side the rule does not watch.",
+      "warning": "The gap exceeds the {{pct}} % tolerance: an explanation is required.",
+      "blocking": "The gap exceeds the {{pct}} % limit: it must be accepted by an authorised person.",
+      "no_reference": "No reliable departure quantity: the percentage cannot be calculated. Check what left.",
+      "not_measured": "The received quantity has not been entered."
+    },
+    "banner": {
+      "within": "Reception within tolerances.",
+      "not_measured": "Some loaded lots were not received.",
+      "warning": "{{count}} lot(s) received outside tolerance.",
+      "blocking": "Gap above the blocking limit ({{count}} lot(s) to review).",
+      "no_reference": "{{count}} lot(s) without a reliable departure quantity: the gap cannot be calculated."
+    },
+    "next": {
+      "none": "",
+      "explain": "Explain the gap to be able to close.",
+      "authorize": "Accept the gap, with its reason, to be able to close.",
+      "ask_authorized": "Only an authorised person can accept this gap."
+    },
+    "authorized": "Gap accepted by an authorised person: {{comment}}",
+    "authorizeHint": "The gap exceeds the blocking limit. Your approval and its reason are kept in the audit trail.",
+    "rules": {
+      "title": "Tolerances",
+      "intro": "The gap accepted between the quantity that left and the quantity received, as a percentage of the first. A rule is for a waste type, a channel, both, or every waste; the most precise one applies. The gap is judged in the unit of the waste: pieces with pieces, kilos with kilos.",
+      "new": "New rule",
+      "edit": "Edit the rule",
+      "dialogHint": "Above the warning limit the gap must be explained. Above the blocking limit it must be accepted by an authorised person before the pickup is closed.",
+      "anyType": "Every waste",
+      "anyChannel": "Every channel",
+      "channel": "Treatment channel",
+      "appliesTo": "Waste",
+      "warning": "Warning limit (%)",
+      "warningHint": "Empty: no warning before the blocking limit.",
+      "blocking": "Blocking limit (%)",
+      "blockingHint": "Empty: the gap never blocks, it only has to be explained.",
+      "direction": "Gaps watched",
+      "directions": {
+        "both": "Excesses and shortages",
+        "excess": "Excesses only",
+        "shortage": "Shortages only"
+      },
+      "basis": "Kind of rule",
+      "reference": "Reference text",
+      "referenceHint": "The text that sets this limit (decree, order, contract). Required for a regulatory requirement.",
+      "active": "Rule applied",
+      "saved": "Rule saved",
+      "problem": {
+        "none": "Give at least one limit.",
+        "order": "The blocking limit cannot be below the warning limit."
+      },
+      "fallback": "Any other case",
+      "history": "A changed rule applies to the next receptions. Receptions already recorded keep the rule applied to them, and every change is in the audit trail.",
+      "deleteTitle": "Delete this rule?",
+      "deleteHint": "The next receptions will fall back on the more general rule. Decisions already taken do not change."
+    },
+    "byType": {
+      "title": "Gaps at reception by waste type",
+      "hint": "Number of lots received and what their comparison gave.",
+      "received": "Lots received",
+      "repeated": "Repeated gaps"
     }
   }
 }

@@ -130,6 +130,9 @@ export interface WasteType {
   /** This waste only leaves the site under an authorisation (declaration signed by customs). */
   requires_authorization: boolean;
   unit: string | null;
+  /** What a lot of this type is declared and compared in: a weight, a count of pieces or a volume. */
+  measure_dimension?: MeasureDimension;
+  measurement_method?: 'weighed' | 'counted' | 'measured' | 'estimated';
   packaging_type: string | null;
   color_family: string | null;
   treatment_channel: string | null;
@@ -137,6 +140,47 @@ export interface WasteType {
   default_composition: { material: string; pct: string }[] | null;
   density_kg_m3: string | null;
   unit_weight_kg: string | null;
+  is_active: boolean;
+}
+
+export type MeasureDimension = 'mass' | 'count' | 'volume';
+
+/** Outcome of comparing what was measured with what was expected. `no_reference`: nothing reliable to compare with. */
+export type ToleranceStatus = 'within' | 'warning' | 'blocking' | 'no_reference' | 'not_measured';
+
+/** The rule that applies to a waste type handled in a given way, and where it comes from. */
+export interface ToleranceRuleSnapshot {
+  source: 'type_channel' | 'type' | 'channel' | 'company' | 'company_setting' | 'default';
+  rule: string | null;
+  warning_pct: string | null;
+  blocking_pct: string | null;
+  direction: 'both' | 'excess' | 'shortage';
+  basis: 'operational' | 'legal';
+  reference: string | null;
+  channel: string | null;
+}
+
+/** A rule as applied to one reception: the figures it was applied to are kept with it. */
+export interface ToleranceDecision extends ToleranceRuleSnapshot {
+  unit: string;
+  reference_quantity: string | null;
+  measured_quantity: string | null;
+  /** Signed: + = more than what left. */
+  difference: string | null;
+  pct: string | null;
+  pct_abs: string | null;
+}
+
+export interface ToleranceRule {
+  ulid: string;
+  waste_type: { ulid: string; code: string; name: string; unit: string | null } | null;
+  treatment_channel: string | null;
+  warning_pct: string | null;
+  blocking_pct: string | null;
+  direction: 'both' | 'excess' | 'shortage';
+  basis: 'operational' | 'legal';
+  reference: string | null;
+  notes: string | null;
   is_active: boolean;
 }
 
@@ -182,8 +226,12 @@ export interface Lot {
   regulatory_code: string | null;
   packaging_type: string | null;
   net_weight_kg: string;
+  /** 'unknown': waste counted in pieces or litres that nobody weighed — the weight is then 0 and must not be read as one. */
+  weight_basis?: 'measured' | 'computed' | 'unknown';
   gross_weight_kg: string | null;
   tare_weight_kg: string | null;
+  quantity?: string | null;
+  unit?: string | null;
   color_family: string | null;
   color_label: string | null;
   /** null when the lot says nothing about its origin. */
@@ -280,6 +328,15 @@ export interface PickupLine {
   received_weight_kg: string | null;
   weight_variance_pct: string | null;
   variance_flagged: boolean;
+  /** What the line is compared in, its unit, and its quantities in that unit (null for weighed waste). */
+  measure_dimension?: MeasureDimension;
+  unit?: string;
+  declared_quantity?: string | null;
+  departure_quantity?: string | null;
+  received_quantity?: string | null;
+  planned_channel?: string | null;
+  tolerance_status?: ToleranceStatus | null;
+  tolerance?: ToleranceDecision | null;
   treatment_channel: string | null;
   pricing_mode: 'per_kg' | 'per_tonne' | 'flat' | null;
   unit_price: string | null;
@@ -307,7 +364,11 @@ export interface Pickup {
   weight_variance_kg: string | null;
   weight_variance_pct: string | null;
   variance_flagged: boolean;
+  /** The worst outcome among the lots. */
+  tolerance_status?: ToleranceStatus | null;
   variance_acknowledged: boolean;
+  /** 'authorized': a gap above the blocking limit, accepted by someone entitled to. */
+  variance_decision?: 'acknowledged' | 'authorized' | null;
   variance_comment: string | null;
   currency_code: string;
   lots_count?: number;

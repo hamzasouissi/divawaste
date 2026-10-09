@@ -27,6 +27,7 @@ import { FilterBarComponent } from '../../ui/filter-bar';
 import { HelpComponent } from '../../ui/help';
 import { COLOR } from '../../ui/swatch';
 import { ColorsComponent } from './colors';
+import { TolerancesComponent } from './tolerances';
 
 interface CatalogItem {
   code: string;
@@ -36,6 +37,11 @@ interface CatalogItem {
   is_hazardous: boolean;
   treatment_channel: string | null;
   waste_type: string | null;
+}
+
+/** kg and tonnes are a weight, litres and m³ a volume, pieces a count. */
+export function dimensionOf(unit: string | null | undefined): 'mass' | 'count' | 'volume' {
+  return unit === 'piece' ? 'count' : unit === 'l' || unit === 'm3' ? 'volume' : 'mass';
 }
 
 const DECIMAL = Validators.pattern(/^\d+([.,]\d{1,3})?$/);
@@ -78,6 +84,12 @@ const num = (value: string | null): string | null => (!value || value.trim() ===
             <dw-field [label]="t('wasteTypes.unit')">
               <dw-select formControlName="unit" required>
                 @for (unit of vocabulary()?.units ?? []; track unit.code) { <dw-option [value]="unit.code" [label]="(unit.name | dwLocalized) + ' (' + unit.symbol + ')'" /> }
+              </dw-select>
+              <small dwHint>{{ t('wasteTypes.unitHint.' + dimension()) }}</small>
+            </dw-field>
+            <dw-field [label]="t('wasteTypes.method')">
+              <dw-select formControlName="measurement_method" required>
+                @for (method of methods; track method) { <dw-option [value]="method" [label]="t('wasteTypes.methods.' + method)" /> }
               </dw-select>
             </dw-field>
             <dw-field [label]="t('wasteTypes.channel')">
@@ -155,6 +167,7 @@ export class WasteTypeDialog {
     is_hazardous: [this.data?.is_hazardous ?? false],
     requires_authorization: [this.data?.requires_authorization ?? false],
     unit: [this.data?.unit ?? 'kg', Validators.required],
+    measurement_method: [this.data?.measurement_method ?? ('weighed' as NonNullable<WasteType['measurement_method']>)],
     treatment_channel: [this.data?.treatment_channel ?? null as string | null],
     packaging_type: [this.data?.packaging_type ?? null as string | null],
     color_family: [this.data?.color_family ?? null as string | null],
@@ -164,7 +177,14 @@ export class WasteTypeDialog {
     composition: this.fb.array((this.data?.default_composition ?? []).map((line) => this.materialGroup(line.material, String(Number(line.pct))))),
   });
 
+  protected readonly methods = ['weighed', 'counted', 'measured', 'estimated'] as const;
+  private readonly unit = toSignal(this.form.controls.unit.valueChanges, { initialValue: this.form.controls.unit.value });
+  /** What lots of this type are declared and compared in: it follows from the unit. */
+  protected readonly dimension = computed(() => dimensionOf(this.unit()));
+
   constructor() {
+    // Changing the unit proposes the matching way of measuring; the company may still say the quantity is only estimated.
+    this.form.controls.unit.valueChanges.subscribe((unit) => this.form.controls.measurement_method.setValue(({ mass: 'weighed', count: 'counted', volume: 'measured' } as const)[dimensionOf(unit)]));
     this.form.controls.composition.valueChanges.subscribe(() => this.recompute());
     this.recompute();
   }
@@ -215,7 +235,7 @@ export class WasteTypeDialog {
 /** M1-02 / M1-03: the company's waste types and the reference catalogue they come from. */
 @Component({
   imports: [
-    HelpComponent, ColorsComponent,
+    HelpComponent, ColorsComponent, TolerancesComponent,
     CodePipe, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, LocalizedPipe, IconComponent, ButtonDirective, CheckboxComponent, FilterBarComponent, Tabs, TabList, Tab, TabPanels, TabPanel,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -232,6 +252,7 @@ export class WasteTypeDialog {
             <p-tab [value]="0">{{ t('wasteTypes.mine') }}</p-tab>
             <p-tab [value]="1">{{ t('wasteTypes.catalog') }}</p-tab>
             <p-tab [value]="2">{{ t('colors.title') }}</p-tab>
+            <p-tab [value]="3">{{ t('tolerance.rules.title') }}</p-tab>
           </p-tablist>
           <p-tabpanels>
             <p-tabpanel [value]="0">
@@ -244,6 +265,7 @@ export class WasteTypeDialog {
                 (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="edit($event)" (retry)="list.reload()">
                 <ng-template dwCell="code" let-type><span class="dw-mono">{{ type.code }}</span></ng-template>
                 <ng-template dwCell="name" let-type>{{ type.name }} @if (type.is_hazardous) { <dw-status kind="alert" value="warning" [label]="t('common.hazardous')" /> } @if (type.requires_authorization) { <dw-status kind="member" value="suspended" tone="neutral" [label]="t('wasteTypes.underAuthorization')" /> }</ng-template>
+                <ng-template dwCell="measure" let-type>{{ t('wasteTypes.methods.' + (type.measurement_method ?? 'weighed')) }} <span class="dw-faint">· {{ t('units.' + (type.unit ?? 'kg'), { count: 2 }) }}</span></ng-template>
                 <ng-template dwCell="regulatory" let-type><span class="dw-mono">{{ type.regulatory_code ?? '—' }}</span></ng-template>
                 <ng-template dwCell="channel" let-type>{{ type.treatment_channel ? t('channels.' + type.treatment_channel) : '—' }}</ng-template>
                 <ng-template dwCell="composition" let-type>
@@ -283,6 +305,9 @@ export class WasteTypeDialog {
             <p-tabpanel [value]="2">
               <dw-colors />
             </p-tabpanel>
+            <p-tabpanel [value]="3">
+              @if (tolerances()) { <dw-tolerances /> }
+            </p-tabpanel>
           </p-tabpanels>
         </p-tabs>
       </div>
@@ -310,11 +335,14 @@ export class WasteTypesPage {
   protected readonly catalogLoading = signal(false);
   protected readonly catalogError = signal<unknown>(null);
   protected readonly activating = signal<string | null>(null);
+  /** The tolerances are loaded when their tab is first opened. */
+  protected readonly tolerances = signal(false);
   private readonly catalogLoaded = computed(() => this.catalog().length > 0);
 
   protected readonly columns: Column<WasteType>[] = [
     { key: 'code', header: 'fields.code', width: '120px' },
     { key: 'name', header: 'fields.name' },
+    { key: 'measure', header: 'wasteTypes.measure', hideBelow: 700 },
     { key: 'regulatory', header: 'lots.regulatoryCode', hideBelow: 900 },
     { key: 'channel', header: 'wasteTypes.channel', hideBelow: 900 },
     { key: 'composition', header: 'lots.composition', hideBelow: 1200 },
@@ -325,6 +353,9 @@ export class WasteTypesPage {
   protected onTab(tab: unknown): void {
     if (tab === 1) {
       this.loadCatalog();
+    }
+    if (tab === 3) {
+      this.tolerances.set(true);
     }
   }
 

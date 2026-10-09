@@ -1,4 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { catchError, map, of } from 'rxjs';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { ButtonDirective } from 'primeng/button';
@@ -16,6 +18,7 @@ import { IconComponent } from '../../ui/icon';
 import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
 import { HelpComponent } from '../../ui/help';
+import { ToleranceSummary } from './tolerance';
 
 interface PickupFilter {
   status?: PickupStatus[];
@@ -30,7 +33,7 @@ interface PickupFilter {
  */
 @Component({
   imports: [
-    HelpComponent,
+    HelpComponent, ToleranceSummary,
     RouterLink, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, DatePipe, KgPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -73,6 +76,7 @@ interface PickupFilter {
           </ng-template>
         </dw-data-table>
       </div>
+      @if (!provider) { <dw-tolerance-summary [rows]="summary()" /> }
     </ng-container>
   `,
   styles: `
@@ -90,6 +94,13 @@ export class PickupsPage {
   // A provider never receives drafts, so it is not offered that filter.
   protected readonly statuses: PickupStatus[] = [...(this.provider ? [] : (['draft'] as PickupStatus[])), 'requested', 'confirmed', 'collected', 'received', 'completed', 'refused', 'cancelled'];
   protected readonly list = new ListStore<Pickup, PickupFilter>((query) => this.api.list<Pickup>('pickups', query));
+
+  /** Receptions judged against a tolerance, per waste type. Shown under the list when there are any; a failure to load it never hides the list. */
+  protected readonly summary = toSignal(
+    this.provider ? of([]) : this.api.get<{ waste_type: { ulid: string; code: string; name: string }; unit: string; received: number; within: number; warning: number; blocking: number; no_reference: number; not_judged: number }[]>('pickups/tolerance-summary')
+      .pipe(map((rows) => rows.filter((row) => row.received > row.not_judged)), catchError(() => of([]))),
+    { initialValue: [] },
+  );
 
   protected readonly columns: Column<Pickup>[] = [
     { key: 'number', header: 'pickups.number', sort: 'pickup_number' },

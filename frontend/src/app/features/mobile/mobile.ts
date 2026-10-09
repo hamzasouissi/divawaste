@@ -8,7 +8,7 @@ import { Api, ApiError, openBlob } from '../../core/api/api';
 import { Lot, OpenOrder, Pickup, Site, WasteType, Zone } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe, KgPipe } from '../../core/format/pipes';
+import { DatePipe, KgPipe, LotMeasurePipe } from '../../core/format/pipes';
 import { Offline, Operation } from '../../core/offline/offline';
 import { Confirm } from '../../ui/confirm';
 import { StatusComponent } from '../../ui/page';
@@ -218,8 +218,8 @@ const LAST_OF = 'dw.workshop.lastOf';
             </div>
           }
           @case ('weight') {
-            <h1 class="title">{{ t('mobile.enterWeight') }}</h1>
-            <output class="display" aria-live="polite">{{ weight() || '0' }} <small>kg</small></output>
+            <h1 class="title">{{ t(countedUnit() ? 'mobile.enterQuantity' : 'mobile.enterWeight') }}</h1>
+            <output class="display" aria-live="polite">{{ weight() || '0' }} <small>{{ t('units.' + (countedUnit() ?? 'kg'), { count: 2 }) }}</small></output>
             <div class="keypad">
               @for (key of keys; track key) { <button type="button" class="key" (click)="press(key)" [attr.aria-label]="key === '⌫' ? t('common.remove') : key">{{ key }}</button> }
             </div>
@@ -294,7 +294,9 @@ export class MobileNewLotPage {
   private readonly lastOrder = signal(readLastOrder());
   protected readonly scanningOrder = signal(false);
   protected readonly unknownOrder = signal<string | null>(null);
+  /** What is typed on the keypad: kilograms, or pieces / litres when the waste type is counted and not weighed. */
   protected readonly weight = signal('');
+  protected readonly countedUnit = computed(() => ((this.type()?.measure_dimension ?? 'mass') === 'mass' ? null : (this.type()?.unit ?? 'piece')));
   protected readonly step = signal<Step>('site');
   protected readonly busy = signal(false);
   private readonly operationId = signal<string | null>(null);
@@ -392,8 +394,9 @@ export class MobileNewLotPage {
     }
     this.busy.set(true);
     const operation = await this.offline.createLot(
-      { site: site.ulid, zone: zone.ulid, waste_type: type.ulid, net_weight_kg: this.weight().replace(',', '.'), production_order: this.order()?.ulid ?? null },
-      `${type.name} — ${this.weight()} kg — ${zone.name}${this.order() ? ` — ${this.order()?.order_number}` : ''}`,
+      { site: site.ulid, zone: zone.ulid, waste_type: type.ulid, production_order: this.order()?.ulid ?? null,
+        ...(this.countedUnit() ? { quantity: this.weight().replace(',', '.'), unit: this.countedUnit() } : { net_weight_kg: this.weight().replace(',', '.') }) },
+      `${type.name} — ${this.weight()} ${this.countedUnit() === 'piece' ? 'pc' : (this.countedUnit() ?? 'kg')} — ${zone.name}${this.order() ? ` — ${this.order()?.order_number}` : ''}`,
     );
     navigator.vibrate?.(80);
     this.operationId.set(operation.id);
@@ -440,7 +443,7 @@ export class MobileScanPage {
 }
 
 @Component({
-  imports: [RouterLink, TranslocoDirective, StatusComponent, StateComponent, DatePipe, KgPipe, IconComponent, ButtonDirective],
+  imports: [RouterLink, TranslocoDirective, StatusComponent, StateComponent, DatePipe, LotMeasurePipe, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -455,7 +458,7 @@ export class MobileScanPage {
               <p class="number">{{ l.lot_number }}</p>
               <dw-status kind="lot" [value]="l.status" />
               <p class="what">{{ l.waste_type?.name }} @if (l.is_hazardous) { <dw-status kind="alert" value="warning" [label]="t('common.hazardous')" /> }</p>
-              <p class="weight">{{ l.net_weight_kg | dwKg }}</p>
+              <p class="weight">{{ l | dwLotMeasure }}</p>
               <p class="muted">{{ l.site?.name }} · {{ l.zone?.name }}<br />{{ l.generated_at | dwDate: 'datetime' }}</p>
             </div>
             @if ((l.status === 'created') && canMove(l)) {

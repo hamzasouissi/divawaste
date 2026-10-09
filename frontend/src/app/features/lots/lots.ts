@@ -8,7 +8,7 @@ import { Api } from '../../core/api/api';
 import { Lot, LotStatus } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
-import { DatePipe, KgPipe } from '../../core/format/pipes';
+import { DatePipe, LotMeasurePipe } from '../../core/format/pipes';
 import { Column, TABLE } from '../../ui/data-table';
 import { ListStore } from '../../ui/list-store';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
@@ -38,7 +38,7 @@ const STATUSES: LotStatus[] = ['created', 'stored', 'awaiting_pickup', 'collecte
 @Component({
   imports: [
     HelpComponent,
-    TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, DatePipe, KgPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent,
+    TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, DatePipe, LotMeasurePipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -82,7 +82,7 @@ const STATUSES: LotStatus[] = ['created', 'stored', 'awaiting_pickup', 'collecte
           </ng-template>
           <ng-template dwCell="type" let-lot>{{ lot.waste_type?.name }}</ng-template>
           <ng-template dwCell="place" let-lot>{{ lot.site?.code }} · {{ lot.zone?.name }}</ng-template>
-          <ng-template dwCell="weight" let-lot>{{ lot.net_weight_kg | dwKg }}</ng-template>
+          <ng-template dwCell="weight" let-lot>{{ lot | dwLotMeasure }}</ng-template>
           <ng-template dwCell="date" let-lot>{{ lot.generated_at | dwDate: 'datetime' }}</ng-template>
           <ng-template dwCell="status" let-lot><dw-status kind="lot" [value]="lot.status" /></ng-template>
           @if (canCreate) {

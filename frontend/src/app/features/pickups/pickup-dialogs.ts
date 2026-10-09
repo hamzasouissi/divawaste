@@ -11,12 +11,13 @@ import { Api } from '../../core/api/api';
 import { Pickup, PickupLine } from '../../core/api/models';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
-import { KgPipe, LocalizedPipe, MoneyPipe } from '../../core/format/pipes';
+import { LocalizedPipe, MoneyPipe, QuantityPipe } from '../../core/format/pipes';
 import { CheckboxComponent } from '../../ui/checkbox';
 import { DIALOG_PARTS, DialogRef, dialogData } from '../../ui/dialog';
 import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
 import { SELECT } from '../../ui/select';
+import { counted, measure } from './tolerance';
 
 export type LinesMode = 'collect' | 'receive' | 'treat' | 'price';
 
@@ -43,7 +44,7 @@ const valid = (value: string): boolean => /^\d+([.,]\d{1,3})?$/.test(value);
  * pricing (industrial). Each shows only its own column and sends only its own data.
  */
 @Component({
-  imports: [FormsModule, TranslocoDirective, KgPipe, LocalizedPipe, MoneyPipe, IconComponent, ButtonDirective, InputText, ...SELECT, CheckboxComponent, ...DIALOG_PARTS],
+  imports: [FormsModule, TranslocoDirective, QuantityPipe, LocalizedPipe, MoneyPipe, IconComponent, ButtonDirective, InputText, ...SELECT, CheckboxComponent, ...DIALOG_PARTS],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -56,10 +57,10 @@ const valid = (value: string): boolean => /^\d+([.,]\d{1,3})?$/.test(value);
               <tr>
                 @if (data.mode === 'collect') { <th>{{ t('pickups.loaded') }}</th> }
                 <th>{{ t('lots.number') }}</th><th>{{ t('fields.wasteType') }}</th>
-                <th class="dw-num">{{ t(data.mode === 'collect' ? 'pickups.declared' : data.mode === 'receive' ? 'pickups.departure' : 'pickups.received') }}</th>
+                <th class="dw-num">{{ t('pickups.quantity.' + (data.mode === 'collect' ? 'declared' : data.mode === 'receive' ? 'departure' : 'received')) }}</th>
                 @switch (data.mode) {
-                  @case ('collect') { <th>{{ t('pickups.departure') }} (kg)</th> }
-                  @case ('receive') { <th>{{ t('pickups.received') }} (kg)</th> }
+                  @case ('collect') { <th>{{ t('pickups.quantity.departure') }}</th> }
+                  @case ('receive') { <th>{{ t('pickups.quantity.received') }}</th> }
                   @case ('treat') { <th>{{ t('pickups.channel') }}</th> }
                   @case ('price') { <th>{{ t('pickups.direction.label') }}</th><th>{{ t('pickups.pricingMode.label') }}</th><th>{{ t('pickups.unitPrice') }}</th><th class="dw-num">{{ t('pickups.amount') }}</th> }
                 }
@@ -73,13 +74,13 @@ const valid = (value: string): boolean => /^\d+([.,]\d{1,3})?$/.test(value);
                   }
                   <td class="dw-mono">{{ row.line.lot_number_snapshot }} @if (row.line.is_hazardous) { <dw-icon class="hazard" [title]="t('common.hazardous')">warning</dw-icon> }</td>
                   <td>{{ row.line.waste_type_label_snapshot }}</td>
-                  <td class="dw-num">{{ reference(row.line) | dwKg }}</td>
+                  <td class="dw-num">{{ reference(row.line).value | dwQty: reference(row.line).unit }}</td>
                   @switch (data.mode) {
                     @case ('collect') {
-                      <td><input pInputText class="cell" inputmode="decimal" [disabled]="!row.checked" [ngModel]="row.weight" (ngModelChange)="patch(index, { weight: $event })" [attr.aria-label]="t('pickups.departure')" /></td>
+                      <td><span class="measure"><input pInputText class="cell" inputmode="decimal" [disabled]="!row.checked" [ngModel]="row.weight" (ngModelChange)="patch(index, { weight: $event })" [attr.aria-label]="t('pickups.departure')" /><span class="unit">{{ t('units.' + unit(row.line), { count: 2 }) }}</span></span></td>
                     }
                     @case ('receive') {
-                      <td><input pInputText class="cell" inputmode="decimal" [ngModel]="row.weight" (ngModelChange)="patch(index, { weight: $event })" [attr.aria-label]="t('pickups.received')" /></td>
+                      <td><span class="measure"><input pInputText class="cell" inputmode="decimal" [ngModel]="row.weight" (ngModelChange)="patch(index, { weight: $event })" [attr.aria-label]="t('pickups.received')" /><span class="unit">{{ t('units.' + unit(row.line), { count: 2 }) }}</span></span></td>
                     }
                     @case ('treat') {
                       <td>
@@ -122,6 +123,7 @@ const valid = (value: string): boolean => /^\d+([.,]\d{1,3})?$/.test(value);
     .scroll { overflow-x: auto; margin-inline: -20px; }
     td { padding-block: 4px; } tr.off td { color: var(--dw-ink-3); }
     th:first-child, td:first-child { padding-inline-start: 20px; } th:last-child, td:last-child { padding-inline-end: 20px; }
+    .measure { display: inline-flex; align-items: center; gap: 6px; } .unit { color: var(--dw-ink-2); font-size: 13px; min-width: 44px; }
     .cell { width: 124px; } input.cell { text-align: end; font-variant-numeric: tabular-nums; } .cell.wide { width: 240px; }
     .hazard { font-size: 15px; width: 15px; height: 15px; color: var(--dw-warning); vertical-align: -2px; }
     .neg { color: var(--dw-danger); } .total { text-align: end; margin-block-start: var(--dw-3); }
@@ -140,8 +142,9 @@ export class PickupLinesDialog {
       .filter((line) => this.concerns(line))
       .map((line) => ({
         line, checked: true,
-        weight: Number(this.data.mode === 'collect' ? line.declared_weight_kg : (line.departure_weight_kg ?? line.declared_weight_kg)).toString(),
-        channel: line.treatment_channel ?? '', direction: Number(line.net_amount ?? 0) < 0 ? 'cost' : 'sale', mode: line.pricing_mode ?? 'per_kg', price: line.unit_price ? Number(line.unit_price).toString() : '',
+        // What is typed is the measure of the waste: a weight for weighed waste, a count for waste counted in pieces or litres.
+        weight: this.initial(line),
+        channel: line.treatment_channel ?? '', direction: Number(line.net_amount ?? 0) < 0 ? 'cost' : 'sale', mode: line.pricing_mode ?? (counted(line) ? 'flat' : 'per_kg'), price: line.unit_price ? Number(line.unit_price).toString() : '',
       })),
   );
 
@@ -164,8 +167,20 @@ export class PickupLinesDialog {
     this.rows.update((rows) => rows.map((row, position) => (position === index ? { ...row, ...change } : row)));
   }
 
-  protected reference(line: PickupLine): string | null {
-    return this.data.mode === 'collect' ? line.declared_weight_kg : this.data.mode === 'receive' ? line.departure_weight_kg : (line.received_weight_kg ?? line.departure_weight_kg);
+  protected reference(line: PickupLine): { value: string | null; unit: string } {
+    const stage = this.data.mode === 'collect' ? 'declared' : this.data.mode === 'receive' || measure(line, 'received').value === null ? 'departure' : 'received';
+
+    return measure(line, stage);
+  }
+
+  protected unit(line: PickupLine): string {
+    return measure(line, 'declared').unit;
+  }
+
+  private initial(line: PickupLine): string {
+    const value = this.data.mode === 'collect' ? measure(line, 'declared').value : (measure(line, 'departure').value ?? measure(line, 'declared').value);
+
+    return value === null ? '' : Number(value).toString();
   }
 
   /** Same rule as the API: priced on the received weight when known, signed negative for a cost. */
@@ -182,8 +197,8 @@ export class PickupLinesDialog {
     const number = (row: Row): string => row.line.lot_number_snapshot;
     const base = `pickups/${this.data.pickup.ulid}`;
     const request = {
-      collect: () => this.api.post<Pickup>(`${base}/collect`, { lots: rows.filter((row) => row.checked).map((row) => ({ lot: row.line.lot, departure_weight_kg: decimal(row.weight) })) }),
-      receive: () => this.api.post<Pickup>(`${base}/receive`, { lots: rows.map((row) => ({ lot_number: number(row), received_weight_kg: decimal(row.weight) })) }),
+      collect: () => this.api.post<Pickup>(`${base}/collect`, { lots: rows.filter((row) => row.checked).map((row) => ({ lot: row.line.lot, [counted(row.line) ? 'departure_quantity' : 'departure_weight_kg']: decimal(row.weight) })) }),
+      receive: () => this.api.post<Pickup>(`${base}/receive`, { lots: rows.map((row) => ({ lot_number: number(row), [counted(row.line) ? 'received_quantity' : 'received_weight_kg']: decimal(row.weight) })) }),
       treat: () => this.api.post<Pickup>(`${base}/treat`, { lots: rows.filter((row) => row.channel).map((row) => ({ lot_number: number(row), channel: row.channel })) }),
       price: () => this.api.put<Pickup>(`${base}/pricing`, { lots: rows.filter((row) => valid(row.price)).map((row) => ({ lot_number: number(row), direction: row.direction, pricing_mode: row.mode, unit_price: decimal(row.price) })) }),
     }[this.data.mode];

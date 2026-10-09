@@ -38,6 +38,51 @@ export class KgPipe implements PipeTransform {
   }
 }
 
+/**
+ * A quantity in the unit it was counted in: `108 | dwQty: 'piece'` → "108 pièces", `12.5 | dwQty: 'l'` → "12,5 l".
+ * `signed` puts a + before a positive gap.
+ */
+@Pipe({ name: 'dwQty', pure: false })
+export class QuantityPipe implements PipeTransform {
+  private readonly locale = inject(Locale);
+  private readonly transloco = inject(TranslocoService);
+
+  transform(value: Numeric, unit: string | null | undefined, signed = false): string {
+    const parsed = toNumber(value);
+    if (parsed === null) {
+      return EMPTY;
+    }
+    const formatted = new Intl.NumberFormat(this.locale.intl, { maximumFractionDigits: 3, signDisplay: signed ? 'exceptZero' : 'auto' }).format(parsed);
+
+    // French counts 0 and 1 in the singular; the other units are symbols and do not change.
+    const word = unit === 'piece' && Math.abs(parsed) < 2 ? 'piece_one' : (unit ?? 'kg');
+
+    return `${formatted}${NBSP}${this.transloco.translate('units.' + word)}`;
+  }
+}
+
+/**
+ * How much a waste lot holds, in the unit it was declared in: "118 kg" for weighed waste, "240 pièces" for waste
+ * counted in pieces or litres — with its weight beside it only when one is known (a computed weight is marked ≈).
+ */
+@Pipe({ name: 'dwLotMeasure', pure: false })
+export class LotMeasurePipe implements PipeTransform {
+  private readonly quantity = new QuantityPipe();
+  private readonly kg = new KgPipe();
+
+  transform(lot: { net_weight_kg: Numeric; weight_basis?: string | null; quantity?: Numeric; unit?: string | null } | null | undefined): string {
+    if (!lot) {
+      return EMPTY;
+    }
+    if (toNumber(lot.quantity) === null || !['piece', 'l', 'm3'].includes(lot.unit ?? '')) {
+      return this.kg.transform(lot.net_weight_kg);
+    }
+    const counted = this.quantity.transform(lot.quantity, lot.unit);
+
+    return lot.weight_basis === 'unknown' || toNumber(lot.net_weight_kg) === 0 ? counted : `${counted} · ${lot.weight_basis === 'computed' ? '≈' + NBSP : ''}${this.kg.transform(lot.net_weight_kg)}`;
+  }
+}
+
 @Pipe({ name: 'dwNumber' })
 export class NumberPipe implements PipeTransform {
   private readonly locale = inject(Locale);
