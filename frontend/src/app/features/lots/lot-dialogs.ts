@@ -121,7 +121,8 @@ export class CreateLotDialog {
     zone: ['', Validators.required],
     waste_type: ['', Validators.required],
     net_weight_kg: ['', WEIGHT],
-    production_order: [null as string | null],
+    // Opened from the page of an OF: that OF is proposed.
+    production_order: [(dialogData<{ production_order?: string } | undefined>()?.production_order ?? null) as string | null],
     raw_material: [null as string | null],
     packaging_type: [null as string | null],
     color_family: [null as string | null],

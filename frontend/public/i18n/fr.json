@@ -169,7 +169,9 @@
     "productionCatalog": "Matières et articles",
     "productionPartners": "Clients et fournisseurs",
     "productionImport": "Import",
-    "productionStats": "Statistiques"
+    "productionStats": "Statistiques",
+    "productionFinance": "Coûts et gains",
+    "productionLots": "Lots reçus et fabriqués"
   },
   "auth": {
     "pitch": "Tracer, valoriser et déclarer vos déchets textiles.",
@@ -443,7 +445,8 @@
     "INVALID_COMPANY_TRANSITION": "Cette société a déjà fait l'objet d'une décision.",
     "ACCREDITATION_ALREADY_REVIEWED": "Cet agrément a déjà ce statut.",
     "DEVICE_REVOKED": "Cet appareil a été révoqué par un administrateur.",
-    "COLOR_IN_USE": "Cette couleur est utilisée par des lots, des types de déchets, des matières ou des zones. Retirez-la de la liste à la place."
+    "COLOR_IN_USE": "Cette couleur est utilisée par des lots, des types de déchets, des matières ou des zones. Retirez-la de la liste à la place.",
+    "RECEIVED_LOT_IN_USE": "Le numéro d'un lot reçu ne peut plus changer une fois qu'un OF ou un lot de déchets le désigne."
   },
   "notifications": {
     "title": "Notifications",
@@ -1857,7 +1860,8 @@
     "platform.support.view": "Consulter l'activité de la plateforme",
     "production.view": "Voir les données de production",
     "production.manage": "Gérer et importer les données de production",
-    "production.stats.view": "Voir les statistiques de production"
+    "production.stats.view": "Voir les statistiques de production",
+    "production.finance.view": "Voir les prix, les coûts et les gains de production"
   },
   "colors": {
     "title": "Couleurs",
@@ -1961,7 +1965,12 @@
     "Commandes": "Commandes",
     "Ordres de fabrication": "Ordres de fabrication",
     "Import": "Import",
-    "Statistiques de production": "Statistiques de production"
+    "Statistiques de production": "Statistiques de production",
+    "Matière première": "Matière première",
+    "Lots reçus et fabriqués": "Lots reçus et fabriqués",
+    "Coûts et gains": "Coûts et gains",
+    "Commande": "Commande",
+    "Ordre de fabrication": "Ordre de fabrication"
   },
   "partners": {
     "title": "Partenaires sans compte",
@@ -2089,7 +2098,16 @@
       "orderedOn": "Date de commande",
       "dueOn": "Livraison",
       "lines": "Articles commandés",
-      "addLine": "Ajouter un article"
+      "addLine": "Ajouter un article",
+      "detail": "Commande {{number}}",
+      "quantity": "Pièces commandées",
+      "unitPrice": "Prix unitaire HT",
+      "priceHint": "Le prix de vente convenu pour une pièce, hors taxes.",
+      "discount": "Remise",
+      "discountHint": "Montant déduit de toute la commande.",
+      "discounted": "remise de {{amount}} déduite",
+      "priceMissing": "un prix de vente manque",
+      "noOf": "Aucun OF pour cette commande."
     },
     "orderStatus": {
       "open": "Ouverte",
@@ -2120,7 +2138,16 @@
       "expected": "prévu",
       "consumed": "consommé",
       "anyBatch": "Lot non précisé",
-      "addConsumption": "Ajouter une consommation"
+      "addConsumption": "Ajouter une consommation",
+      "one": "OF",
+      "detail": "Ordre de fabrication {{number}}",
+      "chain": "Client, commande, OF, article",
+      "fromLots": "somme de {{count}} lot(s) fabriqué(s)",
+      "typed": "saisi sur l’OF",
+      "wasteKpi": "Déchets",
+      "wasteRate": "{{pct}} % de la matière consommée",
+      "wasteLots": "{{count}} lot(s) de déchets",
+      "producedHint": "Dès que l’OF a des lots fabriqués, cette quantité est leur somme."
     },
     "ofStatus": {
       "planned": "Prévu",
@@ -2155,16 +2182,27 @@
         "articles": "Articles",
         "materials": "Matières premières",
         "clients": "Clients",
-        "suppliers": "Fournisseurs"
+        "suppliers": "Fournisseurs",
+        "received_lots": "Lots reçus",
+        "consumptions": "Matières consommées",
+        "produced_lots": "Lots fabriqués",
+        "expenses": "Dépenses de production",
+        "invoices": "Factures clients"
       },
       "hints": {
         "manufacturing_orders": "OF, article, quantités, étapes par site, consommations. Crée au besoin le client, la commande et l'article.",
         "orders": "Une ligne par article commandé. Crée au besoin le client et l'article.",
         "articles": "Référence, client, et la consommation par pièce de chaque matière.",
-        "materials": "Référence, fournisseur, unité, et les lots reçus.",
+        "materials": "Référence, catégorie, fournisseur par défaut, unité.",
         "clients": "Nom, code, contact.",
-        "suppliers": "Nom, code, contact."
-      }
+        "suppliers": "Nom, code, contact.",
+        "received_lots": "Matière, n° de lot, fournisseur de la livraison, quantité, prix. La matière doit exister.",
+        "consumptions": "OF, matière, quantité et lot reçu (ou vide = lot non précisé). L’OF, la matière et le lot doivent exister.",
+        "produced_lots": "N° de lot, OF, quantité, date, statut. L’OF doit exister.",
+        "expenses": "OF, pièce justificative, libellé, montant, catégorie.",
+        "invoices": "N° de facture, commande, montant, facture ou avoir."
+      },
+      "expected": "attendu : {{example}}"
     },
     "stats": {
       "title": "Statistiques de production",
@@ -2196,6 +2234,249 @@
         "by_supplier": "Fournisseurs"
       },
       "monthly": "Évolution mensuelle"
+    },
+    "currency": "Devise",
+    "unknown": "Inconnu",
+    "estimated": "estimé",
+    "cost": "Coût",
+    "pieces": "pièces",
+    "missing": {
+      "no_order": "l'OF n'est rattaché à aucune commande",
+      "no_price": "prix de vente manquant sur la commande",
+      "no_production": "quantité fabriquée non saisie",
+      "unknown_material_cost": "coût de certaines matières inconnu",
+      "no_consumption": "consommation de matière non saisie",
+      "expense_currency": "une dépense est dans une autre devise",
+      "order_currency": "la commande est dans une autre devise"
+    },
+    "costReason": {
+      "no_price": "Ni ce lot ni aucun autre lot de cette matière n'a de prix.",
+      "currency": "Le prix de ce lot est dans une autre devise que celle de la société."
+    },
+    "producedStatus": {
+      "produced": "Fabriqué",
+      "delivered": "Livré",
+      "cancelled": "Annulé"
+    },
+    "expenseCategory": {
+      "subcontracting": "Sous-traitance",
+      "external_service": "Prestation externe",
+      "purchase": "Achat",
+      "transport": "Transport",
+      "labour": "Main-d'œuvre",
+      "other": "Autre"
+    },
+    "invoiceKind": {
+      "invoice": "Facture",
+      "credit_note": "Avoir"
+    },
+    "lots": {
+      "title": "Lots reçus et lots fabriqués",
+      "subtitle": "Les matières reçues de vos fournisseurs, et les pièces fabriquées pour vos clients. Les lots de déchets sont dans Opérations."
+    },
+    "material": {
+      "overview": "Aperçu",
+      "history": "Consommations",
+      "prices": "Prix d'achat",
+      "category": "Catégorie",
+      "defaultSupplier": "Fournisseur par défaut",
+      "defaultSupplierHint": "Proposé pour un nouveau lot reçu. Chaque lot garde son propre fournisseur.",
+      "consumed": "Consommé",
+      "inOrders": "dans {{count}} OF",
+      "unallocated": "Sans lot précisé",
+      "unallocatedHint": "Consommé sans savoir de quel lot reçu",
+      "receivedHint": "{{quantity}} {{unit}} reçus",
+      "noQuantity": "Quantités non saisies",
+      "averagePrice": "Prix moyen par {{unit}}",
+      "unpriced": "{{count}} lot(s) sans prix",
+      "purchased": "{{amount}} achetés",
+      "waste": "Déchets issus de cette matière",
+      "wasteLots": "{{count}} lot(s) de déchets",
+      "historyIntro": "Où cette matière a été consommée : les 200 dernières consommations, avec l’OF et le lot reçu dont elles viennent.",
+      "historyEmpty": "Aucun OF n’a encore consommé cette matière.",
+      "pricesIntro": "Le coût de chaque livraison, livraison comprise. Une même matière peut avoir un prix différent selon le fournisseur et la date.",
+      "pricesEmpty": "Aucun lot reçu n’a de prix.",
+      "versusAverage": "Écart au prix moyen",
+      "weightedAverage": "Prix moyen pondéré par les quantités"
+    },
+    "received": {
+      "title": "Lots reçus",
+      "one": "Lot reçu",
+      "new": "Nouveau lot reçu",
+      "edit": "Modifier le lot reçu",
+      "number": "N° de lot reçu",
+      "receivedOn": "Reçu le",
+      "supplier": "Fournisseur",
+      "supplierHint": "Celui de cette livraison. Il peut être différent du fournisseur par défaut de la matière.",
+      "supplierReference": "N° de lot du fournisseur",
+      "quantity": "Quantité reçue ({{unit}})",
+      "deliveryNote": "Bon de livraison",
+      "purchase": "Achat (hors taxes)",
+      "unitPrice": "Prix unitaire par {{unit}}",
+      "totalAmount": "Montant total",
+      "amountHint": "Saisissez le prix unitaire ou le montant : l’autre est calculé avec la quantité.",
+      "deliveryCost": "Frais de livraison",
+      "deliveryCostHint": "Transport, douane… répartis sur la quantité du lot.",
+      "taxRate": "TVA (%)",
+      "invoice": "Facture fournisseur",
+      "intro": "Chaque livraison de la matière, avec son fournisseur et son prix. Ce n’est pas un stock : « consommé » est ce que les OF ont déclaré prendre dans le lot.",
+      "empty": "Aucun lot reçu",
+      "emptyHint": "Ajoutez un lot reçu depuis la fiche d’une matière, ou importez-les.",
+      "received": "Reçu",
+      "consumed": "Consommé par les OF",
+      "unitCost": "Coût unitaire",
+      "purchaseValue": "Valeur achetée",
+      "consumedValue": "Valeur consommée",
+      "documents": "BL / facture",
+      "overConsumed": "Les OF déclarent avoir consommé plus que ce que le lot contenait : vérifiez les quantités.",
+      "search": "N° de lot, référence ou matière",
+      "price": "Prix",
+      "withPrice": "Avec prix",
+      "withoutPrice": "Sans prix"
+    },
+    "consumed": {
+      "title": "Matières consommées",
+      "edit": "Modifier les consommations",
+      "editHint": "Une ligne par matière et par lot reçu : 12 kg du lot A et 8 kg du lot B font deux lignes. Si vous ne savez pas de quel lot vient la matière, laissez « Lot non précisé ».",
+      "none": "Aucune consommation saisie.",
+      "intro": "OF → matière consommée → lot reçu → fournisseur. Le prévu vient de la consommation par pièce de l’article.",
+      "empty": "Aucune matière prévue ni consommée pour cet OF.",
+      "planned": "Prévu",
+      "actual": "Consommé",
+      "variance": "Écart",
+      "where": "Étape · site",
+      "notYet": "Rien de consommé pour l’instant.",
+      "materialsHint": "matière(s) prévue(s) ou consommée(s)",
+      "averageHint": "Lot non précisé : valorisé au prix moyen des lots de cette matière.",
+      "unallocated": "{{quantity}} {{unit}} sans lot précisé ; l’origine de {{known}} {{unit}} est connue."
+    },
+    "produced": {
+      "title": "Lots fabriqués",
+      "new": "Nouveau lot fabriqué",
+      "edit": "Modifier le lot fabriqué",
+      "number": "N° de lot fabriqué",
+      "quantity": "Quantité fabriquée (pièces)",
+      "producedOn": "Fabriqué le",
+      "producedUntil": "Jusqu’au",
+      "untilHint": "Si le lot a été fabriqué sur plusieurs jours.",
+      "deliveredOn": "Livré le",
+      "for": "Article {{article}} — client {{client}} — commande {{order}}",
+      "intro": "Les pièces finies fabriquées par cet OF pour {{client}}, lot par lot. Un lot fabriqué n’a pas de fournisseur : les fournisseurs sont ceux des lots reçus consommés.",
+      "empty": "Aucun lot fabriqué pour cet OF.",
+      "emptyList": "Aucun lot fabriqué",
+      "emptyHint": "Les lots fabriqués se créent depuis la fiche d’un OF.",
+      "total": "Total fabriqué",
+      "deliveredHint": "{{count}} pièce(s) livrée(s)",
+      "search": "N° de lot, OF, article ou commande"
+    },
+    "waste": {
+      "title": "Lots de déchets",
+      "new": "Enregistrer un déchet",
+      "intro": "Les déchets rattachés à cet OF. Ce sont les lots de déchets habituels : registre, enlèvements et bordereaux s’appliquent comme toujours.",
+      "empty": "Aucun lot de déchets ne désigne cet OF.",
+      "hidden": "{{count}} lot(s), {{kg}} : vous n’avez pas le droit de consulter les lots de déchets.",
+      "source": "Matière · lot reçu",
+      "ofOnly": "OF seulement",
+      "total": "{{count}} lot(s) généré(s)",
+      "noRate": "Taux de chute non calculable"
+    },
+    "expenses": {
+      "title": "Autres dépenses",
+      "new": "Nouvelle dépense",
+      "edit": "Modifier la dépense",
+      "category": "Catégorie",
+      "amount": "Montant HT",
+      "description": "Libellé",
+      "payee": "Fournisseur / bénéficiaire",
+      "reference": "Pièce justificative",
+      "referenceHint": "N° de facture, de devis ou de reçu.",
+      "deleteTitle": "Supprimer la dépense « {{description}} » ?"
+    },
+    "invoices": {
+      "title": "Factures et avoirs",
+      "new": "Enregistrer une facture",
+      "edit": "Modifier la facture",
+      "kind": "Type",
+      "number": "N° de facture",
+      "amount": "Montant HT",
+      "amountHint": "Toujours positif : un avoir est déduit.",
+      "of": "OF concerné",
+      "wholeOrder": "Toute la commande",
+      "ofHint": "Si la facture ne porte que sur un OF de la commande.",
+      "count": "{{count}} facture(s) ou avoir(s)",
+      "intro": "Les factures émises pour cette commande. Elles sont émises ailleurs (comptabilité) : on note ici leur numéro, leur date et leur montant pour distinguer « commandé » et « réellement facturé ».",
+      "empty": "Aucune facture enregistrée.",
+      "deleteTitle": "Supprimer la facture {{number}} ?"
+    },
+    "finance": {
+      "title": "Coûts, chiffre d’affaires et gain",
+      "exclTax": "Montants hors taxes, en {{currency}}",
+      "costs": "Coûts de production",
+      "revenue": "Chiffre d’affaires",
+      "amount": "Montant",
+      "value": "Valeur",
+      "plannedMaterial": "Coût matière prévu",
+      "plannedMaterialHint": "Consommation prévue × prix moyen de chaque matière",
+      "materialKnown": "Coût matière réel",
+      "materialKnownHint": "Quantité consommée × coût du lot reçu",
+      "materialEstimated": "Coût matière estimé",
+      "materialEstimatedHint": "Lots non précisés, au prix moyen de la matière",
+      "materialUnknown": "{{count}} consommation(s) sans prix",
+      "materialUnknownHint": "Aucun lot de la matière n’a de prix : coût inconnu, pas zéro",
+      "totalCost": "Coût de production enregistré",
+      "unitCost": "Coût par pièce",
+      "perPiece": "{{amount}} par pièce",
+      "incomplete": "incomplet : des coûts sont inconnus",
+      "notCalculable": "Non calculable",
+      "unitPrice": "Prix de vente unitaire",
+      "fromOrder": "commande",
+      "afterDiscount": "{{amount}} après remise",
+      "plannedValue": "Valeur prévue",
+      "plannedValueHint": "Quantité prévue × prix",
+      "producedValue": "Valeur de la production",
+      "producedValueHint": "Quantité fabriquée × prix convenu",
+      "deliveredValue": "Valeur livrée",
+      "orderValue": "Valeur de la commande",
+      "orderValueHint": "Ce que le client a commandé",
+      "invoiced": "Facturé",
+      "invoicedOfHint": "Factures de cet OF, avoirs déduits",
+      "invoicedOrderHint": "Factures de la commande entière : elle a plusieurs OF, rien n’est réparti",
+      "invoicedNoneHint": "Aucune facture enregistrée",
+      "uninvoiced": "Reste à facturer",
+      "uninvoicedHint": "Valeur de la commande − facturé",
+      "gain": "Gain enregistré",
+      "margin": "marge {{pct}} %",
+      "gainFormula": "Valeur de la production − coûts de production enregistrés (matières + autres dépenses). Marge brute sur les coûts saisis : ce n’est pas un résultat comptable.",
+      "gainMissing": "Il manque :",
+      "gainEstimated": "Une partie du coût matière est estimée au prix moyen (lots non précisés)."
+    },
+    "report": {
+      "title": "Coûts et gains",
+      "subtitle": "Ce que les OF de la période ont coûté et ce qu’ils valent, avec ce qui manque pour s’y fier.",
+      "export": "Exporter (Excel)",
+      "byOrder": "Par OF",
+      "byClient": "Par client",
+      "byMaterial": "Par matière",
+      "bySupplier": "Par fournisseur",
+      "material": "Matières",
+      "produced": "Pièces fabriquées",
+      "empty": "Aucun OF sur cette période.",
+      "noClient": "Sans client",
+      "noLot": "Lot non précisé",
+      "costSplit": "matières {{material}} · dépenses {{expenses}}",
+      "invoicedHint": "Factures enregistrées, avoirs déduits",
+      "gainHint": "calculé pour {{counted}} OF sur {{total}}",
+      "missingTitle": "Des gains ne sont pas calculables",
+      "missingLine": "{{count}} OF : {{reason}}",
+      "ofWhichEstimated": "dont {{amount}} estimés",
+      "unallocated": "Sans lot précisé",
+      "unknownQuantity": "{{quantity}} {{unit}} sans prix",
+      "lines": "Consommations",
+      "consumedValue": "Valeur consommée",
+      "unpricedLines": "{{count}} sans prix",
+      "materialIntro": "Prévu contre consommé, pour les OF de la période qui ont déclaré une consommation.",
+      "supplierIntro": "Une consommation est attribuée au fournisseur du lot reçu dont elle vient. Sans lot précisé, le fournisseur est inconnu.",
+      "method": "Méthode : coût matière réel = quantité consommée × coût du lot reçu (prix payé, frais de livraison répartis). Lot non précisé = prix moyen pondéré de la matière, compté comme « estimé ». Le gain n’est additionné que pour les OF où il est calculable. Un OF appartient à la période par sa date de fin, à défaut de début, à défaut de création. Montants hors taxes."
     }
   },
   "help": {
@@ -2268,6 +2549,14 @@
     "reports": {
       "title": "Rapports et exports",
       "text": "Choisissez un rapport, une période et un format : il est préparé en arrière-plan et apparaît dans la liste quand il est prêt.\nUn rapport n'est visible que par la personne qui l'a demandé et reste disponible 30 jours."
+    },
+    "productionLots": {
+      "title": "Trois sortes de lots, à ne pas confondre",
+      "text": "Lot reçu : une livraison de matière première par un fournisseur. Il sert à savoir d'où vient la matière et ce qu'elle a coûté.\nLot fabriqué : des pièces finies fabriquées par un OF pour son client. Il n'a pas de fournisseur.\nLot de déchets : un déchet issu de la production, géré dans Opérations → Lots de déchets.\nCe ne sont pas des stocks : aucun solde, aucun emplacement, aucun mouvement n'est tenu ici."
+    },
+    "productionFinance": {
+      "title": "Comment lire les coûts et les gains",
+      "text": "Coût matière réel : quantité consommée × coût du lot reçu dont elle vient. Un lot utilisé par plusieurs OF est réparti selon ce que chacun a consommé.\nCoût matière estimé : quand le lot n'est pas précisé, la quantité est valorisée au prix moyen de la matière — et comptée à part.\nValeur de la production : pièces fabriquées × prix convenu sur la commande. Ce n'est pas ce qui a été facturé.\nGain enregistré : valeur de la production − coûts enregistrés (matières + autres dépenses). Il n'est calculé que si tout est connu ; sinon ce qui manque est indiqué.\nCe n'est pas un résultat comptable : ni frais généraux, ni main-d'œuvre sauf si elle est saisie en dépense. Montants hors taxes."
     }
   }
 }
