@@ -19,6 +19,7 @@ import { DateComponent } from '../../ui/date';
 import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
 import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
+import { LimitsComponent } from '../../ui/limits';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { SELECT } from '../../ui/select';
 import { StateComponent } from '../../ui/state';
@@ -196,7 +197,7 @@ export class AuthorizationDialog {
  * pickups have used and what is left; a pickup of a waste type that needs one is refused when nothing covers it.
  */
 @Component({
-  imports: [HelpComponent, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, ButtonDirective, IconComponent, DatePipe, KgPipe, CodePipe],
+  imports: [HelpComponent, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, ButtonDirective, IconComponent, DatePipe, KgPipe, CodePipe, LimitsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -221,11 +222,8 @@ export class AuthorizationDialog {
                     @for (line of row.limits; track line.packaging_type) { <div>{{ line.max_count }} × {{ line.packaging_type | dwCode: 'packaging' }}</div> }
                   </td>
                   <td>
-                    <div class="use">
-                      <span class="meter" role="meter" [attr.aria-label]="t('authorizations.used')" [attr.aria-valuenow]="pct(row)" aria-valuemin="0" aria-valuemax="100"><span class="bar" [class]="row.usage.level ?? 'ok'" [style.inline-size.%]="pct(row)"></span></span>
-                      <strong>{{ pct(row) }} %</strong>
-                    </div>
-                    <div class="dw-faint">{{ t('stock.remaining') }} {{ remaining(row, t) }}</div>
+                    <dw-limits [limits]="row.usage.constraints" />
+                    @if (row.usage.blocked && row.state === 'valid') { <div class="blocked">{{ t('authorizations.blocked') }}</div> }
                   </td>
                   <td><dw-status kind="accreditation" [value]="tone(row)" [label]="t('authorizations.states.' + row.state)" /></td>
                   <td class="dw-num">
@@ -243,7 +241,7 @@ export class AuthorizationDialog {
   styles: `
     tr.off td { color: var(--dw-ink-3); }
     .notes { max-inline-size: 260px; white-space: normal; }
-    .use { display: flex; align-items: center; gap: var(--dw-2); }
+    .blocked { color: var(--dw-danger); font-weight: 600; font-size: 12.5px; margin-block-start: var(--dw-1); }
     .meter { flex: 0 0 120px; height: 8px; border-radius: 4px; background: var(--dw-line-soft); overflow: hidden; }
     .bar { display: block; height: 100%; max-inline-size: 100%; background: var(--dw-success); }
     .bar.warning { background: #d68a00; } .bar.exceeded { background: var(--dw-danger); }
@@ -258,27 +256,13 @@ export class AuthorizationsPage {
   protected readonly rows = signal<WasteAuthorization[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal<unknown>(null);
-  private readonly packaging = new CodePipe();
-  private readonly kg = new KgPipe();
 
   constructor() {
     this.load();
   }
 
-  protected pct(row: WasteAuthorization): number {
-    return Math.round(row.usage.pct);
-  }
-
   protected tone(row: WasteAuthorization): string {
-    return row.state === 'valid' ? (row.usage.level === 'exceeded' ? 'expired' : row.usage.level === 'warning' ? 'expiring' : 'valid') : row.state === 'upcoming' ? 'pending' : 'expired';
-  }
-
-  /** What is left, in the terms of the document: "12 × Balle ou 30 × Sac · 1,4 t · 8 lot(s)". */
-  protected remaining(row: WasteAuthorization, t: (key: string, params?: Record<string, unknown>) => string): string {
-    const counts = Object.entries(row.usage.remaining.counts).map(([kind, count]) => `${count} × ${this.packaging.transform(kind, 'packaging')}`).join(` ${t('common.or')} `);
-    const parts = [counts, row.usage.remaining.kg === null ? '' : this.kg.transform(row.usage.remaining.kg, 'auto'), row.usage.remaining.lots === null ? '' : t('dashboard.lots', { count: row.usage.remaining.lots })];
-
-    return parts.filter(Boolean).join(' · ') || '—';
+    return row.state === 'valid' ? (row.usage.outcome === 'exceeded' ? 'expired' : row.usage.outcome === 'warning' || row.usage.outcome === 'unverifiable' ? 'expiring' : 'valid') : row.state === 'upcoming' ? 'pending' : 'expired';
   }
 
   protected edit(row: WasteAuthorization | null): void {

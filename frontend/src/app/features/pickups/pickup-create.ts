@@ -10,6 +10,7 @@ import { AuthorizationCheck, DirectoryProvider, ExternalPartner, Lot, Pickup } f
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
 import { DatePipe, KnownWeightPipe, LotMeasurePipe } from '../../core/format/pipes';
+import { LimitsComponent, failingLimits } from '../../ui/limits';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
 import { CheckboxComponent } from '../../ui/checkbox';
@@ -33,7 +34,7 @@ function today(): string {
  */
 @Component({
   imports: [
-    FormsModule, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KnownWeightPipe, LotMeasurePipe, IconComponent, ButtonDirective, ...FIELD, ...SELECT, CheckboxComponent, DateComponent,
+    FormsModule, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KnownWeightPipe, LotMeasurePipe, IconComponent, ButtonDirective, ...FIELD, ...SELECT, CheckboxComponent, DateComponent, LimitsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -83,9 +84,15 @@ function today(): string {
                   @else if (item.reason === 'packaging') { {{ t('pickups.create.authorization.packaging', { reference: item.reference, lots: (item.uncounted ?? []).join(', ') }) }} }
                   @else if (item.reason === 'unverifiable') { {{ t('pickups.create.authorization.unverifiable', { reference: item.reference, lots: (item.unweighed ?? []).join(', ') }) }} }
                   @else if (item.reason) { {{ t('pickups.create.authorization.' + item.reason, { reference: item.reference }) }} }
-                  @else { {{ t('pickups.create.authorization.covered', { reference: item.reference, after: round(item.after_pct), left: 100 - round(item.after_pct) }) }} }
+                  @else { {{ t('pickups.create.authorization.covered', { reference: item.reference }) }} }
                 </span>
               </p>
+              @if (item.constraints.length > 0) {
+                <div class="cover-limits" [class.bad]="item.reason">
+                  <dw-limits [limits]="item.constraints" />
+                  @if (item.reason) { <p class="result">{{ t('pickups.create.authorization.blocked', { limits: failing(item, t) }) }}</p> }
+                </div>
+              }
             }
 
             <div class="providers" role="radiogroup" [attr.aria-label]="t('pickups.provider')">
@@ -153,6 +160,8 @@ function today(): string {
     .warn dw-icon { flex: none; font-size: 18px; }
     .cover { display: flex; gap: 8px; padding: 8px 10px; border-radius: var(--dw-radius); background: var(--dw-success-soft); color: var(--dw-success); font-size: 13px; }
     .cover.bad { background: var(--dw-danger-soft); color: var(--dw-danger); } .cover dw-icon { flex: none; font-size: 18px; }
+    .cover-limits { margin: calc(var(--dw-2) * -1) 0 0; padding: 8px 10px 8px 36px; border-inline-start: 3px solid var(--dw-success); font-size: 13px; }
+    .cover-limits.bad { border-color: var(--dw-danger); } .result { margin: var(--dw-2) 0 0; font-weight: 600; color: var(--dw-danger); }
     .providers { display: grid; gap: 8px; margin-block: var(--dw-2); }
     .provider { all: unset; cursor: pointer; display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--dw-line); border-radius: var(--dw-radius); }
     .provider .name { font-weight: 600; } .provider.on { border-color: var(--dw-primary); background: var(--dw-primary-soft); }
@@ -236,8 +245,9 @@ export class PickupCreatePage {
     });
   }
 
-  protected round(value: number | null): number {
-    return Math.round(value ?? 0);
+  /** The limits that refuse the request, by name: "Colis, Poids". */
+  protected failing(item: AuthorizationCheck, t: (key: string) => string): string {
+    return failingLimits(item.constraints).map((limit) => t('limits.name.' + limit.key)).join(', ');
   }
 
   protected choose(key: string): void {

@@ -322,7 +322,8 @@
     "alert": {
       "warning": "Limite bientôt atteinte",
       "exceeded": "Limite dépassée",
-      "ok": "Normal"
+      "ok": "Normal",
+      "unverifiable": "Non vérifiable"
     },
     "manifest": {
       "draft": "Brouillon",
@@ -390,6 +391,12 @@
       "blocking": "Accord requis",
       "no_reference": "Référence manquante",
       "not_measured": "Non mesuré"
+    },
+    "limit": {
+      "respected": "Respecté",
+      "warning": "Attention",
+      "exceeded": "Dépassé",
+      "unverifiable": "Non vérifiable"
     }
   },
   "channels": {
@@ -453,7 +460,11 @@
     "ACCREDITATION_ALREADY_REVIEWED": "Cet agrément a déjà ce statut.",
     "DEVICE_REVOKED": "Cet appareil a été révoqué par un administrateur.",
     "COLOR_IN_USE": "Cette couleur est utilisée par des lots, des types de déchets, des matières ou des zones. Retirez-la de la liste à la place.",
-    "RECEIVED_LOT_IN_USE": "Le numéro d'un lot reçu ne peut plus changer une fois qu'un OF ou un lot de déchets le désigne."
+    "RECEIVED_LOT_IN_USE": "Le numéro d'un lot reçu ne peut plus changer une fois qu'un OF ou un lot de déchets le désigne.",
+    "AUTHORIZATION_EXCEEDED": "L’autorisation ne couvre pas cet enlèvement : une de ses limites serait dépassée. Chaque limite est détaillée sur la page Autorisations.",
+    "AUTHORIZATION_UNVERIFIABLE": "L’autorisation ne peut pas être vérifiée : des lots n’ont pas de poids mesuré. Pesez-les, puis recommencez.",
+    "AUTHORIZATION_PACKAGING": "L’autorisation est exprimée en colis uniquement et des lots sont en vrac ou dans un conditionnement qu’elle ne nomme pas : elle ne peut pas être vérifiée pour eux.",
+    "AUTHORIZATION_MISSING": "Aucune autorisation ne couvre ce déchet à cette date. Saisissez-en une avant de demander l’enlèvement."
   },
   "notifications": {
     "title": "Notifications",
@@ -669,7 +680,8 @@
       "variance": "{{count}} enlèvement(s) avec écart de poids à examiner",
       "requested": "{{count}} demande(s) d'enlèvement en attente de réponse du prestataire",
       "accreditationExpired": "Agrément expiré : {{provider}} ne peut plus être choisi",
-      "accreditationExpiring": "Agrément de {{provider}} : expire dans {{days}} jour(s)"
+      "accreditationExpiring": "Agrément de {{provider}} : expire dans {{days}} jour(s)",
+      "unverifiable": "{{count}} limite(s) de stock non vérifiable(s) : des lots ne sont pas pesés"
     },
     "production": "Origine des déchets en production",
     "productionHint": "Les ordres de fabrication qui ont produit le plus de déchets sur la période.",
@@ -792,7 +804,6 @@
     "total": "Stock total",
     "awaiting": "dont en attente d'enlèvement",
     "oldest": "Lot le plus ancien",
-    "zoneFill": "Remplissage de la zone",
     "thresholds": "Limites de stock",
     "addThreshold": "Ajouter une limite",
     "editThreshold": "Modifier la limite",
@@ -808,8 +819,6 @@
     "thresholdSaved": "Limite enregistrée.",
     "thresholdDeleted": "Limite supprimée.",
     "remaining": "Reste :",
-    "uncounted": "{{count}} lot(s) non compté(s)",
-    "uncountedHint": "Ces lots sont en vrac, ou dans un conditionnement que la capacité de la zone ne prévoit pas. Ils ne sont pas dans le pourcentage.",
     "misplaced": "{{count}} lot(s) hors affectation",
     "misplacedHint": "Le type de déchet ou la couleur de ces lots n'est pas prévu dans cette zone.",
     "capacity": "Capacité",
@@ -832,10 +841,10 @@
       "siteType": "ce type sur tout le site",
       "site": "tout le site"
     },
-    "unverifiable": "Non vérifiable : des lots ne sont pas pesés",
     "holds": "Contient :",
     "unconfirmed": "{{count}} lot(s) au nombre de colis par défaut",
-    "unconfirmedHint": "Ces lots comptent pour un colis faute d’indication. Corrigez leur nombre de colis s’ils en contiennent plusieurs."
+    "unconfirmedHint": "Ces lots comptent pour un colis faute d’indication. Corrigez leur nombre de colis s’ils en contiennent plusieurs.",
+    "zoneFill": "Remplissage de la zone"
   },
   "sites": {
     "title": "Sites et zones",
@@ -960,8 +969,9 @@
         "missing": "aucune autorisation ne couvre ce déchet à cette date. Saisissez-en une avant de demander l'enlèvement.",
         "exceeded": "l'autorisation {{reference}} n'a plus assez de quantité disponible. Saisissez une nouvelle autorisation.",
         "packaging": "l’autorisation {{reference}} est exprimée en colis uniquement ; ces lots sont en vrac ou dans un conditionnement qu’elle ne nomme pas : {{lots}}. Elle ne peut pas être vérifiée pour eux.",
-        "covered": "autorisation {{reference}} : utilisée à {{after}} % après cet enlèvement, il restera {{left}} %.",
-        "unverifiable": "l’autorisation {{reference}} est limitée en poids et ces lots n’ont pas de poids mesuré : {{lots}}. Pesez-les avant de demander l’enlèvement."
+        "covered": "couvert par l’autorisation {{reference}}. Chaque limite après cet enlèvement :",
+        "unverifiable": "l’autorisation {{reference}} est limitée en poids et ces lots n’ont pas de poids mesuré : {{lots}}. Pesez-les avant de demander l’enlèvement.",
+        "blocked": "Demande bloquée — limite(s) en cause : {{limits}}."
       }
     },
     "actions": {
@@ -2104,7 +2114,8 @@
       "upcoming": "À venir",
       "ended": "Terminée",
       "withdrawn": "Retirée"
-    }
+    },
+    "blocked": "Plus aucun enlèvement possible sur cette autorisation tant qu’une limite est dépassée ou non vérifiable."
   },
   "production": {
     "reference": "Référence",
@@ -2560,7 +2571,7 @@
     "hide": "Masquer",
     "stock": {
       "title": "Comment lire le stock",
-      "text": "Le stock est calculé à chaque affichage à partir des lots présents sur site : rien n'est saisi ici.\nCapacité : la place disponible dans une zone, en nombre de colis par conditionnement (un lot peut contenir plusieurs colis) et/ou en poids. Elle se règle sur la page du site.\nLimite : un poids maximal que vous fixez pour un site, une zone ou un type de déchet. Vous êtes prévenu avant qu'elle soit atteinte, puis quand elle est dépassée.\n« Aucune limite » ou « Capacité non définie » signifie que rien ne surveille cette ligne : cliquez « Définir » pour en ajouter une."
+      "text": "Le stock est calculé à chaque affichage à partir des lots présents sur site : rien n'est saisi ici.\nCapacité : la place disponible dans une zone, en nombre de colis par conditionnement (un lot peut contenir plusieurs colis) et/ou en poids. La place (colis) et la charge (poids) sont deux limites distinctes : chacune a sa ligne, ses chiffres et son résultat, jamais un pourcentage commun. Elle se règle sur la page du site.\nLimite : un poids maximal que vous fixez pour un site, une zone ou un type de déchet. Vous êtes prévenu avant qu'elle soit atteinte, puis quand elle est dépassée.\n« Aucune limite » ou « Capacité non définie » signifie que rien ne surveille cette ligne : cliquez « Définir » pour en ajouter une."
     },
     "lots": {
       "title": "Les lots de déchets",
@@ -2741,5 +2752,23 @@
       "repeated": "Écarts répétés"
     },
     "indicative": "(indicatif)"
+  },
+  "limits": {
+    "name": {
+      "weight": "Poids",
+      "packages": "Colis",
+      "lots": "Lots",
+      "space": "Place",
+      "load": "Charge",
+      "stock": "Limite de stock"
+    },
+    "lotsOf": "{{used}} / {{max}} lot(s)",
+    "atLeast": "au moins {{pct}} %",
+    "over": "Dépassé de {{by}}",
+    "overShare": "Dépassé de {{pct}} % de la quantité prévue",
+    "onKnown": "(sur ce qui est connu)",
+    "missingWeight": "{{count}} lot(s) sans poids mesuré :",
+    "missingPackages": "{{count}} lot(s) en vrac ou dans un conditionnement non prévu :",
+    "outside": "{{count}} lot(s) hors des conditionnements cités, couvert(s) par une autre limite du document :"
   }
 }

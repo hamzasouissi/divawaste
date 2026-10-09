@@ -245,6 +245,11 @@ export class DashboardPage {
     if (warning > 0) {
       items.push({ icon: 'warning', tone: 'warning', text: t('dashboard.alerts.warning', { count: warning }), link: '/stock' });
     }
+    // Below the limit on what is known, with lots nobody weighed: not a limit anyone can call respected.
+    const unverifiable = this.stock()?.thresholds.filter((threshold) => threshold.constraint?.outcome === 'unverifiable').length ?? 0;
+    if (unverifiable > 0) {
+      items.push({ icon: 'help', tone: 'warning', text: t('dashboard.alerts.unverifiable', { count: unverifiable }), link: '/stock' });
+    }
     const flagged = this.pickups().filter((pickup) => pickup.variance_flagged && !pickup.variance_acknowledged).length;
     if (flagged > 0) {
       items.push({ icon: 'scale', tone: 'danger', text: t('dashboard.alerts.variance', { count: flagged }), link: '/pickups' });

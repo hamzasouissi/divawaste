@@ -67,15 +67,39 @@ export interface Access {
   sites: AccessSite[];
 }
 
+/**
+ * One limit answered on its own, in its own unit. Limits are never merged: the percentage of a weight says nothing
+ * about a number of packages.
+ * - 'respected' / 'warning' (alert percentage reached) / 'exceeded' on what is known;
+ * - 'unverifiable': what is known is below the limit but a quantity is missing (`missing_lots`). Never read as respected.
+ */
+export interface LimitResult {
+  /** weight, packages, lots (authorisation) · space, load (zone) · stock (stock limit). */
+  key: 'weight' | 'packages' | 'lots' | 'space' | 'load' | 'stock';
+  unit: 'kg' | 'package' | 'lot';
+  /** Within this one limit. For packages: the share of the room the packagings use together. */
+  pct: number | null;
+  outcome: 'respected' | 'warning' | 'exceeded' | 'unverifiable';
+  /** Whether a failed answer refuses the operation (authorisations) or only alerts (zones, stock limits). */
+  blocking: boolean;
+  missing_count: number;
+  missing_lots: string[];
+  used?: string | number;
+  max?: string | number;
+  remaining?: string | number;
+  excess?: string | number | null;
+  /** Packages, per packaging the limit names. */
+  lines?: { packaging_type: string; used: number; max: number; remaining: number; excess: number | null }[];
+  /** Lots a package limit does not concern because another limit of the same document covers them. */
+  outside_count?: number;
+  outside_lots?: string[];
+}
+
 /** How full a zone is: counted from the lots it holds, never stored. */
 export interface ZoneFill {
-  /** null when the zone has no limit at all. */
-  pct: number | null;
-  weight_pct: number | null;
-  count_pct: number | null;
-  /** Lots whose packaging the zone says nothing about (or that have none): they are not in the percentage. */
-  uncounted: number;
-  remaining: { kg: string | null; counts: Record<string, number> };
+  /** 'space' (packages against the room) and 'load' (kilograms), each when the zone states it. Empty = no limit at all. */
+  constraints: LimitResult[];
+  outcome: LimitResult['outcome'] | null;
   quantity_kg: string;
   lots: number;
   /** Lots of a waste type or colour the zone is not meant for. */
@@ -307,7 +331,7 @@ export interface StockRow {
 
 export interface StockResponse {
   data: StockRow[];
-  thresholds: { ulid: string; quantity_kg: string; unweighed_lots?: number; max_quantity_kg: string; alert_level: 'warning' | 'exceeded' | null }[];
+  thresholds: { ulid: string; quantity_kg: string; unweighed_lots?: number; max_quantity_kg: string; alert_level: 'warning' | 'exceeded' | null; constraint: LimitResult }[];
   meta: { total_kg: string; unweighed_lots?: number; generated_at: string };
 }
 
@@ -457,11 +481,13 @@ export interface ExternalPartner {
 
 /** How much of an authorisation the pickups have used; counted from them, never stored. */
 export interface AuthorizationUsage {
-  pct: number;
-  uncovered: boolean;
-  level: 'warning' | 'exceeded' | null;
+  /** Every limit the document states, each with its own answer. */
+  constraints: LimitResult[];
+  outcome: LimitResult['outcome'] | null;
+  /** A limit is exceeded or cannot be verified: nothing more can be drawn. */
+  blocked: boolean;
+  failing: string[];
   used: { kg: string; lots: number; counts: Record<string, number> };
-  remaining: { kg: string | null; lots: number | null; counts: Record<string, number> };
 }
 
 /** Authorisation to have a waste type leave the site: a period and an allowed quantity. */
@@ -495,8 +521,9 @@ export interface AuthorizationCheck {
   unweighed?: string[];
   /** For 'packaging': the lots a document stated in packages cannot count (loose, or a packaging it does not name). */
   uncounted?: string[];
-  before_pct: number | null;
-  after_pct: number | null;
+  /** Every limit of the document with this selection added, and as it stands without it. */
+  constraints: LimitResult[];
+  before: LimitResult[];
 }
 
 export interface Dashboard {
