@@ -24,6 +24,7 @@ import { COLOR } from '../../ui/swatch';
 
 const DIALOG = [ReactiveFormsModule, TranslocoDirective] as const;
 const WEIGHT = [Validators.required, Validators.min(0), Validators.max(999999), Validators.pattern(/^\d+([.,]\d{1,3})?$/)];
+const AMOUNT = [Validators.min(0), Validators.max(999999), Validators.pattern(/^\d+([.,]\d{1,3})?$/)];
 const decimal = (value: string | number): string => String(value).replace(',', '.');
 
 /**
@@ -72,9 +73,21 @@ const decimal = (value: string | number): string => String(value).replace(',', '
                 </dw-select>
               </dw-field>
             }
-            <dw-field [label]="t('fields.netWeight')">
-              <input pInputText formControlName="net_weight_kg" inputmode="decimal" required [pAutoFocus]="true" />
-            </dw-field>
+            @if (countedUnit(); as unit) {
+              <!-- Waste counted in pieces or litres: the quantity is what is declared; a weight is welcome, never required. -->
+              <dw-field [label]="t('lots.quantityIn', { unit: t('units.' + unit, { count: 2 }) })">
+                <input pInputText formControlName="quantity" inputmode="decimal" required [pAutoFocus]="true" />
+                <small dwHint>{{ t('lots.countedHint') }}</small>
+              </dw-field>
+              <dw-field [label]="t('lots.weightIfKnown')">
+                <input pInputText formControlName="net_weight_kg" inputmode="decimal" />
+                <small dwHint>{{ t(convertible() ? 'lots.weightComputed' : 'lots.weightUnknown') }}</small>
+              </dw-field>
+            } @else {
+              <dw-field [label]="t('fields.netWeight')">
+                <input pInputText formControlName="net_weight_kg" inputmode="decimal" required [pAutoFocus]="true" />
+              </dw-field>
+            }
             <dw-field [label]="t('lots.packaging')">
               <dw-select formControlName="packaging_type">
                 <dw-option [value]="null" label="—" />
@@ -120,7 +133,9 @@ export class CreateLotDialog {
     site: [this.sites[0]?.ulid ?? '', Validators.required],
     zone: ['', Validators.required],
     waste_type: ['', Validators.required],
-    net_weight_kg: ['', WEIGHT],
+    // Required for weighed waste, optional for counted waste: checked on submit, once the type is known.
+    net_weight_kg: ['', AMOUNT],
+    quantity: ['', AMOUNT],
     // Opened from the page of an OF: that OF is proposed.
     production_order: [(dialogData<{ production_order?: string } | undefined>()?.production_order ?? null) as string | null],
     raw_material: [null as string | null],
@@ -136,6 +151,11 @@ export class CreateLotDialog {
   protected readonly orders = computed(() => this.openOrders().filter((order) => order.steps.length === 0 || order.steps.some((step) => step.site === this.chosen().site)));
   /** The materials of the chosen OF: with a single one, the lot takes it without asking. */
   protected readonly materials = computed(() => this.openOrders().find((order) => order.ulid === this.chosen().production_order)?.materials ?? []);
+  private readonly chosenType = computed(() => this.types().find((type) => type.ulid === this.chosen().waste_type));
+  /** The unit of a type counted in pieces or litres; null for weighed waste. */
+  protected readonly countedUnit = computed(() => ((this.chosenType()?.measure_dimension ?? 'mass') === 'mass' ? null : (this.chosenType()?.unit ?? 'piece')));
+  /** The type says how much one piece (or one m³) weighs: the weight is then computed when none is typed. */
+  protected readonly convertible = computed(() => (this.chosenType()?.measure_dimension === 'count' ? !!this.chosenType()?.unit_weight_kg : !!this.chosenType()?.density_kg_m3));
   /** A warning, never a refusal: the operator may have a good reason to put the lot there. */
   protected readonly mismatch = computed(() => {
     const value = this.chosen();
@@ -158,6 +178,11 @@ export class CreateLotDialog {
   }
 
   protected async submit(): Promise<void> {
+    const unit = this.countedUnit();
+    const measure = unit ? this.form.controls.quantity : this.form.controls.net_weight_kg;
+    if (measure.value.trim() === '') {
+      measure.setErrors({ required: true });
+    }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
 
@@ -167,7 +192,8 @@ export class CreateLotDialog {
     const value = this.form.getRawValue();
     try {
       const lot = await firstValueFrom(this.api.post<Lot>('lots', {
-        ...value, ulid: this.lotUlid, net_weight_kg: decimal(value.net_weight_kg), grammage_gsm: value.grammage_gsm ? decimal(value.grammage_gsm) : null, notes: value.notes || null,
+        ...value, ulid: this.lotUlid, net_weight_kg: value.net_weight_kg ? decimal(value.net_weight_kg) : null,
+        quantity: unit ? decimal(value.quantity) : null, unit, grammage_gsm: value.grammage_gsm ? decimal(value.grammage_gsm) : null, notes: value.notes || null,
       }));
       this.toast.success('lots.created', { number: lot.lot_number });
       this.ref.close(lot);

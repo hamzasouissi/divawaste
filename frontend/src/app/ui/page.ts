@@ -58,6 +58,7 @@ type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
 const TONES: Record<string, Record<string, Tone>> = {
   lot: { created: 'info', stored: 'neutral', awaiting_pickup: 'warning', collected: 'info', treated: 'success', closed: 'neutral' },
   pickup: { draft: 'neutral', requested: 'warning', confirmed: 'info', refused: 'danger', collected: 'info', received: 'success', completed: 'neutral', cancelled: 'danger' },
+  tolerance: { within: 'success', warning: 'warning', blocking: 'danger', no_reference: 'warning', not_measured: 'neutral' },
   line: { planned: 'neutral', loaded: 'info', not_loaded: 'warning', received: 'success', rejected: 'danger', treated: 'success' },
   company: { pending_verification: 'warning', pending_approval: 'warning', active: 'success', rejected: 'danger', suspended: 'danger', closed: 'neutral' },
   accreditation: { valid: 'success', expiring: 'warning', expired: 'danger', pending: 'warning', approved: 'success', rejected: 'danger', revoked: 'danger' },

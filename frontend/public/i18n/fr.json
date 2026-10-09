@@ -383,6 +383,13 @@
       "synced": "Synchronisé",
       "failed": "Refusé",
       "conflict": "Conflit"
+    },
+    "tolerance": {
+      "within": "Dans la tolérance",
+      "warning": "À justifier",
+      "blocking": "Accord requis",
+      "no_reference": "Référence manquante",
+      "not_measured": "Non mesuré"
     }
   },
   "channels": {
@@ -740,7 +747,16 @@
     "materialOfOrder": "Celle de l'OF",
     "editOrigin": "Origine",
     "originHint": "D'où vient ce lot en production. Laissez vide ce que vous ne savez pas : l'étape est déduite de la zone, la matière de l'OF.",
-    "stepOfZone": "Celle de la zone"
+    "stepOfZone": "Celle de la zone",
+    "quantityIn": "Quantité ({{unit}})",
+    "countedHint": "Ce déchet se déclare en quantité, pas au poids.",
+    "weightIfKnown": "Poids net en kg (facultatif)",
+    "weightComputed": "Laissé vide, le poids est calculé à partir de la quantité.",
+    "weightUnknown": "Laissé vide, le poids reste inconnu : il n’est pas estimé.",
+    "weightBasis": {
+      "unknown": "Poids non mesuré",
+      "computed": "Poids calculé à partir de la quantité"
+    }
   },
   "stock": {
     "title": "Stock de déchets",
@@ -856,7 +872,20 @@
     "emptyTitle": "Aucun type activé",
     "emptyHint": "Activez au moins un type du catalogue pour pouvoir créer des lots.",
     "requiresAuthorization": "Ce déchet ne sort du site que sous autorisation (déclaration signée par la douane)",
-    "underAuthorization": "Sous autorisation"
+    "underAuthorization": "Sous autorisation",
+    "measure": "Mesure",
+    "method": "Mode de mesure",
+    "methods": {
+      "weighed": "Pesé",
+      "counted": "Compté",
+      "measured": "Mesuré (volume)",
+      "estimated": "Estimé"
+    },
+    "unitHint": {
+      "mass": "Les lots se déclarent au poids ; les écarts sont jugés en kilos.",
+      "count": "Les lots se déclarent en nombre de pièces ; les écarts sont jugés en pièces, jamais convertis en kilos.",
+      "volume": "Les lots se déclarent en volume ; les écarts sont jugés en volume."
+    }
   },
   "pickups": {
     "title": "Enlèvements",
@@ -914,14 +943,15 @@
       "receive": "Enregistrer la réception",
       "treat": "Déclarer le traitement",
       "manifest": "Établir les bordereaux de suivi",
-      "certificate": "Déposer un certificat"
+      "certificate": "Déposer un certificat",
+      "authorize": "Accepter l’écart"
     },
     "cancelReason": "Motif de l'annulation",
     "refuseReason": "Motif du refus",
     "ackComment": "Explication de l'écart",
-    "collectHint": "Cochez les lots effectivement chargés. Un lot non coché retourne en stock.",
+    "collectHint": "Cochez les lots effectivement chargés et vérifiez ce qui part, dans l’unité du lot. Un lot non coché retourne en stock.",
     "loaded": "Chargé",
-    "receiveHint": "Saisissez le poids reçu pour chaque lot. Un écart supérieur à la limite est signalé à l'industriel.",
+    "receiveHint": "Saisissez ce qui a été reçu pour chaque lot, dans son unité (poids, pièces ou litres). Un écart supérieur à la tolérance du déchet est signalé à l’industriel.",
     "treatHint": "Indiquez la filière de traitement de chaque lot reçu.",
     "channel": "Filière",
     "priceHint": "Prix de vente (recette) ou coût d'élimination, par lot. Le montant est calculé sur le poids reçu.",
@@ -976,7 +1006,15 @@
     "receiver": "Destinataire",
     "transporter": "Transporteur",
     "receiverTransports": "Le destinataire assure le transport",
-    "onBehalf": "{{name}} n'a pas de compte : enregistrez vous-même sa réponse, la réception et le traitement des lots."
+    "onBehalf": "{{name}} n'a pas de compte : enregistrez vous-même sa réponse, la réception et le traitement des lots.",
+    "plannedChannel": "Filière prévue",
+    "plannedChannelHint": "Elle détermine la tolérance appliquée à la réception.",
+    "plannedChannelDefault": "Celle prévue pour chaque type de déchet",
+    "quantity": {
+      "declared": "Annoncé",
+      "departure": "Parti",
+      "received": "Reçu"
+    }
   },
   "providers": {
     "title": "Prestataires",
@@ -1569,7 +1607,8 @@
     "noOf": "Sans OF",
     "scanOf": "Scanner la fiche de l'OF",
     "ofList": "Choisir dans la liste",
-    "ofNotFound": "Aucun OF ouvert ne porte le numéro « {{code}} » sur ce site."
+    "ofNotFound": "Aucun OF ouvert ne porte le numéro « {{code}} » sur ce site.",
+    "enterQuantity": "Quantité"
   },
   "validation": {
     "required": "Ce champ est obligatoire.",
@@ -1721,7 +1760,8 @@
       "waste_catalog_items": "Catalogue de déchets",
       "subscription_plans": "Formule",
       "certificates": "Certificat",
-      "stored_files": "Fichier"
+      "stored_files": "Fichier",
+      "waste_tolerance_rules": "Règle de tolérance"
     },
     "events": {
       "created": "Création",
@@ -1861,7 +1901,8 @@
     "production.view": "Voir les données de production",
     "production.manage": "Gérer et importer les données de production",
     "production.stats.view": "Voir les statistiques de production",
-    "production.finance.view": "Voir les prix, les coûts et les gains de production"
+    "production.finance.view": "Voir les prix, les coûts et les gains de production",
+    "pickups.authorize_variance": "Accepter un écart au-dessus du seuil bloquant"
   },
   "colors": {
     "title": "Couleurs",
@@ -2557,6 +2598,111 @@
     "productionFinance": {
       "title": "Comment lire les coûts et les gains",
       "text": "Coût matière réel : quantité consommée × coût du lot reçu dont elle vient. Un lot utilisé par plusieurs OF est réparti selon ce que chacun a consommé.\nCoût matière estimé : quand le lot n'est pas précisé, la quantité est valorisée au prix moyen de la matière — et comptée à part.\nValeur de la production : pièces fabriquées × prix convenu sur la commande. Ce n'est pas ce qui a été facturé.\nGain enregistré : valeur de la production − coûts enregistrés (matières + autres dépenses). Il n'est calculé que si tout est connu ; sinon ce qui manque est indiqué.\nCe n'est pas un résultat comptable : ni frais généraux, ni main-d'œuvre sauf si elle est saisie en dépense. Montants hors taxes."
+    }
+  },
+  "units": {
+    "kg": "kg",
+    "t": "t",
+    "m3": "m³",
+    "l": "l",
+    "piece": "pièces",
+    "piece_one": "pièce"
+  },
+  "tolerance": {
+    "title": "Écarts à la réception",
+    "summary": "{{flagged}} à examiner sur {{total}} lot(s) comparé(s)",
+    "hint": "Chaque lot est comparé dans son unité (kg, pièces, litres) entre ce qui est parti et ce qui a été reçu, avec la tolérance prévue pour ce déchet et cette filière au moment de la réception.",
+    "left": "Parti",
+    "arrived": "Reçu",
+    "difference": "Différence",
+    "gap": "Écart",
+    "noPercentage": "non calculable",
+    "applicable": "Tolérance appliquée",
+    "reason": "Pourquoi",
+    "showAll": "Afficher aussi les {{count}} lot(s) dans la tolérance",
+    "onlyFlagged": "N’afficher que les lots à examiner",
+    "limits": {
+      "warning": "jusqu’à {{pct}} % sans justification",
+      "blocking": "au-delà de {{pct}} %, accord d’une personne autorisée"
+    },
+    "direction": {
+      "excess": "seuls les excédents comptent",
+      "shortage": "seuls les manques comptent"
+    },
+    "source": {
+      "type_channel": "règle de ce déchet pour la filière {{channel}}",
+      "type": "règle de ce type de déchet",
+      "channel": "règle de la filière {{channel}}",
+      "company": "règle générale de la société",
+      "company_setting": "pourcentage des paramètres de la société",
+      "default": "valeur par défaut de 5 %, faute de règle"
+    },
+    "basis": {
+      "operational": "Règle interne",
+      "legal": "Exigence réglementaire"
+    },
+    "reasons": {
+      "within": "L’écart reste dans la tolérance de {{pct}} %.",
+      "ignored_side": "L’écart est dans le sens que la règle ne surveille pas.",
+      "warning": "L’écart dépasse la tolérance de {{pct}} % : une explication est demandée.",
+      "blocking": "L’écart dépasse la limite de {{pct}} % : il doit être accepté par une personne autorisée.",
+      "no_reference": "Aucune quantité de départ fiable : le pourcentage ne peut pas être calculé. Vérifiez ce qui est parti.",
+      "not_measured": "La quantité reçue n’a pas été saisie."
+    },
+    "banner": {
+      "within": "Réception dans les tolérances.",
+      "not_measured": "Des lots chargés n’ont pas été reçus.",
+      "warning": "{{count}} lot(s) reçu(s) hors tolérance.",
+      "blocking": "Écart au-dessus de la limite bloquante ({{count}} lot(s) à examiner).",
+      "no_reference": "{{count}} lot(s) sans quantité de départ fiable : l’écart ne peut pas être calculé."
+    },
+    "next": {
+      "none": "",
+      "explain": "Expliquez l’écart pour pouvoir clôturer.",
+      "authorize": "Acceptez l’écart, avec son motif, pour pouvoir clôturer.",
+      "ask_authorized": "Seule une personne autorisée peut accepter cet écart."
+    },
+    "authorized": "Écart accepté par une personne autorisée : {{comment}}",
+    "authorizeHint": "L’écart dépasse la limite bloquante. Votre accord et son motif sont conservés dans le journal d’audit.",
+    "rules": {
+      "title": "Tolérances",
+      "intro": "L’écart accepté entre la quantité partie et la quantité reçue, en pourcentage de la première. Une règle vaut pour un type de déchet, une filière, les deux, ou tous les déchets ; la plus précise s’applique. L’écart est jugé dans l’unité du déchet : des pièces avec des pièces, des kilos avec des kilos.",
+      "new": "Nouvelle règle",
+      "edit": "Modifier la règle",
+      "dialogHint": "Au-delà du seuil d’alerte, l’écart doit être expliqué. Au-delà du seuil bloquant, il doit être accepté par une personne autorisée avant la clôture de l’enlèvement.",
+      "anyType": "Tous les déchets",
+      "anyChannel": "Toutes les filières",
+      "channel": "Filière de traitement",
+      "appliesTo": "Déchet",
+      "warning": "Seuil d’alerte (%)",
+      "warningHint": "Vide : pas d’alerte avant le seuil bloquant.",
+      "blocking": "Seuil bloquant (%)",
+      "blockingHint": "Vide : l’écart ne bloque jamais, il est seulement à expliquer.",
+      "direction": "Écarts surveillés",
+      "directions": {
+        "both": "Excédents et manques",
+        "excess": "Excédents seulement",
+        "shortage": "Manques seulement"
+      },
+      "basis": "Nature de la règle",
+      "reference": "Texte de référence",
+      "referenceHint": "Le texte qui impose ce seuil (décret, arrêté, contrat). Obligatoire pour une exigence réglementaire.",
+      "active": "Règle appliquée",
+      "saved": "Règle enregistrée",
+      "problem": {
+        "none": "Indiquez au moins un seuil.",
+        "order": "Le seuil bloquant ne peut pas être inférieur au seuil d’alerte."
+      },
+      "fallback": "Tout autre cas",
+      "history": "Une règle modifiée s’applique aux prochaines réceptions. Les réceptions déjà enregistrées gardent la règle qui leur a été appliquée, et chaque modification figure au journal d’audit.",
+      "deleteTitle": "Supprimer cette règle ?",
+      "deleteHint": "Les prochaines réceptions retomberont sur la règle plus générale. Les décisions déjà prises ne changent pas."
+    },
+    "byType": {
+      "title": "Écarts à la réception par type de déchet",
+      "hint": "Nombre de lots reçus et ce que leur comparaison a donné.",
+      "received": "Lots reçus",
+      "repeated": "Écarts répétés"
     }
   }
 }

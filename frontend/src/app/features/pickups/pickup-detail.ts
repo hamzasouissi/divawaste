@@ -9,11 +9,12 @@ import { Api, Page, openBlob } from '../../core/api/api';
 import { DocumentRecord, Manifest, Pickup } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe, KgPipe, MoneyPipe, NumberPipe } from '../../core/format/pipes';
+import { DatePipe, KgPipe, MoneyPipe, NumberPipe, QuantityPipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
 import { CertificateDialog, LinesDialogData, LinesMode, PickupLinesDialog } from './pickup-dialogs';
+import { ToleranceDecisionCard, measure, nextStep } from './tolerance';
 import { DateComponent } from '../../ui/date';
 import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
 import { FIELD } from '../../ui/field';
@@ -50,7 +51,7 @@ export class ConfirmDateDialog {
  * current status and the user's permissions allow; everything else about the pickup is on the page.
  */
 @Component({
-  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, MoneyPipe, NumberPipe, IconComponent, ButtonDirective],
+  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, MoneyPipe, NumberPipe, QuantityPipe, ToleranceDecisionCard, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -74,8 +75,14 @@ export class ConfirmDateDialog {
             @if (p.variance_flagged) {
               <p class="banner" [class.danger]="!p.variance_acknowledged" role="status">
                 <dw-icon aria-hidden="true">scale</dw-icon>
-                <span>{{ t('pickups.varianceBanner', { received: (p.received_weight_kg | dwKg), departure: (p.departure_weight_kg | dwKg), pct: (p.weight_variance_pct | dwNumber: 1) }) }}
-                  @if (p.variance_acknowledged) { {{ t('pickups.varianceAck', { comment: p.variance_comment }) }} }</span>
+                <span>
+                  {{ t('tolerance.banner.' + (p.tolerance_status ?? 'warning'), { count: flagged().length }) }}
+                  @if (p.variance_acknowledged) {
+                    {{ t(p.variance_decision === 'authorized' ? 'tolerance.authorized' : 'pickups.varianceAck', { comment: p.variance_comment }) }}
+                  } @else if (!provider) {
+                    <strong>{{ t('tolerance.next.' + next()) }}</strong>
+                  }
+                </span>
               </p>
             }
 
@@ -101,8 +108,8 @@ export class ConfirmDateDialog {
                 <table class="dw-table">
                   <thead>
                     <tr>
-                      <th>{{ t('lots.number') }}</th><th>{{ t('fields.wasteType') }}</th><th>{{ t('lots.regulatoryCode') }}</th><th class="dw-num">{{ t('pickups.declared') }}</th>
-                      <th class="dw-num">{{ t('pickups.departure') }}</th><th class="dw-num">{{ t('pickups.received') }}</th><th class="dw-num">{{ t('pickups.variance') }}</th>
+                      <th>{{ t('lots.number') }}</th><th>{{ t('fields.wasteType') }}</th><th>{{ t('lots.regulatoryCode') }}</th><th class="dw-num">{{ t('pickups.quantity.declared') }}</th>
+                      <th class="dw-num">{{ t('pickups.quantity.departure') }}</th><th class="dw-num">{{ t('pickups.quantity.received') }}</th><th class="dw-num">{{ t('pickups.variance') }}</th>
                       <th>{{ t('pickups.channel') }}</th>@if (!provider) { <th class="dw-num">{{ t('pickups.amount') }}</th> }<th>{{ t('fields.status') }}</th>
                     </tr>
                   </thead>
@@ -114,8 +121,13 @@ export class ConfirmDateDialog {
                           @if (line.is_hazardous) { <dw-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</dw-icon> }
                         </td>
                         <td>{{ line.waste_type_label_snapshot }}</td><td class="dw-mono">{{ line.regulatory_code_snapshot ?? '—' }}</td>
-                        <td class="dw-num">{{ line.declared_weight_kg | dwKg }}</td><td class="dw-num">{{ line.departure_weight_kg | dwKg }}</td><td class="dw-num">{{ line.received_weight_kg | dwKg }}</td>
-                        <td class="dw-num" [class.neg]="line.variance_flagged">{{ line.weight_variance_pct | dwNumber: 1 : ' %' }}</td>
+                        @for (stage of stages; track stage) {
+                          <td class="dw-num">{{ measure(line, stage).value | dwQty: measure(line, stage).unit }}</td>
+                        }
+                        <td class="dw-num" [class.neg]="line.variance_flagged">
+                          {{ (line.tolerance?.pct ?? line.weight_variance_pct) | dwNumber: 1 : ' %' }}
+                          @if (line.tolerance_status && line.tolerance_status !== 'within') { <dw-status kind="tolerance" [value]="line.tolerance_status" /> }
+                        </td>
                         <td>{{ line.treatment_channel ? t('channels.' + line.treatment_channel) : '—' }}</td>
                         @if (!provider) { <td class="dw-num" [class.neg]="+(line.net_amount ?? 0) < 0">{{ line.net_amount | dwMoney: p.currency_code }}</td> }
                         <td><dw-status kind="line" [value]="line.line_status" /></td>
@@ -125,6 +137,19 @@ export class ConfirmDateDialog {
                 </table>
               </div>
             </section>
+
+            @if (judged().length > 0) {
+              <section class="dw-panel">
+                <div class="dw-panel-head"><h2 class="dw-h2">{{ t('tolerance.title') }}</h2><span class="dw-muted">{{ t('tolerance.summary', { flagged: flagged().length, total: judged().length }) }}</span></div>
+                <div class="dw-panel-body decisions">
+                  <p class="dw-muted">{{ t('tolerance.hint') }}</p>
+                  @for (line of shown(); track line.lot_number_snapshot) { <dw-tolerance-decision [line]="line" /> }
+                  @if (judged().length > flagged().length) {
+                    <button pButton type="button" text (click)="everyLine.set(!everyLine())">{{ t(everyLine() ? 'tolerance.onlyFlagged' : 'tolerance.showAll', { count: judged().length - flagged().length }) }}</button>
+                  }
+                </div>
+              </section>
+            }
 
             @if (manifests().length > 0 || documents().length > 0) {
               <section class="dw-panel">
@@ -158,7 +183,7 @@ export class ConfirmDateDialog {
     .banner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--dw-radius); background: var(--dw-success-soft); color: var(--dw-success); font-size: 13.5px; }
     .banner.danger { background: var(--dw-danger-soft); color: var(--dw-danger); }
     .banner.info { background: var(--dw-surface-2); color: var(--dw-ink-2); }
-    .scroll { overflow-x: auto; }
+    .scroll { overflow-x: auto; } .decisions { display: grid; gap: 10px; } .decisions button { justify-self: start; }
     .neg { color: var(--dw-danger); font-weight: 600; }
     .hazard { font-size: 15px; width: 15px; height: 15px; color: var(--dw-warning); vertical-align: -2px; }
     .docs { list-style: none; margin: 0; padding: 0; } .docs li { display: flex; align-items: center; gap: 10px; padding: 10px var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); }
@@ -182,6 +207,19 @@ export class PickupDetailPage implements OnInit {
   protected readonly loading = signal(true);
   protected readonly busy = signal(false);
   protected readonly error = signal<unknown>(null);
+  protected readonly stages = ['declared', 'departure', 'received'] as const;
+  protected readonly measure = measure;
+
+  /** The lots judged against a tolerance at reception, and among them the ones someone has to look at. */
+  protected readonly judged = computed(() => (this.pickup()?.lots ?? []).filter((line) => line.tolerance && line.tolerance_status));
+  protected readonly flagged = computed(() => this.judged().filter((line) => line.variance_flagged));
+  protected readonly everyLine = signal(false);
+  protected readonly shown = computed(() => (this.everyLine() ? this.judged() : this.flagged()));
+  protected readonly next = computed(() => {
+    const pickup = this.pickup();
+
+    return nextStep(pickup?.tolerance_status ?? (pickup?.variance_flagged ? 'warning' : null), pickup?.variance_acknowledged ?? false, this.session.can('pickups.authorize_variance', pickup?.site?.ulid));
+  });
 
   /** The receiver has no account: the industrial records its answer, the reception and the treatment itself. */
   protected readonly onBehalf = computed(() => !this.provider && this.pickup()?.provider?.external === true && !['completed', 'cancelled', 'refused'].includes(this.pickup()?.status ?? ''));
@@ -213,7 +251,9 @@ export class PickupDetailPage implements OnInit {
           { key: 'receive', icon: 'scale', primary: true, show: external && pickup.status === 'collected' && can('pickups.complete') },
           { key: 'treat', icon: 'recycling', primary: true, show: external && pickup.status === 'received' && has('received') && can('pickups.complete') },
           { key: 'collect', icon: 'local_shipping', primary: true, show: pickup.status === 'confirmed' && can('pickups.load') },
-          { key: 'acknowledge', icon: 'fact_check', primary: true, show: pickup.status === 'received' && pickup.variance_flagged && !pickup.variance_acknowledged && can('pickups.complete') },
+          // A gap above the blocking limit is accepted only by who is entitled to; a smaller one is explained by who closes pickups.
+          { key: 'acknowledge', icon: 'fact_check', primary: true, show: pickup.status === 'received' && this.next() === 'explain' && can('pickups.complete') },
+          { key: 'authorize', icon: 'verified_user', primary: true, show: pickup.status === 'received' && this.next() === 'authorize' && can('pickups.complete') },
           { key: 'complete', icon: 'task_alt', primary: true, show: pickup.status === 'received' && !has('received') && (!pickup.variance_flagged || pickup.variance_acknowledged) && can('pickups.complete') },
           { key: 'price', icon: 'payments', show: ['collected', 'received', 'completed'].includes(pickup.status) && can('pickups.price') },
           { key: 'manifest', icon: 'assignment_late', show: ['confirmed', 'collected', 'received'].includes(pickup.status) && this.manifests().length === 0 && can('documents.generate') },
@@ -277,8 +317,9 @@ export class PickupDetailPage implements OnInit {
 
         return reason ? this.call(this.api.post(`${base}/refuse`, { reason }), 'pickups.done.refused') : undefined;
       }
-      case 'acknowledge': {
-        const comment = await this.confirm.ask({ title: text('pickups.actions.acknowledge'), reasonLabel: text('pickups.ackComment') });
+      case 'acknowledge':
+      case 'authorize': {
+        const comment = await this.confirm.ask({ title: text(`pickups.actions.${action}`), message: action === 'authorize' ? text('tolerance.authorizeHint') : undefined, reasonLabel: text('pickups.ackComment') });
 
         return comment ? this.call(this.api.post(`${base}/acknowledge-variance`, { comment }), 'pickups.done.acknowledged') : undefined;
       }

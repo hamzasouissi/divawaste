@@ -153,7 +153,7 @@ export class Offline {
   }
 
   /** Records a lot created at the workshop. Returns at once; the lot number arrives with the synchronisation. */
-  async createLot(input: { site: string; zone: string; waste_type: string; net_weight_kg: string; production_order?: string | null }, summary: string): Promise<Operation> {
+  async createLot(input: { site: string; zone: string; waste_type: string; net_weight_kg?: string; quantity?: string; unit?: string | null; production_order?: string | null }, summary: string): Promise<Operation> {
     const operation = await this.enqueue('lot.create', { ...input, ulid: ulid() }, summary);
     operation.entity = operation.payload['ulid'] as string;
     await this.db.operations.put(operation);

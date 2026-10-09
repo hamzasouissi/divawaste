@@ -9,7 +9,7 @@ import { Api } from '../../core/api/api';
 import { AuthorizationCheck, DirectoryProvider, ExternalPartner, Lot, Pickup } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe, KgPipe } from '../../core/format/pipes';
+import { DatePipe, KgPipe, LotMeasurePipe } from '../../core/format/pipes';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
 import { CheckboxComponent } from '../../ui/checkbox';
@@ -33,7 +33,7 @@ function today(): string {
  */
 @Component({
   imports: [
-    FormsModule, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, IconComponent, ButtonDirective, ...FIELD, ...SELECT, CheckboxComponent, DateComponent,
+    FormsModule, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LotMeasurePipe, IconComponent, ButtonDirective, ...FIELD, ...SELECT, CheckboxComponent, DateComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -61,7 +61,7 @@ function today(): string {
                   <tr (click)="toggle(lot.ulid)" [class.on]="selected().includes(lot.ulid)">
                     <td><dw-checkbox [checked]="selected().includes(lot.ulid)" (checkedChange)="toggle(lot.ulid)" (click)="$event.stopPropagation()" [ariaLabel]="lot.lot_number" /></td>
                     <td class="dw-mono">{{ lot.lot_number }} @if (lot.is_hazardous) { <dw-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</dw-icon> }</td>
-                    <td>{{ lot.waste_type?.name }}</td><td>{{ lot.zone?.name }}</td><td>{{ lot.generated_at | dwDate }}</td><td class="dw-num">{{ lot.net_weight_kg | dwKg }}</td>
+                    <td>{{ lot.waste_type?.name }}</td><td>{{ lot.zone?.name }}</td><td>{{ lot.generated_at | dwDate }}</td><td class="dw-num">{{ lot | dwLotMeasure }}</td>
                   </tr>
                 }
               </tbody>
@@ -116,6 +116,14 @@ function today(): string {
                 @for (item of transporters(); track item.key) { <dw-option [value]="item.key" [label]="item.label" /> }
               </dw-select>
               @if (transporterRequired()) { <small dwError>{{ t('pickups.create.transporterRequired') }}</small> }
+            </dw-field>
+
+            <dw-field [label]="t('pickups.plannedChannel')">
+              <dw-select [ngModel]="channel()" (ngModelChange)="channel.set($event)">
+                <dw-option value="" [label]="t('pickups.plannedChannelDefault')" />
+                @for (code of channels; track code) { <dw-option [value]="code" [label]="t('channels.' + code)" /> }
+              </dw-select>
+              <small dwHint>{{ t('pickups.plannedChannelHint') }}</small>
             </dw-field>
 
             <dw-field [label]="t('pickups.requestedDate')">
@@ -173,6 +181,9 @@ export class PickupCreatePage {
   /** The chosen transporter, written the same way; empty = the receiver transports. */
   protected readonly transporter = signal('');
   protected readonly date = signal(today());
+  /** What the receiver is to do with the waste, when it is not what each waste type plans: it selects the tolerance at reception. */
+  protected readonly channel = signal('');
+  protected readonly channels = ['reuse', 'recycling', 'energy_recovery', 'incineration', 'other_treatment', 'landfill'];
   protected readonly busy = signal(false);
 
   private readonly chosen = computed(() => this.lots().filter((lot) => this.selected().includes(lot.ulid)));
@@ -294,6 +305,7 @@ export class PickupCreatePage {
         site: this.site(), requested_date: this.date(), lots: this.selected(),
         provider: party(this.provider(), 'c'), external_provider: party(this.provider(), 'x'),
         transporter: party(this.transporter(), 'c'), external_transporter: party(this.transporter(), 'x'),
+        treatment_channel: this.channel() || null,
       }));
       if (send) {
         // If sending fails (provider no longer eligible…), the draft exists: the user lands on it with the reason.

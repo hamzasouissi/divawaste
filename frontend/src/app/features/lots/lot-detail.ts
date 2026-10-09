@@ -8,7 +8,7 @@ import { Api, openBlob } from '../../core/api/api';
 import { Lot, LotDetailMeta, LotEvent } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { CodePipe, DatePipe, KgPipe, LocalizedPipe, TermPipe } from '../../core/format/pipes';
+import { CodePipe, DatePipe, KgPipe, LocalizedPipe, LotMeasurePipe, TermPipe } from '../../core/format/pipes';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
 import { LotActionData, LotOriginDialog, SplitLotDialog, StoreLotDialog, WeighLotDialog } from './lot-dialogs';
@@ -21,7 +21,7 @@ import { COLOR } from '../../ui/swatch';
  * where it came from and what it became (M2-06), and which pickup took it.
  */
 @Component({
-  imports: [...COLOR, TermPipe, CodePipe, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LocalizedPipe, IconComponent, ButtonDirective],
+  imports: [...COLOR, TermPipe, CodePipe, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LocalizedPipe, LotMeasurePipe, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -35,7 +35,7 @@ import { COLOR } from '../../ui/swatch';
             @if (transformable() && session.can('lots.weigh', l.site?.ulid)) {
               <button pButton severity="secondary" outlined type="button" (click)="act('weigh')"><dw-icon>scale</dw-icon>{{ t('lots.weigh') }}</button>
             }
-            @if (transformable() && session.can('lots.split', l.site?.ulid)) {
+            @if (transformable() && !['piece', 'l', 'm3'].includes(l.unit ?? '') && session.can('lots.split', l.site?.ulid)) {
               <button pButton severity="secondary" outlined type="button" (click)="act('split')"><dw-icon>call_split</dw-icon>{{ t('lots.split') }}</button>
             }
             @if (session.can('lots.update', l.site?.ulid)) {
@@ -53,7 +53,7 @@ import { COLOR } from '../../ui/swatch';
                 <div class="dw-panel-body">
                   <dl class="dw-facts">
                     <div><dt>{{ t('fields.wasteType') }}</dt><dd>{{ l.waste_type?.name }} @if (l.is_hazardous) { <dw-status kind="alert" value="warning" [label]="t('common.hazardous')" /> }</dd></div>
-                    <div><dt>{{ t('fields.weight') }}</dt><dd class="weight">{{ l.net_weight_kg | dwKg }}</dd></div>
+                    <div><dt>{{ t('fields.weight') }}</dt><dd class="weight">{{ l | dwLotMeasure }}@if (l.weight_basis === 'unknown') { <div class="dw-faint basis">{{ t('lots.weightBasis.unknown') }}</div> } @else if (l.weight_basis === 'computed') { <div class="dw-faint basis">{{ t('lots.weightBasis.computed') }}</div> }</dd></div>
                     <div><dt>{{ t('fields.site') }}</dt><dd>{{ l.site?.name }}</dd></div>
                     <div><dt>{{ t('fields.zone') }}</dt><dd>{{ l.zone?.name }}</dd></div>
                     <div><dt>{{ t('lots.regulatoryCode') }}</dt><dd class="dw-mono">{{ l.regulatory_code ?? '—' }}</dd></div>
@@ -160,7 +160,7 @@ import { COLOR } from '../../ui/swatch';
     </ng-container>
   `,
   styles: `
-    .weight { font-size: 18px; font-weight: 600; }
+    .weight { font-size: 18px; font-weight: 600; } .basis { font-size: 12.5px; font-weight: 400; }
     .chip { display: inline-block; padding: 1px 8px; margin-inline-end: 4px; border-radius: 999px; background: var(--dw-neutral-soft); font-size: 12.5px; }
     .lineage { display: grid; gap: var(--dw-4); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
     .link { display: flex; align-items: center; gap: 6px; padding-block: 3px; }

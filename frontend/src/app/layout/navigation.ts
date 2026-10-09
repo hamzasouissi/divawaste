@@ -32,19 +32,6 @@ const NAVIGATION: Record<Exclude<Audience, 'none'>, NavGroup[]> = {
       ],
     },
     {
-      label: 'nav.groups.production',
-      items: [
-        { path: '/production/stats', label: 'nav.productionStats', icon: 'query_stats', permissions: ['production.stats.view'] },
-        { path: '/production/finance', label: 'nav.productionFinance', icon: 'payments', permissions: ['production.finance.view'] },
-        { path: '/production/manufacturing-orders', label: 'nav.manufacturingOrders', icon: 'precision_manufacturing', permissions: ['production.view'] },
-        { path: '/production/orders', label: 'nav.orders', icon: 'receipt_long', permissions: ['production.view'] },
-        { path: '/production/catalog', label: 'nav.productionCatalog', icon: 'checkroom', permissions: ['production.view'] },
-        { path: '/production/lots', label: 'nav.productionLots', icon: 'inventory_2', permissions: ['production.view'] },
-        { path: '/production/partners', label: 'nav.productionPartners', icon: 'groups', permissions: ['production.view'] },
-        { path: '/production/import', label: 'nav.productionImport', icon: 'upload_file', permissions: ['production.manage'] },
-      ],
-    },
-    {
       label: 'nav.groups.compliance',
       items: [
         { path: '/compliance/register', label: 'nav.register', icon: 'menu_book', permissions: ['documents.view'] },
@@ -60,6 +47,21 @@ const NAVIGATION: Record<Exclude<Audience, 'none'>, NavGroup[]> = {
       items: [
         { path: '/sites', label: 'nav.sites', icon: 'factory', permissions: ['sites.view'] },
         { path: '/waste-types', label: 'nav.wasteTypes', icon: 'category', permissions: ['waste_types.view'] },
+      ],
+    },
+    // Production comes after the waste it explains: where a waste comes from, what it was made of, for whom. The
+    // statistics that speak about waste lead; reference data follow, money comes last.
+    {
+      label: 'nav.groups.production',
+      items: [
+        { path: '/production/stats', label: 'nav.productionStats', icon: 'query_stats', permissions: ['production.stats.view'] },
+        { path: '/production/manufacturing-orders', label: 'nav.manufacturingOrders', icon: 'precision_manufacturing', permissions: ['production.view'] },
+        { path: '/production/orders', label: 'nav.orders', icon: 'receipt_long', permissions: ['production.view'] },
+        { path: '/production/catalog', label: 'nav.productionCatalog', icon: 'checkroom', permissions: ['production.view'] },
+        { path: '/production/lots', label: 'nav.productionLots', icon: 'inventory_2', permissions: ['production.view'] },
+        { path: '/production/partners', label: 'nav.productionPartners', icon: 'groups', permissions: ['production.view'] },
+        { path: '/production/finance', label: 'nav.productionFinance', icon: 'payments', permissions: ['production.finance.view'] },
+        { path: '/production/import', label: 'nav.productionImport', icon: 'upload_file', permissions: ['production.manage'] },
       ],
     },
     {
