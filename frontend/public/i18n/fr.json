@@ -464,7 +464,8 @@
     "AUTHORIZATION_EXCEEDED": "L’autorisation ne couvre pas cet enlèvement : une de ses limites serait dépassée. Chaque limite est détaillée sur la page Autorisations.",
     "AUTHORIZATION_UNVERIFIABLE": "L’autorisation ne peut pas être vérifiée : des lots n’ont pas de poids mesuré. Pesez-les, puis recommencez.",
     "AUTHORIZATION_PACKAGING": "L’autorisation est exprimée en colis uniquement et des lots sont en vrac ou dans un conditionnement qu’elle ne nomme pas : elle ne peut pas être vérifiée pour eux.",
-    "AUTHORIZATION_MISSING": "Aucune autorisation ne couvre ce déchet à cette date. Saisissez-en une avant de demander l’enlèvement."
+    "AUTHORIZATION_MISSING": "Aucune autorisation ne couvre ce déchet à cette date. Saisissez-en une avant de demander l’enlèvement.",
+    "authorizationRefused": "Refusé par l’autorisation {{reference}} ({{wasteType}}) : {{problems}}."
   },
   "notifications": {
     "title": "Notifications",
@@ -500,7 +501,8 @@
       "company.pending_review": "Inscription à valider",
       "document.signed_copy_requested": "Exemplaire signé d'un bordereau à joindre",
       "authorization.usage_high": "Autorisation bientôt épuisée",
-      "authorization.expiring_soon": "Autorisation bientôt terminée"
+      "authorization.expiring_soon": "Autorisation bientôt terminée",
+      "stock.threshold_unverifiable": "Limite de stock non vérifiable"
     },
     "types": {
       "stock.threshold_warning": {
@@ -606,6 +608,10 @@
       "authorization.expiring_soon": {
         "title": "Autorisation {{reference}} : fin le {{date}}",
         "body": "{{waste_type}} : dans {{days}} jour(s). Sans nouvelle autorisation, les enlèvements seront bloqués."
+      },
+      "stock.threshold_unverifiable": {
+        "title": "Limite de stock non vérifiable — {{site}}",
+        "body": "Limite de {{max_quantity_kg}} kg ({{scope}}) : {{quantity_kg}} kg connus, mais {{unweighed_lots}} lot(s) non pesé(s) ({{lots}}). Elle n’est pas dépassée sur ce qui est connu, et ne peut pas être dite respectée : pesez ces lots."
       }
     }
   },
@@ -2095,7 +2101,7 @@
     "validUntil": "Jusqu'au",
     "issuedOn": "Date du document",
     "quantity": "Quantité autorisée",
-    "quantityHint": "Saisissez la quantité comme le document l'indique : un poids, un nombre de lots, ou un nombre de colis par conditionnement (« 40 balles », « 100 sacs »). Un lot compte pour autant de colis qu'il en contient. Les conditionnements mélangés s'additionnent ; si plusieurs limites sont données, la plus utilisée est celle qui compte.",
+    "quantityHint": "Saisissez la quantité comme le document l’indique : un poids, un nombre de lots, des colis par conditionnement (« 300 sacs », « 40 balles »). Un lot compte pour autant de colis qu’il en contient. Chaque quantité est une limite vérifiée séparément : en dépasser une seule, ou ne pas pouvoir la vérifier, bloque la demande d’enlèvement.",
     "quantityRequired": "Indiquez au moins une quantité : un poids, un nombre de lots ou un conditionnement.",
     "maxKg": "Poids maximal (kg)",
     "maxLots": "Nombre maximal de lots",
@@ -2115,7 +2121,11 @@
       "ended": "Terminée",
       "withdrawn": "Retirée"
     },
-    "blocked": "Plus aucun enlèvement possible sur cette autorisation tant qu’une limite est dépassée ou non vérifiable."
+    "blocked": "Plus aucun enlèvement possible sur cette autorisation tant qu’une limite est dépassée ou non vérifiable.",
+    "shared": "Le document indique une seule quantité commune à ces conditionnements (« 40 balles ou 100 sacs »)",
+    "sharedOn": "Une seule limite : chaque conditionnement en consomme sa part, et les parts s’additionnent (20 balles sur 40 et 50 sacs sur 100 l’épuisent).",
+    "sharedOff": "Une limite par conditionnement : chacune est vérifiée séparément, et en dépasser une seule bloque la demande. Ne cochez la case que si le document le dit.",
+    "sharedTag": "quantité commune"
   },
   "production": {
     "reference": "Référence",
@@ -2756,11 +2766,13 @@
   "limits": {
     "name": {
       "weight": "Poids",
-      "packages": "Colis",
+      "packages": "Colis (quantité commune)",
       "lots": "Lots",
       "space": "Place",
       "load": "Charge",
-      "stock": "Limite de stock"
+      "stock": "Limite de stock",
+      "unlisted": "Conditionnements non cités",
+      "packaging": "Colis"
     },
     "lotsOf": "{{used}} / {{max}} lot(s)",
     "atLeast": "au moins {{pct}} %",
@@ -2769,6 +2781,15 @@
     "onKnown": "(sur ce qui est connu)",
     "missingWeight": "{{count}} lot(s) sans poids mesuré :",
     "missingPackages": "{{count}} lot(s) en vrac ou dans un conditionnement non prévu :",
-    "outside": "{{count}} lot(s) hors des conditionnements cités, couvert(s) par une autre limite du document :"
+    "outside": "{{count}} lot(s) hors des conditionnements cités, couvert(s) par une autre limite du document :",
+    "missingCount": "{{count}} lot(s) sans nombre de colis :",
+    "problem": {
+      "exceeded": "limite de {{max}} dépassée de {{by}}",
+      "sharedExceeded": "quantité commune ({{lines}}) dépassée de {{pct}} %",
+      "alsoMissing": "(sans compter {{lots}})",
+      "weightUnknown": "poids inconnu ou seulement estimé pour {{lots}} — l’autorisation est limitée en kg : pesez ce(s) lot(s)",
+      "countUnknown": "nombre de colis ({{packaging}}) inconnu pour {{lots}} : indiquez-le sur la fiche du lot",
+      "unlisted": "{{lots}} en vrac ou dans un conditionnement que l’autorisation ne nomme pas — elle est exprimée en colis uniquement : conditionnez ce(s) lot(s) comme elle le prévoit, ou saisissez une autorisation qui les couvre"
+    }
   }
 }

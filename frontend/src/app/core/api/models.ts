@@ -74,8 +74,13 @@ export interface Access {
  * - 'unverifiable': what is known is below the limit but a quantity is missing (`missing_lots`). Never read as respected.
  */
 export interface LimitResult {
-  /** weight, packages, lots (authorisation) · space, load (zone) · stock (stock limit). */
-  key: 'weight' | 'packages' | 'lots' | 'space' | 'load' | 'stock';
+  /**
+   * Authorisation: weight, lots, `packages:<packaging>` (one limit per packaging), packages (one quantity the document
+   * says its packagings share), unlisted (lots no packaging limit can count). Zone: space, load. Stock limit: stock.
+   */
+  key: string;
+  /** The packaging of a limit stated for one packaging. */
+  packaging_type?: string;
   unit: 'kg' | 'package' | 'lot';
   /** Within this one limit. For packages: the share of the room the packagings use together. */
   pct: number | null;
@@ -331,7 +336,7 @@ export interface StockRow {
 
 export interface StockResponse {
   data: StockRow[];
-  thresholds: { ulid: string; quantity_kg: string; unweighed_lots?: number; max_quantity_kg: string; alert_level: 'warning' | 'exceeded' | null; constraint: LimitResult }[];
+  thresholds: { ulid: string; quantity_kg: string; unweighed_lots?: number; max_quantity_kg: string; alert_level: 'warning' | 'exceeded' | 'unverifiable' | null; constraint: LimitResult }[];
   meta: { total_kg: string; unweighed_lots?: number; generated_at: string };
 }
 
@@ -345,7 +350,7 @@ export interface StockThreshold {
   waste_type_name: string | null;
   max_quantity_kg: string;
   warning_pct: number;
-  alert_level: 'warning' | 'exceeded' | null;
+  alert_level: 'warning' | 'exceeded' | 'unverifiable' | null;
   alerted_at: string | null;
   is_active: boolean;
 }
@@ -500,6 +505,8 @@ export interface WasteAuthorization {
   valid_until: string;
   max_kg: string | null;
   max_lots: number | null;
+  /** false: each packaging has its own limit. true: the document states one quantity its packagings share. */
+  shared_packaging_allowance: boolean;
   limits: { packaging_type: string; max_count: number }[];
   alert_pct: number;
   notes: string | null;

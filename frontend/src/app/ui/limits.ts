@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 
 import { LimitResult } from '../core/api/models';
+import { LimitText } from '../core/format/limit-text';
 import { CodePipe, KgPipe } from '../core/format/pipes';
 import { StatusComponent } from './page';
 
@@ -30,9 +31,12 @@ export function failingLimits<T extends Pick<LimitResult, 'outcome' | 'blocking'
       @for (limit of limits(); track limit.key) {
         <li [class]="limit.outcome">
           <div class="line">
-            <span class="name">{{ t('limits.name.' + limit.key) }}</span>
+            <span class="name">{{ text.name(limit) }}</span>
             <span class="figures">
-              @if (limit.lines; as lines) {
+              @if (limit.key === 'unlisted') {
+              } @else if (limit.packaging_type) {
+                {{ limit.used }} / {{ limit.max }} × {{ limit.packaging_type | dwCode: 'packaging' }}
+              } @else if (limit.lines; as lines) {
                 @for (line of lines; track line.packaging_type; let first = $first) { @if (!first) { + } {{ line.used }} / {{ line.max }} × {{ line.packaging_type | dwCode: 'packaging' }} }
               } @else if (limit.unit === 'kg') {
                 {{ limit.used | dwKg: 'auto' }} / {{ limit.max | dwKg: 'auto' }}
@@ -41,10 +45,10 @@ export function failingLimits<T extends Pick<LimitResult, 'outcome' | 'blocking'
               }
             </span>
             @if (limit.pct !== null) {
-              <span class="meter" role="meter" [attr.aria-label]="t('limits.name.' + limit.key)" [attr.aria-valuenow]="limit.pct" aria-valuemin="0" aria-valuemax="100"><span class="bar" [style.inline-size.%]="limit.pct"></span></span>
+              <span class="meter" role="meter" [attr.aria-label]="text.name(limit)" [attr.aria-valuenow]="limit.pct" aria-valuemin="0" aria-valuemax="100"><span class="bar" [style.inline-size.%]="limit.pct"></span></span>
               <span class="pct">{{ limit.outcome === 'unverifiable' ? t('limits.atLeast', { pct: round(limit.pct) }) : round(limit.pct) + ' %' }}</span>
             }
-            <dw-status kind="limit" [value]="limit.outcome" />
+            @if (limit.key !== 'unlisted' || limit.outcome !== 'respected') { <dw-status kind="limit" [value]="limit.outcome" /> }
           </div>
           <div class="more">
             @if (limit.outcome === 'exceeded') {
@@ -52,21 +56,19 @@ export function failingLimits<T extends Pick<LimitResult, 'outcome' | 'blocking'
                 @if (limit.lines; as lines) {
                   @if (lines.length === 1 && lines[0].excess !== null) { {{ t('limits.over', { by: lines[0].excess + ' × ' + (lines[0].packaging_type | dwCode: 'packaging') }) }} }
                   @else { {{ t('limits.overShare', { pct: round((limit.pct ?? 100) - 100) }) }} }
-                } @else if (limit.unit === 'kg') { {{ t('limits.over', { by: (limit.excess | dwKg: 'auto') }) }} }
-                @else { {{ t('limits.over', { by: t('dashboard.lots', { count: limit.excess }) }) }} }
+                } @else { {{ t('limits.over', { by: text.quantity(limit, limit.excess) }) }} }
               </span>
-            } @else if (!compact() || limit.outcome === 'warning') {
+            } @else if (limit.key !== 'unlisted' && (!compact() || limit.outcome === 'warning')) {
               <span class="dw-faint">
                 {{ t('stock.remaining') }}
                 @if (limit.lines; as lines) { @for (line of lines; track line.packaging_type; let first = $first) { @if (!first) { {{ t('common.or') }} } {{ line.remaining }} × {{ line.packaging_type | dwCode: 'packaging' }} } }
-                @else if (limit.unit === 'kg') { {{ limit.remaining | dwKg: 'auto' }} }
-                @else { {{ t('dashboard.lots', { count: limit.remaining }) }} }
+                @else { {{ text.quantity(limit, limit.remaining) }} }
                 @if (limit.outcome === 'unverifiable') { {{ t('limits.onKnown') }} }
               </span>
             }
             @if (limit.missing_count > 0) {
               <span class="missing">
-                {{ t(limit.unit === 'kg' ? 'limits.missingWeight' : 'limits.missingPackages', { count: limit.missing_count }) }}
+                {{ t(limit.unit === 'kg' ? 'limits.missingWeight' : limit.key === 'unlisted' || limit.key === 'space' ? 'limits.missingPackages' : 'limits.missingCount', { count: limit.missing_count }) }}
                 {{ limit.missing_lots.join(', ') }}@if (limit.missing_count > limit.missing_lots.length) { … }
               </span>
             }
@@ -96,6 +98,7 @@ export class LimitsComponent {
   readonly limits = input.required<LimitResult[]>();
   /** In a table cell: what is left is only said when it matters. */
   readonly compact = input(false);
+  protected readonly text = inject(LimitText);
 
   protected round(value: number): number {
     return Math.round(value);

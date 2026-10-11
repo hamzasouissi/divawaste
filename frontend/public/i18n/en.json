@@ -464,7 +464,8 @@
     "AUTHORIZATION_EXCEEDED": "The authorisation does not cover this pickup: one of its limits would be exceeded. Each limit is detailed on the Authorisations page.",
     "AUTHORIZATION_UNVERIFIABLE": "The authorisation cannot be verified: some lots have no measured weight. Weigh them, then try again.",
     "AUTHORIZATION_PACKAGING": "The authorisation is stated in packages only and some lots are loose or in a packaging it does not name: it cannot be verified for them.",
-    "AUTHORIZATION_MISSING": "No authorisation covers this waste on this date. Record one before requesting the pickup."
+    "AUTHORIZATION_MISSING": "No authorisation covers this waste on this date. Record one before requesting the pickup.",
+    "authorizationRefused": "Refused by authorisation {{reference}} ({{wasteType}}): {{problems}}."
   },
   "notifications": {
     "title": "Notifications",
@@ -500,7 +501,8 @@
       "company.pending_review": "Registration to review",
       "document.signed_copy_requested": "Signed copy of a slip to attach",
       "authorization.usage_high": "Authorisation almost used up",
-      "authorization.expiring_soon": "Authorisation ending soon"
+      "authorization.expiring_soon": "Authorisation ending soon",
+      "stock.threshold_unverifiable": "Stock limit cannot be verified"
     },
     "types": {
       "stock.threshold_warning": {
@@ -606,6 +608,10 @@
       "authorization.expiring_soon": {
         "title": "Authorisation {{reference}}: ends on {{date}}",
         "body": "{{waste_type}}: in {{days}} day(s). Without a new authorisation, pickups will be blocked."
+      },
+      "stock.threshold_unverifiable": {
+        "title": "Stock limit cannot be verified — {{site}}",
+        "body": "Limit of {{max_quantity_kg}} kg ({{scope}}): {{quantity_kg}} kg known, but {{unweighed_lots}} lot(s) not weighed ({{lots}}). It is not exceeded on what is known, and cannot be called respected: weigh these lots."
       }
     }
   },
@@ -2095,7 +2101,7 @@
     "validUntil": "Until",
     "issuedOn": "Date of the document",
     "quantity": "Allowed quantity",
-    "quantityHint": "Enter the quantity the way the document states it: a weight, a number of lots, or a number of packages per packaging (\"40 bales\", \"100 bags\"). A lot counts for as many packages as it holds. Mixed packagings add up; when several limits are given, the most used one is the one that counts.",
+    "quantityHint": "Enter the quantity the way the document states it: a weight, a number of lots, packages per packaging (\"300 bags\", \"40 bales\"). A lot counts for as many packages as it holds. Each quantity is a limit checked separately: exceeding a single one, or being unable to verify it, blocks the pickup request.",
     "quantityRequired": "Give at least one quantity: a weight, a number of lots or a packaging.",
     "maxKg": "Maximum weight (kg)",
     "maxLots": "Maximum number of lots",
@@ -2115,7 +2121,11 @@
       "ended": "Ended",
       "withdrawn": "Withdrawn"
     },
-    "blocked": "No further pickup is possible on this authorisation while a limit is exceeded or cannot be verified."
+    "blocked": "No further pickup is possible on this authorisation while a limit is exceeded or cannot be verified.",
+    "shared": "The document states one quantity shared by these packagings (\"40 bales or 100 bags\")",
+    "sharedOn": "One limit: each packaging uses its share and the shares add up (20 bales of 40 and 50 bags of 100 use it all).",
+    "sharedOff": "One limit per packaging: each is checked separately, and exceeding a single one blocks the request. Tick the box only if the document says so.",
+    "sharedTag": "shared quantity"
   },
   "production": {
     "reference": "Reference",
@@ -2756,11 +2766,13 @@
   "limits": {
     "name": {
       "weight": "Weight",
-      "packages": "Packages",
+      "packages": "Packages (shared quantity)",
       "lots": "Lots",
       "space": "Room",
       "load": "Load",
-      "stock": "Stock limit"
+      "stock": "Stock limit",
+      "unlisted": "Packagings not named",
+      "packaging": "Packages"
     },
     "lotsOf": "{{used}} / {{max}} lot(s)",
     "atLeast": "at least {{pct}} %",
@@ -2769,6 +2781,15 @@
     "onKnown": "(on what is known)",
     "missingWeight": "{{count}} lot(s) without a measured weight:",
     "missingPackages": "{{count}} lot(s) loose or in a packaging that is not planned:",
-    "outside": "{{count}} lot(s) outside the packagings named, covered by another limit of the document:"
+    "outside": "{{count}} lot(s) outside the packagings named, covered by another limit of the document:",
+    "missingCount": "{{count}} lot(s) without a number of packages:",
+    "problem": {
+      "exceeded": "limit of {{max}} exceeded by {{by}}",
+      "sharedExceeded": "shared quantity ({{lines}}) exceeded by {{pct}} %",
+      "alsoMissing": "(not counting {{lots}})",
+      "weightUnknown": "weight unknown or only estimated for {{lots}} — the authorisation is limited in kg: weigh the lot(s)",
+      "countUnknown": "number of packages ({{packaging}}) unknown for {{lots}}: enter it on the lot page",
+      "unlisted": "{{lots}} loose or in a packaging the authorisation does not name — it is stated in packages only: pack the lot(s) as it plans, or record an authorisation that covers them"
+    }
   }
 }

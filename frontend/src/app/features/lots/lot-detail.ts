@@ -64,7 +64,7 @@ import { COLOR } from '../../ui/swatch';
                         @if (l.packaging_type) {
                           {{ l.package_count ?? 1 }} × {{ l.packaging_type | dwCode: 'packaging' }}
                           @if (!l.package_count_confirmed) { <dw-status kind="member" value="suspended" tone="neutral" [label]="t('lots.packagesDefault')" /> }
-                          @if (session.can('lots.update', l.site?.ulid)) { <button type="button" class="linkish" (click)="act('packages')">{{ t(onSite() ? 'common.edit' : 'lots.packagesCorrect') }}</button> }
+                          @if (session.can('lots.update', l.site?.ulid)) { <button type="button" class="linkish" (click)="act('packages')">{{ t(present() ? 'common.edit' : 'lots.packagesCorrect') }}</button> }
                         } @else { {{ t('lots.loose') }} }
                       </dd>
                     </div>
@@ -204,6 +204,8 @@ export class LotDetailPage implements OnInit {
 
   protected readonly transformable = computed(() => ['created', 'stored'].includes(this.lot()?.status ?? ''));
   protected readonly onSite = computed(() => this.transformable());
+  /** Still on the site, a requested pickup included: its number of packages is edited. Once it has left, it is corrected with a reason. */
+  protected readonly present = computed(() => ['created', 'stored', 'awaiting_pickup'].includes(this.lot()?.status ?? ''));
 
   ngOnInit(): void {
     this.load();

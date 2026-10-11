@@ -4,6 +4,7 @@ import { TranslocoService } from '@jsverse/transloco';
 import { MessageService } from 'primeng/api';
 
 import { ApiError } from '../api/api';
+import { LimitText } from '../format/limit-text';
 
 /**
  * One way to tell the user what happened (PrimeNG Toast, rendered by the application root). Success messages
@@ -14,6 +15,7 @@ import { ApiError } from '../api/api';
 export class Toast {
   private readonly messages = inject(MessageService);
   private readonly transloco = inject(TranslocoService);
+  private readonly limits = inject(LimitText);
 
   success(key: string, params?: Record<string, unknown>): void {
     this.messages.add({ severity: 'success', detail: this.transloco.translate(key, params), life: 3500 });
@@ -41,6 +43,11 @@ export class Toast {
     // A refused field says what is wrong ("Le mot de passe est incorrect") better than any generic sentence.
     if (error.isValidation) {
       return Object.values(error.errors)[0]?.[0] ?? this.transloco.translate('errors.VALIDATION_FAILED');
+    }
+    // An authorisation that refuses says which of its limits, with the figures the API answered with.
+    const refusal = this.limits.refusal(error.context);
+    if (refusal) {
+      return refusal;
     }
     const key = `errors.${error.code}`;
     const known = this.transloco.translate(key);
