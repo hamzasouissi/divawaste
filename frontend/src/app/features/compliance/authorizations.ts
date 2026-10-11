@@ -71,6 +71,10 @@ const DECIMAL = Validators.pattern(/^\d+([.,]\d{1,3})?$/);
                 </div>
               }
               @if (!data?.in_use) { <button pButton text type="button" class="add" (click)="addLimit()"><dw-icon>add</dw-icon>{{ t('sites.addCapacity') }}</button> }
+              @if (limits.length > 1) {
+                <dw-checkbox formControlName="shared_packaging_allowance">{{ t('authorizations.shared') }}</dw-checkbox>
+                <p class="dw-muted">{{ t(form.controls.shared_packaging_allowance.value ? 'authorizations.sharedOn' : 'authorizations.sharedOff') }}</p>
+              }
               @if (noQuantity()) { <small class="dw-field-error" role="alert">{{ t('authorizations.quantityRequired') }}</small> }
             </section>
 
@@ -128,6 +132,7 @@ export class AuthorizationDialog {
     notes: [this.data?.notes ?? ''],
     is_active: [this.data?.is_active ?? true],
     limits: this.limits,
+    shared_packaging_allowance: [{ value: this.data?.shared_packaging_allowance ?? false, disabled: this.data?.in_use ?? false }],
   });
   private readonly value = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
   private readonly submitted = signal(false);
@@ -171,7 +176,7 @@ export class AuthorizationDialog {
       return;
     }
     this.busy.set(true);
-    const body = { ...value, max_kg: value.max_kg ? String(value.max_kg).replace(',', '.') : null, issued_on: value.issued_on || null, notes: value.notes || null };
+    const body = { ...value, shared_packaging_allowance: value.shared_packaging_allowance && value.limits.length > 1, max_kg: value.max_kg ? String(value.max_kg).replace(',', '.') : null, issued_on: value.issued_on || null, notes: value.notes || null };
     try {
       const saved = await firstValueFrom(this.data ? this.api.put<WasteAuthorization>(`waste-authorizations/${this.data.ulid}`, body) : this.api.post<WasteAuthorization>('waste-authorizations', body));
       const file = this.file();
@@ -219,7 +224,8 @@ export class AuthorizationDialog {
                   <td>
                     @if (row.max_kg) { <div>{{ row.max_kg | dwKg: 'auto' }}</div> }
                     @if (row.max_lots) { <div>{{ t('dashboard.lots', { count: row.max_lots }) }}</div> }
-                    @for (line of row.limits; track line.packaging_type) { <div>{{ line.max_count }} × {{ line.packaging_type | dwCode: 'packaging' }}</div> }
+                    @for (line of row.limits; track line.packaging_type; let first = $first) { <div>@if (row.shared_packaging_allowance && !first) { {{ t('common.or') }} } {{ line.max_count }} × {{ line.packaging_type | dwCode: 'packaging' }}</div> }
+                    @if (row.shared_packaging_allowance) { <div class="dw-faint">{{ t('authorizations.sharedTag') }}</div> }
                   </td>
                   <td>
                     <dw-limits [limits]="row.usage.constraints" />

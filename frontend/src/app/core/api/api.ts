@@ -27,12 +27,14 @@ export class ApiError extends Error {
     readonly detail: string | null,
     readonly errors: Record<string, string[]>,
     readonly requestId: string | null,
+    /** Figures behind a refused business rule (the limits of an authorisation, each with its answer…). */
+    readonly context: Record<string, unknown> | null = null,
   ) {
     super(detail ?? code);
   }
 
   static from(response: HttpErrorResponse): ApiError {
-    const body = (response.error ?? {}) as { code?: string; detail?: string; errors?: Record<string, string[]>; request_id?: string };
+    const body = (response.error ?? {}) as { code?: string; detail?: string; errors?: Record<string, string[]>; request_id?: string; context?: Record<string, unknown> };
 
     return new ApiError(
       response.status,
@@ -40,6 +42,7 @@ export class ApiError extends Error {
       body.detail ?? null,
       body.errors ?? {},
       body.request_id ?? response.headers?.get('X-Request-Id') ?? null,
+      body.context ?? null,
     );
   }
 

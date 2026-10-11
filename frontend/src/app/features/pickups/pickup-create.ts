@@ -9,6 +9,7 @@ import { Api } from '../../core/api/api';
 import { AuthorizationCheck, DirectoryProvider, ExternalPartner, Lot, Pickup } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
+import { LimitText } from '../../core/format/limit-text';
 import { DatePipe, KnownWeightPipe, LotMeasurePipe } from '../../core/format/pipes';
 import { LimitsComponent, failingLimits } from '../../ui/limits';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
@@ -90,7 +91,7 @@ function today(): string {
               @if (item.constraints.length > 0) {
                 <div class="cover-limits" [class.bad]="item.reason">
                   <dw-limits [limits]="item.constraints" />
-                  @if (item.reason) { <p class="result">{{ t('pickups.create.authorization.blocked', { limits: failing(item, t) }) }}</p> }
+                  @if (item.reason) { <p class="result">{{ t('pickups.create.authorization.blocked', { limits: failing(item) }) }}</p> }
                 </div>
               }
             }
@@ -186,6 +187,7 @@ export class PickupCreatePage {
   protected readonly receivers = computed(() => this.externals().filter((partner) => partner.roles.some((role) => role !== 'transporter')));
   /** For the waste types that only leave under an authorisation: what covers the selection on the chosen date. */
   protected readonly authorizations = signal<AuthorizationCheck[]>([]);
+  private readonly limitText = inject(LimitText);
   private check = 0;
   /** The chosen receiver: `c:` + a provider of the platform, or `x:` + a partner without an account. */
   protected readonly provider = signal('');
@@ -246,8 +248,8 @@ export class PickupCreatePage {
   }
 
   /** The limits that refuse the request, by name: "Colis, Poids". */
-  protected failing(item: AuthorizationCheck, t: (key: string) => string): string {
-    return failingLimits(item.constraints).map((limit) => t('limits.name.' + limit.key)).join(', ');
+  protected failing(item: AuthorizationCheck): string {
+    return failingLimits(item.constraints).map((limit) => this.limitText.name(limit)).join(', ');
   }
 
   protected choose(key: string): void {

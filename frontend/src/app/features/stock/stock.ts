@@ -38,7 +38,7 @@ interface AppliedLimit {
   quantity: number;
   max: number;
   pct: number;
-  level: 'warning' | 'exceeded' | null;
+  level: 'warning' | 'exceeded' | 'unverifiable' | null;
   /** The limit answered on its own: below it with lots nobody weighed is 'unverifiable', never 'respected'. */
   outcome: 'respected' | 'warning' | 'exceeded' | 'unverifiable';
   missing: number;
@@ -322,7 +322,7 @@ export class ThresholdDialog {
     .over { color: var(--dw-danger); font-size: 12.5px; font-weight: 600; }
     .meter { flex: 0 0 110px; height: 8px; border-radius: 4px; background: var(--dw-line-soft); overflow: hidden; }
     .bar { display: block; height: 100%; max-inline-size: 100%; background: var(--dw-success); }
-    .bar.warning { background: #d68a00; } .bar.exceeded { background: var(--dw-danger); }
+    .bar.warning, .bar.unverifiable { background: #d68a00; } .bar.exceeded { background: var(--dw-danger); }
     .none { display: inline-flex; align-items: center; gap: 4px; color: var(--dw-ink-2); font-size: 12.5px; }
     .none dw-icon { font-size: 15px; color: var(--dw-ink-3); }
     .none.block { display: flex; }
