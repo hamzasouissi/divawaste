@@ -89,7 +89,7 @@ class UnknownWeightTest extends TestCase
             ->assertJsonPath('meta.total_kg', '120.000')->assertJsonPath('meta.unweighed_lots', 2)
             ->assertJsonPath('data.0.zone_fill.quantity_kg', '120.000')->assertJsonPath('data.0.zone_fill.unweighed_lots', 2);
         // The limit is below its warning on what is known — and says that two lots could not be counted.
-        $this->assertSame([$limit, '120.000', 2, '500.000', null, 'unverifiable', 2], [$stock->json('thresholds.0.ulid'), $stock->json('thresholds.0.quantity_kg'), $stock->json('thresholds.0.unweighed_lots'), $stock->json('thresholds.0.max_quantity_kg'), $stock->json('thresholds.0.alert_level'), $stock->json('thresholds.0.constraint.outcome'), $stock->json('thresholds.0.constraint.missing_count')]);
+        $this->assertSame([$limit, '120.000', 2, '500.000', 'unverifiable', 'unverifiable', 2], [$stock->json('thresholds.0.ulid'), $stock->json('thresholds.0.quantity_kg'), $stock->json('thresholds.0.unweighed_lots'), $stock->json('thresholds.0.max_quantity_kg'), $stock->json('thresholds.0.alert_level'), $stock->json('thresholds.0.constraint.outcome'), $stock->json('thresholds.0.constraint.missing_count')]);
 
         $range = '?from='.now()->subDay()->toDateString().'&to='.now()->addDay()->toDateString();
         $this->api()->getJson('/api/v1/dashboard'.$range)->assertOk()->assertJsonPath('data.totals.generated_kg', '120.000')

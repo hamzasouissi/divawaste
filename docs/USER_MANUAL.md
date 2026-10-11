@@ -351,16 +351,27 @@ its own figures, unit and result; no percentage of one is ever taken for another
 | **Non vérifiable** | What is known is below the limit, but a quantity is missing: the lots concerned are named. Never read as "Respecté" |
 
 - **Authorisations** (page Autorisations, and the pickup request): one line per limit the document states — **Poids**,
-  **Colis**, **Lots**. Example: "Poids 450 kg / 500 kg — 90 % — Respecté" and "Colis 310 / 300 × Sac — Dépassé de
-  10 × Sac". The request is blocked as soon as one limit is exceeded or not verifiable, and says which
-  ("Demande bloquée — limite(s) en cause : Colis"); the other limits stay visible. Several packagings on one document
-  ("100 sacs ou 50 cartons") are one allowance they share.
+  **Colis (Sac)**, **Colis (Balle)**, **Lots**. Example: "Poids 450 kg / 500 kg — 90 % — Respecté" and "Colis (Sac)
+  310 / 300 × Sac — Dépassé de 10 × Sac". The request is blocked as soon as one limit is exceeded or not verifiable,
+  and says which ("Demande bloquée — limite(s) en cause : Colis (Sac)"); the other limits stay visible.
+  **Each packaging has its own limit**: 300 bags and 40 bales are two limits, and bales never draw on the bags. Only
+  when the document itself states one combined quantity ("40 balles ou 100 sacs") tick **« une seule quantité commune »**
+  on the authorisation: it is then one limit, "Colis (quantité commune)", shared by its packagings. Authorisations with
+  several packagings recorded before this choice existed were counted as shared and stay so: review them one by one.
+  A lot that is loose, or in a packaging the document does not name, is covered by its weight or number of lots when
+  it states one; in packages only, the document cannot be verified for that lot ("Conditionnements non cités").
+- **When the server refuses** (a draft sent later, a number of packages edited on a lot already requested): the message
+  says which limit, with its figures — "Refusé par l’autorisation DOUANE-… (type) : limite de 300 × Sac dépassée de
+  10 × Sac" or "poids inconnu … pour L-… — l’autorisation est limitée en kg : pesez ce(s) lot(s)".
 - **Zones** (Stock, Sites): **Place** (packages against what the zone holds) and **Charge** (kilograms against the
   weight it bears) are two lines. A zone can be at 100 % of its room and 80 % of its load. A loose lot or an unplanned
   packaging makes the room "Non vérifiable"; a lot nobody weighed does the same for the load. A zone alerts; it never
   refuses a lot.
 - **Stock limits**: below the limit with unweighed lots is "Non vérifiable"; above it is "Dépassé", and the unweighed
-  lots are still listed. A stock limit alerts; it blocks nothing.
+  lots are still listed. A stock limit alerts; it blocks nothing. People who see the stock of the site receive
+  **« Limite de stock non vérifiable »** (notification and email) once, when a limit enters that state: it gives the
+  site, zone and waste type, the known weight, and the lots to weigh. It is not sent again while nothing changes, and
+  it is a different message from "Limite de stock dépassée", which is a known exceedance.
 
 ### Packages of a lot
 A lot is not a package: one lot may be 12 bags. Lot, packages, declared quantity and weight are four separate figures.

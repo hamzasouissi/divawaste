@@ -12,6 +12,7 @@ final class NotificationCatalog
     public const TYPES = [
         'stock.threshold_warning' => ['mail' => false],
         'stock.threshold_exceeded' => ['mail' => true],
+        'stock.threshold_unverifiable' => ['mail' => true],
         'pickup.requested' => ['mail' => true],
         'pickup.confirmed' => ['mail' => true],
         'pickup.refused' => ['mail' => true],

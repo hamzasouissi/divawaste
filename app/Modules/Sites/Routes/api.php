@@ -228,7 +228,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
                     'quantity_kg' => $quantity,
                     'unweighed_lots' => $stock->unweighed($threshold->site_id, $threshold->zone_id, $threshold->waste_type_id),
                     'max_quantity_kg' => (string) $threshold->max_quantity_kg,
-                    'alert_level' => EvaluateStockThresholds::level($quantity, (string) $threshold->max_quantity_kg, $threshold->warning_pct)?->value,
+                    'alert_level' => EvaluateStockThresholds::level($quantity, (string) $threshold->max_quantity_kg, $threshold->warning_pct,
+                        $stock->unweighed($threshold->site_id, $threshold->zone_id, $threshold->waste_type_id))?->value,
                     // The limit answered on its own, in its unit. Known weight above it: exceeded, and the lots nobody weighed
                     // are named too. Known weight below it with such lots: unverifiable, never "respected". A stock limit
                     // alerts; it blocks nothing.

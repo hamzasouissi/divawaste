@@ -10,6 +10,10 @@ return [
             'title' => 'Stock limit exceeded — :site',
             'body' => 'Waste stock is at :quantity_kg kg, above the :max_quantity_kg kg limit (:site). Plan a pickup.',
         ],
+        'threshold_unverifiable' => [
+            'title' => 'Stock limit cannot be verified — :site',
+            'body' => 'Limit of :max_quantity_kg kg (:scope): the known weight is :quantity_kg kg, but :unweighed_lots lot(s) are not weighed (:lots). The limit is not exceeded on what is known, and it cannot be called respected: weigh these lots.',
+        ],
     ],
     'pickup' => [
         'requested' => ['title' => 'New pickup request :number', 'body' => ':company requests a pickup on :date at site :site (:lots lots, :weight_kg kg).'],

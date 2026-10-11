@@ -262,6 +262,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'issued_on' => $authorization->issued_on?->toDateString(),
             'valid_from' => $authorization->valid_from->toDateString(), 'valid_until' => $authorization->valid_until->toDateString(),
             'max_kg' => $authorization->max_kg, 'max_lots' => $authorization->max_lots,
+            // false: each packaging has its own limit. true: the document states one quantity the packagings share.
+            'shared_packaging_allowance' => (bool) $authorization->shared_packaging_allowance,
             'limits' => DB::table('waste_authorization_limits')->where('waste_authorization_id', $authorization->id)->orderBy('id')->get(['packaging_type_id', 'max_count'])
                 ->map(fn ($row) => ['packaging_type' => $codes->code('packaging_types', (int) $row->packaging_type_id), 'max_count' => (int) $row->max_count]),
             'alert_pct' => $authorization->alert_pct, 'notes' => $authorization->notes, 'is_active' => $authorization->is_active,
@@ -285,6 +287,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         'limits' => ['nullable', 'array', 'max:30'],
         'limits.*.packaging_type' => ['required', 'string', 'distinct', Rule::exists('packaging_types', 'code')->where('is_active', true)],
         'limits.*.max_count' => ['required', 'integer', 'between:1,1000000'],
+        // Only when the document itself states one combined quantity ("40 bales or 100 bags"). Never assumed.
+        'shared_packaging_allowance' => ['sometimes', 'boolean'],
         'alert_pct' => ['nullable', 'integer', 'between:1,100'],
         'notes' => ['nullable', 'string', 'max:1000'],
         'is_active' => ['sometimes', 'boolean'],
@@ -295,6 +299,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'reference' => trim($input['reference']), 'issued_on' => $input['issued_on'] ?? null,
             'valid_from' => $input['valid_from'], 'valid_until' => $input['valid_until'],
             'max_kg' => $input['max_kg'] ?? null, 'max_lots' => $input['max_lots'] ?? null,
+            // Sharing needs at least two packagings to share between.
+            'shared_packaging_allowance' => (bool) ($input['shared_packaging_allowance'] ?? false) && count($input['limits'] ?? []) > 1,
             'alert_pct' => $input['alert_pct'] ?? 80, 'notes' => $input['notes'] ?? null, 'is_active' => (bool) ($input['is_active'] ?? true),
         ])->save();
         DB::table('waste_authorization_limits')->where('waste_authorization_id', $authorization->id)->delete();
@@ -334,6 +340,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             $current = $data($authorization);
             $same = strtoupper($input['waste_type']) === $current['waste_type']['ulid'] && $input['valid_from'] === $current['valid_from'] && $input['valid_until'] === $current['valid_until']
                 && bccomp((string) ($input['max_kg'] ?? '0'), (string) ($current['max_kg'] ?? '0'), 3) === 0 && (int) ($input['max_lots'] ?? 0) === (int) ($current['max_lots'] ?? 0)
+                && ((bool) ($input['shared_packaging_allowance'] ?? false) && count($input['limits'] ?? []) > 1) === $current['shared_packaging_allowance']
                 && collect($input['limits'] ?? [])->map(fn ($l) => [$l['packaging_type'], (int) $l['max_count']])->sort()->values()->all()
                     === collect($current['limits'])->map(fn ($l) => [$l['packaging_type'], $l['max_count']])->sort()->values()->all();
             if (! $same) {

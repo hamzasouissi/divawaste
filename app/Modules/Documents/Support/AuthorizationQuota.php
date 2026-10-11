@@ -18,7 +18,8 @@ use Illuminate\Support\Facades\DB;
  * by itself, and a lot left on the dock at loading stops counting.
  *
  * The allowed quantity is read the way the document states it — a weight, packages per packaging, a number of lots —
- * and each of these limits is checked on its own, in its own unit. A pickup is covered when none of them is exceeded and
+ * and each of these limits is checked on its own, in its own unit. "300 bags" and "40 bales" are two limits; they
+ * share one quantity only when the document says so (`shared_packaging_allowance`). A pickup is covered when none of them is exceeded and
  * none is left unverifiable; the percentages of two different limits are never compared or merged.
  */
 final class AuthorizationQuota
@@ -31,7 +32,7 @@ final class AuthorizationQuota
     /**
      * Every limit of the authorisation with what is drawn on it, each answered separately.
      *
-     * @param  array{kg: string, lots: int, counts: array<string, int>, unweighed: list<string>, kinds: array<string, list<string>>}|null  $extra  what a pickup being prepared would add
+     * @param  array{kg: string, lots: int, counts: array<string, int>, unweighed: list<string>, kinds: array<string, list<string>>, uncounted: list<string>}|null  $extra  what a pickup being prepared would add
      * @return array{constraints: list<array<string, mixed>>, outcome: string|null, blocked: bool, failing: list<string>, used: array{kg: string, lots: int, counts: array<string, int>}}
      */
     public function usage(WasteAuthorization $authorization, ?int $exceptPickupId = null, ?array $extra = null): array
@@ -41,6 +42,7 @@ final class AuthorizationQuota
             $used['kg'] = bcadd($used['kg'], $extra['kg'], 3);
             $used['lots'] += $extra['lots'];
             $used['unweighed'] = array_merge($used['unweighed'], $extra['unweighed']);
+            $used['uncounted'] = array_merge($used['uncounted'], $extra['uncounted']);
             foreach ($extra['counts'] as $kind => $count) {
                 $used['counts'][$kind] = ($used['counts'][$kind] ?? 0) + $count;
             }
@@ -62,8 +64,21 @@ final class AuthorizationQuota
             // also states a weight or a number of lots, that limit covers them; stated in packages only, nothing does.
             $outside = array_merge([], ...array_values(array_diff_key($used['kinds'], $limits)));
             $elsewhere = $hasWeight || $authorization->max_lots !== null;
-            $constraints[] = Constraint::packages('packages', $limits, $used['counts'], $authorization->alert_pct, $elsewhere ? [] : $outside, true)
-                + ['outside_count' => $elsewhere ? count($outside) : 0, 'outside_lots' => $elsewhere ? array_slice($outside, 0, 50) : []];
+            if ($authorization->shared_packaging_allowance && count($limits) > 1) {
+                // The document states one quantity its packagings share: one limit, a line per packaging.
+                $constraints[] = Constraint::packages('packages', $limits, $used['counts'], $authorization->alert_pct, $used['uncounted'], true);
+            } else {
+                // One limit per packaging: bags do not draw on the bales, and exceeding either one refuses.
+                foreach ($limits as $kind => $max) {
+                    $constraints[] = Constraint::quantity('packages:'.$kind, 'package', (string) ($used['counts'][$kind] ?? 0), (string) $max, $authorization->alert_pct,
+                        array_values(array_intersect($used['uncounted'], $used['kinds'][$kind] ?? [])), true, 0) + ['packaging_type' => (string) $kind];
+                }
+            }
+            if ($outside !== []) {
+                // No package limit of the document can count these lots. Covered by its weight or its number of lots,
+                // they are only listed; otherwise the document cannot be verified for them.
+                $constraints[] = Constraint::unlisted('unlisted', $outside, ! $elsewhere);
+            }
         }
         if ($authorization->max_lots !== null) {
             $constraints[] = Constraint::quantity('lots', 'lot', (string) $used['lots'], (string) $authorization->max_lots, $authorization->alert_pct, [], true, 0);
@@ -88,7 +103,7 @@ final class AuthorizationQuota
         $cover = [];
 
         foreach ($types as $typeId => $name) {
-            $extra = ['kg' => '0.000', 'lots' => 0, 'counts' => [], 'unweighed' => [], 'kinds' => []];
+            $extra = ['kg' => '0.000', 'lots' => 0, 'counts' => [], 'unweighed' => [], 'kinds' => [], 'uncounted' => []];
             foreach ($lots->where('waste_type_id', $typeId) as $lot) {
                 // A weight that is unknown, or only estimated, cannot be checked against a limit in kilograms.
                 if ($lot->kg === null || ($lot->weight_basis ?? 'measured') === 'estimated') {
@@ -99,7 +114,12 @@ final class AuthorizationQuota
                 $extra['lots']++;
                 // A lot is as many packages as it says. Loose waste has no packages: it is kept under '' and can only be
                 // covered by a weight or a number of lots.
-                $extra['counts'][$kind] = ($extra['counts'][$kind] ?? 0) + ($kind === '' ? 1 : (int) ($lot->packages ?? 1));
+                $extra['counts'][$kind] = ($extra['counts'][$kind] ?? 0) + ($kind === '' ? 1 : (int) ($lot->packages ?? 0));
+                // A packaged lot always says how many packages it is (one by default, and it says so). One that does not
+                // is not counted as one: the limit on its packaging cannot be verified.
+                if ($kind !== '' && $lot->packages === null) {
+                    $extra['uncounted'][] = (string) ($lot->lot_number ?? '');
+                }
                 $extra['kinds'][$kind][] = (string) ($lot->lot_number ?? '');
             }
 
@@ -114,13 +134,13 @@ final class AuthorizationQuota
                 $outcomes = array_column($after['constraints'], 'outcome');
                 $reason = match (true) {
                     ! $after['blocked'] => null,
-                    ($by['packages']['missing_count'] ?? 0) > 0 => 'packaging',
+                    ($by['unlisted']['outcome'] ?? null) === Constraint::UNVERIFIABLE => 'packaging',
                     in_array(Constraint::EXCEEDED, $outcomes, true) => 'exceeded',
                     default => 'unverifiable',
                 };
                 if ($reason === null || $choice['authorization'] === null) {
                     $choice = ['authorization' => $candidate, 'reason' => $reason, 'constraints' => $after['constraints'], 'before' => $this->usage($candidate, $exceptPickupId)['constraints'],
-                        'unweighed' => $by['weight']['missing_lots'] ?? [], 'uncounted' => $by['packages']['missing_lots'] ?? []] + $choice;
+                        'unweighed' => $by['weight']['missing_lots'] ?? [], 'uncounted' => ($by['unlisted']['outcome'] ?? null) === Constraint::UNVERIFIABLE ? $by['unlisted']['missing_lots'] : []] + $choice;
                 }
                 if ($reason === null) {
                     break;
@@ -160,7 +180,7 @@ final class AuthorizationQuota
                     'authorization' => $authorization?->ulid, 'reference' => $authorization?->reference, 'decided_at' => now()->toIso8601ZuluString(), 'pickup_date' => $date,
                     'kg' => $line->kg === null ? null : (string) $line->kg, 'weight_basis' => $line->weight_basis, 'packaging' => $line->packaging_code,
                     'package_count' => $line->packages === null ? null : (int) $line->packages,
-                    'limits' => ['max_kg' => $authorization?->max_kg, 'max_lots' => $authorization?->max_lots, 'packages' => $authorization === null ? [] : $this->limits($authorization)],
+                    'limits' => ['max_kg' => $authorization?->max_kg, 'max_lots' => $authorization?->max_lots, 'shared_packaging_allowance' => (bool) $authorization?->shared_packaging_allowance, 'packages' => $authorization === null ? [] : $this->limits($authorization)],
                     // Every limit of the document as it stood before this pickup and with it: figures, unit and answer.
                     'constraints_before' => $item['before'], 'constraints_after' => $item['constraints'],
                 ])]);
@@ -194,19 +214,25 @@ final class AuthorizationQuota
      */
     private static function sentence(array $constraint): string
     {
-        $figures = match ($constraint['key']) {
-            'weight' => "weight {$constraint['used']}/{$constraint['max']} kg",
-            'lots' => "lots {$constraint['used']}/{$constraint['max']}",
-            default => 'packages '.implode(' + ', array_map(fn (array $line) => "{$line['used']}/{$line['max']} {$line['packaging_type']}", $constraint['lines'])),
-        };
         $missing = implode(', ', $constraint['missing_lots']);
+        if ($constraint['key'] === 'unlisted') {
+            return $constraint['outcome'] === Constraint::UNVERIFIABLE
+                ? "{$constraint['missing_count']} lot(s) are loose or in a packaging the document does not name ({$missing}): it is stated in packages only and cannot be verified for them"
+                : "{$constraint['outside_count']} lot(s) outside the packagings named, covered by another limit of the document";
+        }
+        $figures = match (true) {
+            $constraint['key'] === 'weight' => "weight {$constraint['used']}/{$constraint['max']} kg",
+            $constraint['key'] === 'lots' => "lots {$constraint['used']}/{$constraint['max']}",
+            isset($constraint['packaging_type']) => "{$constraint['packaging_type']} {$constraint['used']}/{$constraint['max']}",
+            default => 'shared packages '.implode(' + ', array_map(fn (array $line) => "{$line['used']}/{$line['max']} {$line['packaging_type']}", $constraint['lines'])),
+        };
 
         return $figures.': '.match ($constraint['outcome']) {
-            Constraint::EXCEEDED => 'exceeded'.(isset($constraint['excess']) ? " by {$constraint['excess']}" : (isset($constraint['lines'][0]['excess']) ? " by {$constraint['lines'][0]['excess']}" : " ({$constraint['pct']} % of the allowance)"))
+            Constraint::EXCEEDED => 'exceeded'.(isset($constraint['excess']) ? " by {$constraint['excess']}" : " ({$constraint['pct']} % of the shared quantity)")
                 .($missing === '' ? '' : ", and {$constraint['missing_count']} lot(s) could not be counted ({$missing})"),
             Constraint::UNVERIFIABLE => $constraint['key'] === 'weight'
                 ? "cannot be verified, {$constraint['missing_count']} lot(s) have no measured weight ({$missing})"
-                : "cannot be verified, {$constraint['missing_count']} lot(s) are loose or in a packaging the document does not name ({$missing})",
+                : "cannot be verified, {$constraint['missing_count']} lot(s) have no number of packages ({$missing})",
             Constraint::WARNING => 'respected, alert level reached',
             default => 'respected',
         };
@@ -216,7 +242,7 @@ final class AuthorizationQuota
      * What the pickups holding a share draw, line by line: a line whose weight is unknown or only estimated is named, not
      * counted as zero.
      *
-     * @return array{kg: string, lots: int, counts: array<string, int>, unweighed: list<string>, kinds: array<string, list<string>>}
+     * @return array{kg: string, lots: int, counts: array<string, int>, unweighed: list<string>, kinds: array<string, list<string>>, uncounted: list<string>}
      */
     private function consumed(int $authorizationId, ?int $exceptPickupId): array
     {
@@ -227,9 +253,9 @@ final class AuthorizationQuota
             ->orderBy('pl.id')
             // Packages as they really left: a count corrected after departure counts, the figure decided with stays on the line.
             ->get(['l.packaging_type_id', 'pl.lot_number_snapshot as lot_number', 'pl.departure_weight_kg', 'pl.weight_basis',
-                DB::raw('COALESCE(pl.departure_weight_kg, pl.declared_weight_kg) as kg'), DB::raw('COALESCE(pl.corrected_package_count, pl.package_count, 1) as packages')]);
+                DB::raw('COALESCE(pl.departure_weight_kg, pl.declared_weight_kg) as kg'), DB::raw('COALESCE(pl.corrected_package_count, pl.package_count) as packages')]);
 
-        $used = ['kg' => '0.000', 'lots' => 0, 'counts' => [], 'unweighed' => [], 'kinds' => []];
+        $used = ['kg' => '0.000', 'lots' => 0, 'counts' => [], 'unweighed' => [], 'kinds' => [], 'uncounted' => []];
         foreach ($rows as $row) {
             $kind = (string) $this->codes->code('packaging_types', $row->packaging_type_id === null ? null : (int) $row->packaging_type_id);
             if ($row->kg === null || ($row->departure_weight_kg === null && $row->weight_basis === 'estimated')) {
@@ -237,7 +263,10 @@ final class AuthorizationQuota
             }
             $used['kg'] = bcadd($used['kg'], (string) ($row->kg ?? '0'), 3);
             $used['lots']++;
-            $used['counts'][$kind] = ($used['counts'][$kind] ?? 0) + ($kind === '' ? 1 : (int) $row->packages);
+            $used['counts'][$kind] = ($used['counts'][$kind] ?? 0) + ($kind === '' ? 1 : (int) ($row->packages ?? 0));
+            if ($kind !== '' && $row->packages === null) {
+                $used['uncounted'][] = (string) $row->lot_number;
+            }
             $used['kinds'][$kind][] = (string) $row->lot_number;
         }
 
