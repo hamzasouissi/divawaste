@@ -60,7 +60,7 @@ class WasteAuthorizationTest extends TestCase
         $free = $this->wasteType('CARTON', requiresAuthorization: false);
         $this->client()->postJson('/api/v1/waste-authorizations', ['waste_type' => $free->ulid, 'max_kg' => '100'] + $base)->assertUnprocessable()->assertJsonStructure(['errors' => ['waste_type']]);
 
-        $created = $this->client()->postJson('/api/v1/waste-authorizations', $base + ['max_kg' => '1000', 'limits' => [['packaging_type' => 'bale', 'max_count' => 4], ['packaging_type' => 'bag', 'max_count' => 10]]])
+        $created = $this->client()->postJson('/api/v1/waste-authorizations', $base + ['max_kg' => '1000', 'shared_packaging_allowance' => true, 'limits' => [['packaging_type' => 'bale', 'max_count' => 4], ['packaging_type' => 'bag', 'max_count' => 10]]])
             ->assertCreated()->assertJsonPath('data.state', 'valid')->assertJsonPath('data.usage.outcome', 'respected')->assertJsonPath('data.usage.constraints.0.pct', 0)->assertJsonPath('data.usage.constraints.1.key', 'packages')->assertJsonPath('data.in_use', false)
             ->assertJsonPath('data.limits.0', ['packaging_type' => 'bale', 'max_count' => 4])->json('data');
 
@@ -86,10 +86,10 @@ class WasteAuthorizationTest extends TestCase
         $carton = $this->wasteType('CARTON', requiresAuthorization: false);
         $this->client()->postJson('/api/v1/pickups/'.$this->pickup([$this->lot($carton, '30', 'bale')]).'/submit')->assertOk();
 
-        // 4 bales or 10 bags, and at most 1000 kg.
+        // The document states one quantity its packagings share — 4 bales or 10 bags — and at most 1000 kg.
         $authorization = $this->client()->postJson('/api/v1/waste-authorizations', ['waste_type' => $this->controlled->ulid, 'reference' => 'D-2026-001',
             'valid_from' => now()->toDateString(), 'valid_until' => now()->addMonths(3)->toDateString(), 'max_kg' => '1000', 'alert_pct' => 60,
-            'limits' => [['packaging_type' => 'bale', 'max_count' => 4], ['packaging_type' => 'bag', 'max_count' => 10]]])->assertCreated()->json('data.ulid');
+            'shared_packaging_allowance' => true, 'limits' => [['packaging_type' => 'bale', 'max_count' => 4], ['packaging_type' => 'bag', 'max_count' => 10]]])->assertCreated()->json('data.ulid');
         $usage = fn () => collect($this->client()->getJson('/api/v1/waste-authorizations')->assertOk()->json('data'))->firstWhere('ulid', $authorization)['usage'];
         // Each limit of the document is answered on its own: the room in packages, and the weight.
         $limit = fn (string $key) => collect($usage()['constraints'])->firstWhere('key', $key);
@@ -127,11 +127,11 @@ class WasteAuthorizationTest extends TestCase
         $this->client()->postJson("/api/v1/pickups/{$drum}/submit")->assertOk();
         $this->client()->postJson("/api/v1/pickups/{$second}/cancel", ['reason' => 'reporté'])->assertOk();
         $this->assertEquals(25, $limit('packages')['pct']);
-        $this->assertSame(['150.000', 1], [$limit('weight')['used'], $limit('packages')['outside_count']]);
+        $this->assertSame(['150.000', 1, 'respected'], [$limit('weight')['used'], $limit('unlisted')['outside_count'], $limit('unlisted')['outcome']]);
 
         // Once pickups draw on it, the quantities are history; the reference and a withdrawal are not.
         $payload = ['waste_type' => $this->controlled->ulid, 'reference' => 'D-2026-001-BIS', 'valid_from' => now()->toDateString(), 'valid_until' => now()->addMonths(3)->toDateString(),
-            'max_kg' => '1000', 'limits' => [['packaging_type' => 'bale', 'max_count' => 4], ['packaging_type' => 'bag', 'max_count' => 10]]];
+            'max_kg' => '1000', 'shared_packaging_allowance' => true, 'limits' => [['packaging_type' => 'bale', 'max_count' => 4], ['packaging_type' => 'bag', 'max_count' => 10]]];
         $this->client()->putJson("/api/v1/waste-authorizations/{$authorization}", ['max_kg' => '5000'] + $payload)->assertConflict()->assertJsonPath('code', 'AUTHORIZATION_IN_USE');
         $this->client()->putJson("/api/v1/waste-authorizations/{$authorization}", $payload + ['is_active' => false])->assertOk()
             ->assertJsonPath('data.reference', 'D-2026-001-BIS')->assertJsonPath('data.state', 'withdrawn')->assertJsonPath('data.in_use', true);

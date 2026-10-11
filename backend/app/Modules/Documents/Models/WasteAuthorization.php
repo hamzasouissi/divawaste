@@ -33,7 +33,7 @@ class WasteAuthorization extends Model
     protected function casts(): array
     {
         return [
-            'issued_on' => 'date', 'valid_from' => 'date', 'valid_until' => 'date', 'max_kg' => 'decimal:3', 'max_lots' => 'integer',
+            'issued_on' => 'date', 'valid_from' => 'date', 'valid_until' => 'date', 'max_kg' => 'decimal:3', 'max_lots' => 'integer', 'shared_packaging_allowance' => 'boolean',
             'alert_pct' => 'integer', 'is_active' => 'boolean',
         ];
     }

@@ -84,6 +84,21 @@ final class Constraint
     }
 
     /**
+     * Lots a set of limits cannot count at all (loose waste under limits stated per packaging, a packaging none of them
+     * names). When nothing else covers them the check is unverifiable; when another limit does, they are only listed.
+     *
+     * @param  list<string>  $lots
+     * @return array<string, mixed>
+     */
+    public static function unlisted(string $key, array $lots, bool $uncovered, bool $blocking = true): array
+    {
+        $lots = array_values(array_unique($lots));
+
+        return self::result($key, 'package', null, false, 100, $uncovered ? $lots : [], $blocking)
+            + ['outside_count' => $uncovered ? 0 : count($lots), 'outside_lots' => $uncovered ? [] : array_slice($lots, 0, self::NAMED)];
+    }
+
+    /**
      * What the answers mean together: the most serious one, and whether a blocking limit failed. Exceeded and
      * unverifiable both fail a blocking limit; they stay two different answers.
      *

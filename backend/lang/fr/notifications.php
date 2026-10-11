@@ -11,6 +11,10 @@ return [
             'title' => 'Limite de stock dépassée — :site',
             'body' => 'Le stock de déchets atteint :quantity_kg kg et dépasse la limite de :max_quantity_kg kg (:site). Planifiez un enlèvement.',
         ],
+        'threshold_unverifiable' => [
+            'title' => 'Limite de stock non vérifiable — :site',
+            'body' => 'Limite de :max_quantity_kg kg (:scope) : le poids connu est de :quantity_kg kg, mais :unweighed_lots lot(s) ne sont pas pesés (:lots). La limite n\'est pas dépassée sur ce qui est connu, et elle ne peut pas être dite respectée : pesez ces lots.',
+        ],
     ],
     'pickup' => [
         'requested' => [
