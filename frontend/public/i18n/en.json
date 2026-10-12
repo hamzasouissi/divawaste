@@ -687,7 +687,9 @@
       "requested": "{{count}} pickup request(s) awaiting the provider's answer",
       "accreditationExpired": "Accreditation expired: {{provider}} can no longer be chosen",
       "accreditationExpiring": "Accreditation of {{provider}}: expires in {{days}} day(s)",
-      "unverifiable": "{{count}} stock limit(s) cannot be verified: some lots are not weighed"
+      "unverifiable": "{{count}} stock limit(s) cannot be verified: some lots are not weighed",
+      "capacityExceeded": "{{count}} zone(s) or site(s) over their capacity",
+      "capacityUnverifiable": "{{count}} zone(s) or site(s) whose occupancy cannot be verified: weight, volume or packages missing"
     },
     "production": "Origin of the waste in production",
     "productionHint": "The manufacturing orders that produced the most waste over the period.",
@@ -850,7 +852,8 @@
     "holds": "Holds:",
     "unconfirmed": "{{count}} lot(s) with a default number of packages",
     "unconfirmedHint": "These lots count as one package for want of a figure. Correct their number of packages if they hold several.",
-    "zoneFill": "Zone fill level"
+    "zoneFill": "Zone fill level",
+    "looseLots": "{{count}} loose lot(s)"
   },
   "sites": {
     "title": "Sites and zones",
@@ -881,10 +884,10 @@
     "closeHint": "The site stays in the history and in documents; it is no longer offered for new lots.",
     "noZoneType": "No type",
     "capacity": "Capacity",
-    "capacityHint": "State how many lots the zone holds when it receives a single packaging: \"40 bales\", \"100 bags\". Mixed lots add up: 20 bales out of 40 and 50 bags out of 100 fill the zone.",
+    "capacityHint": "Say how many packages the zone holds when it receives a single packaging: \"40 bales\", \"100 bags\". Mixed packagings share the same room: 20 bales of 40 and 50 bags of 100 fill the zone. A lot that is loose or in a packaging that is not planned is reported, never converted.",
     "addCapacity": "Add a packaging",
     "maxLots": "Number of lots",
-    "capacityKgLimit": "Maximum weight (kg), optional",
+    "capacityKgLimit": "Maximum load of the zone (kg), optional",
     "noLimit": "No limit",
     "reservedFor": "Reserved for",
     "reservedHint": "Optional. A lot that does not match is reported, never refused.",
@@ -892,7 +895,26 @@
     "acceptedColors": "Colours",
     "anyType": "All types",
     "anyColor": "All colours",
-    "anything": "Anything"
+    "anything": "Anything",
+    "siteCapacity": "Site capacity",
+    "siteCapacityHint": "The total weight the site may hold, all zones together. Every lot on the site counts once, even in a zone without a limit. Leave empty if nothing is to be watched. Going over this capacity alerts; it never refuses a lot.",
+    "siteCapacityKg": "Maximum weight on the site (kg), optional",
+    "siteLoad": "Weight on the site",
+    "siteLoadHint": "Every lot on the site, counted once whatever its zone, against the maximum weight of the site.",
+    "noSiteCapacity": "Site capacity not defined",
+    "noSiteCapacityLong": "Site capacity not defined: {{kg}} on the site ({{count}} lot(s)), nothing is watched.",
+    "spaceMethod": "Room measured in",
+    "spaceMethods": {
+      "packaging": "Packages per packaging (\"100 bags or 50 boxes\")",
+      "volume": "Volume (m³)"
+    },
+    "capacityM3": "Volume of the zone (m³)",
+    "capacityM3Required": "Enter the volume of the zone, above 0.",
+    "volumeHint": "The room taken is the sum of the volumes of the lots: packages × volume of one package (set in Sites › Packaging volumes), or the measured volume of a loose lot, or its weight ÷ the density of its waste type. A lot whose volume is not known is reported, never estimated. A zone is measured one way: in volume, the quantities per packaging are not used.",
+    "packagingVolumes": "Packaging volumes",
+    "packagingVolumesHint": "The room one package takes once stored, in m³. Used by zones whose room is measured in volume. Leave empty if you do not know it: the lots concerned will be reported \"without a known volume\", never estimated.",
+    "packagingVolumesInvalid": "A volume must be a number above 0 (4 decimals at most), or empty.",
+    "packagingVolumesSaved": "Packaging volumes saved."
   },
   "wasteTypes": {
     "title": "Waste types",
@@ -2597,7 +2619,7 @@
     },
     "zones": {
       "title": "The zones of this site",
-      "text": "Capacity: say how many lots the zone holds per packaging (\"40 bales\", \"100 bags\") and, if needed, a maximum weight. Mixed packagings add up.\nReserved for: the waste types and colours planned in the zone. A lot that does not match is reported, never refused.\nThe type of the zone (cutting, sewing…) is optional; it tells which production stage a waste comes from.\n\"No limit\" means the filling of the zone is not watched."
+      "text": "Capacity: the room of a zone is measured one way — in packages per packaging (\"40 bales or 100 bags\", mixed packagings share the same room) or in volume (m³). The maximum load (kg) is a separate limit. The site also has its maximum weight, where every lot counts once. Each limit has its own line and result; none refuses a lot.\nReserved for: the waste types and colours planned in the zone. A lot that does not match is reported, never refused.\nThe type of the zone (cutting, sewing…) is optional; it tells which production stage a waste comes from.\n\"No limit\" means the filling of the zone is not watched."
     },
     "wasteTypes": {
       "title": "Waste types and colours",
@@ -2772,7 +2794,8 @@
       "load": "Load",
       "stock": "Stock limit",
       "unlisted": "Packagings not named",
-      "packaging": "Packages"
+      "packaging": "Packages",
+      "site_load": "Weight on the site"
     },
     "lotsOf": "{{used}} / {{max}} lot(s)",
     "atLeast": "at least {{pct}} %",
@@ -2790,6 +2813,7 @@
       "weightUnknown": "weight unknown or only estimated for {{lots}} — the authorisation is limited in kg: weigh the lot(s)",
       "countUnknown": "number of packages ({{packaging}}) unknown for {{lots}}: enter it on the lot page",
       "unlisted": "{{lots}} loose or in a packaging the authorisation does not name — it is stated in packages only: pack the lot(s) as it plans, or record an authorisation that covers them"
-    }
+    },
+    "missingVolume": "{{count}} lot(s) without a known volume:"
   }
 }

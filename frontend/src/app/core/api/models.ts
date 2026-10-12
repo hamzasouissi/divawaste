@@ -76,12 +76,15 @@ export interface Access {
 export interface LimitResult {
   /**
    * Authorisation: weight, lots, `packages:<packaging>` (one limit per packaging), packages (one quantity the document
-   * says its packagings share), unlisted (lots no packaging limit can count). Zone: space, load. Stock limit: stock.
+   * says its packagings share), unlisted (lots no packaging limit can count). Zone: space, load. Site: site_load.
+   * Stock limit: stock.
    */
   key: string;
   /** The packaging of a limit stated for one packaging. */
   packaging_type?: string;
-  unit: 'kg' | 'package' | 'lot';
+  unit: 'kg' | 'package' | 'lot' | 'm3';
+  /** The room of a zone only: how it is measured, in packages per packaging or in volume. Never both. */
+  method?: 'packaging' | 'volume';
   /** Within this one limit. For packages: the share of the room the packagings use together. */
   pct: number | null;
   outcome: 'respected' | 'warning' | 'exceeded' | 'unverifiable';
@@ -102,7 +105,7 @@ export interface LimitResult {
 
 /** How full a zone is: counted from the lots it holds, never stored. */
 export interface ZoneFill {
-  /** 'space' (packages against the room) and 'load' (kilograms), each when the zone states it. Empty = no limit at all. */
+  /** 'space' (packages against the room, or cubic metres) and 'load' (kilograms), each when the zone states it. Empty = no limit at all. */
   constraints: LimitResult[];
   outcome: LimitResult['outcome'] | null;
   quantity_kg: string;
@@ -115,6 +118,18 @@ export interface ZoneFill {
   /** Lots that only carry the default of one package nobody confirmed. */
   unconfirmed_lots?: number;
   unweighed_lots?: number;
+  /** Zones measured in volume: what takes the room, per packaging ('' = loose waste). */
+  volume?: { used_m3: string; lines: { packaging_type: string; packages: number | null; lots: number; volume_m3: string }[] } | null;
+}
+
+/** The weight a site holds against the weight it may hold: every lot once, whatever its zone. */
+export interface SiteLoad {
+  /** One limit ('site_load') when the site states a capacity; empty otherwise. */
+  constraints: LimitResult[];
+  outcome: LimitResult['outcome'] | null;
+  quantity_kg: string;
+  lots: number;
+  unweighed_lots: number;
 }
 
 export interface Zone {
@@ -124,6 +139,8 @@ export interface Zone {
   zone_type: string | null;
   capacity_kg: string | null;
   capacity_m3: string | null;
+  /** How the room is measured: packages per packaging (sharing one room) or volume against `capacity_m3`. */
+  space_method: 'packaging' | 'volume';
   capacity_alert_pct: number;
   is_waste_storage: boolean;
   is_active: boolean;
@@ -147,6 +164,8 @@ export interface Site {
   timezone: string | null;
   regulatory_identifier: string | null;
   capacity_kg: string | null;
+  capacity_alert_pct: number;
+  load?: SiteLoad;
   is_active: boolean;
   zones_count?: number;
   zones?: Zone[];
@@ -337,6 +356,8 @@ export interface StockRow {
 export interface StockResponse {
   data: StockRow[];
   thresholds: { ulid: string; quantity_kg: string; unweighed_lots?: number; max_quantity_kg: string; alert_level: 'warning' | 'exceeded' | 'unverifiable' | null; constraint: LimitResult }[];
+  /** Each site of the rows with the weight it holds against its capacity. */
+  sites: ({ site: string; site_name: string; capacity_kg: string | null } & SiteLoad)[];
   meta: { total_kg: string; unweighed_lots?: number; generated_at: string };
 }
 

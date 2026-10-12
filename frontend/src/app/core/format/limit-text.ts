@@ -1,8 +1,8 @@
-import { Injectable, Injector, inject, runInInjectionContext } from '@angular/core';
+import { Injectable, Injector, inject, runInInjectionContext, untracked } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
 
 import { LimitResult } from '../api/models';
-import { CodePipe, KgPipe } from './pipes';
+import { CodePipe, KgPipe, NumberPipe } from './pipes';
 
 /** What the API sends with the refusal of an authorisation: the document, the waste and every limit with its answer. */
 export interface AuthorizationRefusal {
@@ -20,7 +20,7 @@ export interface AuthorizationRefusal {
 export class LimitText {
   private readonly transloco = inject(TranslocoService);
   private readonly injector = inject(Injector);
-  private pipes: { kg: KgPipe; code: CodePipe } | null = null;
+  private pipes: { kg: KgPipe; code: CodePipe; number: NumberPipe } | null = null;
 
   /** "Poids", "Lots", "Colis (Sac)", "Colis (quantité commune)". */
   name(limit: LimitResult): string {
@@ -29,10 +29,13 @@ export class LimitText {
       : this.transloco.translate('limits.name.' + limit.key);
   }
 
-  /** A quantity in the unit of the limit: "500 kg", "300 × Sac", "2 lot(s)". */
+  /** A quantity in the unit of the limit: "500 kg", "12,5 m³", "300 × Sac", "2 lot(s)". */
   quantity(limit: LimitResult, value: string | number | null | undefined): string {
     if (limit.unit === 'kg') {
       return this.tools().kg.transform(value ?? null, 'auto');
+    }
+    if (limit.unit === 'm3') {
+      return this.tools().number.transform(value ?? null, 2, ' m³');
     }
 
     return limit.packaging_type ? `${value} × ${this.packaging(limit.packaging_type)}` : this.transloco.translate('dashboard.lots', { count: value });
@@ -71,8 +74,12 @@ export class LimitText {
     return this.tools().code.transform(code, 'packaging');
   }
 
-  /** The pipes read the reference data of the signed-in company: they are made when first needed, not at start-up. */
-  private tools(): { kg: KgPipe; code: CodePipe } {
-    return (this.pipes ??= runInInjectionContext(this.injector, () => ({ kg: new KgPipe(), code: new CodePipe() })));
+  /**
+   * The pipes read the reference data of the signed-in company: they are made when first needed, not at start-up. That
+   * first need is often a template being rendered, and the pipes fill a signal as soon as they are created: they are
+   * made outside of whatever is being computed at that moment.
+   */
+  private tools(): { kg: KgPipe; code: CodePipe; number: NumberPipe } {
+    return (this.pipes ??= untracked(() => runInInjectionContext(this.injector, () => ({ kg: new KgPipe(), code: new CodePipe(), number: new NumberPipe() }))));
   }
 }

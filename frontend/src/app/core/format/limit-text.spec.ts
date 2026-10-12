@@ -42,6 +42,8 @@ describe('limit text: a refusal says which limit, with the figures the API answe
   it('says the exceeded limit and by how much, in its own unit', () => {
     expect(text.problem(bags)).toBe('limite de 300 × Sac dépassée de 10 × Sac');
     expect(text.problem(limit({ used: '520.000', max: '500.000', excess: '20.000', outcome: 'exceeded' }))).toMatch(/^limite de 500\skg dépassée de 20\skg$/);
+    // A room measured in volume speaks in cubic metres.
+    expect(text.problem(limit({ key: 'space', unit: 'm3', method: 'volume', used: '21.000', max: '20.000', excess: '1.000', outcome: 'exceeded', blocking: false }))).toBe('limite de 20 m³ dépassée de 1 m³');
     // A limit that is respected has nothing to say.
     expect(text.problem(limit({ used: '450.000', max: '500.000' }))).toBe('');
   });

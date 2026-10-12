@@ -9,7 +9,8 @@ import { InputText } from 'primeng/inputtext';
 import { ToggleSwitch } from 'primeng/toggleswitch';
 
 import { Api } from '../../core/api/api';
-import { StockResponse, StockRow, StockThreshold, Zone, ZoneFill } from '../../core/api/models';
+import { SiteLoad, StockResponse, StockRow, StockThreshold, Zone, ZoneFill } from '../../core/api/models';
+import { LimitsComponent } from '../../ui/limits';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
@@ -29,6 +30,8 @@ interface SiteGroup {
   site: string;
   name: string;
   total: number;
+  /** The weight the site holds against the weight it may hold, every lot counted once. */
+  load: SiteLoad | null;
   zones: { zone: string; name: string; total: number; fill: ZoneFill; rows: StockRow[] }[];
 }
 
@@ -167,7 +170,7 @@ export class ThresholdDialog {
  */
 @Component({
   imports: [
-    CodePipe, RouterLink, TranslocoDirective, ZoneFillComponent, HelpComponent, KpiComponent, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, KnownWeightPipe, NumberPipe, IconComponent, ButtonDirective, ...SELECT, MenuComponent,
+    CodePipe, RouterLink, TranslocoDirective, ZoneFillComponent, LimitsComponent, HelpComponent, KpiComponent, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, KnownWeightPipe, NumberPipe, IconComponent, ButtonDirective, ...SELECT, MenuComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -202,6 +205,15 @@ export class ThresholdDialog {
                 @for (group of groups(); track group.site) {
                   <section class="dw-panel">
                     <div class="dw-panel-head"><h2 class="dw-h2">{{ group.name }}</h2><span class="dw-spacer"></span><strong>{{ group.total | dwKg: 'auto' }}</strong></div>
+                    <div class="site-load">
+                      <span class="what">{{ t('sites.siteLoad') }}</span>
+                      @if (group.load?.constraints?.length) {
+                        <dw-limits class="grow" [limits]="group.load!.constraints" />
+                      } @else {
+                        <span class="none"><dw-icon aria-hidden="true">info</dw-icon>{{ t('sites.noSiteCapacity') }}</span>
+                        @if (session.can('sites.manage')) { <a class="define" [routerLink]="['/sites', group.site]">{{ t('stock.defineCapacity') }}</a> }
+                      }
+                    </div>
                     @for (zone of group.zones; track zone.zone) {
                       <div class="zone">
                         <div class="zone-head">
@@ -306,6 +318,8 @@ export class ThresholdDialog {
     .site { width: 220px; }
     .zone { padding: var(--dw-3) var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); }
     .zone:last-child { border-block-end: 0; }
+    .site-load { display: flex; align-items: flex-start; gap: var(--dw-2) var(--dw-3); flex-wrap: wrap; padding: var(--dw-3) var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); background: var(--dw-surface-2, transparent); }
+    .site-load .what { margin-inline-start: 0; padding-block-start: 3px; } .site-load .grow { flex: 1 1 320px; }
     .zone-head { display: flex; align-items: center; gap: var(--dw-2) var(--dw-3); flex-wrap: wrap; margin-block-end: 6px; }
     .what { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dw-ink-3); margin-inline-start: var(--dw-3); }
     .scroll { overflow-x: auto; }
@@ -357,7 +371,7 @@ export class StockPage {
   protected readonly groups = computed<SiteGroup[]>(() => {
     const groups = new Map<string, SiteGroup>();
     for (const row of this.stock()?.data ?? []) {
-      const group = groups.get(row.site) ?? { site: row.site, name: row.site_name, total: 0, zones: [] };
+      const group = groups.get(row.site) ?? { site: row.site, name: row.site_name, total: 0, load: this.stock()?.sites?.find((site) => site.site === row.site) ?? null, zones: [] };
       let zone = group.zones.find((item) => item.zone === row.zone);
       if (!zone) {
         zone = { zone: row.zone, name: row.zone_name, total: Number(row.zone_quantity_kg), fill: row.zone_fill, rows: [] };
