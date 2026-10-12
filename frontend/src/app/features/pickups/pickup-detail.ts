@@ -5,13 +5,14 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { Observable, firstValueFrom, forkJoin, of } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 
-import { Api, Page, openBlob } from '../../core/api/api';
+import { Api, ApiError, Page, openBlob } from '../../core/api/api';
 import { DocumentRecord, Manifest, Pickup, PickupLine } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
 import { CodePipe, DatePipe, KnownWeightPipe, MoneyPipe, NumberPipe, QuantityPipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
+import { RequirementsComponent } from '../../ui/requirements';
 import { StateComponent } from '../../ui/state';
 import { CertificateDialog, LinesDialogData, LinesMode, PickupLinesDialog } from './pickup-dialogs';
 import { ToleranceDecisionCard, measure, nextStep } from './tolerance';
@@ -51,7 +52,7 @@ export class ConfirmDateDialog {
  * current status and the user's permissions allow; everything else about the pickup is on the page.
  */
 @Component({
-  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, CodePipe, DatePipe, KnownWeightPipe, MoneyPipe, NumberPipe, QuantityPipe, ToleranceDecisionCard, IconComponent, ButtonDirective],
+  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, CodePipe, DatePipe, KnownWeightPipe, MoneyPipe, NumberPipe, QuantityPipe, ToleranceDecisionCard, IconComponent, ButtonDirective, RequirementsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -84,6 +85,17 @@ export class ConfirmDateDialog {
                   }
                 </span>
               </p>
+            }
+
+            @if (p.provider_requirements; as asked) {
+              <section class="dw-panel dw-panel-body asked">
+                <h2 class="dw-h2">{{ t('requirements.titleDecided', { provider: p.provider?.legal_name }) }}</h2>
+                <p class="dw-muted">{{ t('requirements.decidedHint', { date: (asked.decided_at | dwDate: 'datetime') }) }}</p>
+                <dw-requirements [requirements]="asked.constraints" />
+                @if (asked.override; as override) {
+                  <p class="banner" role="note"><dw-icon aria-hidden="true">gavel</dw-icon><span>{{ t('requirements.overridden', { by: override.by, date: (override.at | dwDate: 'datetime'), reason: override.reason }) }}</span></p>
+                }
+              </section>
             }
 
             <section class="dw-panel dw-panel-body">
@@ -312,7 +324,7 @@ export class PickupDetailPage implements OnInit {
 
     switch (action) {
       case 'submit':
-        return this.call(this.api.post(`${base}/submit`), 'pickups.done.submitted');
+        return this.submit(base);
       case 'complete':
         // Closing ends the trail of every lot of the pickup: it is asked once more.
         return (await this.confirm.ask({ title: text('pickups.completeConfirm'), message: text('pickups.completeHint'), confirmLabel: text('pickups.actions.complete') }))
@@ -351,6 +363,32 @@ export class PickupDetailPage implements OnInit {
 
   protected download(document: DocumentRecord): void {
     this.api.blob(`documents/${document.ulid}/download`).subscribe({ next: (blob) => openBlob(blob), error: (error: unknown) => this.toast.error(error) });
+  }
+
+  /**
+   * Sending a draft. When a blocking requirement of the provider stops it and this person may decide otherwise, the
+   * reason is asked and the request is sent with it; the provider reads it and still accepts or refuses.
+   */
+  private async submit(base: string): Promise<void> {
+    this.busy.set(true);
+    try {
+      await firstValueFrom(this.api.post(`${base}/submit`));
+      this.toast.success('pickups.done.submitted');
+    } catch (error) {
+      const overridable = error instanceof ApiError && ['PROVIDER_REQUIREMENT_NOT_MET', 'PROVIDER_REQUIREMENT_UNVERIFIABLE'].includes(error.code) && error.context?.['may_override'] === true;
+      if (!overridable) {
+        this.toast.error(error);
+      } else {
+        this.busy.set(false);
+        const reason = await this.confirm.ask({ title: this.toast.text('requirements.overrideTitle'), message: this.toast.describe(error), reasonLabel: this.toast.text('requirements.overrideReason'), danger: true });
+        if (reason) {
+          return this.call(this.api.post(`${base}/submit`, { requirement_override_reason: reason }), 'pickups.done.submitted');
+        }
+      }
+    } finally {
+      this.busy.set(false);
+      this.load();
+    }
   }
 
   private async call(request: Observable<unknown>, success: string): Promise<void> {

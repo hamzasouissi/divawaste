@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -9,12 +9,13 @@ import { InputText } from 'primeng/inputtext';
 import { ToggleSwitch } from 'primeng/toggleswitch';
 
 import { Api } from '../../core/api/api';
-import { SiteLoad, StockResponse, StockRow, StockThreshold, Zone, ZoneFill } from '../../core/api/models';
+import { LimitResult, SiteLoad, StockLimitUnit, StockResponse, StockRow, StockThreshold, Zone, ZoneFill } from '../../core/api/models';
 import { LimitsComponent } from '../../ui/limits';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
-import { CodePipe, DatePipe, KgPipe, KnownWeightPipe, NumberPipe } from '../../core/format/pipes';
+import { LimitText } from '../../core/format/limit-text';
+import { CodePipe, DatePipe, KgPipe, LocalizedPipe, NumberPipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { KpiComponent, PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
@@ -38,14 +39,17 @@ interface SiteGroup {
 /** The limit that watches a line of stock, with what it currently measures. */
 interface AppliedLimit {
   limit: StockThreshold;
-  quantity: number;
-  max: number;
+  /** What the limit measures and its maximum, each with its unit: "320 × Sac", "0,9 t". */
+  quantity: string;
+  max: string;
   pct: number;
   level: 'warning' | 'exceeded' | 'unverifiable' | null;
   /** The limit answered on its own: below it with lots nobody weighed is 'unverifiable', never 'respected'. */
   outcome: 'respected' | 'warning' | 'exceeded' | 'unverifiable';
   missing: number;
   missingLots: string;
+  /** A limit that is not a weight says which lots it could not count in other words. */
+  mass: boolean;
   /** What the limit covers, when it is wider than the line: the whole zone, this type on the whole site, the whole site. */
   scope: 'zone' | 'siteType' | 'site' | null;
 }
@@ -57,7 +61,7 @@ interface LimitDialogData {
 }
 
 @Component({
-  imports: [ReactiveFormsModule, TranslocoDirective, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS, ToggleSwitch],
+  imports: [ReactiveFormsModule, TranslocoDirective, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS, ToggleSwitch, LocalizedPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -85,9 +89,25 @@ interface LimitDialogData {
                 </dw-select>
               </dw-field>
             }
-            <dw-field [label]="t('stock.max')">
-              <input pInputText formControlName="max_quantity_kg" inputmode="decimal" required />
-              <small dwHint>{{ t('stock.maxHint') }}</small>
+            @if (!data.limit) {
+              <dw-field [label]="t('stock.measuredIn')">
+                <dw-select formControlName="unit" required>
+                  @for (unit of units(); track unit) { <dw-option [value]="unit" [label]="t('stock.unit.' + unit)" /> }
+                </dw-select>
+                <small dwHint>{{ t(typeChosen() ? 'stock.unitHint' : 'stock.unitHintAnyType') }}</small>
+              </dw-field>
+              @if (inPackages()) {
+                <dw-field [label]="t('stock.packagingCounted')">
+                  <dw-select formControlName="packaging_type" required>
+                    @for (packaging of vocabulary()?.packaging_types ?? []; track packaging.code) { <dw-option [value]="packaging.code" [label]="packaging.name | dwLocalized" /> }
+                  </dw-select>
+                  <small dwHint>{{ t('stock.packagingCountedHint') }}</small>
+                </dw-field>
+              }
+            }
+            <dw-field [label]="t('stock.maxIn', { unit: unitLabel(t) })">
+              <input pInputText formControlName="max_quantity" inputmode="decimal" required />
+              <small dwHint>{{ t(inPackages() ? 'stock.maxHintPackages' : 'stock.maxHint') }}</small>
             </dw-field>
             <dw-field [label]="t('stock.warningPct')">
               <input pInputText type="number" formControlName="warning_pct" min="1" max="100" required />
@@ -95,6 +115,8 @@ interface LimitDialogData {
             </dw-field>
             @if (data.limit) { <div class="dw-switch dw-span-2"><p-toggleswitch formControlName="is_active" inputId="threshold-active" /><label for="threshold-active">{{ t('common.active') }}</label></div> }
           </div>
+          @if (preview(t); as sentence) { <p class="preview" role="status">{{ sentence }}</p> }
+          @if (data.limit) { <p class="dw-faint unit-fixed">{{ t('stock.unitFixed') }}</p> }
         </div>
         <div class="dw-dialog-foot">
           <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
@@ -103,7 +125,7 @@ interface LimitDialogData {
       </form>
     </ng-container>
   `,
-  styles: '.dw-dialog-body { inline-size: min(560px, 82vw); } .intro { margin: 0 0 var(--dw-3); font-size: 13px; }',
+  styles: '.dw-dialog-body { inline-size: min(560px, 82vw); } .intro { margin: 0 0 var(--dw-3); font-size: 13px; } .preview { margin: var(--dw-3) 0 0; padding: 8px 10px; border-radius: var(--dw-radius); background: var(--dw-surface-2); font-size: 13px; } .unit-fixed { margin: var(--dw-2) 0 0; font-size: 12.5px; }',
 })
 export class ThresholdDialog {
   protected readonly data = dialogData<LimitDialogData>();
@@ -114,18 +136,44 @@ export class ThresholdDialog {
 
   protected readonly sites = inject(Session).sitesFor('stock.thresholds.manage');
   protected readonly types = toSignal(this.reference.wasteTypes(), { initialValue: [] });
+  protected readonly vocabulary = toSignal(this.reference.vocabulary());
+  private readonly code = new CodePipe();
   protected readonly zones = signal<Zone[]>([]);
   protected readonly busy = signal(false);
   protected readonly form = inject(FormBuilder).nonNullable.group({
     site: [this.data.prefill?.site ?? this.sites[0]?.ulid ?? ''],
     zone: [this.data.prefill?.zone ?? ''],
     waste_type: [this.data.prefill?.waste_type ?? ''],
-    max_quantity_kg: [this.data.limit?.max_quantity_kg ?? '', [Validators.required, Validators.pattern(/^\d+([.,]\d{1,3})?$/)]],
+    unit: [(this.data.limit?.unit ?? 'kg') as StockLimitUnit],
+    packaging_type: [this.data.limit?.packaging_type ?? ''],
+    max_quantity: [this.data.limit ? String(Number(this.data.limit.max_quantity)).replace('.', ',') : '', [Validators.required, Validators.pattern(/^\d+([.,]\d{1,3})?$/)]],
     warning_pct: [this.data.limit?.warning_pct ?? 90, [Validators.required, Validators.min(1), Validators.max(100)]],
     is_active: [this.data.limit?.is_active ?? true],
   });
 
+  /** The form as it stands, so that what depends on it is computed again when it changes. */
+  private readonly value = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
+  protected readonly typeChosen = computed(() => !!this.value().waste_type);
+  protected readonly inPackages = computed(() => this.value().unit === 'package');
+  /**
+   * The units that mean something for what the limit watches. A weight and packages always do. Pieces and volumes only
+   * for one waste type, and only when it is counted that way or says what a piece weighs or how dense it is.
+   */
+  protected readonly units = computed<StockLimitUnit[]>(() => {
+    const type = this.types().find((item) => item.ulid === this.value().waste_type);
+    const pieces = !!type && (type.unit === 'piece' || Number(type.unit_weight_kg ?? 0) > 0);
+    const volume = !!type && (type.unit === 'l' || type.unit === 'm3' || Number(type.density_kg_m3 ?? 0) > 0);
+
+    return ['kg', 't', ...(pieces ? ['piece' as const] : []), ...(volume ? ['l' as const, 'm3' as const] : []), 'package'];
+  });
+
   constructor() {
+    // A unit that no longer suits the waste type chosen falls back to a weight.
+    effect(() => {
+      if (!this.units().includes(this.form.controls.unit.value)) {
+        this.form.controls.unit.setValue('kg');
+      }
+    });
     const site = this.form.controls.site.value;
     if (!this.data.limit && site) {
       this.reference.zones(site).subscribe((zones) => this.zones.set(zones));
@@ -137,7 +185,36 @@ export class ThresholdDialog {
     });
   }
 
+  /** The unit as it is written after the figure: "kg", "pièces", or the name of the packaging counted. */
+  protected unitLabel(t: (key: string) => string): string {
+    const value = this.value();
+
+    return value.unit === 'package' ? (value.packaging_type ? this.code.transform(value.packaging_type, 'packaging') : t('stock.unitShort.package')) : t('stock.unitShort.' + value.unit);
+  }
+
+  /** The limit in one sentence, as it will be applied: "Sur Usine de Nabeul, alerte quand Chutes de coupe dépasse 300 Sac." */
+  protected preview(t: (key: string, params?: Record<string, unknown>) => string): string | null {
+    const value = this.value();
+    const max = (value.max_quantity ?? '').trim();
+    if (!/^\d+([.,]\d{1,3})?$/.test(max) || (value.unit === 'package' && !value.packaging_type)) {
+      return null;
+    }
+    const limit = this.data.limit;
+    const where = limit ? [limit.site_name, limit.zone_name].filter(Boolean).join(' · ')
+      : [this.sites.find((site) => site.ulid === value.site)?.name, this.zones().find((zone) => zone.ulid === value.zone)?.name].filter(Boolean).join(' · ');
+    const what = limit ? limit.waste_type_name : this.types().find((type) => type.ulid === value.waste_type)?.name;
+
+    return t(what ? 'stock.limitPreview' : 'stock.limitPreviewAll', { where, what, max, unit: this.unitLabel(t), pct: value.warning_pct });
+  }
+
   protected async submit(): Promise<void> {
+    const packages = this.form.controls.unit.value === 'package';
+    if (packages && !this.data.limit && !this.form.controls.packaging_type.value) {
+      this.form.controls.packaging_type.setErrors({ required: true });
+    }
+    if (packages && !/^\d+$/.test(this.form.controls.max_quantity.value.trim())) {
+      this.form.controls.max_quantity.setErrors({ pattern: true });
+    }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
 
@@ -145,11 +222,12 @@ export class ThresholdDialog {
     }
     this.busy.set(true);
     const value = this.form.getRawValue();
-    const max = value.max_quantity_kg.replace(',', '.');
+    const max = value.max_quantity.trim().replace(',', '.');
     try {
       await firstValueFrom(this.data.limit
-        ? this.api.put(`stock-thresholds/${this.data.limit.ulid}`, { max_quantity_kg: max, warning_pct: value.warning_pct, is_active: value.is_active })
-        : this.api.post('stock-thresholds', { site: value.site, zone: value.zone || null, waste_type: value.waste_type || null, max_quantity_kg: max, warning_pct: value.warning_pct }));
+        ? this.api.put(`stock-thresholds/${this.data.limit.ulid}`, { max_quantity: max, warning_pct: value.warning_pct, is_active: value.is_active })
+        : this.api.post('stock-thresholds', { site: value.site, zone: value.zone || null, waste_type: value.waste_type || null, max_quantity: max, unit: value.unit,
+          packaging_type: packages ? value.packaging_type : null, warning_pct: value.warning_pct }));
       this.toast.success('stock.thresholdSaved');
       this.ref.close(true);
     } catch (error) {
@@ -170,7 +248,7 @@ export class ThresholdDialog {
  */
 @Component({
   imports: [
-    CodePipe, RouterLink, TranslocoDirective, ZoneFillComponent, LimitsComponent, HelpComponent, KpiComponent, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, KnownWeightPipe, NumberPipe, IconComponent, ButtonDirective, ...SELECT, MenuComponent,
+    CodePipe, RouterLink, TranslocoDirective, ZoneFillComponent, LimitsComponent, HelpComponent, KpiComponent, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, NumberPipe, IconComponent, ButtonDirective, ...SELECT, MenuComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -243,15 +321,15 @@ export class ThresholdDialog {
                                   <td class="dw-faint">{{ +row.awaiting_pickup_kg > 0 ? (row.awaiting_pickup_kg | dwKg) : '—' }}</td>
                                   <td class="dw-faint">{{ row.oldest_lot_at | dwDate }}</td>
                                   <td>
-                                    @if (limitFor(row); as applied) {
+                                    @for (applied of limitsFor(row); track applied.limit.ulid) {
                                       <div class="limit">
                                         <span class="meter" role="meter" [attr.aria-label]="t('stock.limit')" [attr.aria-valuenow]="applied.pct" aria-valuemin="0" aria-valuemax="100"><span class="bar" [class]="applied.level ?? 'ok'" [style.inline-size.%]="applied.pct"></span></span>
                                         <strong>{{ applied.pct }} %</strong>
                                         @if (applied.outcome !== 'respected') { <dw-status kind="limit" [value]="applied.outcome" /> }
                                       </div>
-                                      <div class="dw-faint">{{ applied.quantity | dwKg }} / {{ applied.max | dwKg }}@if (applied.scope) { — {{ t('stock.scope.' + applied.scope) }} }</div>
-                                      @if (applied.missing > 0) { <div class="unverifiable" [title]="applied.missingLots">{{ t('limits.missingWeight', { count: applied.missing }) }} {{ applied.missingLots }}</div> }
-                                    } @else {
+                                      <div class="dw-faint">{{ applied.quantity }} / {{ applied.max }}@if (applied.scope) { — {{ t('stock.scope.' + applied.scope) }} }</div>
+                                      @if (applied.missing > 0) { <div class="unverifiable" [title]="applied.missingLots">{{ t(applied.mass ? 'limits.missingWeight' : 'limits.missingMeasure', { count: applied.missing }) }} {{ applied.missingLots }}</div> }
+                                    } @empty {
                                       <span class="none"><dw-icon aria-hidden="true">info</dw-icon>{{ t('stock.noLimit') }}</span>
                                       @if (session.can('stock.thresholds.manage', row.site)) { <button type="button" class="define" (click)="define(row)">{{ t('stock.defineLimit') }}</button> }
                                     }
@@ -288,13 +366,14 @@ export class ThresholdDialog {
                               <span class="meter" role="meter" [attr.aria-label]="t('stock.usage')" [attr.aria-valuenow]="usage(threshold)" aria-valuemin="0" aria-valuemax="100"><span class="bar" [class]="current(threshold.ulid)?.alert_level ?? 'ok'" [style.inline-size.%]="usage(threshold)"></span></span>
                               <strong>{{ usage(threshold) }} %</strong>
                             </div>
-                            <div class="dw-faint">{{ current(threshold.ulid)?.quantity_kg | dwKgKnown: current(threshold.ulid)?.unweighed_lots }}</div>
                             @if (current(threshold.ulid)?.constraint; as limit) {
-                              @if (limit.outcome === 'exceeded') { <div class="over">{{ t('limits.over', { by: (limit.excess | dwKg) }) }}</div> }
-                              @if (limit.missing_count > 0) { <div class="unverifiable">{{ t('limits.missingWeight', { count: limit.missing_count }) }} {{ limit.missing_lots.join(', ') }}</div> }
+                              <div class="dw-faint">{{ limitText.quantity(limit, limit.used) }}@if (limit.missing_count > 0) { {{ t('limits.onKnown') }} }</div>
+                              @if (limit.outcome === 'exceeded') { <div class="over">{{ t('limits.over', { by: limitText.quantity(limit, limit.excess) }) }}</div> }
+                              @if (limit.missing_count > 0) { <div class="unverifiable">{{ t(isMass(limit) ? 'limits.missingWeight' : 'limits.missingMeasure', { count: limit.missing_count }) }} {{ limit.missing_lots.join(', ') }}</div> }
+                              @if ((limit.outside_count ?? 0) > 0) { <div class="dw-faint">{{ t('stock.limitOutside', { count: limit.outside_count, packaging: (limit.packaging_type | dwCode: 'packaging') }) }}</div> }
                             }
                           </td>
-                          <td class="dw-num">{{ threshold.max_quantity_kg | dwKg }} <div class="dw-faint">{{ t('stock.warnAt', { pct: threshold.warning_pct }) }}</div></td>
+                          <td class="dw-num">{{ maxOf(threshold) }} <div class="dw-faint">{{ t('stock.warnAt', { pct: threshold.warning_pct }) }}</div></td>
                           <td>@if (!threshold.is_active) { <dw-status kind="member" value="suspended" [label]="t('common.inactive')" tone="neutral" /> } @else { <dw-status kind="limit" [value]="current(threshold.ulid)?.constraint?.outcome ?? 'respected'" /> }</td>
                           <td class="dw-num">
                             @if (session.can('stock.thresholds.manage', threshold.site)) {
@@ -355,6 +434,7 @@ export class StockPage {
 
   protected readonly sites = this.session.sitesFor('stock.view');
   protected readonly canManage = this.session.sitesFor('stock.thresholds.manage').length > 0;
+  protected readonly limitText = inject(LimitText);
   protected readonly site = signal('');
   protected readonly loading = signal(true);
   protected readonly error = signal<unknown>(null);
@@ -420,31 +500,38 @@ export class StockPage {
   }
 
   protected usage(limit: StockThreshold): number {
-    const max = Number(limit.max_quantity_kg);
+    return Math.round(this.current(limit.ulid)?.constraint?.pct ?? 0);
+  }
 
-    return max > 0 ? Math.round((Number(this.current(limit.ulid)?.quantity_kg ?? 0) / max) * 100) : 0;
+  protected isMass(limit: LimitResult): boolean {
+    return limit.unit === 'kg' || limit.unit === 't';
+  }
+
+  /** The maximum of a limit with its unit: "900 kg", "0,9 t", "300 × Carton". */
+  protected maxOf(limit: StockThreshold): string {
+    return this.limitText.quantity({ unit: limit.unit, packaging_type: limit.packaging_type ?? undefined } as LimitResult, limit.max_quantity);
   }
 
   /**
    * The limit that watches a line: the most precise one among those that cover it (this zone and this type, then the
    * zone, then the type on the site, then the site). It is shown with what it measures, which may be more than the line.
    */
-  protected limitFor(row: StockRow): AppliedLimit | null {
+  protected limitsFor(row: StockRow): AppliedLimit[] {
     const covering = this.thresholds().filter((item) => item.is_active && item.site === row.site && (item.zone === null || item.zone === row.zone) && (item.waste_type === null || item.waste_type === row.waste_type));
     const precision = (item: StockThreshold): number => (item.zone ? 2 : 0) + (item.waste_type ? 1 : 0);
-    const limit = covering.sort((a, b) => precision(b) - precision(a))[0];
-    if (!limit) {
-      return null;
-    }
-    const state = this.current(limit.ulid);
-    const quantity = Number(state?.quantity_kg ?? 0);
-    const max = Number(limit.max_quantity_kg);
+    const best = Math.max(-1, ...covering.map(precision));
 
-    return {
-      limit, quantity, max, pct: max > 0 ? Math.round((quantity / max) * 100) : 0, level: state?.alert_level ?? null,
-      outcome: state?.constraint?.outcome ?? 'respected', missing: state?.constraint?.missing_count ?? 0, missingLots: (state?.constraint?.missing_lots ?? []).join(', '),
-      scope: limit.zone && limit.waste_type ? null : limit.zone ? 'zone' : limit.waste_type ? 'siteType' : 'site',
-    };
+    // The same scope may be watched in several measures (a weight and a number of bags): each is its own line.
+    return covering.filter((item) => precision(item) === best).map((limit) => {
+      const state = this.current(limit.ulid);
+      const constraint = state?.constraint;
+
+      return {
+        limit, quantity: constraint ? this.limitText.quantity(constraint, constraint.used) : '—', max: this.maxOf(limit), pct: Math.round(constraint?.pct ?? 0), level: state?.alert_level ?? null,
+        outcome: constraint?.outcome ?? 'respected', missing: constraint?.missing_count ?? 0, missingLots: (constraint?.missing_lots ?? []).join(', '), mass: limit.unit === 'kg' || limit.unit === 't',
+        scope: limit.zone && limit.waste_type ? null : limit.zone ? 'zone' : limit.waste_type ? 'siteType' : 'site',
+      };
+    });
   }
 
   /** A new limit for exactly this line: this zone and this waste type. */

@@ -9,7 +9,7 @@ import { InputText } from 'primeng/inputtext';
 import { Textarea } from 'primeng/textarea';
 
 import { Api, ApiError, openBlob } from '../../core/api/api';
-import { Localized, ProviderAccreditation } from '../../core/api/models';
+import { AcceptedWasteRule, Localized, ProviderAccreditation, StockLimitUnit } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
@@ -26,7 +26,14 @@ import { SELECT } from '../../ui/select';
 interface AcceptedWaste {
   channel: string;
   family: string;
-  min_quantity_kg: string;
+  /** What a collection of this waste must reach, in `min_unit`; packages name the packaging they count. */
+  min_quantity: string;
+  min_unit: StockLimitUnit;
+  min_packaging_type: string;
+  /** The packaging this waste is asked to arrive in; empty = none in particular. */
+  required_packaging_type: string;
+  /** Whether a collection that falls short is refused, or only warned about. */
+  is_blocking: boolean;
   notes: string;
 }
 
@@ -38,7 +45,7 @@ interface Profile {
   public_contact_email: string | null;
   public_contact_phone: string | null;
   is_published: boolean;
-  accepted_wastes: { channel: string; family: string | null; catalog_item: string | null; min_quantity_kg: string | null; notes: string | null }[];
+  accepted_wastes: AcceptedWasteRule[];
 }
 
 /** What industrials read in the directory: activities, contact, and which waste goes to which channel. */
@@ -96,12 +103,38 @@ interface Profile {
                       </dw-select>
                     </dw-field>
                     <dw-field class="min" [label]="t('providers.minQuantity')">
-                      <input pInputText inputmode="decimal" [ngModel]="waste.min_quantity_kg" (ngModelChange)="patchWaste(index, { min_quantity_kg: $event })" [ngModelOptions]="{ standalone: true }" />
+                      <input pInputText inputmode="decimal" [ngModel]="waste.min_quantity" (ngModelChange)="patchWaste(index, { min_quantity: $event })" [ngModelOptions]="{ standalone: true }" />
                     </dw-field>
-                    <dw-field [label]="t('fields.notes')">
+                    <dw-field [label]="t('providers.minUnit')">
+                      <dw-select [ngModel]="waste.min_unit" (ngModelChange)="patchWaste(index, { min_unit: $event })" [ngModelOptions]="{ standalone: true }">
+                        @for (unit of units; track unit) { <dw-option [value]="unit" [label]="t('stock.unit.' + unit)" /> }
+                      </dw-select>
+                    </dw-field>
+                    <dw-field [label]="t('providers.minPackaging')">
+                      @if (waste.min_unit === 'package') {
+                        <dw-select [ngModel]="waste.min_packaging_type" (ngModelChange)="patchWaste(index, { min_packaging_type: $event })" [ngModelOptions]="{ standalone: true }">
+                          @for (packaging of vocabulary()?.packaging_types ?? []; track packaging.code) { <dw-option [value]="packaging.code" [label]="packaging.name | dwLocalized" /> }
+                        </dw-select>
+                      } @else {
+                        <input pInputText disabled [placeholder]="t('providers.minPackagingNone')" />
+                      }
+                    </dw-field>
+                    <dw-field [label]="t('providers.requiredPackaging')">
+                      <dw-select [ngModel]="waste.required_packaging_type" (ngModelChange)="patchWaste(index, { required_packaging_type: $event })" [ngModelOptions]="{ standalone: true }">
+                        <dw-option value="" [label]="t('providers.anyPackaging')" />
+                        @for (packaging of vocabulary()?.packaging_types ?? []; track packaging.code) { <dw-option [value]="packaging.code" [label]="packaging.name | dwLocalized" /> }
+                      </dw-select>
+                    </dw-field>
+                    <dw-field class="notes" [label]="t('fields.notes')">
                       <input pInputText maxlength="500" [ngModel]="waste.notes" (ngModelChange)="patchWaste(index, { notes: $event })" [ngModelOptions]="{ standalone: true }" />
                     </dw-field>
                     <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="removeWaste(index)" [attr.aria-label]="t('common.remove')"><dw-icon>delete</dw-icon></button>
+                    @if (asks(waste)) {
+                      <div class="consequence">
+                        <dw-checkbox [checked]="waste.is_blocking" (checkedChange)="patchWaste(index, { is_blocking: $event })">{{ t('providers.blocking') }}</dw-checkbox>
+                        <span class="dw-faint">{{ t(waste.is_blocking ? 'providers.blockingOn' : 'providers.blockingOff') }}</span>
+                      </div>
+                    }
                   </div>
                 } @empty {
                   <p class="dw-faint">{{ t('common.none') }}</p>
@@ -117,8 +150,10 @@ interface Profile {
   styles: `
     .roles { margin-block: var(--dw-2) var(--dw-4); }
     .wastes { display: grid; gap: var(--dw-1); }
-    .waste { display: grid; grid-template-columns: 1.2fr 1.2fr 0.8fr 1.6fr auto; gap: var(--dw-2); align-items: end; }
-    @media (max-width: 900px) { .waste { grid-template-columns: 1fr 1fr; padding-block-end: var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); } }
+    .waste { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--dw-2); align-items: end; padding-block-end: var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); }
+    .waste .notes { grid-column: 1 / span 5; } .waste > button { justify-self: end; }
+    .waste:last-child { border-block-end: 0; } .consequence { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--dw-1) var(--dw-3); align-items: center; font-size: 13px; }
+    @media (max-width: 900px) { .waste { grid-template-columns: 1fr 1fr; } .waste .notes { grid-column: 1 / -1; } }
   `,
 })
 export class ProviderProfilePage {
@@ -132,7 +167,9 @@ export class ProviderProfilePage {
   protected readonly busy = signal(false);
   protected readonly roles = signal<string[]>([]);
   protected readonly wastes = signal<AcceptedWaste[]>([]);
-  protected readonly valid = computed(() => this.roles().length > 0 && this.wastes().every((waste) => waste.channel && waste.family && /^(\d+([.,]\d{1,3})?)?$/.test(waste.min_quantity_kg)));
+  protected readonly units: StockLimitUnit[] = ['kg', 't', 'piece', 'l', 'm3', 'package'];
+  protected readonly valid = computed(() => this.roles().length > 0 && this.wastes().every((waste) => waste.channel && waste.family
+    && (waste.min_unit === 'package' ? /^\d*$/.test(waste.min_quantity.trim()) && (waste.min_quantity.trim() === '' || !!waste.min_packaging_type) : /^(\d+([.,]\d{1,3})?)?$/.test(waste.min_quantity.trim()))));
   protected readonly form = inject(FormBuilder).nonNullable.group({
     description: [''], service_area: [''], public_contact_name: [''], public_contact_phone: [''], public_contact_email: ['', Validators.email],
   });
@@ -151,11 +188,16 @@ export class ProviderProfilePage {
   }
 
   protected addWaste(): void {
-    this.wastes.update((rows) => [...rows, { channel: '', family: '', min_quantity_kg: '', notes: '' }]);
+    this.wastes.update((rows) => [...rows, { channel: '', family: '', min_quantity: '', min_unit: 'kg', min_packaging_type: '', required_packaging_type: '', is_blocking: false, notes: '' }]);
   }
 
   protected patchWaste(index: number, change: Partial<AcceptedWaste>): void {
     this.wastes.update((rows) => rows.map((row, position) => (position === index ? { ...row, ...change } : row)));
+  }
+
+  /** Whether the line asks anything of a collection: only then is there something to refuse or to warn about. */
+  protected asks(waste: AcceptedWaste): boolean {
+    return Number(waste.min_quantity.replace(',', '.')) > 0 || waste.required_packaging_type !== '';
   }
 
   protected removeWaste(index: number): void {
@@ -175,7 +217,15 @@ export class ProviderProfilePage {
       this.show(await firstValueFrom(this.api.put<Profile>('provider/profile', {
         ...Object.fromEntries(Object.entries(value).map(([key, text]) => [key, text.trim() || null])),
         roles: this.roles(),
-        accepted_wastes: this.wastes().map((waste) => ({ channel: waste.channel, family: waste.family, min_quantity_kg: waste.min_quantity_kg ? waste.min_quantity_kg.replace(',', '.') : null, notes: waste.notes || null })),
+        accepted_wastes: this.wastes().map((waste) => {
+          const minimum = Number(waste.min_quantity.replace(',', '.')) > 0 ? waste.min_quantity.trim().replace(',', '.') : null;
+
+          return {
+            channel: waste.channel, family: waste.family, min_quantity: minimum, min_unit: minimum ? waste.min_unit : null,
+            min_packaging_type: minimum && waste.min_unit === 'package' ? waste.min_packaging_type : null,
+            required_packaging_type: waste.required_packaging_type || null, is_blocking: this.asks(waste) && waste.is_blocking, notes: waste.notes || null,
+          };
+        }),
       })));
       this.toast.success('provider.profile.saved');
     } catch (error) {
@@ -191,7 +241,10 @@ export class ProviderProfilePage {
     this.profile.set(profile);
     this.roles.set(profile.roles);
     // Entries tied to a precise catalogue item are kept as their family here (the form works by family).
-    this.wastes.set(profile.accepted_wastes.filter((waste) => waste.family).map((waste) => ({ channel: waste.channel, family: waste.family ?? '', min_quantity_kg: waste.min_quantity_kg ?? '', notes: waste.notes ?? '' })));
+    this.wastes.set(profile.accepted_wastes.filter((waste) => waste.family).map((waste) => ({
+      channel: waste.channel, family: waste.family ?? '', min_quantity: waste.min_quantity === null ? '' : String(Number(waste.min_quantity)).replace('.', ','), min_unit: waste.min_unit ?? 'kg',
+      min_packaging_type: waste.min_packaging_type ?? '', required_packaging_type: waste.required_packaging_type ?? '', is_blocking: waste.is_blocking, notes: waste.notes ?? '',
+    })));
     this.form.reset({
       description: profile.description ?? '', service_area: profile.service_area ?? '', public_contact_name: profile.public_contact_name ?? '',
       public_contact_phone: profile.public_contact_phone ?? '', public_contact_email: profile.public_contact_email ?? '',

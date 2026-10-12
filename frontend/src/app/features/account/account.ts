@@ -12,6 +12,7 @@ import { AppNotification, OnboardingState } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Locale } from '../../core/i18n/i18n';
 import { Toast } from '../../core/feedback/toast';
+import { NotificationParamsPipe } from '../../core/format/notification-params';
 import { DatePipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
@@ -251,7 +252,7 @@ interface NotificationPage {
 
 /** M7-03: the inbox and, per kind of event, whether it is shown in the application and sent by email. */
 @Component({
-  imports: [TranslocoDirective, PageHeaderComponent, StateComponent, DatePipe, IconComponent, ButtonDirective, CheckboxComponent],
+  imports: [TranslocoDirective, PageHeaderComponent, StateComponent, DatePipe, NotificationParamsPipe, IconComponent, ButtonDirective, CheckboxComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -265,8 +266,8 @@ interface NotificationPage {
               @for (item of items(); track item.id) {
                 <li [class.unread]="!item.read_at">
                   <button type="button" (click)="open(item)">
-                    <strong>{{ t('notifications.types.' + item.type + '.title', item.params) }}</strong>
-                    <span>{{ t('notifications.types.' + item.type + '.body', item.params) }}</span>
+                    <strong>{{ t('notifications.types.' + item.type + '.title', (item.params | dwNotificationParams)) }}</strong>
+                    <span>{{ t('notifications.types.' + item.type + '.body', (item.params | dwNotificationParams)) }}</span>
                     <small class="dw-faint">{{ item.created_at | dwDate: 'datetime' }}</small>
                   </button>
                 </li>

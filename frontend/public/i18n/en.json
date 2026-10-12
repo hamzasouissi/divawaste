@@ -441,7 +441,7 @@
     "SITE_HAS_STOCK": "This site still holds lots: evacuate them before closing it.",
     "ZONE_HAS_STOCK": "This zone still holds lots.",
     "WASTE_TYPE_HAS_STOCK": "Lots of this type are still in stock.",
-    "THRESHOLD_EXISTS": "A limit already exists for this site, zone and type.",
+    "THRESHOLD_EXISTS": "A limit of the same kind already exists for this site, zone and type. The same stock may have one limit by weight, one in pieces, one in volume and one per packaging — not two of the same kind.",
     "ALREADY_MEMBER": "This person is already a member of the company.",
     "INVITATION_PENDING": "An invitation is already pending for this address.",
     "LAST_ADMINISTRATOR": "The company must keep at least one active administrator.",
@@ -465,7 +465,10 @@
     "AUTHORIZATION_UNVERIFIABLE": "The authorisation cannot be verified: some lots have no measured weight. Weigh them, then try again.",
     "AUTHORIZATION_PACKAGING": "The authorisation is stated in packages only and some lots are loose or in a packaging it does not name: it cannot be verified for them.",
     "AUTHORIZATION_MISSING": "No authorisation covers this waste on this date. Record one before requesting the pickup.",
-    "authorizationRefused": "Refused by authorisation {{reference}} ({{wasteType}}): {{problems}}."
+    "authorizationRefused": "Refused by authorisation {{reference}} ({{wasteType}}): {{problems}}.",
+    "providerRequirement": "{{provider}} does not take this collection as it stands — {{problems}}",
+    "providerRequirementOverridable": "{{provider}} does not take this collection as it stands — {{problems}} You may send it all the same by giving the reason.",
+    "PROVIDER_REQUIREMENT_NEEDS_AUTHORIZATION": "Only an authorised person may send a request despite a blocking requirement of the provider."
   },
   "notifications": {
     "title": "Notifications",
@@ -515,12 +518,12 @@
     },
     "types": {
       "stock.threshold_warning": {
-        "title": "Stock limit nearly reached — {{site}}",
-        "body": "{{quantity_kg}} kg in stock for a limit of {{max_quantity_kg}} kg."
+        "title": "Stock limit almost reached — {{site}}",
+        "body": "Stock is at {{quantity}} for a limit of {{max_quantity}} ({{scope}})."
       },
       "stock.threshold_exceeded": {
         "title": "Stock limit exceeded — {{site}}",
-        "body": "{{quantity_kg}} kg in stock for a limit of {{max_quantity_kg}} kg. Plan a pickup."
+        "body": "Stock is at {{quantity}}, above the limit of {{max_quantity}} by {{excess}} ({{scope}}). Plan a pickup."
       },
       "pickup.requested": {
         "title": "New pickup request {{number}}",
@@ -620,7 +623,7 @@
       },
       "stock.threshold_unverifiable": {
         "title": "Stock limit cannot be verified — {{site}}",
-        "body": "Limit of {{max_quantity_kg}} kg ({{scope}}): {{quantity_kg}} kg known, but {{unweighed_lots}} lot(s) not weighed ({{lots}}). It is not exceeded on what is known, and cannot be called respected: weigh these lots."
+        "body": "Limit of {{max_quantity}} ({{scope}}): the known quantity is {{quantity}}, but {{unweighed_lots}} lot(s) cannot be counted in this unit ({{lots}}): weight, quantity or number of packages not on record. The limit is not exceeded on what is known, and it cannot be called respected: complete these lots."
       },
       "capacity.space_warning": {
         "title": "Zone almost full — {{scope}}",
@@ -860,7 +863,7 @@
     "thresholds": "Stock limits",
     "addThreshold": "Add a limit",
     "editThreshold": "Edit the limit",
-    "max": "Limit (kg)",
+    "max": "Limit",
     "warningPct": "Warn at (% of the limit)",
     "anyZone": "All zones",
     "anyType": "All types",
@@ -884,8 +887,8 @@
     "usage": "Usage",
     "warnAt": "alert at {{pct}} %",
     "limitsHint": "A limit is a maximum weight for a site, a zone or a waste type. You get an alert when the limit is close, then another if it is exceeded.",
-    "limitIntro": "Choose what the limit watches: a whole site, a zone, a waste type, or a type in a zone. Leave \"All zones\" or \"All types\" for a wider limit.",
-    "maxHint": "Weight not to exceed.",
+    "limitIntro": "Choose what the limit watches (a site, a zone, a waste type) and in which unit: weight, pieces, volume or number of packages. The same stock may have several limits, for example a weight and a number of bags; each is evaluated separately.",
+    "maxHint": "Quantity not to exceed, in the unit chosen.",
     "warningHint": "You are warned when the stock reaches this percentage of the limit.",
     "noLimitDefined": "no limit defined",
     "limitsWatching": "{{count}} active limit(s)",
@@ -898,7 +901,34 @@
     "unconfirmed": "{{count}} lot(s) with a default number of packages",
     "unconfirmedHint": "These lots count as one package for want of a figure. Correct their number of packages if they hold several.",
     "zoneFill": "Zone fill level",
-    "looseLots": "{{count}} loose lot(s)"
+    "looseLots": "{{count}} loose lot(s)",
+    "maxIn": "Limit ({{unit}})",
+    "maxHintPackages": "Number of packages not to exceed: a whole number. A lot of 12 bags counts as 12.",
+    "measuredIn": "Limit stated in",
+    "unit": {
+      "kg": "Weight — kilograms (kg)",
+      "t": "Weight — tonnes (t)",
+      "piece": "Number of pieces",
+      "l": "Volume — litres (l)",
+      "m3": "Volume — cubic metres (m³)",
+      "package": "Number of packages of one packaging"
+    },
+    "unitShort": {
+      "kg": "kg",
+      "t": "t",
+      "piece": "pieces",
+      "l": "l",
+      "m3": "m³",
+      "package": "packages"
+    },
+    "unitHint": "Pieces and volumes are offered only when this waste type is counted that way, or states the weight of a piece or its density.",
+    "unitHintAnyType": "For all waste types, the limit is counted by weight or in packages. Choose a waste type for a limit in pieces or in volume.",
+    "packagingCounted": "Packaging counted",
+    "packagingCountedHint": "Only the packages of this packaging are counted. Loose lots and lots in another packaging are not concerned; they are pointed out.",
+    "unitFixed": "The unit of a limit cannot be changed. To watch the same stock in another unit, add another limit: each has its own answer.",
+    "limitPreview": "{{where}}: alert when the stock of \"{{what}}\" exceeds {{max}} {{unit}}, and from {{pct}} % of that limit. No lot is refused.",
+    "limitPreviewAll": "{{where}}: alert when the stock, all waste together, exceeds {{max}} {{unit}}, and from {{pct}} % of that limit. No lot is refused.",
+    "limitOutside": "{{count}} other lot(s) of the scope, loose or in another packaging than {{packaging}}: not concerned by this limit."
   },
   "sites": {
     "title": "Sites and zones",
@@ -1176,9 +1206,18 @@
     "emptyHint": "No published provider matches these criteria.",
     "partnered": "Provider added to your partners.",
     "unpartnered": "Partnership ended.",
-    "minQuantity": "Minimum quantity (kg)",
+    "minQuantity": "Minimum per pickup",
     "family": "Waste family",
-    "directory": "Providers on the platform"
+    "directory": "Providers on the platform",
+    "requirements": "What it asks per pickup",
+    "minUnit": "Stated in",
+    "minPackaging": "Packaging counted",
+    "requiredPackaging": "Packaging asked for",
+    "anyPackaging": "None in particular",
+    "blocking": "Refuse the request when this is not met",
+    "blockingOn": "A collection below it, or whose quantity cannot be verified, cannot be requested from you — unless the client decides otherwise with a reason, which you may refuse.",
+    "blockingOff": "The client is warned and may send the request; you will see it with this warning.",
+    "minPackagingNone": "For a minimum in packages"
   },
   "compliance": {
     "register": {
@@ -2739,7 +2778,8 @@
     "m3": "m³",
     "l": "l",
     "piece": "pieces",
-    "piece_one": "piece"
+    "piece_one": "piece",
+    "package": "packages"
   },
   "tolerance": {
     "title": "Gaps at reception",
@@ -2867,8 +2907,44 @@
       "alsoMissing": "(not counting {{lots}})",
       "weightUnknown": "weight unknown or only estimated for {{lots}} — the authorisation is limited in kg: weigh the lot(s)",
       "countUnknown": "number of packages ({{packaging}}) unknown for {{lots}}: enter it on the lot page",
-      "unlisted": "{{lots}} loose or in a packaging the authorisation does not name — it is stated in packages only: pack the lot(s) as it plans, or record an authorisation that covers them"
+      "unlisted": "{{lots}} loose or in a packaging the authorisation does not name — it is stated in packages only: pack the lot(s) as it plans, or record an authorisation that covers them",
+      "measureUnknown": "quantity unknown in this unit for {{lots}}: complete the weight or the quantity of these lot(s)"
     },
-    "missingVolume": "{{count}} lot(s) without a known volume:"
+    "missingVolume": "{{count}} lot(s) without a known volume:",
+    "missingMeasure": "{{count}} lot(s) not counted in this unit:"
+  },
+  "requirements": {
+    "name": {
+      "minimum": "Minimum",
+      "packaging": "Packaging asked for"
+    },
+    "outcome": {
+      "respected": "Met",
+      "warning": "Warning",
+      "exceeded": "Not reached",
+      "unverifiable": "Cannot be verified"
+    },
+    "blocking": "Blocking",
+    "warningOnly": "Warning only",
+    "met": "At least {{min}} asked — the collection is {{have}}.",
+    "notMet": "At least {{min}} asked — the collection is {{have}}: {{short}} short.",
+    "unverifiable": "At least {{min}} asked — {{have}} known, but {{count}} lot(s) have no measured quantity ({{lots}}). On what is known it is {{short}} short: the minimum cannot be verified.",
+    "alsoMissing": "{{count}} unmeasured lot(s) come on top ({{lots}}).",
+    "packagingMet": "Every lot concerned is in {{packaging}}.",
+    "packagingNotMet": "{{packaging}} asked for — {{count}} lot(s) loose or in another packaging ({{lots}}).",
+    "outside": "{{count}} lot(s) in another packaging than {{packaging}}, not counted in this minimum:",
+    "title": "What {{provider}} asks of this collection",
+    "allMet": "The requirements of the provider are met.",
+    "canProceed": "The request can be sent: these are warnings. The provider will see them.",
+    "blockedOverridable": "The request cannot be sent as it stands. You may send it all the same by saying why: the provider will read the reason and may refuse.",
+    "blockedNoOverride": "The request cannot be sent: complete the collection, or ask an authorised person to send it with a reason. It can be saved as a draft.",
+    "overrideReason": "Reason for sending despite the requirement",
+    "overrideHint": "For example an agreement given by the provider. The reason is kept with the pickup.",
+    "overrideTitle": "Send despite the requirement of the provider",
+    "titleDecided": "Requirements of {{provider}} for this collection",
+    "decidedHint": "As they stood when the pickup was requested, on {{date}}. If the provider changes them later, this answer does not change.",
+    "overridden": "Sent despite a blocking requirement, by {{by}} on {{date}}: {{reason}}",
+    "atLeast": "at least {{min}} per pickup",
+    "inPackaging": "packaging asked for: {{packaging}}"
   }
 }

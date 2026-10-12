@@ -5,11 +5,12 @@ import { firstValueFrom } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 
 import { Api, openBlob } from '../../core/api/api';
-import { DirectoryProvider, ProviderAccreditation } from '../../core/api/models';
+import { DirectoryProvider, LimitResult, ProviderAccreditation } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe, LocalizedPipe } from '../../core/format/pipes';
+import { LimitText } from '../../core/format/limit-text';
+import { CodePipe, DatePipe, LocalizedPipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { SearchComponent } from '../../ui/search';
@@ -35,7 +36,7 @@ interface DirectoryFilter {
 @Component({
   imports: [
     HelpComponent,
-    TranslocoDirective, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent, ExternalPartnersComponent,
+    TranslocoDirective, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, CodePipe, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent, ExternalPartnersComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -89,6 +90,26 @@ interface DirectoryFilter {
                 </dd>
               </dl>
 
+              @if (asked(provider); as rules) {
+                @if (rules.length > 0) {
+                  <div>
+                    <h3 class="dw-label">{{ t('providers.requirements') }}</h3>
+                    <ul class="asked">
+                      @for (rule of rules; track $index) {
+                        <li>
+                          <span class="dw-spacer"><strong>{{ rule.family | dwCode: 'family' }}</strong> · {{ t('channels.' + rule.channel) }} —
+                            @if (rule.minimum) { {{ t('requirements.atLeast', { min: rule.minimum }) }} }
+                            @if (rule.minimum && rule.packaging) { ; }
+                            @if (rule.packaging) { {{ t('requirements.inPackaging', { packaging: rule.packaging }) }} }
+                          </span>
+                          <span class="mode" [class.blocking]="rule.blocking">{{ t(rule.blocking ? 'requirements.blocking' : 'requirements.warningOnly') }}</span>
+                        </li>
+                      }
+                    </ul>
+                  </div>
+                }
+              }
+
               <div>
                 <h3 class="dw-label">{{ t('providers.accreditations') }}</h3>
                 <ul class="accreditations">
@@ -124,6 +145,8 @@ interface DirectoryFilter {
   `,
   styles: `
     .directory { margin-block-end: var(--dw-3); }
+    .asked { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; } .asked li { display: flex; gap: var(--dw-2); align-items: baseline; }
+    .mode { font-size: 12px; color: var(--dw-ink-2); white-space: nowrap; } .mode.blocking { font-weight: 600; color: var(--dw-ink); }
     .cards { display: grid; gap: var(--dw-4); grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); align-items: start; }
     .card { display: grid; gap: var(--dw-3); padding: var(--dw-4); }
     .card header { display: flex; align-items: flex-start; gap: var(--dw-3); }
@@ -140,6 +163,8 @@ export class ProvidersPage {
   private readonly session = inject(Session);
   private readonly toast = inject(Toast);
   private readonly confirm = inject(Confirm);
+  private readonly limitText = inject(LimitText);
+  private readonly code = new CodePipe();
 
   protected readonly canManage = this.session.can('providers.partnerships.manage');
   protected readonly vocabulary = toSignal(inject(ReferenceData).vocabulary());
@@ -152,6 +177,15 @@ export class ProvidersPage {
 
   constructor() {
     this.load();
+  }
+
+  /** What the provider asks of a collection, per waste and treatment: a minimum with its unit, a packaging. */
+  protected asked(provider: DirectoryProvider): { family: string | null; channel: string; minimum: string | null; packaging: string | null; blocking: boolean }[] {
+    return provider.accepted_wastes.filter((rule) => rule.min_quantity !== null || rule.required_packaging_type !== null).map((rule) => ({
+      family: rule.family, channel: rule.channel, blocking: rule.is_blocking,
+      minimum: rule.min_quantity === null ? null : this.limitText.quantity({ unit: rule.min_unit ?? 'kg', packaging_type: rule.min_packaging_type ?? undefined } as LimitResult, rule.min_quantity),
+      packaging: rule.required_packaging_type ? this.code.transform(rule.required_packaging_type, 'packaging') : null,
+    }));
   }
 
   protected channels(provider: DirectoryProvider): string {
