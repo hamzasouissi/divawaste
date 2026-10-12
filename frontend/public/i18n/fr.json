@@ -502,7 +502,16 @@
       "document.signed_copy_requested": "Exemplaire signé d'un bordereau à joindre",
       "authorization.usage_high": "Autorisation bientôt épuisée",
       "authorization.expiring_soon": "Autorisation bientôt terminée",
-      "stock.threshold_unverifiable": "Limite de stock non vérifiable"
+      "stock.threshold_unverifiable": "Limite de stock non vérifiable",
+      "capacity.space_warning": "Zone bientôt pleine",
+      "capacity.space_exceeded": "Place d’une zone dépassée",
+      "capacity.space_unverifiable": "Place d’une zone non vérifiable",
+      "capacity.load_warning": "Charge d’une zone bientôt atteinte",
+      "capacity.load_exceeded": "Charge d’une zone dépassée",
+      "capacity.load_unverifiable": "Charge d’une zone non vérifiable",
+      "capacity.site_warning": "Capacité d’un site bientôt atteinte",
+      "capacity.site_exceeded": "Capacité d’un site dépassée",
+      "capacity.site_unverifiable": "Capacité d’un site non vérifiable"
     },
     "types": {
       "stock.threshold_warning": {
@@ -612,6 +621,42 @@
       "stock.threshold_unverifiable": {
         "title": "Limite de stock non vérifiable — {{site}}",
         "body": "Limite de {{max_quantity_kg}} kg ({{scope}}) : {{quantity_kg}} kg connus, mais {{unweighed_lots}} lot(s) non pesé(s) ({{lots}}). Elle n’est pas dépassée sur ce qui est connu, et ne peut pas être dite respectée : pesez ces lots."
+      },
+      "capacity.space_warning": {
+        "title": "Zone bientôt pleine — {{scope}}",
+        "body": "La place de la zone est occupée à {{pct}} % ({{detail}}). Aucun lot n’est refusé ; pensez à libérer de la place."
+      },
+      "capacity.space_exceeded": {
+        "title": "Place de la zone dépassée — {{scope}}",
+        "body": "La place de la zone est occupée à {{pct}} % ({{detail}}) : sa capacité est dépassée. Les lots continuent d’être acceptés ; libérez de la place ou revoyez la capacité de la zone."
+      },
+      "capacity.space_unverifiable": {
+        "title": "Place de la zone non vérifiable — {{scope}}",
+        "body": "La place connue est occupée à au moins {{pct}} % ({{detail}}), mais {{missing}} lot(s) ne peuvent pas être comptés ({{lots}}) : volume ou conditionnement non renseigné. Ce n’est pas un dépassement constaté ; l’occupation ne peut pas être dite dans la capacité."
+      },
+      "capacity.load_warning": {
+        "title": "Charge de la zone bientôt atteinte — {{scope}}",
+        "body": "La zone porte {{detail}} ({{pct}} % de sa charge maximale)."
+      },
+      "capacity.load_exceeded": {
+        "title": "Charge de la zone dépassée — {{scope}}",
+        "body": "La zone porte {{detail}} : sa charge maximale est dépassée de {{excess}}. Les lots continuent d’être acceptés ; déplacez ou évacuez des lots."
+      },
+      "capacity.load_unverifiable": {
+        "title": "Charge de la zone non vérifiable — {{scope}}",
+        "body": "Poids connu : {{detail}}, mais {{missing}} lot(s) ne sont pas pesés ({{lots}}). Ce n’est pas un dépassement constaté ; la charge ne peut pas être dite respectée : pesez ces lots."
+      },
+      "capacity.site_warning": {
+        "title": "Capacité du site bientôt atteinte — {{site}}",
+        "body": "Le site contient {{detail}} ({{pct}} % de son poids maximal), toutes zones confondues."
+      },
+      "capacity.site_exceeded": {
+        "title": "Capacité du site dépassée — {{site}}",
+        "body": "Le site contient {{detail}}, toutes zones confondues : son poids maximal est dépassé de {{excess}}. Les lots continuent d’être acceptés ; planifiez un enlèvement."
+      },
+      "capacity.site_unverifiable": {
+        "title": "Capacité du site non vérifiable — {{site}}",
+        "body": "Poids connu sur le site : {{detail}}, mais {{missing}} lot(s) ne sont pas pesés ({{lots}}). Ce n’est pas un dépassement constaté ; la capacité ne peut pas être dite respectée : pesez ces lots."
       }
     }
   },
@@ -914,7 +959,17 @@
     "packagingVolumes": "Volume des conditionnements",
     "packagingVolumesHint": "La place qu’occupe un colis une fois stocké, en m³. Sert aux zones dont la place est mesurée en volume. Laissez vide si vous ne le connaissez pas : les lots concernés seront signalés « sans volume connu », jamais estimés.",
     "packagingVolumesInvalid": "Un volume doit être un nombre supérieur à 0 (4 décimales au plus), ou vide.",
-    "packagingVolumesSaved": "Volumes des conditionnements enregistrés."
+    "packagingVolumesSaved": "Volumes des conditionnements enregistrés.",
+    "spaceBy": {
+      "packaging": "Place en colis",
+      "volume": "Place en volume"
+    },
+    "inactiveVolume": "Volume enregistré, non utilisé : {{m3}} m³.",
+    "inactiveVolumeReview": "Examiner",
+    "inactiveVolumeCount": "{{count}} volume(s) enregistré(s) non utilisé(s)",
+    "inactiveVolumeHint": "Des zones de ce site ont un volume (m³) enregistré alors que leur place est mesurée en colis. Ouvrez le site pour les examiner.",
+    "inactiveVolumeBanner": "{{count}} zone(s) ont un volume (m³) enregistré qui n’est pas utilisé : leur place est mesurée en colis. Rien n’a été effacé. Ouvrez chaque zone (« Examiner ») et choisissez « Volume (m³) » si ce volume est bien la capacité de la zone ; sinon laissez-la en colis.",
+    "inactiveVolumeInForm": "Un volume de {{m3}} m³ est enregistré pour cette zone et n’est pas utilisé : sa place est mesurée en colis. Choisissez « Volume (m³) » ci-dessus pour l’utiliser. Il reste enregistré tant que vous ne le modifiez pas."
   },
   "wasteTypes": {
     "title": "Types de déchets",
