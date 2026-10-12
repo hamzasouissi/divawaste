@@ -363,8 +363,8 @@ its own figures, unit and result; no percentage of one is ever taken for another
 - **When the server refuses** (a draft sent later, a number of packages edited on a lot already requested): the message
   says which limit, with its figures — "Refusé par l’autorisation DOUANE-… (type) : limite de 300 × Sac dépassée de
   10 × Sac" or "poids inconnu … pour L-… — l’autorisation est limitée en kg : pesez ce(s) lot(s)".
-- **Zones** (Stock, Sites): **Place** (packages against what the zone holds) and **Charge** (kilograms against the
-  weight it bears) are two lines. A zone can be at 100 % of its room and 80 % of its load. A loose lot or an unplanned
+- **Zones** (Stock, Sites): **Place** (the room of the zone) and **Charge** (kilograms against the weight it bears)
+  are two lines. A zone can be at 100 % of its room and 80 % of its load. A loose lot or an unplanned
   packaging makes the room "Non vérifiable"; a lot nobody weighed does the same for the load. A zone alerts; it never
   refuses a lot.
 - **Stock limits**: below the limit with unweighed lots is "Non vérifiable"; above it is "Dépassé", and the unweighed
@@ -373,8 +373,30 @@ its own figures, unit and result; no percentage of one is ever taken for another
   site, zone and waste type, the known weight, and the lots to weigh. It is not sent again while nothing changes, and
   it is a different message from "Limite de stock dépassée", which is a known exceedance.
 
-### Packages of a lot
-A lot is not a package: one lot may be 12 bags. Lot, packages, declared quantity and weight are four separate figures.
+### What a zone and a site can hold
+
+Set on the page of the site (**Sites et zones**). None of these limits ever refuses a lot: they inform and alert.
+
+- **Place d'une zone** — measured **one way per zone**, chosen in the zone form ("Place mesurée en"):
+  - **Colis par conditionnement** (as before): "100 sacs ou 50 cartons". Mixed packagings share the same room: 50 bags
+    and 25 boxes fill it. A loose lot, or a packaging the zone does not plan, cannot be counted: it is named and the
+    room shows "Non vérifiable".
+  - **Volume (m³)**: enter the volume of the zone. The room taken is the sum of what each lot takes: packages × the
+    volume of one package; for loose waste, the volume it was measured in (litres, m³) or its weight ÷ the density of
+    its waste type. A lot whose volume nobody can state is named ("sans volume connu") and never sized by guess. The
+    line under the zone lists what takes the room: "100 × Sac (10 m³) · 20 × Carton (5 m³) · 1 lot(s) en vrac (2 m³)".
+  The two ways are never added or compared; the figures of the way not chosen stay on record, unused.
+- **Volume des conditionnements** (button on the Sites page, for those who manage sites): the room one package takes
+  once stored, per packaging, in m³. Empty = not known.
+- **Charge d'une zone** — its maximum weight in kg, a separate line. Lots nobody weighed are named.
+- **Poids sur le site** — the maximum weight of the whole site (site form: "Poids maximal sur le site" and its alert
+  percentage). Every lot on the site counts once, whatever its zone, including zones without any limit. Shown on the
+  Sites list, the page of the site and at the top of each site on the Stock page. "Capacité du site non définie" means
+  nothing is watched.
+- The dashboard lists, under "À traiter", the zones and sites over their capacity and those whose occupancy cannot be
+  verified.
+
+### Packages of a lotA lot is not a package: one lot may be 12 bags. Lot, packages, declared quantity and weight are four separate figures.
 
 - **Nombre de colis** appears on the lot form as soon as the lot has a packaging (chosen, or planned by the waste
   type). Left empty, the lot counts as **1 colis, « par défaut »** until someone confirms or corrects it. A lot without

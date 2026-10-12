@@ -26,7 +26,7 @@ class Zone extends Model
     ];
 
     protected $fillable = [
-        'ulid', 'site_id', 'zone_type_id', 'code', 'name', 'capacity_kg', 'capacity_m3', 'capacity_alert_pct', 'is_waste_storage', 'is_active',
+        'ulid', 'site_id', 'zone_type_id', 'code', 'name', 'capacity_kg', 'capacity_m3', 'space_method', 'capacity_alert_pct', 'is_waste_storage', 'is_active',
     ];
 
     protected function casts(): array

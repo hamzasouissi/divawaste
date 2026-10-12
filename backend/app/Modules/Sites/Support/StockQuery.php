@@ -17,6 +17,11 @@ final class StockQuery
 
     public function __construct(private readonly TenantContext $context) {}
 
+    public function companyId(): int
+    {
+        return (int) $this->context->companyId();
+    }
+
     /**
      * Lots currently on site for the company, optionally limited to some sites.
      *
