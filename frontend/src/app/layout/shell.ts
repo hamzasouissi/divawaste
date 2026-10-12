@@ -12,6 +12,7 @@ import { Api } from '../core/api/api';
 import { AppNotification } from '../core/api/models';
 import { Session } from '../core/auth/session';
 import { Toast } from '../core/feedback/toast';
+import { NotificationParamsPipe } from '../core/format/notification-params';
 import { DatePipe } from '../core/format/pipes';
 import { IconComponent } from '../ui/icon';
 import { LanguageComponent } from '../ui/language';
@@ -27,7 +28,7 @@ const RAIL_KEY = 'dw.nav.collapsed';
  */
 @Component({
   selector: 'dw-app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Badge, TranslocoDirective, DatePipe, IconComponent, ButtonDirective, MenuComponent, Tooltip, Popover, LanguageComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Badge, TranslocoDirective, DatePipe, NotificationParamsPipe, IconComponent, ButtonDirective, MenuComponent, Tooltip, Popover, LanguageComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[class.rail]': 'collapsed()', '[class.platform]': "session.audience() === 'platform'" },
   template: `
@@ -113,8 +114,8 @@ const RAIL_KEY = 'dw.nav.collapsed';
               <div class="notif-list">
                 @for (item of notifications(); track item.id) {
                   <button type="button" class="notif" [class.unread]="!item.read_at" (click)="open(item); notif.hide()">
-                    <span class="notif-title">{{ t('notifications.types.' + item.type + '.title', item.params) }}</span>
-                    <span class="notif-body">{{ t('notifications.types.' + item.type + '.body', item.params) }}</span>
+                    <span class="notif-title">{{ t('notifications.types.' + item.type + '.title', (item.params | dwNotificationParams)) }}</span>
+                    <span class="notif-body">{{ t('notifications.types.' + item.type + '.body', (item.params | dwNotificationParams)) }}</span>
                     <span class="notif-date">{{ item.created_at | dwDate: 'datetime' }}</span>
                   </button>
                 } @empty {

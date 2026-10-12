@@ -82,7 +82,9 @@ export interface LimitResult {
   key: string;
   /** The packaging of a limit stated for one packaging. */
   packaging_type?: string;
-  unit: 'kg' | 'package' | 'lot' | 'm3';
+  unit: 'kg' | 't' | 'piece' | 'l' | 'm3' | 'package' | 'lot';
+  /** Absent for a maximum. 'minimum': a quantity to reach (`min`, `shortfall`); 'packaging': a packaging asked for. */
+  kind?: 'minimum' | 'packaging';
   /** The room of a zone only: how it is measured, in packages per packaging or in volume. Never both. */
   method?: 'packaging' | 'volume';
   /** Within this one limit. For packages: the share of the room the packagings use together. */
@@ -96,6 +98,12 @@ export interface LimitResult {
   max?: string | number;
   remaining?: string | number;
   excess?: string | number | null;
+  /** A minimum: what must be reached, and what is still missing to reach it (null once reached). */
+  min?: string | number;
+  shortfall?: string | number | null;
+  /** A requirement of a provider: how many lots of the collection it concerns, and the rule as it stood. */
+  lots?: number;
+  rule?: { channel: string | null; family: string | null; catalog_item: string | null; notes: string | null };
   /** Packages, per packaging the limit names. */
   lines?: { packaging_type: string; used: number; max: number; remaining: number; excess: number | null }[];
   /** Lots a package limit does not concern because another limit of the same document covers them. */
@@ -359,11 +367,15 @@ export interface StockRow {
 
 export interface StockResponse {
   data: StockRow[];
-  thresholds: { ulid: string; quantity_kg: string; unweighed_lots?: number; max_quantity_kg: string; alert_level: 'warning' | 'exceeded' | 'unverifiable' | null; constraint: LimitResult }[];
+  /** Each limit with what it measures, in its own unit. `quantity_kg` and `max_quantity_kg` only exist for a limit that is a weight. */
+  thresholds: { ulid: string; unit: StockLimitUnit; packaging_type: string | null; quantity: string; max_quantity: string; quantity_kg: string | null; unweighed_lots?: number; max_quantity_kg: string | null; alert_level: 'warning' | 'exceeded' | 'unverifiable' | null; constraint: LimitResult }[];
   /** Each site of the rows with the weight it holds against its capacity. */
   sites: ({ site: string; site_name: string; capacity_kg: string | null } & SiteLoad)[];
   meta: { total_kg: string; unweighed_lots?: number; generated_at: string };
 }
+
+/** What a stock limit or a minimum is stated in: a weight, pieces, a volume, or packages of one packaging. */
+export type StockLimitUnit = 'kg' | 't' | 'piece' | 'l' | 'm3' | 'package';
 
 export interface StockThreshold {
   ulid: string;
@@ -373,7 +385,11 @@ export interface StockThreshold {
   zone_name: string | null;
   waste_type: string | null;
   waste_type_name: string | null;
-  max_quantity_kg: string;
+  /** The limit in its own unit; `packaging_type` says which packages a limit in packages counts. */
+  max_quantity: string;
+  unit: StockLimitUnit;
+  packaging_type: string | null;
+  max_quantity_kg: string | null;
   warning_pct: number;
   alert_level: 'warning' | 'exceeded' | 'unverifiable' | null;
   alerted_at: string | null;
@@ -433,6 +449,8 @@ export interface Pickup {
   received_at: string | null;
   refusal_reason: string | null;
   cancellation_reason: string | null;
+  /** What the receiver asked of this collection when it was requested, and the answer; null when it asked for nothing. */
+  provider_requirements?: ProviderRequirements | null;
   departure_weight_kg: string | null;
   received_weight_kg: string | null;
   weight_variance_kg: string | null;
@@ -478,7 +496,7 @@ export interface DirectoryProvider {
   service_area: string | null;
   contact: { name: string | null; email: string | null; phone: string | null };
   channels: string[];
-  accepted_wastes: { channel: string; family: string | null; catalog_item: string | null; min_quantity_kg: string | null; notes: string | null }[];
+  accepted_wastes: AcceptedWasteRule[];
   accreditations: ProviderAccreditation[];
   accepts_hazardous: boolean;
   partnership: { ulid: string; status: string } | null;
@@ -828,4 +846,34 @@ export interface OnboardingState {
   completed: boolean;
   dismissed: boolean;
   steps: { key: 'sites' | 'waste_types' | 'users' | 'providers'; done: boolean; skipped: boolean; count: number }[];
+}
+
+/** What a provider accepts and what it asks of a collection of it: a minimum in a unit, a packaging, and whether falling short refuses the request. */
+export interface AcceptedWasteRule {
+  channel: string;
+  family: string | null;
+  catalog_item: string | null;
+  min_quantity: string | null;
+  min_unit: StockLimitUnit | null;
+  /** The packaging a minimum in packages counts. */
+  min_packaging_type: string | null;
+  /** The packaging the provider asks this waste to arrive in. */
+  required_packaging_type: string | null;
+  is_blocking: boolean;
+  min_quantity_kg: string | null;
+  notes: string | null;
+}
+
+/** The requirements of a provider judged on a collection: each on its own, and whether the request may go out. */
+export interface ProviderRequirements {
+  constraints: LimitResult[];
+  outcome: LimitResult['outcome'] | null;
+  /** A blocking requirement is not met or cannot be verified. */
+  blocked: boolean;
+  failing: string[];
+  /** Before the request: whether this person may send it all the same, with a reason. */
+  may_override?: boolean;
+  decided_at?: string;
+  /** Sent although a blocking requirement failed: who decided it, and why. */
+  override?: { reason: string; by: string; at: string } | null;
 }

@@ -4,15 +4,17 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
+import { Textarea } from 'primeng/textarea';
 
 import { Api } from '../../core/api/api';
-import { AuthorizationCheck, DirectoryProvider, ExternalPartner, Lot, Pickup } from '../../core/api/models';
+import { AuthorizationCheck, DirectoryProvider, ExternalPartner, Lot, Pickup, ProviderRequirements } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
 import { LimitText } from '../../core/format/limit-text';
 import { DatePipe, KnownWeightPipe, LotMeasurePipe } from '../../core/format/pipes';
 import { LimitsComponent, failingLimits } from '../../ui/limits';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
+import { RequirementsComponent } from '../../ui/requirements';
 import { StateComponent } from '../../ui/state';
 import { CheckboxComponent } from '../../ui/checkbox';
 import { DateComponent } from '../../ui/date';
@@ -35,7 +37,7 @@ function today(): string {
  */
 @Component({
   imports: [
-    FormsModule, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KnownWeightPipe, LotMeasurePipe, IconComponent, ButtonDirective, ...FIELD, ...SELECT, CheckboxComponent, DateComponent, LimitsComponent,
+    FormsModule, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KnownWeightPipe, LotMeasurePipe, IconComponent, ButtonDirective, ...FIELD, ...SELECT, CheckboxComponent, DateComponent, LimitsComponent, RequirementsComponent, Textarea,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -120,6 +122,22 @@ function today(): string {
               }
             </div>
 
+            @if (requirements(); as asked) {
+              @if (asked.constraints.length > 0) {
+                <div class="asked" [class.bad]="asked.blocked" [class.fine]="asked.outcome === 'respected'" role="status">
+                  <p class="asked-title"><dw-icon aria-hidden="true">{{ asked.blocked ? 'block' : asked.outcome === 'respected' ? 'verified' : 'warning' }}</dw-icon>{{ t('requirements.title', { provider: receiverName() }) }}</p>
+                  <dw-requirements [requirements]="asked.constraints" />
+                  <p class="verdict">{{ t(asked.blocked ? (asked.may_override ? 'requirements.blockedOverridable' : 'requirements.blockedNoOverride') : asked.outcome === 'respected' ? 'requirements.allMet' : 'requirements.canProceed') }}</p>
+                  @if (asked.blocked && asked.may_override) {
+                    <dw-field [label]="t('requirements.overrideReason')">
+                      <textarea pTextarea rows="2" maxlength="1000" [ngModel]="overrideReason()" (ngModelChange)="overrideReason.set($event)"></textarea>
+                      <small dwHint>{{ t('requirements.overrideHint') }}</small>
+                    </dw-field>
+                  }
+                </div>
+              }
+            }
+
             <dw-field [label]="t('pickups.transporter')">
               <dw-select [ngModel]="transporter()" (ngModelChange)="transporter.set($event)">
                 <dw-option value="" [label]="t('pickups.receiverTransports')" />
@@ -142,7 +160,7 @@ function today(): string {
 
             <div class="dw-form-actions">
               <button pButton severity="secondary" outlined type="button" [disabled]="!ready() || busy()" (click)="save(false)">{{ t('pickups.create.saveDraft') }}</button>
-              <button pButton type="button" [disabled]="!ready() || busy()" (click)="save(true)"><dw-icon>send</dw-icon>{{ t('pickups.create.send') }}</button>
+              <button pButton type="button" [disabled]="!sendable() || busy()" (click)="save(true)"><dw-icon>send</dw-icon>{{ t('pickups.create.send') }}</button>
             </div>
           </div>
         </section>
@@ -163,6 +181,9 @@ function today(): string {
     .cover.bad { background: var(--dw-danger-soft); color: var(--dw-danger); } .cover dw-icon { flex: none; font-size: 18px; }
     .cover-limits { margin: calc(var(--dw-2) * -1) 0 0; padding: 8px 10px 8px 36px; border-inline-start: 3px solid var(--dw-success); font-size: 13px; }
     .cover-limits.bad { border-color: var(--dw-danger); } .result { margin: var(--dw-2) 0 0; font-weight: 600; color: var(--dw-danger); }
+    .asked { display: grid; gap: var(--dw-2); padding: 10px 12px; border-radius: var(--dw-radius); border-inline-start: 3px solid var(--dw-warning); background: var(--dw-warning-soft); }
+    .asked.bad { border-color: var(--dw-danger); background: var(--dw-danger-soft); } .asked.fine { border-color: var(--dw-success); background: var(--dw-success-soft); }
+    .asked-title { display: flex; gap: 8px; margin: 0; font-weight: 600; font-size: 13px; } .asked-title dw-icon { flex: none; font-size: 18px; } .verdict { margin: 0; font-size: 13px; font-weight: 600; }
     .providers { display: grid; gap: 8px; margin-block: var(--dw-2); }
     .provider { all: unset; cursor: pointer; display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--dw-line); border-radius: var(--dw-radius); }
     .provider .name { font-weight: 600; } .provider.on { border-color: var(--dw-primary); background: var(--dw-primary-soft); }
@@ -189,6 +210,11 @@ export class PickupCreatePage {
   protected readonly authorizations = signal<AuthorizationCheck[]>([]);
   private readonly limitText = inject(LimitText);
   private check = 0;
+  /** What the chosen provider asks of a collection of the selected lots, each requirement answered on its own. */
+  protected readonly requirements = signal<ProviderRequirements | null>(null);
+  /** Why the request is sent although a blocking requirement fails; asked only from someone entitled to decide it. */
+  protected readonly overrideReason = signal('');
+  private asked = 0;
   /** The chosen receiver: `c:` + a provider of the platform, or `x:` + a partner without an account. */
   protected readonly provider = signal('');
   /** The chosen transporter, written the same way; empty = the receiver transports. */
@@ -225,6 +251,13 @@ export class PickupCreatePage {
     return this.selected().length > 0 && receiver && !this.transporterRequired() && this.date() >= this.minDate && !this.authorizations().some((item) => item.reason !== null);
   });
 
+  /** The request may be saved as a draft whatever the provider asks; it is sent only if nothing blocks, or with a reason. */
+  protected readonly sendable = computed(() => {
+    const asked = this.requirements();
+
+    return this.ready() && (!asked?.blocked || (asked.may_override === true && this.overrideReason().trim() !== ''));
+  });
+
   constructor() {
     this.loadLots();
     this.api.get<DirectoryProvider[]>('providers/directory', { filter: { partners_only: true } }).subscribe({ next: (providers) => this.providers.set(providers), error: (error: unknown) => this.toast.error(error) });
@@ -246,6 +279,27 @@ export class PickupCreatePage {
       });
     });
   }
+
+  protected receiverName(): string {
+    return this.providers().find((item) => `c:${item.ulid}` === this.provider())?.legal_name ?? '';
+  }
+
+  /** Asked again whenever the lots, the provider or the treatment change: the answer is about the whole collection. */
+  private readonly askRequirements = effect(() => {
+    const lots = this.selected();
+    const provider = this.provider();
+    const channel = this.channel();
+    const request = ++this.asked;
+    if (lots.length === 0 || !provider.startsWith('c:')) {
+      untracked(() => this.requirements.set(null));
+
+      return;
+    }
+    this.api.post<ProviderRequirements>('provider-requirements/check', { provider: provider.slice(2), lots, treatment_channel: channel || null }).subscribe({
+      next: (result) => request === this.asked && this.requirements.set(result),
+      error: () => request === this.asked && this.requirements.set(null),
+    });
+  });
 
   /** The limits that refuse the request, by name: "Colis, Poids". */
   protected failing(item: AuthorizationCheck): string {
@@ -325,7 +379,8 @@ export class PickupCreatePage {
       }));
       if (send) {
         // If sending fails (provider no longer eligible…), the draft exists: the user lands on it with the reason.
-        await firstValueFrom(this.api.post(`pickups/${pickup.ulid}/submit`)).then(() => this.toast.success('pickups.done.submitted'), (error: unknown) => this.toast.error(error));
+        const reason = this.requirements()?.blocked ? this.overrideReason().trim() : '';
+        await firstValueFrom(this.api.post(`pickups/${pickup.ulid}/submit`, reason ? { requirement_override_reason: reason } : {})).then(() => this.toast.success('pickups.done.submitted'), (error: unknown) => this.toast.error(error));
       }
       await this.router.navigate(['/pickups', pickup.ulid]);
     } catch (error) {

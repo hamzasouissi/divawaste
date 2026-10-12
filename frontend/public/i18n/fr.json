@@ -441,7 +441,7 @@
     "SITE_HAS_STOCK": "Ce site contient encore des lots : évacuez-les avant de le fermer.",
     "ZONE_HAS_STOCK": "Cette zone contient encore des lots.",
     "WASTE_TYPE_HAS_STOCK": "Des lots de ce type sont encore en stock.",
-    "THRESHOLD_EXISTS": "Une limite existe déjà pour ce site, cette zone et ce type.",
+    "THRESHOLD_EXISTS": "Une limite de même nature existe déjà pour ce site, cette zone et ce type. Un même stock peut avoir une limite en poids, une en pièces, une en volume et une par conditionnement — pas deux de la même nature.",
     "ALREADY_MEMBER": "Cette personne fait déjà partie de la société.",
     "INVITATION_PENDING": "Une invitation est déjà en attente pour cette adresse.",
     "LAST_ADMINISTRATOR": "La société doit conserver au moins un administrateur actif.",
@@ -465,7 +465,10 @@
     "AUTHORIZATION_UNVERIFIABLE": "L’autorisation ne peut pas être vérifiée : des lots n’ont pas de poids mesuré. Pesez-les, puis recommencez.",
     "AUTHORIZATION_PACKAGING": "L’autorisation est exprimée en colis uniquement et des lots sont en vrac ou dans un conditionnement qu’elle ne nomme pas : elle ne peut pas être vérifiée pour eux.",
     "AUTHORIZATION_MISSING": "Aucune autorisation ne couvre ce déchet à cette date. Saisissez-en une avant de demander l’enlèvement.",
-    "authorizationRefused": "Refusé par l’autorisation {{reference}} ({{wasteType}}) : {{problems}}."
+    "authorizationRefused": "Refusé par l’autorisation {{reference}} ({{wasteType}}) : {{problems}}.",
+    "providerRequirement": "{{provider}} ne prend pas cette collecte telle quelle — {{problems}}",
+    "providerRequirementOverridable": "{{provider}} ne prend pas cette collecte telle quelle — {{problems}} Vous pouvez l’envoyer quand même en indiquant le motif.",
+    "PROVIDER_REQUIREMENT_NEEDS_AUTHORIZATION": "Seule une personne autorisée peut envoyer une demande malgré une exigence bloquante du prestataire."
   },
   "notifications": {
     "title": "Notifications",
@@ -516,11 +519,11 @@
     "types": {
       "stock.threshold_warning": {
         "title": "Limite de stock bientôt atteinte — {{site}}",
-        "body": "{{quantity_kg}} kg en stock pour une limite de {{max_quantity_kg}} kg."
+        "body": "Le stock atteint {{quantity}} pour une limite de {{max_quantity}} ({{scope}})."
       },
       "stock.threshold_exceeded": {
         "title": "Limite de stock dépassée — {{site}}",
-        "body": "{{quantity_kg}} kg en stock pour une limite de {{max_quantity_kg}} kg. Planifiez un enlèvement."
+        "body": "Le stock atteint {{quantity}} et dépasse de {{excess}} la limite de {{max_quantity}} ({{scope}}). Planifiez un enlèvement."
       },
       "pickup.requested": {
         "title": "Nouvelle demande d'enlèvement {{number}}",
@@ -620,7 +623,7 @@
       },
       "stock.threshold_unverifiable": {
         "title": "Limite de stock non vérifiable — {{site}}",
-        "body": "Limite de {{max_quantity_kg}} kg ({{scope}}) : {{quantity_kg}} kg connus, mais {{unweighed_lots}} lot(s) non pesé(s) ({{lots}}). Elle n’est pas dépassée sur ce qui est connu, et ne peut pas être dite respectée : pesez ces lots."
+        "body": "Limite de {{max_quantity}} ({{scope}}) : la quantité connue est de {{quantity}}, mais {{unweighed_lots}} lot(s) ne peuvent pas être comptés dans cette unité ({{lots}}) : poids, quantité ou nombre de colis non renseigné. La limite n’est pas dépassée sur ce qui est connu, et elle ne peut pas être dite respectée : complétez ces lots."
       },
       "capacity.space_warning": {
         "title": "Zone bientôt pleine — {{scope}}",
@@ -860,7 +863,7 @@
     "thresholds": "Limites de stock",
     "addThreshold": "Ajouter une limite",
     "editThreshold": "Modifier la limite",
-    "max": "Limite (kg)",
+    "max": "Limite",
     "warningPct": "Prévenir à (% de la limite)",
     "anyZone": "Toutes les zones",
     "anyType": "Tous les types",
@@ -884,8 +887,8 @@
     "usage": "Utilisation",
     "warnAt": "alerte à {{pct}} %",
     "limitsHint": "Une limite est un poids maximal pour un site, une zone ou un type de déchet. Vous recevez une alerte à l'approche de la limite, puis une autre si elle est dépassée.",
-    "limitIntro": "Choisissez ce que la limite surveille : tout un site, une zone, un type de déchet, ou un type dans une zone. Laissez « Toutes les zones » ou « Tous les types » pour une limite plus large.",
-    "maxHint": "Poids à ne pas dépasser.",
+    "limitIntro": "Choisissez ce que la limite surveille (un site, une zone, un type de déchet) et dans quelle unité : poids, pièces, volume ou nombre de colis. Un même stock peut avoir plusieurs limites, par exemple un poids et un nombre de sacs ; chacune est évaluée séparément.",
+    "maxHint": "Quantité à ne pas dépasser, dans l’unité choisie.",
     "warningHint": "Vous êtes prévenu quand le stock atteint ce pourcentage de la limite.",
     "noLimitDefined": "aucune limite définie",
     "limitsWatching": "{{count}} limite(s) active(s)",
@@ -898,7 +901,34 @@
     "unconfirmed": "{{count}} lot(s) au nombre de colis par défaut",
     "unconfirmedHint": "Ces lots comptent pour un colis faute d’indication. Corrigez leur nombre de colis s’ils en contiennent plusieurs.",
     "zoneFill": "Remplissage de la zone",
-    "looseLots": "{{count}} lot(s) en vrac"
+    "looseLots": "{{count}} lot(s) en vrac",
+    "maxIn": "Limite ({{unit}})",
+    "maxHintPackages": "Nombre de colis à ne pas dépasser : un nombre entier. Un lot de 12 sacs compte pour 12.",
+    "measuredIn": "Limite exprimée en",
+    "unit": {
+      "kg": "Poids — kilogrammes (kg)",
+      "t": "Poids — tonnes (t)",
+      "piece": "Nombre de pièces",
+      "l": "Volume — litres (l)",
+      "m3": "Volume — mètres cubes (m³)",
+      "package": "Nombre de colis d’un conditionnement"
+    },
+    "unitShort": {
+      "kg": "kg",
+      "t": "t",
+      "piece": "pièces",
+      "l": "l",
+      "m3": "m³",
+      "package": "colis"
+    },
+    "unitHint": "Les pièces et les volumes ne sont proposés que si ce type de déchet se compte ainsi, ou indique le poids d’une pièce ou sa densité.",
+    "unitHintAnyType": "Pour tous les types de déchets, la limite se compte en poids ou en colis. Choisissez un type de déchet pour une limite en pièces ou en volume.",
+    "packagingCounted": "Conditionnement compté",
+    "packagingCountedHint": "Seuls les colis de ce conditionnement sont comptés. Les lots en vrac ou dans un autre conditionnement ne sont pas concernés ; ils sont signalés.",
+    "unitFixed": "L’unité d’une limite ne se modifie pas. Pour surveiller le même stock dans une autre unité, ajoutez une autre limite : chacune a sa propre réponse.",
+    "limitPreview": "{{where}} : alerte quand le stock de « {{what}} » dépasse {{max}} {{unit}}, et dès {{pct}} % de cette limite. Aucun lot n’est refusé.",
+    "limitPreviewAll": "{{where}} : alerte quand le stock, tous déchets confondus, dépasse {{max}} {{unit}}, et dès {{pct}} % de cette limite. Aucun lot n’est refusé.",
+    "limitOutside": "{{count}} autre(s) lot(s) du périmètre en vrac ou dans un autre conditionnement que {{packaging}} : non concernés par cette limite."
   },
   "sites": {
     "title": "Sites et zones",
@@ -1176,9 +1206,18 @@
     "emptyHint": "Aucun prestataire publié ne correspond à ces critères.",
     "partnered": "Prestataire ajouté à vos partenaires.",
     "unpartnered": "Partenariat terminé.",
-    "minQuantity": "Quantité minimale (kg)",
+    "minQuantity": "Minimum par enlèvement",
     "family": "Famille de déchets",
-    "directory": "Prestataires de la plateforme"
+    "directory": "Prestataires de la plateforme",
+    "requirements": "Ce qu’il demande par enlèvement",
+    "minUnit": "Exprimé en",
+    "minPackaging": "Conditionnement compté",
+    "requiredPackaging": "Conditionnement demandé",
+    "anyPackaging": "Aucun en particulier",
+    "blocking": "Refuser la demande si ce n’est pas respecté",
+    "blockingOn": "Une collecte en dessous, ou dont la quantité ne peut pas être vérifiée, ne pourra pas vous être demandée — sauf décision motivée du client, que vous pourrez refuser.",
+    "blockingOff": "Le client est averti et peut envoyer sa demande ; vous la verrez avec cet avertissement.",
+    "minPackagingNone": "Pour un minimum en colis"
   },
   "compliance": {
     "register": {
@@ -2739,7 +2778,8 @@
     "m3": "m³",
     "l": "l",
     "piece": "pièces",
-    "piece_one": "pièce"
+    "piece_one": "pièce",
+    "package": "colis"
   },
   "tolerance": {
     "title": "Écarts à la réception",
@@ -2867,8 +2907,44 @@
       "alsoMissing": "(sans compter {{lots}})",
       "weightUnknown": "poids inconnu ou seulement estimé pour {{lots}} — l’autorisation est limitée en kg : pesez ce(s) lot(s)",
       "countUnknown": "nombre de colis ({{packaging}}) inconnu pour {{lots}} : indiquez-le sur la fiche du lot",
-      "unlisted": "{{lots}} en vrac ou dans un conditionnement que l’autorisation ne nomme pas — elle est exprimée en colis uniquement : conditionnez ce(s) lot(s) comme elle le prévoit, ou saisissez une autorisation qui les couvre"
+      "unlisted": "{{lots}} en vrac ou dans un conditionnement que l’autorisation ne nomme pas — elle est exprimée en colis uniquement : conditionnez ce(s) lot(s) comme elle le prévoit, ou saisissez une autorisation qui les couvre",
+      "measureUnknown": "quantité inconnue dans cette unité pour {{lots}} : complétez le poids ou la quantité de ce(s) lot(s)"
     },
-    "missingVolume": "{{count}} lot(s) sans volume connu :"
+    "missingVolume": "{{count}} lot(s) sans volume connu :",
+    "missingMeasure": "{{count}} lot(s) non compté(s) dans cette unité :"
+  },
+  "requirements": {
+    "name": {
+      "minimum": "Minimum",
+      "packaging": "Conditionnement demandé"
+    },
+    "outcome": {
+      "respected": "Respecté",
+      "warning": "Attention",
+      "exceeded": "Non atteint",
+      "unverifiable": "Non vérifiable"
+    },
+    "blocking": "Bloquant",
+    "warningOnly": "Avertissement",
+    "met": "Au moins {{min}} demandé — la collecte fait {{have}}.",
+    "notMet": "Au moins {{min}} demandé — la collecte fait {{have}} : il manque {{short}}.",
+    "unverifiable": "Au moins {{min}} demandé — {{have}} connus, mais {{count}} lot(s) sans quantité mesurée ({{lots}}). Sur ce qui est connu il manque {{short}} : le minimum ne peut pas être vérifié.",
+    "alsoMissing": "{{count}} lot(s) non mesuré(s) s’y ajoutent ({{lots}}).",
+    "packagingMet": "Tous les lots concernés sont en {{packaging}}.",
+    "packagingNotMet": "{{packaging}} demandé — {{count}} lot(s) en vrac ou dans un autre conditionnement ({{lots}}).",
+    "outside": "{{count}} lot(s) dans un autre conditionnement que {{packaging}}, non comptés dans ce minimum :",
+    "title": "Ce que {{provider}} demande pour cette collecte",
+    "allMet": "Les exigences du prestataire sont respectées.",
+    "canProceed": "La demande peut être envoyée : ce sont des avertissements. Le prestataire les verra.",
+    "blockedOverridable": "La demande ne peut pas être envoyée telle quelle. Vous pouvez l’envoyer quand même en indiquant pourquoi : le prestataire lira ce motif et pourra refuser.",
+    "blockedNoOverride": "La demande ne peut pas être envoyée : complétez la collecte, ou demandez à une personne autorisée de l’envoyer avec un motif. Elle peut être enregistrée en brouillon.",
+    "overrideReason": "Motif de l’envoi malgré l’exigence",
+    "overrideHint": "Par exemple un accord donné par le prestataire. Le motif est conservé avec l’enlèvement.",
+    "overrideTitle": "Envoyer malgré l’exigence du prestataire",
+    "titleDecided": "Exigences de {{provider}} pour cette collecte",
+    "decidedHint": "Telles qu’elles étaient à la demande, le {{date}}. Si le prestataire les modifie ensuite, cette réponse ne change pas.",
+    "overridden": "Envoyée malgré une exigence bloquante, par {{by}} le {{date}} : {{reason}}",
+    "atLeast": "au moins {{min}} par enlèvement",
+    "inPackaging": "conditionnement demandé : {{packaging}}"
   }
 }
