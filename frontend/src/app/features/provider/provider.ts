@@ -150,7 +150,7 @@ interface Profile {
   styles: `
     .roles { margin-block: var(--dw-2) var(--dw-4); }
     .wastes { display: grid; gap: var(--dw-1); }
-    .waste { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--dw-2); align-items: end; padding-block-end: var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); }
+    .waste { display: grid; grid-template-columns: 1.6fr 1.1fr 0.7fr 1.1fr 0.9fr 0.9fr; gap: var(--dw-2); align-items: end; padding-block-end: var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); }
     .waste .notes { grid-column: 1 / span 5; } .waste > button { justify-self: end; }
     .waste:last-child { border-block-end: 0; } .consequence { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--dw-1) var(--dw-3); align-items: center; font-size: 13px; }
     @media (max-width: 900px) { .waste { grid-template-columns: 1fr 1fr; } .waste .notes { grid-column: 1 / -1; } }

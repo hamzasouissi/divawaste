@@ -127,7 +127,7 @@ function today(): string {
                 <div class="asked" [class.bad]="asked.blocked" [class.fine]="asked.outcome === 'respected'" role="status">
                   <p class="asked-title"><dw-icon aria-hidden="true">{{ asked.blocked ? 'block' : asked.outcome === 'respected' ? 'verified' : 'warning' }}</dw-icon>{{ t('requirements.title', { provider: receiverName() }) }}</p>
                   <dw-requirements [requirements]="asked.constraints" />
-                  <p class="verdict">{{ t(asked.blocked ? (asked.may_override ? 'requirements.blockedOverridable' : 'requirements.blockedNoOverride') : asked.outcome === 'respected' ? 'requirements.allMet' : 'requirements.canProceed') }}</p>
+                  <p class="verdict">{{ t(asked.blocked ? (asked.may_override ? (withoutAccount() ? 'requirements.blockedOverridableInternal' : 'requirements.blockedOverridable') : 'requirements.blockedNoOverride') : asked.outcome === 'respected' ? 'requirements.allMet' : withoutAccount() ? 'requirements.canProceedInternal' : 'requirements.canProceed') }}</p>
                   @if (asked.blocked && asked.may_override) {
                     <dw-field [label]="t('requirements.overrideReason')">
                       <textarea pTextarea rows="2" maxlength="1000" [ngModel]="overrideReason()" (ngModelChange)="overrideReason.set($event)"></textarea>
@@ -280,8 +280,13 @@ export class PickupCreatePage {
     });
   }
 
+  /** The receiver chosen is a partner without an account: nobody on its side reads the request on the platform. */
+  protected withoutAccount(): boolean {
+    return this.provider().startsWith('x:');
+  }
+
   protected receiverName(): string {
-    return this.providers().find((item) => `c:${item.ulid}` === this.provider())?.legal_name ?? '';
+    return this.providers().find((item) => `c:${item.ulid}` === this.provider())?.legal_name ?? this.receivers().find((item) => `x:${item.ulid}` === this.provider())?.legal_name ?? '';
   }
 
   /** Asked again whenever the lots, the provider or the treatment change: the answer is about the whole collection. */
@@ -290,12 +295,13 @@ export class PickupCreatePage {
     const provider = this.provider();
     const channel = this.channel();
     const request = ++this.asked;
-    if (lots.length === 0 || !provider.startsWith('c:')) {
+    if (lots.length === 0 || !provider) {
       untracked(() => this.requirements.set(null));
 
       return;
     }
-    this.api.post<ProviderRequirements>('provider-requirements/check', { provider: provider.slice(2), lots, treatment_channel: channel || null }).subscribe({
+    // A provider of the platform says what it asks itself; for a partner without an account, it is what the company wrote down.
+    this.api.post<ProviderRequirements>('provider-requirements/check', { [provider.startsWith('c:') ? 'provider' : 'external_provider']: provider.slice(2), lots, treatment_channel: channel || null }).subscribe({
       next: (result) => request === this.asked && this.requirements.set(result),
       error: () => request === this.asked && this.requirements.set(null),
     });
