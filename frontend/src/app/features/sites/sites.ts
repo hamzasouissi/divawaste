@@ -157,6 +157,7 @@ interface ZoneDialogData {
                 <dw-field [label]="t('sites.capacityM3')"><input pInputText formControlName="capacity_m3" inputmode="decimal" /></dw-field>
                 @if (form.controls.capacity_m3.touched && !form.controls.capacity_m3.value) { <small class="dw-field-error" role="alert">{{ t('sites.capacityM3Required') }}</small> }
               } @else {
+              @if (storedVolume(); as m3) { <p class="legacy" role="note">{{ t('sites.inactiveVolumeInForm', { m3 }) }}</p> }
               <p class="dw-muted">{{ t('sites.capacityHint') }}</p>
               @for (line of capacities.controls; track line; let i = $index) {
                 <div class="line" [formGroup]="line">
@@ -204,6 +205,7 @@ interface ZoneDialogData {
     .part p { margin: 0; font-size: 13px; }
     .line { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: var(--dw-2); align-items: center; }
     .add { justify-self: start; }
+    .legacy { padding: 8px 10px; border-radius: var(--dw-radius); background: var(--dw-warning-soft, #fdf1d8); color: var(--dw-ink); }
   `,
 })
 export class ZoneDialog {
@@ -233,6 +235,13 @@ export class ZoneDialog {
     accepted_colors: [this.data.zone?.accepted_colors ?? []],
     capacities: this.capacities,
   });
+
+  /** The volume on record for the zone, when there is one: shown while the room is measured in packages, so it is not forgotten. */
+  protected storedVolume(): string | null {
+    const m3 = Number(String(this.form.controls.capacity_m3.value ?? '').replace(',', '.'));
+
+    return m3 > 0 ? String(m3).replace('.', ',') : null;
+  }
 
   /** Read from the form each time the dialog is checked: the choice is made in a field of this same form. */
   protected byVolume(): boolean {
@@ -386,7 +395,9 @@ export class PackagingVolumesDialog {
           (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="open($event)" (retry)="list.reload()">
           <ng-template dwCell="code" let-site><span class="dw-mono">{{ site.code }}</span></ng-template>
           <ng-template dwCell="kind" let-site>{{ t('sites.kinds.' + site.site_kind) }}</ng-template>
-          <ng-template dwCell="zones" let-site>{{ t('sites.zonesCount', { count: site.zones_count }) }}</ng-template>
+          <ng-template dwCell="zones" let-site>{{ t('sites.zonesCount', { count: site.zones_count }) }}
+            @if ((site.inactive_volume_zones ?? 0) > 0) { <div class="legacy" [title]="t('sites.inactiveVolumeHint')">{{ t('sites.inactiveVolumeCount', { count: site.inactive_volume_zones }) }}</div> }
+          </ng-template>
           <ng-template dwCell="capacity" let-site>
             @if (site.load?.constraints?.length) { <dw-limits [limits]="site.load.constraints" [compact]="true" /> }
             @else { <span class="dw-faint">{{ site.load ? (site.load.quantity_kg | dwKg: 'auto') : '—' }} · {{ t('sites.noSiteCapacity') }}</span> }
@@ -397,7 +408,7 @@ export class PackagingVolumesDialog {
       </div>
     </ng-container>
   `,
-  styles: '.filters { display: flex; align-items: center; gap: var(--dw-4); flex-wrap: wrap; padding: var(--dw-3) var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); }',
+  styles: '.filters { display: flex; align-items: center; gap: var(--dw-4); flex-wrap: wrap; padding: var(--dw-3) var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); } .legacy { color: var(--dw-warning); font-size: 12.5px; font-weight: 600; }',
 })
 export class SitesPage {
   private readonly api = inject(Api);
@@ -474,6 +485,7 @@ export class SitesPage {
                 <h2 class="dw-h2">{{ t('sites.zones') }}</h2><span class="dw-spacer"></span>
                 @if (canManageZones()) { <button pButton severity="secondary" outlined type="button" (click)="editZone(null)"><dw-icon>add</dw-icon>{{ t('sites.addZone') }}</button> }
               </div>
+              @if (inactiveVolumes() > 0) { <p class="legacy-note" role="note"><dw-icon aria-hidden="true">info</dw-icon>{{ t('sites.inactiveVolumeBanner', { count: inactiveVolumes() }) }}</p> }
               <table class="dw-table">
                 <thead><tr><th>{{ t('fields.code') }}</th><th>{{ t('fields.name') }}</th><th>{{ t('sites.capacity') }}</th><th>{{ t('stock.zoneFill') }}</th><th>{{ t('sites.reservedFor') }}</th><th>{{ t('fields.status') }}</th><th></th></tr></thead>
                 <tbody>
@@ -485,8 +497,15 @@ export class SitesPage {
                         @if (zone.zone_type) { <div class="dw-faint">{{ zoneType(zone.zone_type) | dwLocalized: zone.zone_type }}</div> }
                       </td>
                       <td>
-                        @if (zone.space_method === 'volume') { <div>{{ zone.capacity_m3 | dwNumber: 2 : ' m³' }}</div> }
-                        @else { @for (line of zone.capacities; track line.packaging_type; let first = $first) { <div>@if (!first) { {{ t('common.or') }} } {{ line.max_count }} × {{ line.packaging_type | dwCode: 'packaging' }}</div> } }
+                        @if (zone.space_method === 'volume') { <div class="dw-faint">{{ t('sites.spaceBy.volume') }}</div><div>{{ zone.capacity_m3 | dwNumber: 2 : ' m³' }}</div> }
+                        @else {
+                          @if (zone.capacities.length > 0) { <div class="dw-faint">{{ t('sites.spaceBy.packaging') }}</div> }
+                          @for (line of zone.capacities; track line.packaging_type; let first = $first) { <div>@if (!first) { {{ t('common.or') }} } {{ line.max_count }} × {{ line.packaging_type | dwCode: 'packaging' }}</div> }
+                          @if (zone.inactive_volume) {
+                            <div class="legacy">{{ t('sites.inactiveVolume', { m3: (zone.capacity_m3 | dwNumber: 2) }) }}
+                              @if (canManageZones()) { <button type="button" class="linkish" (click)="editZone(zone)">{{ t('sites.inactiveVolumeReview') }}</button> }</div>
+                          }
+                        }
                         @if (hasWeightLimit(zone)) { <div>{{ zone.capacity_kg | dwKg: 'auto' }}</div> }
                         @if (zone.fill.constraints.length === 0) { <span class="dw-faint">{{ t('sites.noLimit') }}</span> }
                       </td>
@@ -517,7 +536,9 @@ export class SitesPage {
     </ng-container>
   `,
   styles: `
-    .none { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--dw-ink-2); font-size: 13px; } .dw-panel-body > .dw-muted { margin: 2px 0 var(--dw-3); font-size: 13px; }
+    .none { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--dw-ink-2); font-size: 13px; }
+    .legacy { color: var(--dw-warning); font-size: 12.5px; font-weight: 600; } .linkish { all: unset; cursor: pointer; margin-inline-start: 4px; color: var(--dw-primary); text-decoration: underline; }
+    .legacy-note { display: flex; align-items: flex-start; gap: 6px; margin: 0; padding: var(--dw-3) var(--dw-4); background: var(--dw-warning-soft, #fdf1d8); font-size: 13px; } .dw-panel-body > .dw-muted { margin: 2px 0 var(--dw-3); font-size: 13px; }
     
     tr.off td { color: var(--dw-ink-3); }
   `,
@@ -545,6 +566,11 @@ export class SiteDetailPage implements OnInit {
   /** "Confection" rather than the stored code "sewing". */
   protected zoneType(code: string | null): Localized | null {
     return (code && this.zoneTypes()?.get(code)) || null;
+  }
+
+  /** Zones of this site whose recorded volume is not what measures their room. */
+  protected inactiveVolumes(): number {
+    return (this.site()?.zones ?? []).filter((zone) => zone.is_active && zone.inactive_volume).length;
   }
 
   protected hasWeightLimit(zone: Zone): boolean {

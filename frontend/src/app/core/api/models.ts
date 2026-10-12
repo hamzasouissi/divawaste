@@ -141,6 +141,8 @@ export interface Zone {
   capacity_m3: string | null;
   /** How the room is measured: packages per packaging (sharing one room) or volume against `capacity_m3`. */
   space_method: 'packaging' | 'volume';
+  /** A volume is on record but the room is measured in packages: kept, not used, to be reviewed. */
+  inactive_volume?: boolean;
   capacity_alert_pct: number;
   is_waste_storage: boolean;
   is_active: boolean;
@@ -166,6 +168,8 @@ export interface Site {
   capacity_kg: string | null;
   capacity_alert_pct: number;
   load?: SiteLoad;
+  /** Zones of the site with a volume on record that their room does not use. */
+  inactive_volume_zones?: number;
   is_active: boolean;
   zones_count?: number;
   zones?: Zone[];
