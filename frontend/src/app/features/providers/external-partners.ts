@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject, output, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, computed, inject, output, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
@@ -7,11 +8,13 @@ import { InputText } from 'primeng/inputtext';
 import { Textarea } from 'primeng/textarea';
 
 import { Api } from '../../core/api/api';
-import { ExternalPartner } from '../../core/api/models';
+import { ExternalPartner, LimitResult, PartnerRequirement, RequirementRule, StockLimitUnit } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Confirm } from '../../ui/confirm';
+import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe } from '../../core/format/pipes';
+import { LimitText } from '../../core/format/limit-text';
+import { CodePipe, DatePipe, LocalizedPipe } from '../../core/format/pipes';
 import { CheckboxComponent } from '../../ui/checkbox';
 import { DateComponent } from '../../ui/date';
 import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
@@ -162,6 +165,222 @@ export class LinkPartnerDialog {
   }
 }
 
+interface RequirementRow {
+  ulid: string | null;
+  family: string;
+  channel: string;
+  min_quantity: string;
+  min_unit: StockLimitUnit;
+  min_packaging_type: string;
+  required_packaging_type: string;
+  is_blocking: boolean;
+  contract_reference: string;
+  notes: string;
+  needs_review: boolean;
+}
+
+/**
+ * What a partner without an account asks of a collection, as the company knows it from a contract or an exchange. It is
+ * the company's own record — the partner has not confirmed it — and it warns unless the company makes it blocking.
+ * Once the partner has an account, each line is looked at again: kept as the company's own requirement, or removed.
+ */
+@Component({
+  imports: [FormsModule, TranslocoDirective, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS, CheckboxComponent, IconComponent, LocalizedPipe, CodePipe, DatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <ng-container *transloco="let t">
+      <dw-dialog-title>{{ t('partners.requirements.title', { name: partner().legal_name }) }}</dw-dialog-title>
+      <div class="dw-dialog-body">
+        <p class="note" role="note"><dw-icon aria-hidden="true">edit_note</dw-icon><span>{{ t(partner().linked_company ? 'partners.requirements.internalNoteLinked' : 'partners.requirements.internalNote') }}</span></p>
+        @if (partner().linked_company; as account) {
+          <div class="note review" role="note">
+            <dw-icon aria-hidden="true">how_to_reg</dw-icon>
+            <div>
+              <p>{{ t('partners.requirements.linkedNote', { name: account.legal_name }) }}</p>
+              @if ((partner().provider_requirements ?? []).length > 0) {
+                <p class="dw-label">{{ t('partners.requirements.published', { name: account.legal_name }) }}</p>
+                <ul>
+                  @for (rule of partner().provider_requirements ?? []; track $index) {
+                    <li>{{ rule.family | dwCode: 'family' }} · {{ t('channels.' + rule.channel) }} — {{ summary(rule, t) }} <span class="mode">{{ t(rule.is_blocking ? 'requirements.blocking' : 'requirements.warningOnly') }}</span></li>
+                  }
+                </ul>
+              } @else { <p class="dw-faint">{{ t('partners.requirements.publishedNone', { name: account.legal_name }) }}</p> }
+            </div>
+          </div>
+        }
+        <div class="rows">
+          @for (row of rows(); track $index; let index = $index) {
+            <div class="row" [class.to-review]="row.needs_review">
+              <dw-field [label]="t('providers.family')">
+                <dw-select [ngModel]="row.family" (ngModelChange)="patch(index, { family: $event })" [ngModelOptions]="{ standalone: true }">
+                  @for (family of vocabulary()?.waste_families ?? []; track family.code) { <dw-option [value]="family.code" [label]="family.name | dwLocalized" /> }
+                </dw-select>
+              </dw-field>
+              <dw-field [label]="t('pickups.channel')">
+                <dw-select [ngModel]="row.channel" (ngModelChange)="patch(index, { channel: $event })" [ngModelOptions]="{ standalone: true }">
+                  @for (channel of vocabulary()?.treatment_channels ?? []; track channel.code) { <dw-option [value]="channel.code" [label]="channel.name | dwLocalized" /> }
+                </dw-select>
+              </dw-field>
+              <dw-field class="min" [label]="t('providers.minQuantity')">
+                <input pInputText inputmode="decimal" [ngModel]="row.min_quantity" (ngModelChange)="patch(index, { min_quantity: $event })" [ngModelOptions]="{ standalone: true }" />
+              </dw-field>
+              <dw-field [label]="t('providers.minUnit')">
+                <dw-select [ngModel]="row.min_unit" (ngModelChange)="patch(index, { min_unit: $event })" [ngModelOptions]="{ standalone: true }">
+                  @for (unit of units; track unit) { <dw-option [value]="unit" [label]="t('stock.unit.' + unit)" /> }
+                </dw-select>
+              </dw-field>
+              <dw-field [label]="t('providers.minPackaging')">
+                @if (row.min_unit === 'package') {
+                  <dw-select [ngModel]="row.min_packaging_type" (ngModelChange)="patch(index, { min_packaging_type: $event })" [ngModelOptions]="{ standalone: true }">
+                    @for (packaging of vocabulary()?.packaging_types ?? []; track packaging.code) { <dw-option [value]="packaging.code" [label]="packaging.name | dwLocalized" /> }
+                  </dw-select>
+                } @else { <input pInputText disabled [placeholder]="t('providers.minPackagingNone')" /> }
+              </dw-field>
+              <dw-field [label]="t('providers.requiredPackaging')">
+                <dw-select [ngModel]="row.required_packaging_type" (ngModelChange)="patch(index, { required_packaging_type: $event })" [ngModelOptions]="{ standalone: true }">
+                  <dw-option value="" [label]="t('providers.anyPackaging')" />
+                  @for (packaging of vocabulary()?.packaging_types ?? []; track packaging.code) { <dw-option [value]="packaging.code" [label]="packaging.name | dwLocalized" /> }
+                </dw-select>
+              </dw-field>
+              <dw-field class="reference" [label]="t('partners.requirements.reference')">
+                <input pInputText maxlength="191" [placeholder]="t('partners.requirements.referenceHint')" [ngModel]="row.contract_reference" (ngModelChange)="patch(index, { contract_reference: $event })" [ngModelOptions]="{ standalone: true }" />
+              </dw-field>
+              <dw-field class="notes" [label]="t('fields.notes')">
+                <input pInputText maxlength="500" [ngModel]="row.notes" (ngModelChange)="patch(index, { notes: $event })" [ngModelOptions]="{ standalone: true }" />
+              </dw-field>
+              <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="remove(index)" [attr.aria-label]="t('common.remove')"><dw-icon>delete</dw-icon></button>
+              <div class="consequence">
+                <dw-checkbox [checked]="row.is_blocking" (checkedChange)="patch(index, { is_blocking: $event })">{{ t('partners.requirements.blocking') }}</dw-checkbox>
+                <span class="dw-faint">{{ t(row.is_blocking ? 'partners.requirements.blockingOn' : 'partners.requirements.blockingOff') }}</span>
+              </div>
+              @if (row.needs_review && row.ulid) {
+                <div class="consequence ask">
+                  <strong>{{ t('partners.requirements.toReview') }}</strong>
+                  <button pButton size="small" severity="secondary" outlined type="button" [disabled]="busy()" (click)="review(row.ulid, 'keep')">{{ t('partners.requirements.keep') }}</button>
+                  <button pButton size="small" severity="danger" outlined type="button" [disabled]="busy()" (click)="review(row.ulid, 'remove')">{{ t('partners.requirements.removeLine') }}</button>
+                </div>
+              }
+              @if (saved(row.ulid); as line) { <div class="consequence dw-faint">{{ t('partners.requirements.lastChange', { by: line.updated_by ?? '—', date: (line.updated_at | dwDate: 'datetime') }) }}</div> }
+            </div>
+          } @empty { <p class="dw-faint">{{ t('partners.requirements.none') }}</p> }
+        </div>
+        <button pButton severity="secondary" outlined type="button" class="add" (click)="add()"><dw-icon>add</dw-icon>{{ t('partners.requirements.add') }}</button>
+      </div>
+      <div class="dw-dialog-foot">
+        <button pButton type="button" severity="secondary" outlined (click)="ref.close(changed())">{{ t('common.close') }}</button>
+        <button pButton type="button" [disabled]="busy() || !valid()" (click)="save()">{{ t('common.save') }}</button>
+      </div>
+    </ng-container>
+  `,
+  styles: `
+    .dw-dialog-body { display: grid; gap: var(--dw-3); inline-size: min(1080px, 94vw); }
+    .note { display: flex; gap: 8px; margin: 0; padding: 8px 10px; border-radius: var(--dw-radius); background: var(--dw-surface-2); font-size: 13px; } .note dw-icon { flex: none; font-size: 18px; }
+    .note.review { background: var(--dw-primary-soft); } .note p { margin: 0 0 4px; } .note ul { margin: 0; padding-inline-start: 18px; }
+    .rows { display: grid; gap: var(--dw-2); }
+    .row { display: grid; grid-template-columns: 1.6fr 1.1fr 0.7fr 1.1fr 0.9fr 0.9fr; gap: var(--dw-2); align-items: end; padding-block-end: var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); }
+    .row.to-review { padding: var(--dw-2); border: 1px solid var(--dw-warning); border-radius: var(--dw-radius); }
+    .row .reference { grid-column: 1 / span 2; } .row .notes { grid-column: 3 / span 3; } .row > button { justify-self: end; }
+    .consequence { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--dw-1) var(--dw-3); align-items: center; font-size: 13px; }
+    .mode { font-size: 12px; font-weight: 600; } .add { justify-self: start; }
+    @media (max-width: 900px) { .row { grid-template-columns: 1fr 1fr; } .row .reference, .row .notes { grid-column: 1 / -1; } }
+  `,
+})
+export class PartnerRequirementsDialog {
+  private readonly api = inject(Api);
+  private readonly toast = inject(Toast);
+  private readonly limitText = inject(LimitText);
+  private readonly code = new CodePipe();
+  protected readonly ref = inject(DialogRef);
+
+  protected readonly vocabulary = toSignal(inject(ReferenceData).vocabulary());
+  protected readonly units: StockLimitUnit[] = ['kg', 't', 'piece', 'l', 'm3', 'package'];
+  protected readonly partner = signal(dialogData<ExternalPartner>());
+  protected readonly rows = signal<RequirementRow[]>(this.fromPartner(this.partner()));
+  protected readonly busy = signal(false);
+  /** Whether anything was saved: the list behind the dialog is then read again. */
+  protected readonly changed = signal(false);
+  /** A line asks something — a minimum in a unit, a packaging, or both — of one waste for one treatment. */
+  protected readonly valid = computed(() => this.rows().every((row) => row.family && row.channel && (this.minimum(row) !== null || row.required_packaging_type !== '')
+    && (row.min_unit === 'package' ? /^\d*$/.test(row.min_quantity.trim()) && (this.minimum(row) === null || !!row.min_packaging_type) : /^(\d+([.,]\d{1,3})?)?$/.test(row.min_quantity.trim()))));
+
+  protected add(): void {
+    this.rows.update((rows) => [...rows, { ulid: null, family: '', channel: '', min_quantity: '', min_unit: 'kg', min_packaging_type: '', required_packaging_type: '', is_blocking: false, contract_reference: '', notes: '', needs_review: false }]);
+  }
+
+  protected patch(index: number, change: Partial<RequirementRow>): void {
+    this.rows.update((rows) => rows.map((row, position) => (position === index ? { ...row, ...change } : row)));
+  }
+
+  protected remove(index: number): void {
+    this.rows.update((rows) => rows.filter((_, position) => position !== index));
+  }
+
+  protected saved(ulid: string | null): PartnerRequirement | undefined {
+    return ulid ? (this.partner().requirements ?? []).find((line) => line.ulid === ulid) : undefined;
+  }
+
+  /** "au moins 500 kg par enlèvement ; conditionnement demandé : Balle". */
+  protected summary(rule: RequirementRule, t: (key: string, params?: Record<string, unknown>) => string): string {
+    return [
+      rule.min_quantity === null ? null : t('requirements.atLeast', { min: this.limitText.quantity({ unit: rule.min_unit ?? 'kg', packaging_type: rule.min_packaging_type ?? undefined } as LimitResult, rule.min_quantity) }),
+      rule.required_packaging_type ? t('requirements.inPackaging', { packaging: this.code.transform(rule.required_packaging_type, 'packaging') }) : null,
+    ].filter(Boolean).join(' ; ');
+  }
+
+  protected async save(): Promise<void> {
+    this.busy.set(true);
+    try {
+      this.show(await firstValueFrom(this.api.put<ExternalPartner>(`external-partners/${this.partner().ulid}/requirements`, {
+        requirements: this.rows().map((row) => {
+          const minimum = this.minimum(row);
+
+          return {
+            ulid: row.ulid, family: row.family, channel: row.channel, min_quantity: minimum, min_unit: minimum ? row.min_unit : null,
+            min_packaging_type: minimum && row.min_unit === 'package' ? row.min_packaging_type : null, required_packaging_type: row.required_packaging_type || null,
+            is_blocking: row.is_blocking, contract_reference: row.contract_reference.trim() || null, notes: row.notes.trim() || null,
+          };
+        }),
+      })));
+      this.toast.success('partners.requirements.saved');
+    } catch (error) {
+      this.toast.error(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** The partner has an account: a line the company wrote down is kept as its own requirement, or removed. */
+  protected async review(ulid: string, decision: 'keep' | 'remove'): Promise<void> {
+    this.busy.set(true);
+    try {
+      this.show(await firstValueFrom(this.api.post<ExternalPartner>(`external-partners/${this.partner().ulid}/requirements/${ulid}/review`, { decision })));
+      this.toast.success(decision === 'keep' ? 'partners.requirements.kept' : 'partners.requirements.removed');
+    } catch (error) {
+      this.toast.error(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  private minimum(row: RequirementRow): string | null {
+    return Number(row.min_quantity.replace(',', '.')) > 0 ? row.min_quantity.trim().replace(',', '.') : null;
+  }
+
+  private show(partner: ExternalPartner): void {
+    this.partner.set(partner);
+    this.rows.set(this.fromPartner(partner));
+    this.changed.set(true);
+  }
+
+  private fromPartner(partner: ExternalPartner): RequirementRow[] {
+    return (partner.requirements ?? []).map((line) => ({
+      ulid: line.ulid, family: line.family ?? '', channel: line.channel, min_quantity: line.min_quantity === null ? '' : String(Number(line.min_quantity)).replace('.', ','), min_unit: line.min_unit ?? 'kg',
+      min_packaging_type: line.min_packaging_type ?? '', required_packaging_type: line.required_packaging_type ?? '', is_blocking: line.is_blocking,
+      contract_reference: line.contract_reference ?? '', notes: line.notes ?? '', needs_review: line.needs_review,
+    }));
+  }
+}
+
 /**
  * The company's partners without an account, above the directory of the providers of the platform. For them, the
  * company fills in each stage of a pickup itself and the tracking slip is signed by hand.
@@ -187,6 +406,10 @@ export class LinkPartnerDialog {
                 <tr [class.off]="!partner.is_active">
                   <td>
                     <strong>{{ partner.legal_name }}</strong><div class="dw-faint">{{ partner.city }} @if (partner.tax_id) { · {{ partner.tax_id }} }</div>
+                    @if ((partner.requirements ?? []).length > 0) {
+                      <div class="asks">{{ t('partners.requirements.count', { count: (partner.requirements ?? []).length }) }}
+                        @if ((partner.requirements_to_review ?? 0) > 0) { <dw-status kind="limit" value="warning" [label]="t('partners.requirements.toReviewCount', { count: partner.requirements_to_review })" /> }</div>
+                    }
                     @if (partner.suggested_company; as match) {
                       <p class="match" role="note"><dw-icon aria-hidden="true">how_to_reg</dw-icon><span>{{ t('partners.hasAccount', { name: match.legal_name }) }}</span>
                         @if (canManage) { <button pButton text size="small" type="button" (click)="link(partner)">{{ t('partners.link') }}</button> }</p>
@@ -205,6 +428,7 @@ export class LinkPartnerDialog {
                     @else { <dw-status kind="member" [value]="partner.is_active ? 'active' : 'suspended'" [label]="t(partner.is_active ? 'partners.inUse' : 'common.inactive')" /> }
                   </td>
                   <td class="dw-num">
+                    @if (canManage && (partner.roles.includes('recycler') || partner.roles.includes('eliminator'))) { <button pButton text type="button" (click)="requirements(partner)">{{ t('partners.requirements.open') }}</button> }
                     @if (canManage && !partner.linked_company) {
                       <button pButton text type="button" (click)="edit(partner)">{{ t('common.edit') }}</button>
                       @if (!partner.suggested_company) { <button pButton text type="button" (click)="choose(partner)" [title]="t('partners.chooseHint')">{{ t('partners.choose') }}</button> }
@@ -220,7 +444,7 @@ export class LinkPartnerDialog {
   `,
   styles: `
     :host { display: block; margin-block-end: var(--dw-4); }
-    .hint { margin: 2px 0 0; font-size: 13px; }
+    .hint { margin: 2px 0 0; font-size: 13px; } .asks { display: flex; align-items: center; gap: 6px; margin-block-start: 4px; font-size: 12.5px; color: var(--dw-ink-2); }
     tr.off td { color: var(--dw-ink-3); }
     .match { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; padding: 4px 8px; border-radius: var(--dw-radius); background: var(--dw-primary-soft); font-size: 12.5px; }
     .match dw-icon { font-size: 16px; color: var(--dw-primary); }
@@ -248,6 +472,11 @@ export class ExternalPartnersComponent {
 
   protected edit(partner: ExternalPartner | null): void {
     this.dialog.open<ExternalPartnerDialog, ExternalPartner | null, ExternalPartner>(ExternalPartnerDialog, { data: partner }).afterClosed().subscribe((saved) => saved && this.load());
+  }
+
+  /** What the partner asks of a collection, as the company knows it. */
+  protected requirements(partner: ExternalPartner): void {
+    this.dialog.open<PartnerRequirementsDialog, ExternalPartner, boolean>(PartnerRequirementsDialog, { data: partner }).afterClosed().subscribe(() => this.load());
   }
 
   /**

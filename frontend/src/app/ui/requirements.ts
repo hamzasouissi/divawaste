@@ -4,6 +4,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { LimitResult } from '../core/api/models';
 import { LimitText } from '../core/format/limit-text';
 import { CodePipe } from '../core/format/pipes';
+import { IconComponent } from './icon';
 import { StatusComponent } from './page';
 
 /**
@@ -13,7 +14,7 @@ import { StatusComponent } from './page';
  */
 @Component({
   selector: 'dw-requirements',
-  imports: [TranslocoDirective, CodePipe, StatusComponent],
+  imports: [TranslocoDirective, CodePipe, StatusComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ul *transloco="let t">
@@ -28,6 +29,11 @@ import { StatusComponent } from './page';
             <span class="mode" [class.blocking]="limit.blocking">{{ t(limit.blocking ? 'requirements.blocking' : 'requirements.warningOnly') }}</span>
           </div>
           <div class="said">{{ text.requirement(limit) }}</div>
+          @if (limit.source === 'internal') {
+            <div class="source internal"><dw-icon aria-hidden="true">edit_note</dw-icon>{{ t('requirements.source.internal') }}@if (limit.rule?.contract_reference) { — {{ limit.rule?.contract_reference }} }@if (limit.rule?.needs_review) { <strong> · {{ t('requirements.source.toReview') }}</strong> }</div>
+          } @else if (limit.source === 'provider') {
+            <div class="source"><dw-icon aria-hidden="true">verified_user</dw-icon>{{ t('requirements.source.provider') }}</div>
+          }
           @if (limit.kind === 'minimum' && (limit.outside_count ?? 0) > 0) {
             <div class="dw-faint">{{ t('requirements.outside', { count: limit.outside_count, packaging: (limit.packaging_type ?? '' | dwCode: 'packaging') }) }} {{ (limit.outside_lots ?? []).join(', ') }}</div>
           }
@@ -41,6 +47,7 @@ import { StatusComponent } from './page';
     .line { display: flex; align-items: center; flex-wrap: wrap; gap: var(--dw-1) var(--dw-2); }
     .name { font-weight: 600; }
     .mode { font-size: 12px; color: var(--dw-ink-2); } .mode.blocking { font-weight: 600; color: var(--dw-ink); }
+    .source { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--dw-ink-2); } .source dw-icon { font-size: 14px; width: 14px; height: 14px; } .source.internal { font-style: italic; }
     .said { overflow-wrap: anywhere; } .exceeded .said { color: var(--dw-danger); font-weight: 600; } .warning .said, .unverifiable .said { color: var(--dw-warning); font-weight: 600; }
   `,
 })

@@ -468,7 +468,8 @@
     "authorizationRefused": "Refused by authorisation {{reference}} ({{wasteType}}): {{problems}}.",
     "providerRequirement": "{{provider}} does not take this collection as it stands — {{problems}}",
     "providerRequirementOverridable": "{{provider}} does not take this collection as it stands — {{problems}} You may send it all the same by giving the reason.",
-    "PROVIDER_REQUIREMENT_NEEDS_AUTHORIZATION": "Only an authorised person may send a request despite a blocking requirement of the provider."
+    "PROVIDER_REQUIREMENT_NEEDS_AUTHORIZATION": "Only an authorised person may send a request despite a blocking requirement of the provider.",
+    "PARTNER_NOT_LINKED": "This partner has no account: its requirements are simply edited."
   },
   "notifications": {
     "title": "Notifications",
@@ -906,12 +907,12 @@
     "maxHintPackages": "Number of packages not to exceed: a whole number. A lot of 12 bags counts as 12.",
     "measuredIn": "Limit stated in",
     "unit": {
-      "kg": "Weight — kilograms (kg)",
-      "t": "Weight — tonnes (t)",
-      "piece": "Number of pieces",
-      "l": "Volume — litres (l)",
-      "m3": "Volume — cubic metres (m³)",
-      "package": "Number of packages of one packaging"
+      "kg": "Kilograms (kg)",
+      "t": "Tonnes (t)",
+      "piece": "Pieces",
+      "l": "Litres (l)",
+      "m3": "Cubic metres (m³)",
+      "package": "Packages"
     },
     "unitShort": {
       "kg": "kg",
@@ -1213,11 +1214,11 @@
     "minUnit": "Stated in",
     "minPackaging": "Packaging counted",
     "requiredPackaging": "Packaging asked for",
-    "anyPackaging": "None in particular",
+    "anyPackaging": "None",
     "blocking": "Refuse the request when this is not met",
-    "blockingOn": "A collection below it, or whose quantity cannot be verified, cannot be requested from you — unless the client decides otherwise with a reason, which you may refuse.",
+    "blockingOn": "A collection below it, or whose quantity cannot be verified, cannot be requested from you — unless an authorised person at the client decides otherwise with a reason, which you may refuse.",
     "blockingOff": "The client is warned and may send the request; you will see it with this warning.",
-    "minPackagingNone": "For a minimum in packages"
+    "minPackagingNone": "N/A"
   },
   "compliance": {
     "register": {
@@ -2069,7 +2070,8 @@
     "production.manage": "Manage and import production data",
     "production.stats.view": "View production statistics",
     "production.finance.view": "See production prices, costs and gains",
-    "pickups.authorize_variance": "Accept a gap above the blocking limit"
+    "pickups.authorize_variance": "Accept a gap above the blocking limit",
+    "pickups.override_provider_requirements": "Send a request despite a blocking requirement of the receiver (minimum, packaging), with a reason"
   },
   "colors": {
     "title": "Colours",
@@ -2204,7 +2206,32 @@
     "linkedTo": "Tied to {{name}}",
     "choose": "Tie to an account",
     "chooseHint": "Does this partner now use the platform? Choose its account: the next pickups will be sent to it through the platform. Pickups already recorded do not change.",
-    "platformProvider": "Provider on the platform"
+    "platformProvider": "Provider on the platform",
+    "requirements": {
+      "open": "Requirements",
+      "title": "What {{name}} asks per pickup",
+      "internalNote": "These requirements are entered by your company, from a contract or an exchange. The partner has no account: it has not confirmed them, and every pickup request says so. Every addition, change or removal is kept in the audit log with its author.",
+      "linkedNote": "{{name}} now has an account and may publish what it asks itself. What your company had entered was not replaced: look at each line, then keep it as an internal requirement or remove it. Until a line is removed, it keeps applying to the pickups entrusted to this provider.",
+      "published": "What {{name}} publishes itself:",
+      "publishedNone": "{{name}} publishes no requirement for now.",
+      "reference": "Reference (contract, email…)",
+      "referenceHint": "E.g. Contract FC-2026-014, art. 3",
+      "blocking": "Refuse the request when this is not met",
+      "blockingOn": "A collection below it, or whose quantity cannot be verified, cannot be sent — unless an authorised person decides otherwise with a reason.",
+      "blockingOff": "Whoever prepares the request is warned and may send it.",
+      "toReview": "To review: entered before the account was opened.",
+      "keep": "Keep as an internal requirement",
+      "removeLine": "Remove",
+      "lastChange": "Last change: {{by}}, on {{date}}",
+      "none": "No requirement entered for this partner.",
+      "add": "Add a requirement",
+      "saved": "Requirements saved.",
+      "kept": "Line kept as an internal requirement.",
+      "removed": "Line removed.",
+      "count": "{{count}} requirement(s) per pickup, entered by your company",
+      "toReviewCount": "{{count}} to review",
+      "internalNoteLinked": "These requirements were entered by your company, from a contract or an exchange, when the partner had no account. It has not confirmed them, and every pickup request says so. Every addition, change or removal is kept in the audit log with its author."
+    }
   },
   "authorizations": {
     "title": "Waste exit authorisations",
@@ -2934,7 +2961,7 @@
     "packagingNotMet": "{{packaging}} asked for — {{count}} lot(s) loose or in another packaging ({{lots}}).",
     "outside": "{{count}} lot(s) in another packaging than {{packaging}}, not counted in this minimum:",
     "title": "What {{provider}} asks of this collection",
-    "allMet": "The requirements of the provider are met.",
+    "allMet": "The requirements are met.",
     "canProceed": "The request can be sent: these are warnings. The provider will see them.",
     "blockedOverridable": "The request cannot be sent as it stands. You may send it all the same by saying why: the provider will read the reason and may refuse.",
     "blockedNoOverride": "The request cannot be sent: complete the collection, or ask an authorised person to send it with a reason. It can be saved as a draft.",
@@ -2945,6 +2972,13 @@
     "decidedHint": "As they stood when the pickup was requested, on {{date}}. If the provider changes them later, this answer does not change.",
     "overridden": "Sent despite a blocking requirement, by {{by}} on {{date}}: {{reason}}",
     "atLeast": "at least {{min}} per pickup",
-    "inPackaging": "packaging asked for: {{packaging}}"
+    "inPackaging": "packaging asked for: {{packaging}}",
+    "source": {
+      "provider": "Set by the provider",
+      "internal": "Entered by your company, not confirmed by the partner",
+      "toReview": "to review: the partner now has an account"
+    },
+    "canProceedInternal": "The request can be sent: these are warnings, from what your company noted.",
+    "blockedOverridableInternal": "The request cannot be sent as it stands. You may send it all the same by saying why: the reason is kept with the pickup."
   }
 }

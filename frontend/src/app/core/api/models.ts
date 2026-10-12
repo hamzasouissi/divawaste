@@ -103,7 +103,9 @@ export interface LimitResult {
   shortfall?: string | number | null;
   /** A requirement of a provider: how many lots of the collection it concerns, and the rule as it stood. */
   lots?: number;
-  rule?: { channel: string | null; family: string | null; catalog_item: string | null; notes: string | null };
+  rule?: { channel: string | null; family: string | null; catalog_item: string | null; notes: string | null; source?: 'provider' | 'internal'; contract_reference?: string | null; needs_review?: boolean };
+  /** A requirement: 'provider' = published by the provider itself; 'internal' = written down by the company, not confirmed by the partner. */
+  source?: 'provider' | 'internal';
   /** Packages, per packaging the limit names. */
   lines?: { packaging_type: string; used: number; max: number; remaining: number; excess: number | null }[];
   /** Lots a package limit does not concern because another limit of the same document covers them. */
@@ -525,6 +527,34 @@ export interface ExternalPartner {
   linked_company: { ulid: string; legal_name: string } | null;
   /** A provider of the platform with the same tax ID: probably this partner. */
   suggested_company: { ulid: string; legal_name: string } | null;
+  /** What the partner asks of a collection, as the company wrote it down: never confirmed by the partner. */
+  requirements?: PartnerRequirement[];
+  /** Lines nobody has looked at since the partner opened an account. */
+  requirements_to_review?: number;
+  /** What the provider publishes itself, once the partner has an account: shown beside the company's notes. */
+  provider_requirements?: RequirementRule[];
+}
+
+/** What is asked of a collection of one waste for one treatment: a minimum in a unit, a packaging, and whether falling short refuses. */
+export interface RequirementRule {
+  family: string | null;
+  channel: string;
+  min_quantity: string | null;
+  min_unit: StockLimitUnit | null;
+  min_packaging_type: string | null;
+  required_packaging_type: string | null;
+  is_blocking: boolean;
+  notes: string | null;
+}
+
+export interface PartnerRequirement extends RequirementRule {
+  ulid: string;
+  /** Where the company read it: a contract, an email. */
+  contract_reference: string | null;
+  needs_review: boolean;
+  reviewed_at: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
 }
 
 /** How much of an authorisation the pickups have used; counted from them, never stored. */

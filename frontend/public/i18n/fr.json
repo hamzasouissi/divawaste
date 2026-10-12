@@ -468,7 +468,8 @@
     "authorizationRefused": "Refusé par l’autorisation {{reference}} ({{wasteType}}) : {{problems}}.",
     "providerRequirement": "{{provider}} ne prend pas cette collecte telle quelle — {{problems}}",
     "providerRequirementOverridable": "{{provider}} ne prend pas cette collecte telle quelle — {{problems}} Vous pouvez l’envoyer quand même en indiquant le motif.",
-    "PROVIDER_REQUIREMENT_NEEDS_AUTHORIZATION": "Seule une personne autorisée peut envoyer une demande malgré une exigence bloquante du prestataire."
+    "PROVIDER_REQUIREMENT_NEEDS_AUTHORIZATION": "Seule une personne autorisée peut envoyer une demande malgré une exigence bloquante du prestataire.",
+    "PARTNER_NOT_LINKED": "Ce partenaire n’a pas de compte : ses exigences se modifient simplement."
   },
   "notifications": {
     "title": "Notifications",
@@ -906,12 +907,12 @@
     "maxHintPackages": "Nombre de colis à ne pas dépasser : un nombre entier. Un lot de 12 sacs compte pour 12.",
     "measuredIn": "Limite exprimée en",
     "unit": {
-      "kg": "Poids — kilogrammes (kg)",
-      "t": "Poids — tonnes (t)",
-      "piece": "Nombre de pièces",
-      "l": "Volume — litres (l)",
-      "m3": "Volume — mètres cubes (m³)",
-      "package": "Nombre de colis d’un conditionnement"
+      "kg": "Kilogrammes (kg)",
+      "t": "Tonnes (t)",
+      "piece": "Pièces",
+      "l": "Litres (l)",
+      "m3": "Mètres cubes (m³)",
+      "package": "Colis"
     },
     "unitShort": {
       "kg": "kg",
@@ -1213,11 +1214,11 @@
     "minUnit": "Exprimé en",
     "minPackaging": "Conditionnement compté",
     "requiredPackaging": "Conditionnement demandé",
-    "anyPackaging": "Aucun en particulier",
+    "anyPackaging": "Aucun",
     "blocking": "Refuser la demande si ce n’est pas respecté",
-    "blockingOn": "Une collecte en dessous, ou dont la quantité ne peut pas être vérifiée, ne pourra pas vous être demandée — sauf décision motivée du client, que vous pourrez refuser.",
+    "blockingOn": "Une collecte en dessous, ou dont la quantité ne peut pas être vérifiée, ne pourra pas vous être demandée — sauf décision motivée d’une personne autorisée chez le client, que vous pourrez refuser.",
     "blockingOff": "Le client est averti et peut envoyer sa demande ; vous la verrez avec cet avertissement.",
-    "minPackagingNone": "Pour un minimum en colis"
+    "minPackagingNone": "Sans objet"
   },
   "compliance": {
     "register": {
@@ -2069,7 +2070,8 @@
     "production.manage": "Gérer et importer les données de production",
     "production.stats.view": "Voir les statistiques de production",
     "production.finance.view": "Voir les prix, les coûts et les gains de production",
-    "pickups.authorize_variance": "Accepter un écart au-dessus du seuil bloquant"
+    "pickups.authorize_variance": "Accepter un écart au-dessus du seuil bloquant",
+    "pickups.override_provider_requirements": "Envoyer une demande malgré une exigence bloquante du destinataire (minimum, conditionnement), avec un motif"
   },
   "colors": {
     "title": "Couleurs",
@@ -2204,7 +2206,32 @@
     "linkedTo": "Associé à {{name}}",
     "choose": "Associer à un compte",
     "chooseHint": "Ce partenaire utilise maintenant la plateforme ? Choisissez son compte : les prochains enlèvements lui seront envoyés par la plateforme. Les enlèvements déjà enregistrés ne changent pas.",
-    "platformProvider": "Prestataire de la plateforme"
+    "platformProvider": "Prestataire de la plateforme",
+    "requirements": {
+      "open": "Exigences",
+      "title": "Ce que {{name}} demande par enlèvement",
+      "internalNote": "Ces exigences sont saisies par votre société, d’après un contrat ou un échange. Le partenaire n’a pas de compte : il ne les a pas confirmées, et chaque demande d’enlèvement le rappelle. Chaque ajout, modification ou retrait est conservé dans le journal d’audit avec son auteur.",
+      "linkedNote": "{{name}} a maintenant un compte et peut publier lui-même ce qu’il demande. Ce que votre société avait saisi n’a pas été remplacé : examinez chaque ligne, puis conservez-la comme exigence interne ou retirez-la. Tant qu’une ligne n’est pas retirée, elle continue de s’appliquer aux enlèvements confiés à ce prestataire.",
+      "published": "Ce que {{name}} publie lui-même :",
+      "publishedNone": "{{name}} ne publie aucune exigence pour le moment.",
+      "reference": "Référence (contrat, courriel…)",
+      "referenceHint": "Par ex. Contrat FC-2026-014, art. 3",
+      "blocking": "Refuser la demande si ce n’est pas respecté",
+      "blockingOn": "Une collecte en dessous, ou dont la quantité ne peut pas être vérifiée, ne pourra pas être envoyée — sauf décision motivée d’une personne autorisée.",
+      "blockingOff": "La personne qui prépare la demande est avertie et peut l’envoyer.",
+      "toReview": "À revoir : saisie avant l’ouverture du compte.",
+      "keep": "Conserver comme exigence interne",
+      "removeLine": "Retirer",
+      "lastChange": "Dernière modification : {{by}}, le {{date}}",
+      "none": "Aucune exigence saisie pour ce partenaire.",
+      "add": "Ajouter une exigence",
+      "saved": "Exigences enregistrées.",
+      "kept": "Ligne conservée comme exigence interne.",
+      "removed": "Ligne retirée.",
+      "count": "{{count}} exigence(s) par enlèvement, saisie(s) par votre société",
+      "toReviewCount": "{{count}} à revoir",
+      "internalNoteLinked": "Ces exigences ont été saisies par votre société, d’après un contrat ou un échange, quand le partenaire n’avait pas de compte. Il ne les a pas confirmées, et chaque demande d’enlèvement le rappelle. Chaque ajout, modification ou retrait est conservé dans le journal d’audit avec son auteur."
+    }
   },
   "authorizations": {
     "title": "Autorisations de sortie des déchets",
@@ -2934,7 +2961,7 @@
     "packagingNotMet": "{{packaging}} demandé — {{count}} lot(s) en vrac ou dans un autre conditionnement ({{lots}}).",
     "outside": "{{count}} lot(s) dans un autre conditionnement que {{packaging}}, non comptés dans ce minimum :",
     "title": "Ce que {{provider}} demande pour cette collecte",
-    "allMet": "Les exigences du prestataire sont respectées.",
+    "allMet": "Les exigences sont respectées.",
     "canProceed": "La demande peut être envoyée : ce sont des avertissements. Le prestataire les verra.",
     "blockedOverridable": "La demande ne peut pas être envoyée telle quelle. Vous pouvez l’envoyer quand même en indiquant pourquoi : le prestataire lira ce motif et pourra refuser.",
     "blockedNoOverride": "La demande ne peut pas être envoyée : complétez la collecte, ou demandez à une personne autorisée de l’envoyer avec un motif. Elle peut être enregistrée en brouillon.",
@@ -2945,6 +2972,13 @@
     "decidedHint": "Telles qu’elles étaient à la demande, le {{date}}. Si le prestataire les modifie ensuite, cette réponse ne change pas.",
     "overridden": "Envoyée malgré une exigence bloquante, par {{by}} le {{date}} : {{reason}}",
     "atLeast": "au moins {{min}} par enlèvement",
-    "inPackaging": "conditionnement demandé : {{packaging}}"
+    "inPackaging": "conditionnement demandé : {{packaging}}",
+    "source": {
+      "provider": "Défini par le prestataire",
+      "internal": "Saisi par votre société, non confirmé par le partenaire",
+      "toReview": "à revoir : le partenaire a maintenant un compte"
+    },
+    "canProceedInternal": "La demande peut être envoyée : ce sont des avertissements, d’après ce que votre société a noté.",
+    "blockedOverridableInternal": "La demande ne peut pas être envoyée telle quelle. Vous pouvez l’envoyer quand même en indiquant pourquoi : le motif est conservé avec l’enlèvement."
   }
 }
