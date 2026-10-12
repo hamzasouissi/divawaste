@@ -6,6 +6,7 @@ use App\Modules\Sites\Models\Site;
 use App\Modules\Sites\Support\ZoneOrganisation;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @mixin Site
@@ -34,6 +35,8 @@ class SiteResource extends JsonResource
             'load' => app(ZoneOrganisation::class)->siteLoad($this->id, $this->capacity_kg, (int) ($this->capacity_alert_pct ?? 90)),
             'is_active' => $this->is_active,
             'zones_count' => $this->whenCounted('zones'),
+            // Zones with a volume on record that their room does not use: to be reviewed by whoever manages the zones.
+            'inactive_volume_zones' => DB::table('zones')->where('site_id', $this->id)->where('is_active', true)->where('space_method', '!=', 'volume')->where('capacity_m3', '>', 0)->count(),
             'zones' => ZoneResource::collection($this->whenLoaded('zones')),
         ];
     }

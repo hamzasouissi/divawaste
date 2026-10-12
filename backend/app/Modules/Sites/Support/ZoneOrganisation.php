@@ -32,6 +32,12 @@ final class ZoneOrganisation
 
     public function __construct(private readonly StockQuery $stock, private readonly ReferenceCodes $codes) {}
 
+    /** Drops what was read: the next question is answered from the lots and the settings as they are now. */
+    public function forget(): void
+    {
+        [$this->rules, $this->usage, $this->named, $this->packageVolumes] = [[], [], [], null];
+    }
+
     /**
      * @return array{capacities: list<array{packaging_type: string, max_count: int}>, accepted_waste_types: list<string>, accepted_colors: list<string>, waste_type_ids: list<int>, color_ids: list<int>}
      */

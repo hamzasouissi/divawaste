@@ -15,6 +15,17 @@ return [
             'body' => 'Limit of :max_quantity_kg kg (:scope): the known weight is :quantity_kg kg, but :unweighed_lots lot(s) are not weighed (:lots). The limit is not exceeded on what is known, and it cannot be called respected: weigh these lots.',
         ],
     ],
+    'capacity' => [
+        'space_warning' => ['title' => 'Zone almost full — :scope', 'body' => 'The room of the zone is :pct % used (:detail). No lot is refused; think about making room.'],
+        'space_exceeded' => ['title' => 'Zone room exceeded — :scope', 'body' => 'The room of the zone is :pct % used (:detail): its capacity is exceeded. Lots are still accepted; make room or review the capacity of the zone.'],
+        'space_unverifiable' => ['title' => 'Zone room cannot be verified — :scope', 'body' => 'The known room is at least :pct % used (:detail), but :missing lot(s) cannot be counted (:lots): volume or packaging not on record. This is not a confirmed exceedance; the occupancy cannot be called within capacity.'],
+        'load_warning' => ['title' => 'Zone load almost reached — :scope', 'body' => 'The zone bears :detail (:pct % of its maximum load).'],
+        'load_exceeded' => ['title' => 'Zone load exceeded — :scope', 'body' => 'The zone bears :detail: its maximum load is exceeded by :excess. Lots are still accepted; move or evacuate lots.'],
+        'load_unverifiable' => ['title' => 'Zone load cannot be verified — :scope', 'body' => 'Known weight: :detail, but :missing lot(s) are not weighed (:lots). This is not a confirmed exceedance; the load cannot be called respected: weigh these lots.'],
+        'site_warning' => ['title' => 'Site capacity almost reached — :site', 'body' => 'The site holds :detail (:pct % of its maximum weight), all zones together.'],
+        'site_exceeded' => ['title' => 'Site capacity exceeded — :site', 'body' => 'The site holds :detail, all zones together: its maximum weight is exceeded by :excess. Lots are still accepted; plan a pickup.'],
+        'site_unverifiable' => ['title' => 'Site capacity cannot be verified — :site', 'body' => 'Known weight on the site: :detail, but :missing lot(s) are not weighed (:lots). This is not a confirmed exceedance; the capacity cannot be called respected: weigh these lots.'],
+    ],
     'pickup' => [
         'requested' => ['title' => 'New pickup request :number', 'body' => ':company requests a pickup on :date at site :site (:lots lots, :weight_kg kg).'],
         'confirmed' => ['title' => 'Pickup :number confirmed', 'body' => ':provider confirmed pickup :number for :date.'],

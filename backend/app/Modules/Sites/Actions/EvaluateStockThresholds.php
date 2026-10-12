@@ -22,10 +22,13 @@ final class EvaluateStockThresholds
     /** How many lot numbers a message names; the count is always complete. */
     private const NAMED = 10;
 
-    public function __construct(private readonly StockQuery $stock, private readonly NotifyUsers $notify) {}
+    public function __construct(private readonly StockQuery $stock, private readonly NotifyUsers $notify, private readonly EvaluateCapacityAlerts $capacity) {}
 
     public function forSite(int $siteId): void
     {
+        // The same movement may fill a zone or the site: their physical limits are looked at too.
+        $this->capacity->forSite($siteId);
+
         $thresholds = StockThreshold::query()->where('site_id', $siteId)->where('is_active', true)->get();
 
         foreach ($thresholds as $threshold) {
@@ -75,7 +78,7 @@ final class EvaluateStockThresholds
      * when an unverifiable limit turns out to be at its warning once the lots are weighed. Falling back from exceeded
      * is not announced, and the same state is never announced twice in a row.
      */
-    private static function tells(?AlertLevel $previous, AlertLevel $level): bool
+    public static function tells(?AlertLevel $previous, AlertLevel $level): bool
     {
         return self::rank($level) > self::rank($previous) || ($previous === AlertLevel::Unverifiable && $level === AlertLevel::Warning);
     }
