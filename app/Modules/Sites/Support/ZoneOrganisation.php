@@ -2,6 +2,7 @@
 
 namespace App\Modules\Sites\Support;
 
+use App\Modules\Catalog\Support\UnitConversion;
 use App\Modules\Common\Support\Constraint;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Sites\Models\Zone;
@@ -9,8 +10,10 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * What a zone is meant to hold (optional waste types and colours), how much of it, and how full it is right now.
- * A zone has two separate physical limits: the room it offers (packages per packaging, sharing one room) and the load
- * it bears (kilograms). Each is answered on its own; neither percentage stands for the other. Like the stock, the fill is never stored: it is counted from the lots on site.
+ * A zone has two separate physical limits: the room it offers and the load it bears (kilograms). Each is answered on
+ * its own; neither percentage stands for the other. The room is measured one way per zone, never both: in packages per
+ * packaging sharing one room ("100 bags or 50 boxes"), or in volume against the cubic metres of the zone. A site has
+ * one more limit of its own: the weight it may hold in all, every lot counted once whatever its zone. Like the stock, the fill is never stored: it is counted from the lots on site.
  * Registered as a scoped service: what it reads is kept for one request, never longer.
  */
 final class ZoneOrganisation
@@ -23,6 +26,9 @@ final class ZoneOrganisation
 
     /** @var array<int, array<int, array{unweighed: list<string>, uncounted: list<string>}>> */
     private array $named = [];
+
+    /** @var array<int, string>|null  packaging id => cubic metres one package takes, for the company */
+    private ?array $packageVolumes = null;
 
     public function __construct(private readonly StockQuery $stock, private readonly ReferenceCodes $codes) {}
 
@@ -101,24 +107,32 @@ final class ZoneOrganisation
 
     /**
      * How full the zone is. `constraints` holds one answer per limit the zone states:
-     * - 'space': packages against the room ("100 bags or 50 boxes" is one room, shared). Loose lots and packagings the
-     *   room does not plan for cannot be counted: they are named, and the occupancy is not said to be verified;
+     * - 'space', by packages: packages against the room ("100 bags or 50 boxes" is one room, shared). Loose lots and
+     *   packagings the room does not plan for cannot be counted: they are named, and the occupancy is not said to be verified;
+     * - 'space', by volume: cubic metres the lots take against the volume of the zone. A lot whose volume nobody can
+     *   state (a packaging without a volume, loose waste without a measured volume or a density) is named the same way;
      * - 'load': known kilograms against the weight the zone bears. Lots nobody weighed are named, never counted as zero.
      * Nothing here blocks a placement: the zone informs and alerts.
      *
      * @return array<string, mixed>
      */
-    public function fill(int $siteId, int $zoneId, ?string $capacityKg, int $alertPct): array
+    public function fill(int $siteId, int $zoneId, ?string $capacityKg, int $alertPct, ?string $capacityM3 = null, string $method = 'packaging'): array
     {
         $usage = $this->usage($siteId)[$zoneId] ?? ['kg' => '0.000', 'lots' => 0, 'counts' => [], 'misplaced' => 0, 'unweighed' => 0, 'unconfirmed' => 0];
         $room = array_filter(array_column($this->of($zoneId)['capacities'], 'max_count', 'packaging_type'), fn (int $max) => $max > 0);
         $hasLoad = $capacityKg !== null && bccomp($capacityKg, '0', 3) > 0;
-        $named = ($room !== [] && array_diff_key($usage['counts'], $room) !== []) || ($hasLoad && $usage['unweighed'] > 0)
+        // One way of measuring the room, the one the zone states. Volume without a volume to compare with measures nothing.
+        $byVolume = $method === 'volume' && $capacityM3 !== null && bccomp($capacityM3, '0', 3) > 0;
+        $named = (! $byVolume && $room !== [] && array_diff_key($usage['counts'], $room) !== []) || ($hasLoad && $usage['unweighed'] > 0)
             ? ($this->named($siteId)[$zoneId] ?? ['unweighed' => [], 'uncounted' => []]) : ['unweighed' => [], 'uncounted' => []];
 
         $constraints = [];
-        if ($room !== []) {
-            $constraints[] = Constraint::packages('space', $room, $usage['counts'], $alertPct, $named['uncounted']);
+        $volume = null;
+        if ($byVolume) {
+            $volume = $this->volume($siteId, $zoneId);
+            $constraints[] = Constraint::quantity('space', 'm3', $volume['used'], (string) $capacityM3, $alertPct, $volume['missing']) + ['method' => 'volume'];
+        } elseif ($room !== []) {
+            $constraints[] = Constraint::packages('space', $room, $usage['counts'], $alertPct, $named['uncounted']) + ['method' => 'packaging'];
         }
         if ($hasLoad) {
             $constraints[] = Constraint::quantity('load', 'kg', $usage['kg'], $capacityKg, $alertPct, $named['unweighed']);
@@ -139,7 +153,74 @@ final class ZoneOrganisation
             'packages' => $usage['counts'],
             'unconfirmed_lots' => $usage['unconfirmed'],
             'misplaced' => $usage['misplaced'],
+            // By volume only: what takes the room, per packaging ('' = loose waste), so the total can be checked by eye.
+            'volume' => $volume === null ? null : ['used_m3' => $volume['used'], 'lines' => $volume['lines']],
         ];
+    }
+
+    /**
+     * The weight a site holds against the weight it may hold. Every lot on the site is counted once, whatever its zone
+     * (this is not a sum of zones: a zone without a limit still weighs on the site). Lots nobody weighed are named, and
+     * the limit is then exceeded on what is known or not verifiable — never respected. A site alerts; it refuses nothing.
+     *
+     * @return array{constraints: list<array<string, mixed>>, outcome: string|null, quantity_kg: string, lots: int, unweighed_lots: int}
+     */
+    public function siteLoad(int $siteId, ?string $capacityKg, int $alertPct): array
+    {
+        $zones = $this->usage($siteId);
+        $kg = array_reduce($zones, fn (string $sum, array $zone) => bcadd($sum, $zone['kg'], 3), '0.000');
+        $unweighed = array_sum(array_column($zones, 'unweighed'));
+        $constraints = [];
+        if ($capacityKg !== null && bccomp($capacityKg, '0', 3) > 0) {
+            $constraints[] = Constraint::quantity('site_load', 'kg', $kg, $capacityKg, $alertPct, $unweighed > 0 ? $this->stock->unweighedNumbers($siteId, null, null) : []);
+        }
+
+        return ['constraints' => $constraints, 'outcome' => Constraint::overall($constraints)['outcome'], 'quantity_kg' => $kg,
+            'lots' => array_sum(array_column($zones, 'lots')), 'unweighed_lots' => $unweighed];
+    }
+
+    /**
+     * The room the lots of a zone take, in cubic metres. A packaged lot takes its packages times the volume the company
+     * states for that packaging. Loose waste takes the volume it was measured in (litres, m³) or, failing that, its
+     * weight divided by the density of its waste type. Anything else is unknown, named, and left out of the total.
+     *
+     * @return array{used: string, lines: list<array{packaging_type: string, packages: int|null, lots: int, volume_m3: string}>, missing: list<string>}
+     */
+    private function volume(int $siteId, int $zoneId): array
+    {
+        $this->packageVolumes ??= DB::table('packaging_volumes')->where('company_id', $this->stock->companyId())->pluck('volume_m3', 'packaging_type_id')
+            ->map(fn ($volume) => (string) $volume)->all();
+        $rows = $this->stock->lots([$siteId])->where('l.zone_id', $zoneId)->leftJoin('units as u', 'u.id', '=', 'l.unit_id')
+            ->leftJoin('waste_types as t', 't.id', '=', 'l.waste_type_id')->orderBy('l.id')
+            ->get(['l.lot_number', 'l.packaging_type_id', 'l.package_count', 'l.net_weight_kg', 'l.quantity', 'u.code as unit', 't.density_kg_m3']);
+
+        $used = '0.0000';
+        $lines = [];
+        $missing = [];
+        foreach ($rows as $row) {
+            $kind = (string) $this->codes->code('packaging_types', $row->packaging_type_id === null ? null : (int) $row->packaging_type_id);
+            if ($row->packaging_type_id !== null) {
+                $one = $this->packageVolumes[(int) $row->packaging_type_id] ?? null;
+                $volume = $one === null || $row->package_count === null ? null : bcmul($one, (string) $row->package_count, 4);
+            } else {
+                $volume = $row->quantity !== null && UnitConversion::dimension($row->unit) === 'volume' ? UnitConversion::convert((string) $row->quantity, $row->unit, 'm3')
+                    : ($row->net_weight_kg === null ? null : UnitConversion::convert((string) $row->net_weight_kg, 'kg', 'm3', $row->density_kg_m3 === null ? null : (string) $row->density_kg_m3));
+            }
+            if ($volume === null) {
+                $missing[] = (string) $row->lot_number;
+
+                continue;
+            }
+            $used = bcadd($used, $volume, 4);
+            $lines[$kind] ??= ['packaging_type' => $kind, 'packages' => $kind === '' ? null : 0, 'lots' => 0, 'volume_m3' => '0.0000'];
+            $lines[$kind]['lots']++;
+            $lines[$kind]['volume_m3'] = bcadd($lines[$kind]['volume_m3'], $volume, 4);
+            if ($kind !== '') {
+                $lines[$kind]['packages'] += (int) $row->package_count;
+            }
+        }
+
+        return ['used' => bcadd($used, '0', 3), 'lines' => array_values(array_map(fn (array $line) => ['volume_m3' => bcadd($line['volume_m3'], '0', 3)] + $line, $lines)), 'missing' => $missing];
     }
 
     /**

@@ -66,7 +66,9 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'region' => ['nullable', 'string', 'max:100'],
             'timezone' => ['nullable', 'timezone:all'],
             'regulatory_identifier' => ['nullable', 'string', 'max:64'],
+            // The weight the site may hold in all, and from which percentage of it people are alerted.
             'capacity_kg' => ['nullable', 'decimal:0,3', 'min:0'],
+            'capacity_alert_pct' => ['sometimes', 'integer', 'between:1,100'],
         ]));
 
         return new SiteResource($site->load('zones'));
@@ -93,14 +95,16 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     /*
      * M1-01: zones of a site.
      */
-    $zoneRules = fn (Site $site, ?Zone $zone = null) => [
+    $zoneRules = fn (Site $site, ?Zone $zone = null, ?Request $request = null) => [
         'code' => ['required', 'string', 'max:20', 'alpha_dash',
             Rule::unique('zones', 'code')->where('company_id', $site->company_id)->where('site_id', $site->id)->ignore($zone?->id)],
         'name' => ['required', 'string', 'max:150'],
         // Optional: a zone may simply have a name.
         'zone_type' => ['nullable', 'string', Rule::exists('zone_types', 'code')->where('is_active', true)],
         'capacity_kg' => ['nullable', 'decimal:0,3', 'min:0'],
-        'capacity_m3' => ['nullable', 'decimal:0,3', 'min:0'],
+        'capacity_m3' => ['nullable', 'decimal:0,3', 'min:0', 'required_if:space_method,volume', Rule::when($request?->input('space_method') === 'volume', ['gt:0'])],
+        // How the room of the zone is measured: packages per packaging, or volume. One or the other.
+        'space_method' => ['sometimes', Rule::in(['packaging', 'volume'])],
         'capacity_alert_pct' => ['nullable', 'integer', 'between:1,100'],
         // How many lots of each packaging the zone holds when it contains only that packaging.
         'capacities' => ['sometimes', 'array', 'max:30'],
@@ -116,12 +120,12 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         $type = isset($input['zone_type']) ? DB::table('zone_types')->where('code', $input['zone_type'])->first(['id', 'is_waste_storage']) : null;
 
         return ['zone_type_id' => $type?->id, 'is_waste_storage' => (bool) $type?->is_waste_storage, 'capacity_alert_pct' => $input['capacity_alert_pct'] ?? 90]
-            + array_intersect_key($input, ['code' => true, 'name' => true, 'capacity_kg' => true, 'capacity_m3' => true]);
+            + array_intersect_key($input, ['code' => true, 'name' => true, 'capacity_kg' => true, 'capacity_m3' => true, 'space_method' => true]);
     };
 
     Route::post('sites/{site}/zones', function (Request $request, Site $site, ZoneOrganisation $organisation) use ($allow, $zoneRules, $zoneAttributes) {
         $allow($request, 'zones.manage', $site->id);
-        $input = $request->validate($zoneRules($site));
+        $input = $request->validate($zoneRules($site, null, $request));
         $zone = DB::transaction(function () use ($site, $input, $zoneAttributes, $organisation) {
             $zone = $site->zones()->create($zoneAttributes($input));
             $organisation->sync($zone, $input);
@@ -134,7 +138,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
     Route::put('zones/{zone}', function (Request $request, Zone $zone, ZoneOrganisation $organisation) use ($allow, $zoneRules, $zoneAttributes) {
         $allow($request, 'zones.manage', $zone->site_id);
-        $input = $request->validate($zoneRules(Site::query()->findOrFail($zone->site_id), $zone));
+        $input = $request->validate($zoneRules(Site::query()->findOrFail($zone->site_id), $zone, $request));
         DB::transaction(function () use ($zone, $input, $zoneAttributes, $organisation) {
             $zone->update($zoneAttributes($input));
             $organisation->sync($zone, $input);
@@ -179,12 +183,12 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             ->when($filter['zone'] ?? null, fn ($query, $value) => $query->where('z.ulid', strtoupper($value)))
             ->when($filter['waste_type'] ?? null, fn ($query, $value) => $query->where('t.ulid', strtoupper($value)))
             ->when(array_key_exists('hazardous', $filter) && $filter['hazardous'] !== null, fn ($query) => $query->where('l.is_hazardous', (bool) $filter['hazardous']))
-            ->groupBy('l.site_id', 'l.zone_id', 'l.waste_type_id', 's.ulid', 's.name', 'z.ulid', 'z.name', 'z.capacity_kg', 'z.capacity_alert_pct',
+            ->groupBy('l.site_id', 'l.zone_id', 'l.waste_type_id', 's.ulid', 's.name', 's.capacity_kg', 's.capacity_alert_pct', 'z.ulid', 'z.name', 'z.capacity_kg', 'z.capacity_m3', 'z.space_method', 'z.capacity_alert_pct',
                 't.ulid', 't.name', 't.is_hazardous', 't.default_unit_id', 't.density_kg_m3', 't.unit_weight_kg')
             ->orderBy('s.name')->orderBy('z.name')->orderBy('t.name')
             ->get([
                 'l.site_id', 'l.zone_id', 'l.waste_type_id', 's.ulid as site', 's.name as site_name', 'z.ulid as zone', 'z.name as zone_name',
-                'z.capacity_kg', 'z.capacity_alert_pct', 't.ulid as waste_type', 't.name as waste_type_name', 't.is_hazardous',
+                'z.capacity_kg', 'z.capacity_m3', 'z.space_method', 'z.capacity_alert_pct', 's.capacity_kg as site_capacity_kg', 's.capacity_alert_pct as site_alert_pct', 't.ulid as waste_type', 't.name as waste_type_name', 't.is_hazardous',
                 't.default_unit_id', 't.density_kg_m3', 't.unit_weight_kg',
                 DB::raw('COALESCE(SUM(l.net_weight_kg), 0) as quantity_kg'), DB::raw('COUNT(*) as lots'),
                 DB::raw('SUM(l.net_weight_kg IS NULL) as unweighed_lots'),
@@ -194,7 +198,11 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
         // How full each zone is, counted on everything it holds whatever the filters applied to the rows.
         $fills = $rows->unique('zone_id')->mapWithKeys(fn ($row) => [$row->zone_id => $organisation->fill(
-            (int) $row->site_id, (int) $row->zone_id, $row->capacity_kg === null ? null : (string) $row->capacity_kg, (int) $row->capacity_alert_pct)]);
+            (int) $row->site_id, (int) $row->zone_id, $row->capacity_kg === null ? null : (string) $row->capacity_kg, (int) $row->capacity_alert_pct,
+            $row->capacity_m3 === null ? null : (string) $row->capacity_m3, (string) $row->space_method)]);
+        // The weight each site holds against the weight it may hold: every lot once, whatever the filters and the zones.
+        $sites = $rows->unique('site_id')->map(fn ($row) => ['site' => $row->site, 'site_name' => $row->site_name, 'capacity_kg' => $row->site_capacity_kg === null ? null : (string) $row->site_capacity_kg]
+            + $organisation->siteLoad((int) $row->site_id, $row->site_capacity_kg === null ? null : (string) $row->site_capacity_kg, (int) $row->site_alert_pct))->values();
         $thresholds = StockThreshold::query()->where('is_active', true)->when($siteIds !== null, fn ($query) => $query->whereIn('site_id', $siteIds))
             ->get(['ulid', 'site_id', 'zone_id', 'waste_type_id', 'max_quantity_kg', 'warning_pct']);
 
@@ -219,6 +227,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
                     'zone_fill' => $fills[$row->zone_id],
                 ];
             }),
+            'sites' => $sites,
             // Each threshold with the stock it currently measures, whatever the filters applied to the rows.
             'thresholds' => $thresholds->map(function (StockThreshold $threshold) use ($stock) {
                 $quantity = $stock->quantity($threshold->site_id, $threshold->zone_id, $threshold->waste_type_id);
@@ -240,6 +249,46 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'meta' => ['total_kg' => $rows->reduce(fn ($sum, $row) => bcadd($sum, (string) $row->quantity_kg, 3), '0'), 'unweighed_lots' => (int) $rows->sum('unweighed_lots'), 'generated_at' => now()->toIso8601ZuluString()],
         ]);
     })->name('stock.index');
+
+    /*
+     * The room one package takes, per packaging, for the company: what a zone measured in volume multiplies the
+     * packages by. A packaging without a volume is simply not known: its lots are named, never given a guessed size.
+     */
+    $packagingVolumes = function (StockQuery $stock) {
+        $volumes = DB::table('packaging_volumes')->where('company_id', $stock->companyId())->pluck('volume_m3', 'packaging_type_id');
+
+        return ['data' => DB::table('packaging_types')->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get(['id', 'code'])
+            ->map(fn ($row) => ['packaging_type' => $row->code, 'volume_m3' => isset($volumes[$row->id]) ? (string) $volumes[$row->id] : null])];
+    };
+
+    Route::get('packaging-volumes', function (Request $request, StockQuery $stock) use ($packagingVolumes) {
+        abort_unless($request->user()->can('sites.view') || $request->user()->can('sites.manage') || $request->user()->can('stock.view'), 403);
+
+        return $packagingVolumes($stock);
+    })->name('packaging-volumes.index');
+
+    Route::put('packaging-volumes', function (Request $request, ReferenceCodes $codes, StockQuery $stock) use ($allow, $packagingVolumes) {
+        $allow($request, 'sites.manage');
+        $input = $request->validate([
+            'volumes' => ['present', 'array', 'max:100'],
+            'volumes.*.packaging_type' => ['required', 'string', 'distinct', Rule::exists('packaging_types', 'code')->where('is_active', true)],
+            // Empty = not known any more.
+            'volumes.*.volume_m3' => ['nullable', 'decimal:0,4', 'gt:0', 'max:100000'],
+        ]);
+        $companyId = $stock->companyId();
+        DB::transaction(function () use ($input, $codes, $companyId) {
+            foreach ($input['volumes'] as $line) {
+                $key = ['company_id' => $companyId, 'packaging_type_id' => $codes->id('packaging_types', $line['packaging_type'])];
+                if (($line['volume_m3'] ?? null) === null) {
+                    DB::table('packaging_volumes')->where($key)->delete();
+                } else {
+                    DB::table('packaging_volumes')->updateOrInsert($key, ['volume_m3' => $line['volume_m3'], 'updated_at' => now()] + (DB::table('packaging_volumes')->where($key)->exists() ? [] : ['created_at' => now()]));
+                }
+            }
+        });
+
+        return $packagingVolumes($stock);
+    })->name('packaging-volumes.update');
 
     /*
      * Stock thresholds.

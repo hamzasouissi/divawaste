@@ -3,6 +3,7 @@
 namespace App\Modules\Sites\Resources;
 
 use App\Modules\Sites\Models\Site;
+use App\Modules\Sites\Support\ZoneOrganisation;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -28,6 +29,9 @@ class SiteResource extends JsonResource
             'timezone' => $this->timezone,
             'regulatory_identifier' => $this->regulatory_identifier,
             'capacity_kg' => $this->capacity_kg,
+            'capacity_alert_pct' => $this->capacity_alert_pct ?? 90,
+            // The weight on the site against the weight it may hold: every lot once, whatever its zone.
+            'load' => app(ZoneOrganisation::class)->siteLoad($this->id, $this->capacity_kg, (int) ($this->capacity_alert_pct ?? 90)),
             'is_active' => $this->is_active,
             'zones_count' => $this->whenCounted('zones'),
             'zones' => ZoneResource::collection($this->whenLoaded('zones')),

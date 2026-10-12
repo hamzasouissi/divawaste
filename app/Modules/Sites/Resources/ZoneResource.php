@@ -28,13 +28,15 @@ class ZoneResource extends JsonResource
             'zone_type' => app(ReferenceCodes::class)->code('zone_types', $this->zone_type_id),
             'capacity_kg' => $this->capacity_kg,
             'capacity_m3' => $this->capacity_m3,
+            // How the room is measured: 'packaging' (packages per packaging, sharing one room) or 'volume' (m³). Never both.
+            'space_method' => $this->space_method ?? 'packaging',
             'capacity_alert_pct' => $this->capacity_alert_pct,
             'is_waste_storage' => $this->is_waste_storage,
             'is_active' => $this->is_active,
             'capacities' => $rules['capacities'],
             'accepted_waste_types' => $rules['accepted_waste_types'],
             'accepted_colors' => $rules['accepted_colors'],
-            'fill' => $organisation->fill($this->site_id, $this->id, $this->capacity_kg, $this->capacity_alert_pct),
+            'fill' => $organisation->fill($this->site_id, $this->id, $this->capacity_kg, $this->capacity_alert_pct, $this->capacity_m3, $this->space_method ?? 'packaging'),
         ];
     }
 }
