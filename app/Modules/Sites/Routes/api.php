@@ -9,6 +9,7 @@ use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Sites\Actions\CreateSite;
 use App\Modules\Sites\Actions\CreateStockThreshold;
+use App\Modules\Sites\Actions\EvaluateCapacityAlerts;
 use App\Modules\Sites\Actions\EvaluateStockThresholds;
 use App\Modules\Sites\Enums\SiteKind;
 use App\Modules\Sites\Models\Site;
@@ -70,6 +71,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'capacity_kg' => ['nullable', 'decimal:0,3', 'min:0'],
             'capacity_alert_pct' => ['sometimes', 'integer', 'between:1,100'],
         ]));
+        // The weight already on the site may be above the new capacity.
+        app(EvaluateCapacityAlerts::class)->forSite($site->id);
 
         return new SiteResource($site->load('zones'));
     })->name('sites.update');
@@ -132,6 +135,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
             return $zone;
         });
+        app(EvaluateCapacityAlerts::class)->forSite($site->id);
 
         return (new ZoneResource($zone))->response()->setStatusCode(201);
     })->name('zones.store');
@@ -143,6 +147,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             $zone->update($zoneAttributes($input));
             $organisation->sync($zone, $input);
         });
+        // What the zone already holds may be above its new limits.
+        app(EvaluateCapacityAlerts::class)->forSite($zone->site_id);
 
         return new ZoneResource($zone);
     })->name('zones.update');
@@ -286,6 +292,9 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
                 }
             }
         });
+
+        // The room taken in every zone measured in volume has just changed.
+        app(EvaluateCapacityAlerts::class)->forCompany($companyId);
 
         return $packagingVolumes($stock);
     })->name('packaging-volumes.update');

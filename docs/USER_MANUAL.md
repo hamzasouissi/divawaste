@@ -395,7 +395,16 @@ Set on the page of the site (**Sites et zones**). None of these limits ever refu
   nothing is watched.
 - The dashboard lists, under "À traiter", the zones and sites over their capacity and those whose occupancy cannot be
   verified.
-
+- **Notifications.** People who see the stock of the site are told, in the application and by email, when the room of
+  a zone, its load or the weight of the site changes for the worse: alert percentage reached ("bientôt pleine /
+  atteinte", in the application only), measure incomplete ("non vérifiable": the known figures, and the lots that
+  cannot be counted or are not weighed — said not to be an exceedance), or a confirmed exceedance ("dépassée", with the
+  excess). Each state is announced once; nothing is sent again while it stays the same, and a state that improves is
+  not announced. They can be switched off one by one under Notifications › Préférences. A lot is still never refused.
+- **Volumes recorded earlier.** A zone that has a volume (m³) on record while its room is measured in packages shows
+  "Volume enregistré, non utilisé : … m³" with **Examiner**; the Sites list says how many zones of each site are in
+  this case. Nothing is erased. Whoever manages the zones opens the zone and chooses "Volume (m³)" if that volume is
+  its real capacity, or leaves it in packages. The zone form always says which way is in use.
 ### Packages of a lotA lot is not a package: one lot may be 12 bags. Lot, packages, declared quantity and weight are four separate figures.
 
 - **Nombre de colis** appears on the lot form as soon as the lot has a packaging (chosen, or planned by the waste

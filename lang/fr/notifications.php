@@ -16,6 +16,17 @@ return [
             'body' => 'Limite de :max_quantity_kg kg (:scope) : le poids connu est de :quantity_kg kg, mais :unweighed_lots lot(s) ne sont pas pesés (:lots). La limite n\'est pas dépassée sur ce qui est connu, et elle ne peut pas être dite respectée : pesez ces lots.',
         ],
     ],
+    'capacity' => [
+        'space_warning' => ['title' => 'Zone bientôt pleine — :scope', 'body' => 'La place de la zone est occupée à :pct % (:detail). Aucun lot n\'est refusé ; pensez à libérer de la place.'],
+        'space_exceeded' => ['title' => 'Place de la zone dépassée — :scope', 'body' => 'La place de la zone est occupée à :pct % (:detail) : sa capacité est dépassée. Les lots continuent d\'être acceptés ; libérez de la place ou revoyez la capacité de la zone.'],
+        'space_unverifiable' => ['title' => 'Place de la zone non vérifiable — :scope', 'body' => 'La place connue est occupée à au moins :pct % (:detail), mais :missing lot(s) ne peuvent pas être comptés (:lots) : volume ou conditionnement non renseigné. Ce n\'est pas un dépassement constaté ; l\'occupation ne peut pas être dite dans la capacité.'],
+        'load_warning' => ['title' => 'Charge de la zone bientôt atteinte — :scope', 'body' => 'La zone porte :detail (:pct % de sa charge maximale).'],
+        'load_exceeded' => ['title' => 'Charge de la zone dépassée — :scope', 'body' => 'La zone porte :detail : sa charge maximale est dépassée de :excess. Les lots continuent d\'être acceptés ; déplacez ou évacuez des lots.'],
+        'load_unverifiable' => ['title' => 'Charge de la zone non vérifiable — :scope', 'body' => 'Poids connu : :detail, mais :missing lot(s) ne sont pas pesés (:lots). Ce n\'est pas un dépassement constaté ; la charge ne peut pas être dite respectée : pesez ces lots.'],
+        'site_warning' => ['title' => 'Capacité du site bientôt atteinte — :site', 'body' => 'Le site contient :detail (:pct % de son poids maximal), toutes zones confondues.'],
+        'site_exceeded' => ['title' => 'Capacité du site dépassée — :site', 'body' => 'Le site contient :detail, toutes zones confondues : son poids maximal est dépassé de :excess. Les lots continuent d\'être acceptés ; planifiez un enlèvement.'],
+        'site_unverifiable' => ['title' => 'Capacité du site non vérifiable — :site', 'body' => 'Poids connu sur le site : :detail, mais :missing lot(s) ne sont pas pesés (:lots). Ce n\'est pas un dépassement constaté ; la capacité ne peut pas être dite respectée : pesez ces lots.'],
+    ],
     'pickup' => [
         'requested' => [
             'title' => 'Nouvelle demande d\'enlèvement :number',

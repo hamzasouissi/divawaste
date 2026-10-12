@@ -30,6 +30,9 @@ class ZoneResource extends JsonResource
             'capacity_m3' => $this->capacity_m3,
             // How the room is measured: 'packaging' (packages per packaging, sharing one room) or 'volume' (m³). Never both.
             'space_method' => $this->space_method ?? 'packaging',
+            // A volume is on record for the zone but its room is measured in packages: the volume is kept, and not used.
+            // (Volumes entered before the room could be measured in volume are in this case until someone reviews them.)
+            'inactive_volume' => ($this->space_method ?? 'packaging') !== 'volume' && $this->capacity_m3 !== null && bccomp((string) $this->capacity_m3, '0', 3) > 0,
             'capacity_alert_pct' => $this->capacity_alert_pct,
             'is_waste_storage' => $this->is_waste_storage,
             'is_active' => $this->is_active,
