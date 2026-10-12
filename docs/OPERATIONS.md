@@ -49,6 +49,7 @@ Scheduled tasks (`routes/console.php`):
 |---|---|---|
 | 05:00 | `subscriptions:run` | Bills the periods that start, warns before the end of trials, marks overdue invoices and expired subscriptions |
 | 06:00 | `accreditations:alert` | Warns 30 days before an accreditation expires and when it has expired (M4-02) |
+| 06:20 | `limits:evaluate` | Compares every site with its limits (zone room and load, site weight, stock limits) and announces the states nobody was told about yet. Run it once by hand after a deployment that introduces limits (`php artisan limits:evaluate`); running it again announces nothing twice |
 
 Both are declared `withoutOverlapping()` and `onOneServer()`.
 

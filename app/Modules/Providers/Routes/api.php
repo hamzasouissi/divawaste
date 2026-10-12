@@ -1,9 +1,11 @@
 <?php
 
 use App\Modules\Audit\Services\AuditLogger;
+use App\Modules\Catalog\Support\UnitConversion;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Models\StoredFile;
 use App\Modules\Common\Support\FileStorage;
+use App\Modules\Common\Support\Measure;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Notifications\Actions\NotifyUsers;
 use App\Modules\Providers\Models\ExternalPartner;
@@ -208,6 +210,12 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
                 'channel' => $codes->code('treatment_channels', $row->treatment_channel_id),
                 'family' => $codes->code('waste_families', $row->waste_family_id),
                 'catalog_item' => $codes->code('waste_catalog_items', $row->waste_catalog_item_id),
+                // What the provider asks of a collection of this waste: a minimum in its unit (a minimum in packages names
+                // the packaging it counts), a packaging, and whether a collection that falls short is refused or warned about.
+                'min_quantity' => $row->min_quantity, 'min_unit' => $row->min_unit_code,
+                'min_packaging_type' => $codes->code('packaging_types', $row->min_packaging_type_id),
+                'required_packaging_type' => $codes->code('packaging_types', $row->required_packaging_type_id),
+                'is_blocking' => (bool) $row->is_blocking,
                 'min_quantity_kg' => $row->min_quantity_kg, 'notes' => $row->notes,
             ]),
         ];
@@ -233,6 +241,13 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
             'accepted_wastes.*.channel' => ['required', 'string', Rule::exists('treatment_channels', 'code')->where('is_active', true)],
             'accepted_wastes.*.family' => ['nullable', 'required_without:accepted_wastes.*.catalog_item', 'string', Rule::exists('waste_families', 'code')],
             'accepted_wastes.*.catalog_item' => ['nullable', 'string', Rule::exists('waste_catalog_items', 'code')],
+            'accepted_wastes.*.min_quantity' => ['nullable', 'decimal:0,3', 'gt:0'],
+            'accepted_wastes.*.min_unit' => ['nullable', 'required_with:accepted_wastes.*.min_quantity', 'string', Rule::in(Measure::UNITS)],
+            // A minimum in packages says which packaging it counts.
+            'accepted_wastes.*.min_packaging_type' => ['nullable', 'required_if:accepted_wastes.*.min_unit,package', 'string', Rule::exists('packaging_types', 'code')->where('is_active', true)],
+            'accepted_wastes.*.required_packaging_type' => ['nullable', 'string', Rule::exists('packaging_types', 'code')->where('is_active', true)],
+            'accepted_wastes.*.is_blocking' => ['sometimes', 'boolean'],
+            // The former name of a minimum in kilograms.
             'accepted_wastes.*.min_quantity_kg' => ['nullable', 'decimal:0,3', 'gte:0'],
             'accepted_wastes.*.notes' => ['nullable', 'string', 'max:500'],
         ]);
@@ -245,11 +260,20 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
 
             ProviderAcceptedWaste::query()->delete();
             foreach ($input['accepted_wastes'] as $waste) {
+                $legacy = ($waste['min_quantity'] ?? null) === null && bccomp((string) ($waste['min_quantity_kg'] ?? '0'), '0', 3) > 0;
+                $minimum = $legacy ? (string) $waste['min_quantity_kg'] : ($waste['min_quantity'] ?? null);
+                $unit = $minimum === null ? null : ($legacy ? 'kg' : (string) $waste['min_unit']);
+                $required = $codes->id('packaging_types', $waste['required_packaging_type'] ?? null);
                 ProviderAcceptedWaste::query()->create([
+                    'min_quantity' => $minimum, 'min_unit_code' => $unit,
+                    'min_packaging_type_id' => $unit === Measure::PACKAGE ? $codes->id('packaging_types', $waste['min_packaging_type'] ?? null) : null,
+                    'required_packaging_type_id' => $required,
+                    // Nothing to refuse on without a requirement.
+                    'is_blocking' => ($minimum !== null || $required !== null) && (bool) ($waste['is_blocking'] ?? false),
                     'treatment_channel_id' => $codes->id('treatment_channels', $waste['channel']),
                     'waste_family_id' => $codes->id('waste_families', $waste['family'] ?? null),
                     'waste_catalog_item_id' => $codes->id('waste_catalog_items', $waste['catalog_item'] ?? null),
-                    'min_quantity_kg' => $waste['min_quantity_kg'] ?? null, 'notes' => $waste['notes'] ?? null,
+                    'min_quantity_kg' => $unit !== null && Measure::dimension($unit) === 'mass' ? UnitConversion::convert((string) $minimum, $unit, 'kg') : null, 'notes' => $waste['notes'] ?? null,
                 ]);
             }
         });

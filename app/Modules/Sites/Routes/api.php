@@ -5,6 +5,7 @@ use App\Modules\Catalog\Support\Colors;
 use App\Modules\Catalog\Support\UnitConversion;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Support\Constraint;
+use App\Modules\Common\Support\Measure;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Sites\Actions\CreateSite;
@@ -20,6 +21,7 @@ use App\Modules\Sites\Requests\StoreStockThresholdRequest;
 use App\Modules\Sites\Resources\SiteResource;
 use App\Modules\Sites\Resources\StockThresholdResource;
 use App\Modules\Sites\Resources\ZoneResource;
+use App\Modules\Sites\Support\StockLimits;
 use App\Modules\Sites\Support\StockQuery;
 use App\Modules\Sites\Support\ZoneOrganisation;
 use App\Modules\Tenancy\Rules\TenantExists;
@@ -173,7 +175,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     /*
      * M2-07: real-time stock by site, zone and waste type, with zone capacity and threshold state.
      */
-    Route::get('stock', function (Request $request, AccessResolver $access, StockQuery $stock, ReferenceCodes $codes, ZoneOrganisation $organisation) {
+    Route::get('stock', function (Request $request, AccessResolver $access, StockQuery $stock, ReferenceCodes $codes, ZoneOrganisation $organisation, StockLimits $limits) {
         $siteIds = $access->siteIdsFor($request->user(), 'stock.view');
         abort_if($siteIds === [], 403);
         $filter = $request->validate([
@@ -210,7 +212,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         $sites = $rows->unique('site_id')->map(fn ($row) => ['site' => $row->site, 'site_name' => $row->site_name, 'capacity_kg' => $row->site_capacity_kg === null ? null : (string) $row->site_capacity_kg]
             + $organisation->siteLoad((int) $row->site_id, $row->site_capacity_kg === null ? null : (string) $row->site_capacity_kg, (int) $row->site_alert_pct))->values();
         $thresholds = StockThreshold::query()->where('is_active', true)->when($siteIds !== null, fn ($query) => $query->whereIn('site_id', $siteIds))
-            ->get(['ulid', 'site_id', 'zone_id', 'waste_type_id', 'max_quantity_kg', 'warning_pct']);
+            ->orderBy('id')->get();
 
         return response()->json([
             'data' => $rows->map(function ($row) use ($fills, $codes) {
@@ -235,21 +237,26 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             }),
             'sites' => $sites,
             // Each threshold with the stock it currently measures, whatever the filters applied to the rows.
-            'thresholds' => $thresholds->map(function (StockThreshold $threshold) use ($stock) {
-                $quantity = $stock->quantity($threshold->site_id, $threshold->zone_id, $threshold->waste_type_id);
+            'thresholds' => $thresholds->map(function (StockThreshold $threshold) use ($limits) {
+                // The limit answered on its own, in its unit. Known quantity above it: exceeded, and the lots that could
+                // not be counted are named too. Known quantity below it with such lots: unverifiable, never "respected".
+                // A stock limit alerts; it blocks nothing.
+                $constraint = $limits->constraint($threshold);
+                $mass = Measure::dimension((string) $constraint['unit']) === 'mass';
 
                 return [
                     'ulid' => $threshold->ulid,
-                    'quantity_kg' => $quantity,
-                    'unweighed_lots' => $stock->unweighed($threshold->site_id, $threshold->zone_id, $threshold->waste_type_id),
-                    'max_quantity_kg' => (string) $threshold->max_quantity_kg,
-                    'alert_level' => EvaluateStockThresholds::level($quantity, (string) $threshold->max_quantity_kg, $threshold->warning_pct,
-                        $stock->unweighed($threshold->site_id, $threshold->zone_id, $threshold->waste_type_id))?->value,
-                    // The limit answered on its own, in its unit. Known weight above it: exceeded, and the lots nobody weighed
-                    // are named too. Known weight below it with such lots: unverifiable, never "respected". A stock limit
-                    // alerts; it blocks nothing.
-                    'constraint' => Constraint::quantity('stock', 'kg', $quantity, (string) $threshold->max_quantity_kg, $threshold->warning_pct,
-                        $stock->unweighedNumbers($threshold->site_id, $threshold->zone_id, $threshold->waste_type_id)),
+                    'unit' => $constraint['unit'],
+                    'packaging_type' => $constraint['packaging_type'],
+                    'quantity' => (string) $constraint['used'],
+                    'max_quantity' => (string) $constraint['max'],
+                    // The same figures in kilograms when the limit is a weight; null for any other measure.
+                    'quantity_kg' => $mass ? UnitConversion::convert((string) $constraint['used'], $constraint['unit'], 'kg') : null,
+                    'max_quantity_kg' => $mass ? UnitConversion::convert((string) $constraint['max'], $constraint['unit'], 'kg') : null,
+                    // Lots of the scope the limit could not count in its unit.
+                    'unweighed_lots' => $constraint['missing_count'],
+                    'alert_level' => $constraint['outcome'] === Constraint::RESPECTED ? null : $constraint['outcome'],
+                    'constraint' => $constraint,
                 ];
             }),
             'meta' => ['total_kg' => $rows->reduce(fn ($sum, $row) => bcadd($sum, (string) $row->quantity_kg, 3), '0'), 'unweighed_lots' => (int) $rows->sum('unweighed_lots'), 'generated_at' => now()->toIso8601ZuluString()],
@@ -323,12 +330,14 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
     Route::put('stock-thresholds/{threshold}', function (Request $request, StockThreshold $threshold, EvaluateStockThresholds $evaluate) use ($allow, $with) {
         $allow($request, 'stock.thresholds.manage', $threshold->site_id);
+        // The unit of a limit is what it is about: it does not change. Another unit is another limit.
         $input = $request->validate([
-            'max_quantity_kg' => ['required', 'decimal:0,3', 'gt:0'],
+            'max_quantity' => ['required_without:max_quantity_kg', 'decimal:0,3', 'gt:0', $threshold->unit_code === Measure::PACKAGE ? 'integer' : 'numeric'],
+            'max_quantity_kg' => ['sometimes', 'prohibits:max_quantity', 'decimal:0,3', 'gt:0', $threshold->unit_code === 'kg' ? 'numeric' : 'prohibited'],
             'warning_pct' => ['required', 'integer', 'between:1,100'],
             'is_active' => ['required', 'boolean'],
         ]);
-        $threshold->forceFill($input)->save();
+        $threshold->forceFill(['max_quantity' => $input['max_quantity'] ?? $input['max_quantity_kg'], 'warning_pct' => $input['warning_pct'], 'is_active' => $input['is_active']])->save();
         $evaluate->forSite($threshold->site_id);
 
         return new StockThresholdResource($threshold->refresh()->load($with));

@@ -35,8 +35,10 @@ final class ProviderDirectory
         $ids = $providers->pluck('id');
         $accepted = DB::table('provider_accepted_wastes as w')->join('treatment_channels as ch', 'ch.id', '=', 'w.treatment_channel_id')
             ->leftJoin('waste_families as f', 'f.id', '=', 'w.waste_family_id')->leftJoin('waste_catalog_items as i', 'i.id', '=', 'w.waste_catalog_item_id')
+            ->leftJoin('packaging_types as mp', 'mp.id', '=', 'w.min_packaging_type_id')->leftJoin('packaging_types as rp', 'rp.id', '=', 'w.required_packaging_type_id')
             ->whereIn('w.company_id', $ids)->where('w.is_active', true)
-            ->get(['w.company_id', 'ch.code as channel', 'f.code as family', 'i.code as catalog_item', 'w.min_quantity_kg', 'w.notes'])->groupBy('company_id');
+            ->get(['w.company_id', 'ch.code as channel', 'f.code as family', 'i.code as catalog_item', 'w.min_quantity_kg', 'w.notes',
+                'w.min_quantity', 'w.min_unit_code', 'mp.code as min_packaging_type', 'rp.code as required_packaging_type', 'w.is_blocking'])->groupBy('company_id');
         $accreditations = DB::table('provider_accreditations as a')->join('accreditation_types as t', 't.id', '=', 'a.accreditation_type_id')
             ->whereIn('a.company_id', $ids)->where('a.review_status', 'approved')->whereNull('a.deleted_at')->orderBy('a.expires_on')
             ->get(['a.company_id', 'a.ulid', 't.code as type', 't.name', 't.covers_hazardous', 'a.reference_number', 'a.valid_from', 'a.expires_on'])->groupBy('company_id');
@@ -77,6 +79,8 @@ final class ProviderDirectory
                 'channels' => $wastes->pluck('channel')->unique()->values(),
                 'accepted_wastes' => $wastes->map(fn (stdClass $row): array => [
                     'channel' => $row->channel, 'family' => $row->family, 'catalog_item' => $row->catalog_item,
+                    'min_quantity' => $row->min_quantity, 'min_unit' => $row->min_unit_code, 'min_packaging_type' => $row->min_packaging_type,
+                    'required_packaging_type' => $row->required_packaging_type, 'is_blocking' => (bool) $row->is_blocking,
                     'min_quantity_kg' => $row->min_quantity_kg, 'notes' => $row->notes,
                 ])->values(),
                 'accreditations' => $list,

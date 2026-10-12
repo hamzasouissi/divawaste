@@ -51,6 +51,9 @@ class PickupResource extends JsonResource
             'refusal_reason' => $this->refusal_reason,
             'cancellation_reason' => $this->cancellation_reason,
             'notes' => $this->notes,
+            // What the receiver asked of this collection when it was requested, the figures and the answer — and, when it
+            // was sent although a blocking requirement failed, who decided it and why. Null when it asked for nothing.
+            'provider_requirements' => $this->provider_requirements,
             'departure_weight_kg' => $this->departure_weight_kg,
             'received_weight_kg' => $this->received_weight_kg,
             'weight_variance_kg' => $this->weight_variance_kg,

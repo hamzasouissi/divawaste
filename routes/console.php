@@ -10,6 +10,9 @@ use App\Modules\Notifications\Actions\NotifyUsers;
 use App\Modules\Notifications\Support\EmailLog;
 use App\Modules\Production\Support\ProductionVolumes;
 use App\Modules\Providers\Actions\AlertExpiringAccreditations;
+use App\Modules\Sites\Actions\EvaluateStockThresholds;
+use App\Modules\Tenancy\Models\Company;
+use App\Modules\Tenancy\TenantContext;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -55,6 +58,24 @@ Artisan::command('authorizations:alert', function (NotifyUsers $notify) {
 })->purpose('Alert 30 and 7 days before a waste authorisation ends, unless a later one already takes over');
 
 Schedule::command('authorizations:alert')->dailyAt('06:10')->withoutOverlapping()->onOneServer();
+
+Artisan::command('limits:evaluate', function (TenantContext $context) {
+    $sites = 0;
+    foreach (Company::query()->whereIn('id', DB::table('sites')->where('is_active', true)->select('company_id'))->orderBy('id')->get() as $company) {
+        $sites += $context->runAs($company, function () use ($company) {
+            $ids = DB::table('sites')->where('company_id', $company->id)->where('is_active', true)->orderBy('id')->pluck('id');
+            // Resolved inside the company: what it reads and whom it tells belong to that company only.
+            $ids->each(fn ($siteId) => app(EvaluateStockThresholds::class)->forSite((int) $siteId));
+
+            return $ids->count();
+        });
+    }
+    $this->info("Limits: {$sites} site(s) evaluated.");
+})->purpose('Compare every site with its limits (zone room and load, site weight, stock limits) and tell people about the states nobody was told about yet. Safe to run again: a state already announced is not announced twice');
+
+// Limits are looked at on every stock movement; this catches what no movement would — a site that was already over
+// when the limits were introduced, a limit left unevaluated.
+Schedule::command('limits:evaluate')->dailyAt('06:20')->withoutOverlapping()->onOneServer();
 
 Artisan::command('production:volumes', function () {
     $companies = DB::table('production_orders')->distinct()->pluck('company_id');

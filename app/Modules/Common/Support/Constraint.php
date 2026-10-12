@@ -99,6 +99,67 @@ final class Constraint
     }
 
     /**
+     * A quantity that must be reached: the minimum a provider asks for a collection. The answer reads the other way
+     * round from a maximum. Reached on what is known: respected, whatever else is missing — more can only add to it.
+     * Not reached with everything known: the requirement is not met, which refuses when it is blocking ('exceeded' is
+     * then read "not met") and warns otherwise. Not reached while a lot could not be counted: unverifiable.
+     *
+     * @param  list<string>  $missing  lot numbers whose quantity for this requirement is unknown
+     * @return array<string, mixed>
+     */
+    public static function minimum(string $key, string $unit, string $have, string $min, array $missing = [], bool $blocking = false, int $scale = 3): array
+    {
+        $missing = array_values(array_unique($missing));
+        $met = bccomp($have, $min, $scale) >= 0;
+        $number = fn (string $value) => $scale === 0 ? (int) $value : $value;
+
+        return [
+            'key' => $key,
+            'kind' => 'minimum',
+            'unit' => $unit,
+            'pct' => bccomp($min, '0', $scale) > 0 ? round((float) bcdiv(bcmul($have, '100', $scale), $min, $scale + 1), 1) : null,
+            'outcome' => match (true) {
+                $met => self::RESPECTED,
+                $missing !== [] => self::UNVERIFIABLE,
+                $blocking => self::EXCEEDED,
+                default => self::WARNING,
+            },
+            'blocking' => $blocking,
+            'missing_count' => count($missing),
+            'missing_lots' => array_slice($missing, 0, self::NAMED),
+            'used' => $number($have),
+            'min' => $number($min),
+            'shortfall' => $met ? null : $number(bcsub($min, $have, $scale)),
+        ];
+    }
+
+    /**
+     * A packaging that is asked for: every lot concerned is in it, or the lots that are not are named.
+     *
+     * @param  list<string>  $other  lot numbers in another packaging, or loose
+     * @return array<string, mixed>
+     */
+    public static function packaging(string $key, string $packaging, int $lots, array $other, bool $blocking = false): array
+    {
+        $other = array_values(array_unique($other));
+
+        return [
+            'key' => $key,
+            'kind' => 'packaging',
+            'unit' => 'package',
+            'pct' => null,
+            'outcome' => $other === [] ? self::RESPECTED : ($blocking ? self::EXCEEDED : self::WARNING),
+            'blocking' => $blocking,
+            'missing_count' => 0,
+            'missing_lots' => [],
+            'packaging_type' => $packaging,
+            'lots' => $lots,
+            'outside_count' => count($other),
+            'outside_lots' => array_slice($other, 0, self::NAMED),
+        ];
+    }
+
+    /**
      * What the answers mean together: the most serious one, and whether a blocking limit failed. Exceeded and
      * unverifiable both fail a blocking limit; they stay two different answers.
      *

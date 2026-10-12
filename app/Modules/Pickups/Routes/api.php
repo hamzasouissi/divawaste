@@ -9,6 +9,7 @@ use App\Modules\Pickups\Enums\PickupStatus;
 use App\Modules\Pickups\Models\Pickup;
 use App\Modules\Pickups\Resources\PickupResource;
 use App\Modules\Pickups\Support\PickupNotifier;
+use App\Modules\Pickups\Support\ProviderRequirements;
 use App\Modules\Providers\Models\ExternalPartner;
 use App\Modules\Sites\Actions\EvaluateStockThresholds;
 use App\Modules\Sites\Models\Site;
@@ -147,9 +148,27 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             app(ReferenceCodes::class)->id('treatment_channels', $input['treatment_channel'] ?? null)))->response()->setStatusCode(201);
     })->name('pickups.store');
 
+    // Before a pickup is requested: what does this provider ask of a collection of these lots, and is it met?
+    Route::post('provider-requirements/check', function (Request $request, ProviderRequirements $requirements, TenantContext $context) {
+        abort_unless($request->user()->can('pickups.request') || $request->user()->can('pickups.view'), 403);
+        $input = $request->validate([
+            'provider' => ['required', 'string', Rule::exists('companies', 'ulid')->where('company_type', 'provider')],
+            'lots' => ['required', 'array', 'min:1', 'max:500'],
+            'lots.*' => ['required', 'string', new TenantExists(WasteLot::class)],
+            'treatment_channel' => ['nullable', 'string', Rule::exists('treatment_channels', 'code')->where('is_active', true)],
+        ]);
+        $result = $requirements->evaluate((int) Company::query()->where('ulid', strtoupper($input['provider']))->value('id'),
+            $requirements->linesOfLots((int) $context->companyId(), array_map('strtoupper', $input['lots']), app(ReferenceCodes::class)->id('treatment_channels', $input['treatment_channel'] ?? null)));
+
+        // `blocked`: the request would be refused. `may_override`: this person may send it all the same, with a reason.
+        return ['data' => $result + ['may_override' => $request->user()->can('pickups.override_eligibility')]];
+    })->name('provider-requirements.check');
+
     Route::post('pickups/{pickup}/submit', function (Request $request, Pickup $pickup, PickupWorkflow $workflow, PickupNotifier $notifier) use ($allow, $show) {
         $allow($request, 'pickups.request', $pickup->site_id);
-        $pickup = $workflow->submit($pickup, $request->user());
+        // A blocking requirement of the receiver that fails refuses the request; someone entitled to may send it with a reason.
+        $reason = $request->validate(['requirement_override_reason' => ['nullable', 'string', 'max:1000']])['requirement_override_reason'] ?? null;
+        $pickup = $workflow->submit($pickup, $request->user(), $reason, $request->user()->can('pickups.override_eligibility', $pickup->site_id));
         $notifier->requested($pickup);
 
         return $show($pickup);

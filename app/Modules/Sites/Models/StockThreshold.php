@@ -11,7 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Storage limit for a site, optionally narrowed to a zone and/or a waste type (M2-07).
+ * Storage limit for a site, optionally narrowed to a zone and/or a waste type (M2-07), stated in the unit of the
+ * restriction: a weight, pieces, a volume, or packages of one packaging. A scope may carry one limit per measure.
  * alert_level/alerted_at hold the current alert state (merged stock_alerts).
  *
  * @property string $ulid
@@ -22,14 +23,14 @@ class StockThreshold extends Model
     use BelongsToCompany;
     use HasPublicUlid;
 
-    protected $attributes = ['warning_pct' => 90, 'is_active' => true];
+    protected $attributes = ['warning_pct' => 90, 'is_active' => true, 'unit_code' => 'kg', 'measure_key' => 'mass'];
 
-    protected $fillable = ['ulid', 'site_id', 'zone_id', 'waste_type_id', 'max_quantity_kg', 'warning_pct', 'created_by_user_id'];
+    protected $fillable = ['ulid', 'site_id', 'zone_id', 'waste_type_id', 'max_quantity', 'unit_code', 'packaging_type_id', 'measure_key', 'warning_pct', 'created_by_user_id'];
 
     protected function casts(): array
     {
         return [
-            'max_quantity_kg' => 'decimal:3',
+            'max_quantity' => 'decimal:3',
             'warning_pct' => 'integer',
             'alert_level' => AlertLevel::class,
             'alerted_at' => 'datetime',

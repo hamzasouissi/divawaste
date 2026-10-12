@@ -4,15 +4,15 @@ return [
     'stock' => [
         'threshold_warning' => [
             'title' => 'Stock limit almost reached — :site',
-            'body' => 'Waste stock is at :quantity_kg kg for a limit of :max_quantity_kg kg (:site).',
+            'body' => 'Stock is at :quantity for a limit of :max_quantity (:scope).',
         ],
         'threshold_exceeded' => [
             'title' => 'Stock limit exceeded — :site',
-            'body' => 'Waste stock is at :quantity_kg kg, above the :max_quantity_kg kg limit (:site). Plan a pickup.',
+            'body' => 'Stock is at :quantity, above the limit of :max_quantity by :excess (:scope). Plan a pickup.',
         ],
         'threshold_unverifiable' => [
             'title' => 'Stock limit cannot be verified — :site',
-            'body' => 'Limit of :max_quantity_kg kg (:scope): the known weight is :quantity_kg kg, but :unweighed_lots lot(s) are not weighed (:lots). The limit is not exceeded on what is known, and it cannot be called respected: weigh these lots.',
+            'body' => 'Limit of :max_quantity (:scope): the known quantity is :quantity, but :unweighed_lots lot(s) cannot be counted in this unit (:lots): weight, quantity or number of packages not on record. The limit is not exceeded on what is known, and it cannot be called respected: complete these lots.',
         ],
     ],
     'capacity' => [
