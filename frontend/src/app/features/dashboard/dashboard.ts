@@ -250,6 +250,16 @@ export class DashboardPage {
     if (unverifiable > 0) {
       items.push({ icon: 'help', tone: 'warning', text: t('dashboard.alerts.unverifiable', { count: unverifiable }), link: '/stock' });
     }
+    // What zones and sites can physically hold: their room, their load, the weight of the site. Each zone and site once.
+    const places = [...new Map((this.stock()?.data ?? []).map((row) => [row.zone, row.zone_fill.outcome])).values(), ...(this.stock()?.sites ?? []).map((site) => site.outcome)];
+    const full = places.filter((outcome) => outcome === 'exceeded').length;
+    const unknown = places.filter((outcome) => outcome === 'unverifiable').length;
+    if (full > 0) {
+      items.push({ icon: 'warehouse', tone: 'danger', text: t('dashboard.alerts.capacityExceeded', { count: full }), link: '/stock' });
+    }
+    if (unknown > 0) {
+      items.push({ icon: 'help', tone: 'warning', text: t('dashboard.alerts.capacityUnverifiable', { count: unknown }), link: '/stock' });
+    }
     const flagged = this.pickups().filter((pickup) => pickup.variance_flagged && !pickup.variance_acknowledged).length;
     if (flagged > 0) {
       items.push({ icon: 'scale', tone: 'danger', text: t('dashboard.alerts.variance', { count: flagged }), link: '/pickups' });

@@ -687,7 +687,9 @@
       "requested": "{{count}} demande(s) d'enlèvement en attente de réponse du prestataire",
       "accreditationExpired": "Agrément expiré : {{provider}} ne peut plus être choisi",
       "accreditationExpiring": "Agrément de {{provider}} : expire dans {{days}} jour(s)",
-      "unverifiable": "{{count}} limite(s) de stock non vérifiable(s) : des lots ne sont pas pesés"
+      "unverifiable": "{{count}} limite(s) de stock non vérifiable(s) : des lots ne sont pas pesés",
+      "capacityExceeded": "{{count}} zone(s) ou site(s) au-delà de leur capacité",
+      "capacityUnverifiable": "{{count}} zone(s) ou site(s) dont l’occupation n’est pas vérifiable : poids, volume ou colis manquants"
     },
     "production": "Origine des déchets en production",
     "productionHint": "Les ordres de fabrication qui ont produit le plus de déchets sur la période.",
@@ -850,7 +852,8 @@
     "holds": "Contient :",
     "unconfirmed": "{{count}} lot(s) au nombre de colis par défaut",
     "unconfirmedHint": "Ces lots comptent pour un colis faute d’indication. Corrigez leur nombre de colis s’ils en contiennent plusieurs.",
-    "zoneFill": "Remplissage de la zone"
+    "zoneFill": "Remplissage de la zone",
+    "looseLots": "{{count}} lot(s) en vrac"
   },
   "sites": {
     "title": "Sites et zones",
@@ -881,10 +884,10 @@
     "closeHint": "Le site reste dans l'historique et les documents ; il n'est plus proposé pour les nouveaux lots.",
     "noZoneType": "Aucun type",
     "capacity": "Capacité",
-    "capacityHint": "Indiquez combien de lots la zone contient quand elle ne reçoit qu'un seul conditionnement : « 40 balles », « 100 sacs ». Les lots mélangés s'additionnent : 20 balles sur 40 et 50 sacs sur 100 remplissent la zone.",
+    "capacityHint": "Indiquez combien de colis la zone contient quand elle ne reçoit qu’un seul conditionnement : « 40 balles », « 100 sacs ». Les conditionnements mélangés partagent la même place : 20 balles sur 40 et 50 sacs sur 100 remplissent la zone. Un lot en vrac ou dans un conditionnement non prévu est signalé, jamais converti.",
     "addCapacity": "Ajouter un conditionnement",
     "maxLots": "Nombre de lots",
-    "capacityKgLimit": "Poids maximal (kg), facultatif",
+    "capacityKgLimit": "Charge maximale de la zone (kg), facultatif",
     "noLimit": "Sans limite",
     "reservedFor": "Réservée à",
     "reservedHint": "Facultatif. Un lot qui ne correspond pas est signalé, jamais refusé.",
@@ -892,7 +895,26 @@
     "acceptedColors": "Couleurs",
     "anyType": "Tous les types",
     "anyColor": "Toutes les couleurs",
-    "anything": "Tout"
+    "anything": "Tout",
+    "siteCapacity": "Capacité du site",
+    "siteCapacityHint": "Le poids total que le site peut contenir, toutes zones confondues. Chaque lot présent compte une fois, même dans une zone sans limite. Laissez vide si rien ne doit être surveillé. Dépasser cette capacité alerte, sans jamais refuser un lot.",
+    "siteCapacityKg": "Poids maximal sur le site (kg), facultatif",
+    "siteLoad": "Poids sur le site",
+    "siteLoadHint": "Tous les lots présents sur le site, comptés une fois chacun quelle que soit leur zone, comparés au poids maximal du site.",
+    "noSiteCapacity": "Capacité du site non définie",
+    "noSiteCapacityLong": "Capacité du site non définie : {{kg}} sur le site ({{count}} lot(s)), rien n’est surveillé.",
+    "spaceMethod": "Place mesurée en",
+    "spaceMethods": {
+      "packaging": "Colis par conditionnement (« 100 sacs ou 50 cartons »)",
+      "volume": "Volume (m³)"
+    },
+    "capacityM3": "Volume de la zone (m³)",
+    "capacityM3Required": "Indiquez le volume de la zone, supérieur à 0.",
+    "volumeHint": "La place occupée est la somme des volumes des lots : colis × volume d’un colis (à renseigner dans Sites › Volume des conditionnements), ou volume mesuré du lot en vrac, ou son poids ÷ la densité de son type de déchet. Un lot dont le volume n’est pas connu est signalé, jamais estimé. Une zone est mesurée d’une seule façon : en volume, les quantités par conditionnement ne sont pas utilisées.",
+    "packagingVolumes": "Volume des conditionnements",
+    "packagingVolumesHint": "La place qu’occupe un colis une fois stocké, en m³. Sert aux zones dont la place est mesurée en volume. Laissez vide si vous ne le connaissez pas : les lots concernés seront signalés « sans volume connu », jamais estimés.",
+    "packagingVolumesInvalid": "Un volume doit être un nombre supérieur à 0 (4 décimales au plus), ou vide.",
+    "packagingVolumesSaved": "Volumes des conditionnements enregistrés."
   },
   "wasteTypes": {
     "title": "Types de déchets",
@@ -2597,7 +2619,7 @@
     },
     "zones": {
       "title": "Les zones de ce site",
-      "text": "Capacité : indiquez combien de lots la zone contient par conditionnement (« 40 balles », « 100 sacs ») et, si besoin, un poids maximal. Les conditionnements mélangés s'additionnent.\nRéservée à : les types de déchets et couleurs prévus dans la zone. Un lot qui ne correspond pas est signalé, jamais refusé.\nLe type de la zone (coupe, confection…) est facultatif ; il sert à savoir de quelle étape de production vient un déchet.\n« Sans limite » signifie que le remplissage de la zone n'est pas surveillé."
+      "text": "Capacité : la place d’une zone se mesure d’une seule façon — en colis par conditionnement (« 40 balles ou 100 sacs », les conditionnements mélangés partagent la même place) ou en volume (m³). La charge maximale (kg) est une limite à part. Le site a aussi son poids maximal, où chaque lot compte une fois. Chaque limite a sa ligne et son résultat ; aucune ne refuse un lot.\nRéservée à : les types de déchets et couleurs prévus dans la zone. Un lot qui ne correspond pas est signalé, jamais refusé.\nLe type de la zone (coupe, confection…) est facultatif ; il sert à savoir de quelle étape de production vient un déchet.\n« Sans limite » signifie que le remplissage de la zone n'est pas surveillé."
     },
     "wasteTypes": {
       "title": "Types de déchets et couleurs",
@@ -2772,7 +2794,8 @@
       "load": "Charge",
       "stock": "Limite de stock",
       "unlisted": "Conditionnements non cités",
-      "packaging": "Colis"
+      "packaging": "Colis",
+      "site_load": "Poids sur le site"
     },
     "lotsOf": "{{used}} / {{max}} lot(s)",
     "atLeast": "au moins {{pct}} %",
@@ -2790,6 +2813,7 @@
       "weightUnknown": "poids inconnu ou seulement estimé pour {{lots}} — l’autorisation est limitée en kg : pesez ce(s) lot(s)",
       "countUnknown": "nombre de colis ({{packaging}}) inconnu pour {{lots}} : indiquez-le sur la fiche du lot",
       "unlisted": "{{lots}} en vrac ou dans un conditionnement que l’autorisation ne nomme pas — elle est exprimée en colis uniquement : conditionnez ce(s) lot(s) comme elle le prévoit, ou saisissez une autorisation qui les couvre"
-    }
+    },
+    "missingVolume": "{{count}} lot(s) sans volume connu :"
   }
 }

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -9,10 +9,11 @@ import { InputText } from 'primeng/inputtext';
 
 import { Api } from '../../core/api/api';
 import { Localized, Site, Zone } from '../../core/api/models';
+import { LimitsComponent } from '../../ui/limits';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
-import { CodePipe, KgPipe, LocalizedPipe } from '../../core/format/pipes';
+import { CodePipe, KgPipe, LocalizedPipe, NumberPipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
 import { Column, TABLE } from '../../ui/data-table';
 import { ListStore } from '../../ui/list-store';
@@ -55,7 +56,12 @@ const num = (value: string): string | null => (value.trim() === '' ? null : valu
             <dw-field [label]="t('fields.city')"><input pInputText formControlName="city" /></dw-field>
             <dw-field [label]="t('fields.postalCode')"><input pInputText formControlName="postal_code" /></dw-field>
             <dw-field [label]="t('sites.regulatoryId')"><input pInputText formControlName="regulatory_identifier" /></dw-field>
-            <dw-field [label]="t('fields.capacityKg')"><input pInputText formControlName="capacity_kg" inputmode="decimal" /></dw-field>
+            <section class="dw-span-2 part">
+              <h3 class="dw-h3">{{ t('sites.siteCapacity') }}</h3>
+              <p class="dw-muted">{{ t('sites.siteCapacityHint') }}</p>
+            </section>
+            <dw-field [label]="t('sites.siteCapacityKg')"><input pInputText formControlName="capacity_kg" inputmode="decimal" /></dw-field>
+            <dw-field [label]="t('sites.alertPct')"><input pInputText type="number" formControlName="capacity_alert_pct" min="1" max="100" /></dw-field>
           </div>
         </div>
         <div class="dw-dialog-foot">
@@ -65,7 +71,7 @@ const num = (value: string): string | null => (value.trim() === '' ? null : valu
       </form>
     </ng-container>
   `,
-  styles: '.dw-dialog-body { min-width: min(600px, 82vw); }',
+  styles: '.dw-dialog-body { min-width: min(600px, 82vw); } .part { display: grid; gap: var(--dw-1); margin-block-start: var(--dw-2); } .part p { margin: 0; font-size: 13px; }',
 })
 export class SiteDialog {
   protected readonly data = dialogData<Site | null>();
@@ -85,6 +91,7 @@ export class SiteDialog {
     postal_code: [this.data?.postal_code ?? ''],
     regulatory_identifier: [this.data?.regulatory_identifier ?? ''],
     capacity_kg: [this.data?.capacity_kg ?? '', DECIMAL],
+    capacity_alert_pct: [this.data?.capacity_alert_pct ?? 90, [Validators.required, Validators.min(1), Validators.max(100)]],
   });
 
   protected async submit(): Promise<void> {
@@ -139,6 +146,17 @@ interface ZoneDialogData {
 
             <section class="dw-span-2 part">
               <h3 class="dw-h3">{{ t('sites.capacity') }}</h3>
+              <dw-field [label]="t('sites.spaceMethod')">
+                <dw-select formControlName="space_method">
+                  <dw-option value="packaging" [label]="t('sites.spaceMethods.packaging')" />
+                  <dw-option value="volume" [label]="t('sites.spaceMethods.volume')" />
+                </dw-select>
+              </dw-field>
+              @if (byVolume()) {
+                <p class="dw-muted">{{ t('sites.volumeHint') }}</p>
+                <dw-field [label]="t('sites.capacityM3')"><input pInputText formControlName="capacity_m3" inputmode="decimal" /></dw-field>
+                @if (form.controls.capacity_m3.touched && !form.controls.capacity_m3.value) { <small class="dw-field-error" role="alert">{{ t('sites.capacityM3Required') }}</small> }
+              } @else {
               <p class="dw-muted">{{ t('sites.capacityHint') }}</p>
               @for (line of capacities.controls; track line; let i = $index) {
                 <div class="line" [formGroup]="line">
@@ -152,6 +170,7 @@ interface ZoneDialogData {
                 </div>
               }
               <button pButton text type="button" class="add" (click)="addCapacity()"><dw-icon>add</dw-icon>{{ t('sites.addCapacity') }}</button>
+              }
             </section>
             <dw-field [label]="t('sites.capacityKgLimit')"><input pInputText formControlName="capacity_kg" inputmode="decimal" /></dw-field>
             <dw-field [label]="t('sites.alertPct')"><input pInputText type="number" formControlName="capacity_alert_pct" min="1" max="100" /></dw-field>
@@ -206,11 +225,19 @@ export class ZoneDialog {
     name: [this.data.zone?.name ?? '', Validators.required],
     zone_type: [this.data.zone?.zone_type ?? ''],
     capacity_kg: [this.data.zone?.capacity_kg ?? '', DECIMAL],
+    // The room is measured one way: packages per packaging, or volume. The other figures stay on record, unused.
+    space_method: [this.data.zone?.space_method ?? ('packaging' as 'packaging' | 'volume')],
+    capacity_m3: [this.data.zone?.capacity_m3 ?? '', DECIMAL],
     capacity_alert_pct: [this.data.zone?.capacity_alert_pct ?? 90, [Validators.min(1), Validators.max(100)]],
     accepted_waste_types: [this.data.zone?.accepted_waste_types ?? []],
     accepted_colors: [this.data.zone?.accepted_colors ?? []],
     capacities: this.capacities,
   });
+
+  /** Read from the form each time the dialog is checked: the choice is made in a field of this same form. */
+  protected byVolume(): boolean {
+    return this.form.controls.space_method.value === 'volume';
+  }
 
   private capacityLine(packaging = '', count: number | null = null): FormGroup {
     return this.fb.nonNullable.group({
@@ -234,9 +261,14 @@ export class ZoneDialog {
 
       return;
     }
-    this.busy.set(true);
     const value = this.form.getRawValue();
-    const body = { ...value, zone_type: value.zone_type || null, capacity_kg: num(value.capacity_kg) };
+    if (value.space_method === 'volume' && !(Number(num(value.capacity_m3) ?? 0) > 0)) {
+      this.form.controls.capacity_m3.markAsTouched();
+
+      return;
+    }
+    this.busy.set(true);
+    const body = { ...value, zone_type: value.zone_type || null, capacity_kg: num(value.capacity_kg), capacity_m3: num(value.capacity_m3) };
     try {
       const zone = await firstValueFrom(this.data.zone ? this.api.put<Zone>(`zones/${this.data.zone.ulid}`, body) : this.api.post<Zone>(`sites/${this.data.site.ulid}/zones`, body));
       this.reference.refreshZones(this.data.site.ulid);
@@ -252,14 +284,96 @@ export class ZoneDialog {
   }
 }
 
+/** The room one package takes once stored, per packaging, for the company. Empty = not known: never guessed. */
+@Component({
+  imports: [...DIALOG, LocalizedPipe, ButtonDirective, InputText, ...DIALOG_PARTS],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <ng-container *transloco="let t">
+      <dw-dialog-title>{{ t('sites.packagingVolumes') }}</dw-dialog-title>
+      <form (submit)="$event.preventDefault(); submit()" novalidate>
+        <div class="dw-dialog-body">
+          <p class="dw-muted">{{ t('sites.packagingVolumesHint') }}</p>
+          <div class="grid">
+            @for (line of lines(); track line.packaging_type) {
+              <label [attr.for]="'vol-' + line.packaging_type">{{ name(line.packaging_type) | dwLocalized: line.packaging_type }}</label>
+              <span class="input"><input pInputText [id]="'vol-' + line.packaging_type" inputmode="decimal" [value]="line.volume_m3 ?? ''" (input)="set(line.packaging_type, $any($event.target).value)" [attr.aria-invalid]="bad(line.packaging_type)" /> m³</span>
+            }
+          </div>
+          @if (invalid()) { <small class="dw-field-error" role="alert">{{ t('sites.packagingVolumesInvalid') }}</small> }
+        </div>
+        <div class="dw-dialog-foot">
+          <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+          <button pButton type="submit" [disabled]="busy() || invalid()">{{ t('common.save') }}</button>
+        </div>
+      </form>
+    </ng-container>
+  `,
+  styles: `
+    .dw-dialog-body { inline-size: min(460px, 82vw); display: grid; gap: var(--dw-3); } p { margin: 0; font-size: 13px; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: var(--dw-2) var(--dw-3); align-items: center; }
+    .input { display: flex; align-items: center; gap: var(--dw-2); } .input input { inline-size: 120px; }
+  `,
+})
+export class PackagingVolumesDialog {
+  private readonly api = inject(Api);
+  private readonly toast = inject(Toast);
+  private readonly ref = inject(DialogRef);
+  private readonly names = toSignal(inject(ReferenceData).vocabulary().pipe(map((vocabulary) => new Map(vocabulary.packaging_types.map((type) => [type.code, type.name])))));
+
+  protected readonly busy = signal(false);
+  protected readonly lines = signal<{ packaging_type: string; volume_m3: string | null }[]>([]);
+  private readonly typed = signal<Record<string, string>>({});
+  protected readonly invalid = computed(() => Object.keys(this.typed()).some((code) => this.bad(code)));
+
+  constructor() {
+    this.api.get<{ packaging_type: string; volume_m3: string | null }[]>('packaging-volumes').subscribe((lines) => this.lines.set(lines.map((line) => ({ ...line, volume_m3: line.volume_m3 === null ? null : String(Number(line.volume_m3)) }))));
+  }
+
+  protected name(code: string): Localized | null {
+    return this.names()?.get(code) ?? null;
+  }
+
+  protected set(code: string, value: string): void {
+    this.typed.update((typed) => ({ ...typed, [code]: value.trim() }));
+  }
+
+  /** Empty is allowed (not known); anything else must be a volume above zero. */
+  protected bad(code: string): boolean {
+    const value = this.typed()[code];
+
+    return value !== undefined && value !== '' && !(/^\d+([.,]\d{1,4})?$/.test(value) && Number(value.replace(',', '.')) > 0);
+  }
+
+  protected async submit(): Promise<void> {
+    if (this.invalid()) {
+      return;
+    }
+    this.busy.set(true);
+    const volumes = Object.entries(this.typed()).map(([packaging_type, value]) => ({ packaging_type, volume_m3: value === '' ? null : value.replace(',', '.') }));
+    try {
+      await firstValueFrom(this.api.put('packaging-volumes', { volumes }));
+      this.toast.success('sites.packagingVolumesSaved');
+      this.ref.close(true);
+    } catch (error) {
+      this.toast.error(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+}
+
 /** M1-01: the company's sites. */
 @Component({
-  imports: [HelpComponent, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, KgPipe, IconComponent, ButtonDirective, CheckboxComponent, FilterBarComponent],
+  imports: [HelpComponent, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, KgPipe, IconComponent, ButtonDirective, CheckboxComponent, FilterBarComponent, LimitsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('sites.title')" [subtitle]="t('sites.subtitle')">
-        @if (canManage) { <button pButton type="button" (click)="create()"><dw-icon>add</dw-icon>{{ t('sites.new') }}</button> }
+        @if (canManage) {
+          <button pButton severity="secondary" outlined type="button" (click)="volumes()"><dw-icon>deployed_code</dw-icon>{{ t('sites.packagingVolumes') }}</button>
+          <button pButton type="button" (click)="create()"><dw-icon>add</dw-icon>{{ t('sites.new') }}</button>
+        }
       </dw-page-header>
       <dw-help topic="sites" />
       <div class="dw-panel">
@@ -273,7 +387,10 @@ export class ZoneDialog {
           <ng-template dwCell="code" let-site><span class="dw-mono">{{ site.code }}</span></ng-template>
           <ng-template dwCell="kind" let-site>{{ t('sites.kinds.' + site.site_kind) }}</ng-template>
           <ng-template dwCell="zones" let-site>{{ t('sites.zonesCount', { count: site.zones_count }) }}</ng-template>
-          <ng-template dwCell="capacity" let-site>{{ site.capacity_kg | dwKg: 'auto' }}</ng-template>
+          <ng-template dwCell="capacity" let-site>
+            @if (site.load?.constraints?.length) { <dw-limits [limits]="site.load.constraints" [compact]="true" /> }
+            @else { <span class="dw-faint">{{ site.load ? (site.load.quantity_kg | dwKg: 'auto') : '—' }} · {{ t('sites.noSiteCapacity') }}</span> }
+          </ng-template>
           <ng-template dwCell="status" let-site><dw-status kind="member" [value]="site.is_active ? 'active' : 'suspended'" [label]="t(site.is_active ? 'common.active' : 'common.inactive')" /></ng-template>
           @if (canManage) { <button dwEmptyAction pButton type="button" (click)="create()"><dw-icon>add</dw-icon>{{ t('sites.new') }}</button> }
         </dw-data-table>
@@ -285,6 +402,11 @@ export class ZoneDialog {
 export class SitesPage {
   private readonly api = inject(Api);
   private readonly dialog = inject(Dialogs);
+
+  /** The room one package takes, per packaging: what zones measured in volume multiply by. */
+  protected volumes(): void {
+    this.dialog.open(PackagingVolumesDialog).afterClosed().subscribe((saved) => saved && this.list.reload());
+  }
   private readonly router = inject(Router);
 
   protected readonly canManage = inject(Session).can('sites.manage');
@@ -297,7 +419,7 @@ export class SitesPage {
     { key: 'city', header: 'fields.city', value: (site) => site.city, hideBelow: 640 },
     { key: 'kind', header: 'sites.kind', hideBelow: 900 },
     { key: 'zones', header: 'sites.zones' },
-    { key: 'capacity', header: 'fields.capacityKg', align: 'end', hideBelow: 900 },
+    { key: 'capacity', header: 'sites.siteLoad', hideBelow: 900 },
     { key: 'status', header: 'fields.status' },
   ];
 
@@ -312,7 +434,7 @@ export class SitesPage {
 
 /** A site and its zones. Zones holding waste cannot be closed; nothing is ever deleted (traceability). */
 @Component({
-  imports: [HelpComponent, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KgPipe, CodePipe, LocalizedPipe, IconComponent, ButtonDirective, ZoneFillComponent, ...COLOR],
+  imports: [HelpComponent, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KgPipe, NumberPipe, CodePipe, LocalizedPipe, IconComponent, ButtonDirective, ZoneFillComponent, LimitsComponent, ...COLOR],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -333,8 +455,18 @@ export class SitesPage {
                 <div><dt>{{ t('sites.kind') }}</dt><dd>{{ t('sites.kinds.' + s.site_kind) }}</dd></div>
                 <div><dt>{{ t('fields.address') }}</dt><dd>{{ s.address_line1 ?? '—' }} {{ s.postal_code }} {{ s.city }}</dd></div>
                 <div><dt>{{ t('sites.regulatoryId') }}</dt><dd>{{ s.regulatory_identifier ?? '—' }}</dd></div>
-                <div><dt>{{ t('fields.capacityKg') }}</dt><dd>{{ s.capacity_kg | dwKg: 'auto' }}</dd></div>
               </dl>
+            </section>
+
+            <section class="dw-panel dw-panel-body">
+              <h2 class="dw-h2">{{ t('sites.siteLoad') }}</h2>
+              <p class="dw-muted">{{ t('sites.siteLoadHint') }}</p>
+              @if (s.load?.constraints?.length) {
+                <dw-limits [limits]="s.load!.constraints" />
+              } @else {
+                <p class="none"><dw-icon aria-hidden="true">info</dw-icon>{{ t('sites.noSiteCapacityLong', { kg: (s.load?.quantity_kg | dwKg: 'auto'), count: s.load?.lots ?? 0 }) }}
+                  @if ((s.load?.unweighed_lots ?? 0) > 0) { {{ t('lots.plusUnweighed', { count: s.load?.unweighed_lots }) }} }</p>
+              }
             </section>
 
             <section class="dw-panel">
@@ -353,9 +485,10 @@ export class SitesPage {
                         @if (zone.zone_type) { <div class="dw-faint">{{ zoneType(zone.zone_type) | dwLocalized: zone.zone_type }}</div> }
                       </td>
                       <td>
-                        @for (line of zone.capacities; track line.packaging_type) { <div>{{ line.max_count }} × {{ line.packaging_type | dwCode: 'packaging' }}</div> }
+                        @if (zone.space_method === 'volume') { <div>{{ zone.capacity_m3 | dwNumber: 2 : ' m³' }}</div> }
+                        @else { @for (line of zone.capacities; track line.packaging_type; let first = $first) { <div>@if (!first) { {{ t('common.or') }} } {{ line.max_count }} × {{ line.packaging_type | dwCode: 'packaging' }}</div> } }
                         @if (hasWeightLimit(zone)) { <div>{{ zone.capacity_kg | dwKg: 'auto' }}</div> }
-                        @if (zone.capacities.length === 0 && !hasWeightLimit(zone)) { <span class="dw-faint">{{ t('sites.noLimit') }}</span> }
+                        @if (zone.fill.constraints.length === 0) { <span class="dw-faint">{{ t('sites.noLimit') }}</span> }
                       </td>
                       <td><dw-zone-fill [fill]="zone.fill" [details]="false" [placeholder]="zone.fill.lots > 0 ? t('dashboard.lots', { count: zone.fill.lots }) : '—'" /></td>
                       <td>
@@ -384,6 +517,8 @@ export class SitesPage {
     </ng-container>
   `,
   styles: `
+    .none { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--dw-ink-2); font-size: 13px; } .dw-panel-body > .dw-muted { margin: 2px 0 var(--dw-3); font-size: 13px; }
+    
     tr.off td { color: var(--dw-ink-3); }
   `,
 })

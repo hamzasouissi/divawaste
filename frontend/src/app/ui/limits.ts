@@ -3,7 +3,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
 
 import { LimitResult } from '../core/api/models';
 import { LimitText } from '../core/format/limit-text';
-import { CodePipe, KgPipe } from '../core/format/pipes';
+import { CodePipe } from '../core/format/pipes';
 import { StatusComponent } from './page';
 
 /** The most serious answer among several limits: exceeded, then unverifiable, then warning. Null when there is none. */
@@ -24,7 +24,7 @@ export function failingLimits<T extends Pick<LimitResult, 'outcome' | 'blocking'
  */
 @Component({
   selector: 'dw-limits',
-  imports: [TranslocoDirective, CodePipe, KgPipe, StatusComponent],
+  imports: [TranslocoDirective, CodePipe, StatusComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ul *transloco="let t" [class.compact]="compact()">
@@ -38,8 +38,8 @@ export function failingLimits<T extends Pick<LimitResult, 'outcome' | 'blocking'
                 {{ limit.used }} / {{ limit.max }} × {{ limit.packaging_type | dwCode: 'packaging' }}
               } @else if (limit.lines; as lines) {
                 @for (line of lines; track line.packaging_type; let first = $first) { @if (!first) { + } {{ line.used }} / {{ line.max }} × {{ line.packaging_type | dwCode: 'packaging' }} }
-              } @else if (limit.unit === 'kg') {
-                {{ limit.used | dwKg: 'auto' }} / {{ limit.max | dwKg: 'auto' }}
+              } @else if (limit.unit === 'kg' || limit.unit === 'm3') {
+                {{ text.quantity(limit, limit.used) }} / {{ text.quantity(limit, limit.max) }}
               } @else {
                 {{ t('limits.lotsOf', { used: limit.used, max: limit.max }) }}
               }
@@ -68,7 +68,7 @@ export function failingLimits<T extends Pick<LimitResult, 'outcome' | 'blocking'
             }
             @if (limit.missing_count > 0) {
               <span class="missing">
-                {{ t(limit.unit === 'kg' ? 'limits.missingWeight' : limit.key === 'unlisted' || limit.key === 'space' ? 'limits.missingPackages' : 'limits.missingCount', { count: limit.missing_count }) }}
+                {{ t(limit.unit === 'kg' ? 'limits.missingWeight' : limit.unit === 'm3' ? 'limits.missingVolume' : limit.key === 'unlisted' || limit.key === 'space' ? 'limits.missingPackages' : 'limits.missingCount', { count: limit.missing_count }) }}
                 {{ limit.missing_lots.join(', ') }}@if (limit.missing_count > limit.missing_lots.length) { … }
               </span>
             }

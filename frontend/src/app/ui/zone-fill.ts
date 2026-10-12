@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { TranslocoDirective } from '@jsverse/transloco';
 
 import { Zone, ZoneFill } from '../core/api/models';
-import { CodePipe } from '../core/format/pipes';
+import { CodePipe, NumberPipe } from '../core/format/pipes';
 import { LimitsComponent } from './limits';
 
 /**
@@ -25,7 +25,7 @@ export function zoneMismatch(zone: Partial<Pick<Zone, 'accepted_waste_types' | '
  */
 @Component({
   selector: 'dw-zone-fill',
-  imports: [TranslocoDirective, CodePipe, LimitsComponent],
+  imports: [TranslocoDirective, CodePipe, NumberPipe, LimitsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -34,7 +34,11 @@ export function zoneMismatch(zone: Partial<Pick<Zone, 'accepted_waste_types' | '
       } @else if (placeholder()) {
         <span class="dw-faint">{{ placeholder() }}</span>
       }
-      @if (details() && breakdown().length > 0) {
+      @if (fill().volume; as volume) {
+        @if (volume.lines.length > 0) {
+          <span class="dw-faint">{{ t('stock.holds') }} @for (line of volume.lines; track line.packaging_type; let first = $first) { @if (!first) { · } @if (line.packaging_type) { {{ line.packages }} × {{ line.packaging_type | dwCode: 'packaging' }} } @else { {{ t('stock.looseLots', { count: line.lots }) }} } ({{ line.volume_m3 | dwNumber: 2 : ' m³' }}) }</span>
+        }
+      } @else if (details() && breakdown().length > 0) {
         <span class="dw-faint">{{ t('stock.holds') }} @for (item of breakdown(); track item.kind; let first = $first) { @if (!first) { · } {{ item.count }} × {{ item.kind | dwCode: 'packaging' }} }</span>
       }
       @if ((fill().unconfirmed_lots ?? 0) > 0) { <span class="note" [title]="t('stock.unconfirmedHint')">{{ t('stock.unconfirmed', { count: fill().unconfirmed_lots }) }}</span> }
