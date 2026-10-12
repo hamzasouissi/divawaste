@@ -6,9 +6,11 @@ final readonly class CreateStockThresholdData
 {
     public function __construct(
         public string $siteUlid,
-        public string $maxQuantityKg,
+        public string $maxQuantity,
         public int $warningPct,
         public ?string $zoneUlid = null,
         public ?string $wasteTypeUlid = null,
+        public string $unit = 'kg',
+        public ?string $packagingType = null,
     ) {}
 }

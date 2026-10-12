@@ -265,7 +265,7 @@ class IndependentLimitsTest extends TestCase
         $this->assertSame(['unverifiable'], DB::table('stock_thresholds')->where('ulid', $limit)->pluck('alert_level')->all());
         $sent = $told('unverifiable');
         $this->assertCount(1, $sent);
-        $this->assertSame(['700.000', '900.000', 1, $first['lot_number'], $this->site->name.' · CHUTES', null, 'CHUTES'], [$sent[0]->params['quantity_kg'], $sent[0]->params['max_quantity_kg'],
+        $this->assertSame(['700 kg', '900 kg', 1, $first['lot_number'], $this->site->name.' · CHUTES', null, 'CHUTES'], [$sent[0]->params['quantity'], $sent[0]->params['max_quantity'],
             $sent[0]->params['unweighed_lots'], $sent[0]->params['lots'], $sent[0]->params['scope'], $sent[0]->params['zone'], $sent[0]->params['waste_type']]);
         $this->assertCount(0, $told('exceeded'));
         // Like a known exceedance, it also goes out by email: someone has to weigh.
@@ -293,7 +293,7 @@ class IndependentLimitsTest extends TestCase
         $this->lot($type, '300');
         $this->assertSame(['exceeded'], DB::table('stock_thresholds')->where('ulid', $limit)->pluck('alert_level')->all());
         $exceeded = $told('exceeded');
-        $this->assertSame(['1011.000', 1, $third['lot_number']], [$exceeded[0]->params['quantity_kg'], $exceeded[0]->params['unweighed_lots'], $exceeded[0]->params['lots']]);
+        $this->assertSame(['1 011 kg', 1, $third['lot_number']], [$exceeded[0]->params['quantity'], $exceeded[0]->params['unweighed_lots'], $exceeded[0]->params['lots']]);
         $this->assertCount(1, $told('unverifiable'));
     }
 

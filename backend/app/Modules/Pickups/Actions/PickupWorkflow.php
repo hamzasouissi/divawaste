@@ -10,6 +10,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Pickups\Enums\PickupStatus;
 use App\Modules\Pickups\Models\Pickup;
 use App\Modules\Pickups\Models\PickupLot;
+use App\Modules\Pickups\Support\ProviderRequirements;
 use App\Modules\Providers\Models\ExternalPartner;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\TenantContext;
@@ -28,7 +29,7 @@ use Illuminate\Support\Facades\DB;
 final class PickupWorkflow
 {
     public function __construct(private readonly TenantContext $context, private readonly TransitionLot $lots, private readonly AuthorizationQuota $authorizations,
-        private readonly ToleranceRules $rules) {}
+        private readonly ToleranceRules $rules, private readonly ProviderRequirements $requirements) {}
 
     /**
      * The receiver and the transporter are each a company of the platform or a partner without an account.
@@ -68,10 +69,16 @@ final class PickupWorkflow
         });
     }
 
-    public function submit(Pickup $pickup, User $actor): Pickup
+    /**
+     * @param  string|null  $overrideReason  why the request is sent although a blocking requirement of the receiver failed
+     * @param  bool  $mayOverride  whether the person sending it is entitled to do that
+     */
+    public function submit(Pickup $pickup, User $actor, ?string $overrideReason = null, bool $mayOverride = false): Pickup
     {
-        return $this->step($pickup, [PickupStatus::Draft], PickupStatus::Requested, function (Pickup $pickup) use ($actor) {
+        return $this->step($pickup, [PickupStatus::Draft], PickupStatus::Requested, function (Pickup $pickup) use ($actor, $overrideReason, $mayOverride) {
             $this->assertEligible($pickup);
+            // What the receiver asks of a collection: a minimum, a packaging. Judged on the whole pickup, kept with it.
+            $this->requirements->decide($pickup, $actor, $overrideReason, $mayOverride);
             // Waste that needs an authorisation is requested only if one covers it; the request holds its share.
             $this->authorizations->reserve($pickup);
             foreach ($this->lines($pickup) as $line) {

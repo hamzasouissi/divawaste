@@ -279,7 +279,7 @@ class DemoSeeder extends Seeder
             ExternalPartner::query()->create(['legal_name' => 'Fibres du Cap', 'tax_id' => '1320986P', 'address_line1' => 'Zone industrielle', 'postal_code' => '8030',
                 'city' => 'Grombalia', 'phone' => '+216 72 000 222', 'email' => 'contact@fibres-du-cap.test', 'contact_name' => 'Mouna Zribi', 'is_recycler' => true,
                 'accreditation_reference' => 'ANGed-2025-0412', 'accreditation_expires_on' => now()->addMonths(8)->toDateString(), 'created_by_user_id' => $amira->id]);
-            StockThreshold::query()->create(['site_id' => $sites['NAB']->id, 'waste_type_id' => $types['CHUTES']->id, 'max_quantity_kg' => 900, 'warning_pct' => 80, 'created_by_user_id' => $sami->id]);
+            StockThreshold::query()->create(['site_id' => $sites['NAB']->id, 'waste_type_id' => $types['CHUTES']->id, 'max_quantity' => 900, 'warning_pct' => 80, 'created_by_user_id' => $sami->id]);
 
             // Three months of production: a deterministic spread so charts are stable from one seed to the next.
             $weights = ['CHUTES' => [118, 96, 142, 87, 131, 104], 'FILS' => [22, 18, 27], 'REBUTS' => [41, 36], 'CARTON' => [64, 58, 71], 'PLAST' => [19, 24], 'TEINT' => [33, 28]];

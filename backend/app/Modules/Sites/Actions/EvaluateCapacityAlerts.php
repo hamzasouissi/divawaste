@@ -3,6 +3,7 @@
 namespace App\Modules\Sites\Actions;
 
 use App\Modules\Common\Support\Constraint;
+use App\Modules\Common\Support\QuantityText;
 use App\Modules\Notifications\Actions\NotifyUsers;
 use App\Modules\Sites\Enums\AlertLevel;
 use App\Modules\Sites\Models\Site;
@@ -90,33 +91,13 @@ final class EvaluateCapacityAlerts
             'site' => $site->name, 'zone' => $zone?->name,
             'scope' => implode(' · ', array_filter([$site->name, $zone?->name])),
             'pct' => $limit['pct'] === null ? null : (string) round((float) $limit['pct']),
-            // The figures of the limit in its own unit: "17 m³ sur 20 m³", "730 kg sur 2000 kg", "50 sur 100 Sac + 25 sur 50 Carton".
-            'detail' => match (true) {
-                isset($limit['lines']) => implode(' + ', array_map(fn (array $line) => "{$line['used']} sur {$line['max']} ".$this->packaging($line['packaging_type']), $limit['lines'])),
-                default => self::number($limit['used']).' '.self::unit($limit['unit']).' sur '.self::number($limit['max']).' '.self::unit($limit['unit']),
-            },
-            'excess' => isset($limit['excess']) ? self::number($limit['excess']).' '.self::unit($limit['unit']) : null,
             'missing' => (int) $limit['missing_count'],
             'lots' => $lots === [] ? null : implode(', ', $lots).($limit['missing_count'] > count($lots) ? '…' : ''),
-        ];
-    }
-
-    private function packaging(string $code): string
-    {
-        $name = json_decode((string) DB::table('packaging_types')->where('code', $code)->value('name'), true);
-
-        return (string) ($name[app()->getLocale()] ?? $name['fr'] ?? $code);
-    }
-
-    private static function unit(string $unit): string
-    {
-        return $unit === 'm3' ? 'm³' : $unit;
-    }
-
-    private static function number(mixed $value): string
-    {
-        $text = number_format((float) $value, 3, ',', ' ');
-
-        return rtrim(rtrim($text, '0'), ',');
+            // The figures of the limit in its own unit, written for each language: "17 m³ sur 20 m³" / "17 m³ of 20 m³",
+            // "50 sur 100 Sac + 25 sur 50 Carton" / "50 of 100 Bag + 25 of 50 Carton".
+        ] + QuantityText::localized('detail', fn (string $locale) => isset($limit['lines'])
+            ? implode(' + ', array_map(fn (array $line) => QuantityText::ratio($line['used'], $line['max'], 'package', $line['packaging_type'], $locale), $limit['lines']))
+            : QuantityText::ratio($limit['used'], $limit['max'], (string) $limit['unit'], null, $locale))
+            + QuantityText::localized('excess', fn (string $locale) => isset($limit['excess']) ? QuantityText::amount($limit['excess'], (string) $limit['unit'], null, $locale) : null);
     }
 }

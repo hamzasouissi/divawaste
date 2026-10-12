@@ -3,6 +3,7 @@
 namespace App\Modules\Notifications;
 
 use App\Modules\Common\Support\FrontendUrl;
+use App\Modules\Common\Support\QuantityText;
 use App\Modules\Notifications\Channels\TenantDatabaseChannel;
 use App\Modules\Notifications\Support\NotificationCatalog;
 use Illuminate\Bus\Queueable;
@@ -63,7 +64,8 @@ final class BusinessEventNotification extends Notification implements ShouldQueu
 
     public function toMail(object $notifiable): MailMessage
     {
-        $params = array_map(fn ($value) => (string) ($value ?? '—'), $this->params);
+        // Rendered in the language of the person it is sent to: figures written for that language replace the default ones.
+        $params = array_map(fn ($value) => (string) ($value ?? '—'), QuantityText::forLocale($this->params, app()->getLocale()));
         $mail = (new MailMessage)
             ->subject(__("notifications.{$this->type}.title", $params))
             ->greeting(__('mail.greeting', ['name' => $notifiable->first_name]))

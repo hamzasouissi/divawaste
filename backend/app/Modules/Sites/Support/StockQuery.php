@@ -5,6 +5,7 @@ namespace App\Modules\Sites\Support;
 use App\Modules\Tenancy\TenantContext;
 use App\Modules\Waste\Enums\LotStatus;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -45,6 +46,23 @@ final class StockQuery
             ->when($zoneId !== null, fn (Builder $query) => $query->where('l.zone_id', $zoneId))
             ->when($wasteTypeId !== null, fn (Builder $query) => $query->where('l.waste_type_id', $wasteTypeId))
             ->sum('l.net_weight_kg') ?: '0');
+    }
+
+    /**
+     * The lots on site of a subject with what a limit may count them in: weight, declared quantity and its unit, the
+     * conversions of the waste type, packaging and packages.
+     *
+     * @return Collection<int, \stdClass>
+     */
+    public function measures(int $siteId, ?int $zoneId, ?int $wasteTypeId): Collection
+    {
+        return $this->lots([$siteId])
+            ->when($zoneId !== null, fn (Builder $query) => $query->where('l.zone_id', $zoneId))
+            ->when($wasteTypeId !== null, fn (Builder $query) => $query->where('l.waste_type_id', $wasteTypeId))
+            ->leftJoin('units as u', 'u.id', '=', 'l.unit_id')->leftJoin('waste_types as t', 't.id', '=', 'l.waste_type_id')
+            ->leftJoin('packaging_types as p', 'p.id', '=', 'l.packaging_type_id')->orderBy('l.id')
+            ->get(['l.lot_number', 'l.net_weight_kg as kg', 'l.weight_basis', 'l.quantity', 'u.code as unit', 't.density_kg_m3', 't.unit_weight_kg',
+                'p.code as packaging', 'l.package_count as packages']);
     }
 
     /**

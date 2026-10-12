@@ -5,15 +5,15 @@ return [
     'stock' => [
         'threshold_warning' => [
             'title' => 'Limite de stock bientôt atteinte — :site',
-            'body' => 'Le stock de déchets atteint :quantity_kg kg pour une limite de :max_quantity_kg kg (:site).',
+            'body' => 'Le stock atteint :quantity pour une limite de :max_quantity (:scope).',
         ],
         'threshold_exceeded' => [
             'title' => 'Limite de stock dépassée — :site',
-            'body' => 'Le stock de déchets atteint :quantity_kg kg et dépasse la limite de :max_quantity_kg kg (:site). Planifiez un enlèvement.',
+            'body' => 'Le stock atteint :quantity et dépasse de :excess la limite de :max_quantity (:scope). Planifiez un enlèvement.',
         ],
         'threshold_unverifiable' => [
             'title' => 'Limite de stock non vérifiable — :site',
-            'body' => 'Limite de :max_quantity_kg kg (:scope) : le poids connu est de :quantity_kg kg, mais :unweighed_lots lot(s) ne sont pas pesés (:lots). La limite n\'est pas dépassée sur ce qui est connu, et elle ne peut pas être dite respectée : pesez ces lots.',
+            'body' => 'Limite de :max_quantity (:scope) : la quantité connue est de :quantity, mais :unweighed_lots lot(s) ne peuvent pas être comptés dans cette unité (:lots) : poids, quantité ou nombre de colis non renseigné. La limite n\'est pas dépassée sur ce qui est connu, et elle ne peut pas être dite respectée : complétez ces lots.',
         ],
     ],
     'capacity' => [

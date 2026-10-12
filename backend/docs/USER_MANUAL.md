@@ -456,9 +456,27 @@ percentage, what it measures ("64 kg / 100 kg") and, when the limit is wider tha
 zone", "ce type sur tout le site", "tout le site"). A line that nothing watches says "Aucune limite" and offers
 **Définir**, which opens the form already set on that zone and that waste type.
 
-**Limites de stock** (called "seuils" before): a maximum weight for a site, a zone or a waste type; a notification is
-sent when the stock reaches the alert percentage of the limit, and another when it is exceeded. "Ajouter une
-limite", or "…" on a line to edit or delete.
+**Limites de stock** (called "seuils" before): a maximum for a site, a zone or a waste type, stated in the unit of
+the restriction. A notification is sent when the stock reaches the alert percentage of the limit, another when it is
+exceeded, another when it can no longer be verified. "Ajouter une limite", or "…" on a line to edit or delete.
+
+- **Unit** ("Limite exprimée en"): kilograms or tonnes; a **number of packages of one packaging** (bags, bales,
+  cartons, drums…) — the form then asks which packaging; **pieces**, **litres** or **cubic metres** only when one
+  waste type is chosen and that type is counted that way, or says what a piece weighs or how dense it is. The form
+  offers only the units that mean something, and writes the limit out in one sentence before saving ("Atelier de
+  Korba : alerte quand le stock de « Déchets de fil » dépasse 100 Sac…").
+- **Packages are packages**: a lot of 12 bags counts 12, never 1. A limit in bags counts bags only; the other lots of
+  the scope (loose, or in another packaging) are not concerned and the line says how many they are. A lot of bags
+  whose number of packages is unknown is named, and makes the limit "Non vérifiable".
+- **Several limits on the same stock**: a weight and a number of bags are two limits with two answers, each with its
+  own bar; neither percentage is compared with the other. Two limits of the same kind on the same scope (two
+  weights, even one in kg and one in t) are refused.
+- **Unknown is not zero**: a lot that cannot be counted in the unit of the limit (no weight for a weight; no
+  quantity and no conversion for pieces or a volume) is named. Below the limit this makes it "Non vérifiable";
+  above it the limit is "Dépassé" and the lot is still named.
+- The unit of a limit is not edited: to watch the same stock in another unit, add another limit. Limits recorded
+  before units existed are in kilograms, unchanged.
+- A stock limit alerts. It never refuses a lot.
 
 **Demander un enlèvement** goes to the pickup request.
 
@@ -474,7 +492,16 @@ status.
 ![New pickup request](screenshots/manager/07-pickup-new.png)
 
 1. Choose the site, tick the lots to send (only lots in stock are listed).
-2. Choose the **receiver**: a provider of the platform among your partners, or a partner without an account (tag
+
+   Once a provider of the platform is chosen, **« Ce que … demande pour cette collecte »** lists what it asks of the
+   lots ticked, one line per requirement: the minimum and its unit, what the collection amounts to, what is missing
+   ("Au moins 500 kg demandé — la collecte fait 320 kg : il manque 180 kg"), a packaging asked for and the lots that
+   are not in it. Each line is "Respecté", "Attention" (a warning: the request can be sent), "Non atteint" (blocking)
+   or "Non vérifiable" (a lot concerned has no measured quantity — an estimated weight does not count; the lots are
+   named). A blocking line stops "Envoyer la demande"; the draft can still be saved. Someone holding the right to
+   send against it (administrator by default) sees a field **Motif de l'envoi malgré l'exigence**: with a reason the
+   request goes out, and the pickup shows who sent it and why, to you and to the provider. The same is asked when a
+   draft is sent from its page. The requirements and their answers stay on the pickup as they stood that day.2. Choose the **receiver**: a provider of the platform among your partners, or a partner without an account (tag
    "Sans compte"). One that cannot take the selection (hazardous waste without the right authorisation, expired
    authorisation) cannot be chosen, and says why.
 3. Choose the **transporter** when it is not the receiver ("Le destinataire assure le transport" by default). A
@@ -520,7 +547,8 @@ figures. A lot that left but was not received shows in the total of the weighed 
 **Écarts à la réception par type de déchet** counts the receptions per type and marks repeated gaps.
 
 Limits: counted lots cannot be split or grouped (those share out a weight); a counted lot is priced as a flat amount
-unless it has a weight; stock limits and waste authorisations remain in kilograms.
+unless it has a weight; waste authorisations remain in kilograms, packages and lots (stock limits may be in pieces
+or volume, see Stock).
 ![Pickup with discrepancy](screenshots/manager/10-pickup-variance.png)
 ![Acknowledge the discrepancy](screenshots/manager/11-variance-acknowledge.png)
 ![Enter prices](screenshots/manager/12-pricing-dialog.png)
@@ -912,7 +940,21 @@ certificates.
 ### Profil et déchets acceptés — `/provider/profile`
 
 What clients read in the directory: activities, description, area, contact, and the waste families you accept
-with channel and minimum quantity.
+with their channel.
+
+For each accepted waste you may say what you ask of a **collection** (the whole pickup, never lot by lot):
+
+- **Minimum par enlèvement**, with its unit ("Exprimé en"): kilograms, tonnes, pieces, litres, cubic metres, or a
+  number of packages — then "Conditionnement compté" says which packaging is counted (20 bales are not 20 bags).
+- **Conditionnement demandé**: the packaging you want this waste to arrive in, when you ask for one.
+- **Refuser la demande si ce n'est pas respecté**: unticked (the default), the client is warned and may send its
+  request, which you receive with the warning. Ticked, a collection that falls short — or whose quantity cannot be
+  verified because a lot was not measured — cannot be requested from you, unless someone entitled at the client
+  sends it all the same with a written reason; you read that reason on the request and accept or refuse as usual.
+
+Several lines may concern the same waste (a weight and a number of bales): each is judged on its own. Minimums
+entered before units existed are in kilograms and warn. Changing a line never changes a pickup already requested:
+each pickup keeps the requirement it was judged against.
 
 ![Provider profile](screenshots/provider/07-profile.png)
 

@@ -154,7 +154,7 @@ class LotOperationsTest extends TestCase
 
         $this->createLot('35');
         Notification::assertSentTo($manager, BusinessEventNotification::class, fn (BusinessEventNotification $n) => $n->type === 'stock.threshold_warning'
-            && $n->params['quantity_kg'] === '85.000' && $n->companyId === $this->company->id);
+            && $n->params['quantity'] === '85 kg' && $n->companyId === $this->company->id);
         Notification::assertSentTo($operator, BusinessEventNotification::class);
         Notification::assertNotSentTo($elsewhere, BusinessEventNotification::class);
 
