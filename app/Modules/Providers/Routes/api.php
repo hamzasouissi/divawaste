@@ -9,6 +9,7 @@ use App\Modules\Common\Support\Measure;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Notifications\Actions\NotifyUsers;
 use App\Modules\Providers\Models\ExternalPartner;
+use App\Modules\Providers\Models\PartnerRequirement;
 use App\Modules\Providers\Models\ProviderAcceptedWaste;
 use App\Modules\Providers\Models\ProviderAccreditation;
 use App\Modules\Providers\Models\ProviderPartnership;
@@ -104,7 +105,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
     // Providers any industrial can already see in the directory: naming one here reveals nothing new.
     $publishedProviders = fn () => DB::table('companies as c')->join('provider_profiles as p', 'p.company_id', '=', 'c.id')
         ->where('c.company_type', CompanyType::Provider->value)->where('c.status', 'active')->where('p.is_published', true);
-    $partnerData = fn (ExternalPartner $partner) => [
+    $partnerCard = fn (ExternalPartner $partner) => [
         'ulid' => $partner->ulid, 'legal_name' => $partner->legal_name, 'tax_id' => $partner->tax_id,
         'address_line1' => $partner->address_line1, 'postal_code' => $partner->postal_code, 'city' => $partner->city,
         'phone' => $partner->phone, 'email' => $partner->email, 'contact_name' => $partner->contact_name,
@@ -119,6 +120,36 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
         'suggested_company' => $partner->linked_company_id !== null || $partner->tax_id === null ? null : $publishedProviders()
             ->whereRaw("REPLACE(UPPER(c.tax_id), ' ', '') = ?", [str_replace(' ', '', mb_strtoupper($partner->tax_id))])->first(['c.ulid', 'c.legal_name']),
     ];
+    // What the partner asks of a collection, as the company wrote it down. It is the company's own record: the partner
+    // has no account to confirm it with. Once it has one, each line waits for someone to look at it again.
+    $partnerData = function (ExternalPartner $partner) use ($partnerCard): array {
+        $codes = app(ReferenceCodes::class);
+        $rule = fn (object $row): array => [
+            'family' => $codes->code('waste_families', $row->waste_family_id === null ? null : (int) $row->waste_family_id),
+            'channel' => $codes->code('treatment_channels', (int) $row->treatment_channel_id),
+            'min_quantity' => $row->min_quantity === null ? null : (string) $row->min_quantity, 'min_unit' => $row->min_unit_code,
+            'min_packaging_type' => $codes->code('packaging_types', $row->min_packaging_type_id === null ? null : (int) $row->min_packaging_type_id),
+            'required_packaging_type' => $codes->code('packaging_types', $row->required_packaging_type_id === null ? null : (int) $row->required_packaging_type_id),
+            'is_blocking' => (bool) $row->is_blocking, 'notes' => $row->notes,
+        ];
+        $linked = $partner->linked_company_id !== null;
+        $users = fn (?int $id) => $id === null ? null : trim((string) DB::table('users')->where('id', $id)->selectRaw("CONCAT(first_name, ' ', last_name) as name")->value('name'));
+        $requirements = PartnerRequirement::query()->where('external_partner_id', $partner->id)->orderBy('id')->get()->map(fn (PartnerRequirement $row) => ['ulid' => $row->ulid] + $rule($row) + [
+            'contract_reference' => $row->contract_reference,
+            // The partner now has an account and nobody has looked at this line since.
+            'needs_review' => $linked && ($row->reviewed_at === null || $row->reviewed_at->lt($partner->getAttribute('linked_at'))),
+            'reviewed_at' => $row->reviewed_at?->toIso8601ZuluString(),
+            'updated_at' => $row->getAttribute('updated_at')?->toIso8601ZuluString(),
+            'updated_by' => $users($row->getAttribute('updated_by_user_id') ?? $row->getAttribute('created_by_user_id')),
+        ]);
+
+        return $partnerCard($partner) + [
+            'requirements' => $requirements, 'requirements_to_review' => $requirements->where('needs_review', true)->count(),
+            // What the provider itself publishes now that it has an account, to compare with: its word, not the company's notes.
+            'provider_requirements' => ! $linked ? [] : array_map($rule, DB::table('provider_accepted_wastes')->where('company_id', $partner->linked_company_id)->where('is_active', true)
+                ->where(fn ($query) => $query->where('min_quantity', '>', 0)->orWhereNotNull('required_packaging_type_id'))->orderBy('id')->get()->all()),
+        ];
+    };
     $partnerAttributes = function (Request $request) {
         $input = $request->validate([
             'legal_name' => ['required', 'string', 'max:191'],
@@ -147,9 +178,9 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
     Route::get('external-partners', function (Request $request) use ($allow, $partnerData) {
         $allow($request, 'providers.view');
 
-        return ['data' => ExternalPartner::query()
+        return ['data' => array_map($partnerData, ExternalPartner::query()
             ->when(! $request->boolean('with_inactive'), fn ($query) => $query->where('is_active', true))
-            ->orderBy('legal_name')->get()->map($partnerData)];
+            ->orderBy('legal_name')->get()->all())];
     })->name('external-partners.index');
 
     Route::post('external-partners', function (Request $request) use ($allow, $partnerData, $partnerAttributes) {
@@ -166,8 +197,74 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
         return response()->json(['data' => $partnerData($partner)]);
     })->name('external-partners.update');
 
-    // The partner has opened an account: tie it to that provider. Past pickups keep the partner as it was recorded
-    // (their slips were signed by hand); the provider becomes a partner of the platform for the next ones.
+    // What the partner asks of a collection, as the company knows it. The whole list is sent: a line with its identifier
+    // is changed, one without is new, one left out is removed — each of these is in the audit trail with its author.
+    Route::put('external-partners/{partner}/requirements', function (Request $request, ExternalPartner $partner, ReferenceCodes $codes) use ($allow, $partnerData) {
+        $allow($request, 'providers.partnerships.manage');
+        $packaging = Rule::exists('packaging_types', 'code')->where('is_active', true);
+        $input = $request->validate([
+            'requirements' => ['present', 'array', 'max:100'],
+            'requirements.*.ulid' => ['nullable', 'string', 'ulid'],
+            'requirements.*.family' => ['required', 'string', Rule::exists('waste_families', 'code')],
+            'requirements.*.channel' => ['required', 'string', Rule::exists('treatment_channels', 'code')->where('is_active', true)],
+            // A line asks something: a minimum, a packaging, or both.
+            'requirements.*.min_quantity' => ['nullable', 'required_without:requirements.*.required_packaging_type', 'decimal:0,3', 'gt:0'],
+            'requirements.*.min_unit' => ['nullable', 'required_with:requirements.*.min_quantity', 'string', Rule::in(Measure::UNITS)],
+            'requirements.*.min_packaging_type' => ['nullable', 'required_if:requirements.*.min_unit,package', 'string', $packaging],
+            'requirements.*.required_packaging_type' => ['nullable', 'string', $packaging],
+            // Unless said otherwise a requirement warns: refusing a request on the company's own notes is a choice.
+            'requirements.*.is_blocking' => ['sometimes', 'boolean'],
+            'requirements.*.contract_reference' => ['nullable', 'string', 'max:191'],
+            'requirements.*.notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        DB::transaction(function () use ($input, $partner, $codes, $request) {
+            $existing = PartnerRequirement::query()->where('external_partner_id', $partner->id)->lockForUpdate()->get()->keyBy('ulid');
+            $kept = [];
+            foreach ($input['requirements'] as $index => $line) {
+                $minimum = $line['min_quantity'] ?? null;
+                $unit = $minimum === null ? null : (string) $line['min_unit'];
+                $values = [
+                    'waste_family_id' => $codes->id('waste_families', $line['family']), 'treatment_channel_id' => $codes->id('treatment_channels', $line['channel']),
+                    'min_quantity' => $minimum, 'min_unit_code' => $unit,
+                    'min_packaging_type_id' => $unit === Measure::PACKAGE ? $codes->id('packaging_types', $line['min_packaging_type'] ?? null) : null,
+                    'required_packaging_type_id' => $codes->id('packaging_types', $line['required_packaging_type'] ?? null),
+                    'is_blocking' => (bool) ($line['is_blocking'] ?? false),
+                    'contract_reference' => $line['contract_reference'] ?? null, 'notes' => $line['notes'] ?? null,
+                ];
+                $row = isset($line['ulid']) ? $existing->get(strtoupper($line['ulid'])) : null;
+                if (isset($line['ulid']) && $row === null) {
+                    throw ValidationException::withMessages(["requirements.{$index}.ulid" => [__('validation.exists', ['attribute' => 'ulid'])]]);
+                }
+                if ($row === null) {
+                    $row = PartnerRequirement::query()->create($values + ['external_partner_id' => $partner->id, 'created_by_user_id' => $request->user()->id]);
+                } elseif ($row->fill($values)->isDirty()) {
+                    // Someone who rewrites a line of a partner that now has an account has looked at it.
+                    $row->fill(['updated_by_user_id' => $request->user()->id] + ($partner->linked_company_id === null ? [] : ['reviewed_at' => now(), 'reviewed_by_user_id' => $request->user()->id]))->save();
+                }
+                $kept[] = $row->id;
+            }
+            $existing->reject(fn (PartnerRequirement $row) => in_array($row->id, $kept, true))->each(fn (PartnerRequirement $row) => $row->delete());
+        });
+
+        return response()->json(['data' => $partnerData($partner->refresh())]);
+    })->name('external-partners.requirements.update');
+
+    // The partner now has an account and may publish what it asks itself. What the company had written down is not
+    // replaced: each line is looked at and either kept, as the company's own requirement, or removed.
+    Route::post('external-partners/{partner}/requirements/{requirement}/review', function (Request $request, ExternalPartner $partner, PartnerRequirement $requirement) use ($allow, $partnerData) {
+        $allow($request, 'providers.partnerships.manage');
+        abort_unless((int) $requirement->getAttribute('external_partner_id') === (int) $partner->id, 404);
+        $decision = $request->validate(['decision' => ['required', Rule::in(['keep', 'remove'])]])['decision'];
+        if ($partner->linked_company_id === null) {
+            throw new BusinessRuleViolation('PARTNER_NOT_LINKED', 'This partner has no account: its requirements are simply edited.');
+        }
+        $decision === 'remove' ? $requirement->delete() : $requirement->fill(['reviewed_at' => now(), 'reviewed_by_user_id' => $request->user()->id])->save();
+
+        return response()->json(['data' => $partnerData($partner->refresh())]);
+    })->name('external-partners.requirements.review');
+
+    // The partner has opened an account: tie it to that provider. Past pickups keep the partner as it was recorded    // (their slips were signed by hand); the provider becomes a partner of the platform for the next ones.
     Route::post('external-partners/{partner}/link', function (Request $request, ExternalPartner $partner) use ($allow, $partnerData, $publishedProviders) {
         $allow($request, 'providers.partnerships.manage');
         $ulid = strtoupper((string) $request->validate(['provider' => ['required', 'string', 'ulid']])['provider']);

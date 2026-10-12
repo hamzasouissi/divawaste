@@ -29,13 +29,28 @@ final class ProviderRequirements
      * @param  Collection<int, \stdClass>  $lines  each with lot_number, family_id, catalog_item_id, regulatory_code_id, channel_id and what `Measure` reads
      * @return array{constraints: list<array<string, mixed>>, outcome: string|null, blocked: bool, failing: list<string>}
      */
-    public function evaluate(int $providerCompanyId, Collection $lines): array
+    public function evaluate(int $ownerCompanyId, ?int $providerCompanyId, ?int $externalPartnerId, Collection $lines): array
     {
-        $rules = DB::table('provider_accepted_wastes')->where('company_id', $providerCompanyId)->where('is_active', true)
-            ->where(fn ($query) => $query->where('min_quantity', '>', 0)->orWhereNotNull('required_packaging_type_id'))->orderBy('id')->get();
+        $asks = fn ($query) => $query->where('min_quantity', '>', 0)->orWhereNotNull('required_packaging_type_id');
+        // What the provider itself published: its own word.
+        $published = $providerCompanyId === null ? collect() : DB::table('provider_accepted_wastes')->where('company_id', $providerCompanyId)->where('is_active', true)
+            ->where($asks)->orderBy('id')->get()->each(fn (\stdClass $rule) => $rule->source = 'provider');
+        // What the company wrote down itself about a partner without an account — from a contract, a phone call. The
+        // partner never confirmed it on the platform, and every answer says so. Once that partner has an account, what
+        // was written down keeps applying to its pickups until someone reviews it: nothing is dropped silently.
+        $partners = DB::table('external_partners')->where('company_id', $ownerCompanyId)
+            ->where(fn ($query) => $query->where('id', $externalPartnerId ?? 0)->when($providerCompanyId !== null, fn ($q) => $q->orWhere('linked_company_id', $providerCompanyId)))
+            ->get(['id', 'linked_company_id', 'linked_at'])->keyBy('id');
+        $internal = DB::table('partner_requirements')->where('company_id', $ownerCompanyId)->whereIn('external_partner_id', $partners->keys())->where($asks)->orderBy('id')->get()
+            ->each(function (\stdClass $rule) use ($partners): void {
+                $partner = $partners[$rule->external_partner_id];
+                $rule->source = 'internal';
+                $rule->waste_catalog_item_id = $rule->regulatory_waste_code_id = null;
+                $rule->needs_review = $partner->linked_company_id !== null && ($rule->reviewed_at === null || $rule->reviewed_at < $partner->linked_at);
+            });
         $constraints = [];
 
-        foreach ($rules as $index => $rule) {
+        foreach ($published->concat($internal)->values() as $index => $rule) {
             $concerned = $lines->filter(fn (\stdClass $line) => (int) $line->channel_id === (int) $rule->treatment_channel_id && match (true) {
                 $rule->waste_catalog_item_id !== null => (int) $line->catalog_item_id === (int) $rule->waste_catalog_item_id,
                 $rule->regulatory_waste_code_id !== null => (int) $line->regulatory_code_id === (int) $rule->regulatory_waste_code_id,
@@ -51,6 +66,10 @@ final class ProviderRequirements
                 'family' => $this->codes->code('waste_families', $rule->waste_family_id === null ? null : (int) $rule->waste_family_id),
                 'catalog_item' => $this->codes->code('waste_catalog_items', $rule->waste_catalog_item_id === null ? null : (int) $rule->waste_catalog_item_id),
                 'notes' => $rule->notes,
+                // 'provider': published by the provider. 'internal': written down by the company, not confirmed by the partner.
+                'source' => $rule->source,
+                'contract_reference' => $rule->contract_reference ?? null,
+                'needs_review' => (bool) ($rule->needs_review ?? false),
             ];
 
             if ($rule->min_quantity !== null && bccomp((string) $rule->min_quantity, '0', 3) > 0) {
@@ -63,13 +82,13 @@ final class ProviderRequirements
                     'packaging_type' => $packaging, 'lots' => $concerned->count(),
                     // Under a minimum in packages, the lots in another packaging are not counted, and are said not to be.
                     'outside_count' => count($total['outside']), 'outside_lots' => array_slice($total['outside'], 0, 50),
-                    'rule' => $snapshot,
+                    'source' => $rule->source, 'rule' => $snapshot,
                 ];
             }
             if ($rule->required_packaging_type_id !== null) {
                 $required = (string) $this->codes->code('packaging_types', (int) $rule->required_packaging_type_id);
                 $other = $concerned->filter(fn (\stdClass $line) => (string) ($line->packaging ?? '') !== $required)->map(fn (\stdClass $line) => (string) $line->lot_number)->values()->all();
-                $constraints[] = Constraint::packaging('packaging:'.($index + 1), $required, $concerned->count(), $other, $blocking) + ['rule' => $snapshot];
+                $constraints[] = Constraint::packaging('packaging:'.($index + 1), $required, $concerned->count(), $other, $blocking) + ['source' => $rule->source, 'rule' => $snapshot];
             }
         }
 
@@ -113,16 +132,14 @@ final class ProviderRequirements
      */
     public function decide(Pickup $pickup, User $actor, ?string $overrideReason, bool $mayOverride): void
     {
-        if ($pickup->provider_company_id === null) {
-            return;
-        }
-        $result = $this->evaluate((int) $pickup->provider_company_id, $this->linesOfPickup($pickup));
+        $result = $this->evaluate((int) $pickup->company_id, $pickup->provider_company_id, $pickup->external_provider_id, $this->linesOfPickup($pickup));
         if ($result['constraints'] === []) {
             return;
         }
         $overridden = $result['blocked'] && $overrideReason !== null && trim($overrideReason) !== '';
         if ($result['blocked'] && ! ($overridden && $mayOverride)) {
-            $provider = (string) DB::table('companies')->where('id', $pickup->provider_company_id)->value('legal_name');
+            $provider = (string) ($pickup->provider_company_id !== null ? DB::table('companies')->where('id', $pickup->provider_company_id)->value('legal_name')
+                : DB::table('external_partners')->where('id', $pickup->external_provider_id)->value('legal_name'));
             $failing = array_values(array_filter($result['constraints'], fn (array $constraint) => in_array($constraint['key'], $result['failing'], true)));
             $unverifiable = ! in_array(Constraint::EXCEEDED, array_column($failing, 'outcome'), true);
             throw new BusinessRuleViolation($overridden ? 'PROVIDER_REQUIREMENT_NEEDS_AUTHORIZATION' : ($unverifiable ? 'PROVIDER_REQUIREMENT_UNVERIFIABLE' : 'PROVIDER_REQUIREMENT_NOT_MET'),
@@ -137,6 +154,10 @@ final class ProviderRequirements
             // Sent although a blocking requirement failed: who decided it, and why.
             'override' => $overridden ? ['reason' => trim((string) $overrideReason), 'by' => trim("{$actor->first_name} {$actor->last_name}"), 'at' => now()->toIso8601ZuluString()] : null,
         ]]);
+        if ($overridden) {
+            // Its own line in the audit trail, beside the change of the pickup: who decided against which requirement, and why.
+            $pickup->audit('requirement_overridden', [], ['reason' => trim((string) $overrideReason), 'failing' => $result['failing'], 'outcome' => $result['outcome']]);
+        }
     }
 
     /**

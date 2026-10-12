@@ -257,6 +257,20 @@ pickups are sent to it through the platform and it signs itself. Pickups already
 record without an account can no longer be chosen. When the tax IDs do not match, **Associer à un compte** lets you
 choose the provider yourself in the directory.
 
+**Exigences** (on the line of a partner that receives waste): what this partner asks of a collection, as your company
+knows it from a contract or an exchange — a minimum per pickup in a unit, a packaging asked for, per waste family and
+treatment, with a **reference** (contract, email) and notes. These lines are your company's own record: the partner
+has no account and has not confirmed them, and every screen that shows them says "Saisi par votre société, non
+confirmé par le partenaire", which tells them apart from "Défini par le prestataire". They warn unless you tick
+"Refuser la demande si ce n'est pas respecté". Each addition, change and removal is in the audit log with its author
+and date; the form shows who last changed a line.
+
+When the partner is later associated with its account, nothing your company wrote down is replaced. Its lines are
+marked **à revoir**, and "Exigences" then shows what the provider publishes itself beside them. For each line choose
+**Conserver comme exigence interne** (it keeps applying to the pickups sent to that provider, as your own
+requirement) or **Retirer** (only what the provider publishes remains). Until a line is removed it keeps being
+judged, marked "à revoir".
+
 **Prestataires de la plateforme**: directory of approved providers: activities, description, area, channels,
 contact, accreditations with their validity. Filters: search, channel, "Mes partenaires uniquement", "Agréés déchets dangereux".
 **Ajouter à mes partenaires** makes a provider selectable in your pickup requests. A provider whose accreditation
@@ -499,7 +513,7 @@ status.
    are not in it. Each line is "Respecté", "Attention" (a warning: the request can be sent), "Non atteint" (blocking)
    or "Non vérifiable" (a lot concerned has no measured quantity — an estimated weight does not count; the lots are
    named). A blocking line stops "Envoyer la demande"; the draft can still be saved. Someone holding the right to
-   send against it (administrator by default) sees a field **Motif de l'envoi malgré l'exigence**: with a reason the
+   send against it (permission "Envoyer une demande malgré une exigence bloquante du destinataire": administrator and environment manager by default) sees a field **Motif de l'envoi malgré l'exigence**: with a reason the
    request goes out, and the pickup shows who sent it and why, to you and to the provider. The same is asked when a
    draft is sent from its page. The requirements and their answers stay on the pickup as they stood that day.2. Choose the **receiver**: a provider of the platform among your partners, or a partner without an account (tag
    "Sans compte"). One that cannot take the selection (hazardous waste without the right authorisation, expired

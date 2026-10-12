@@ -64,6 +64,9 @@ final class PermissionCatalog
             'pickups.price' => [self::S, $ind],
             'pickups.complete' => [self::S, $ind],
             'pickups.override_eligibility' => [self::S, $ind],
+            // Send a pickup request although a blocking requirement of the receiver (a minimum, a packaging) is not met,
+            // with a written reason. Nothing else: the eligibility of a provider is another matter.
+            'pickups.override_provider_requirements' => [self::S, $ind],
             'pickups.authorize_variance' => [self::S, $ind],
             'providers.view' => [self::C, $ind],
             'providers.partnerships.manage' => [self::C, $ind],
