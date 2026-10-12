@@ -152,23 +152,29 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::post('provider-requirements/check', function (Request $request, ProviderRequirements $requirements, TenantContext $context) {
         abort_unless($request->user()->can('pickups.request') || $request->user()->can('pickups.view'), 403);
         $input = $request->validate([
-            'provider' => ['required', 'string', Rule::exists('companies', 'ulid')->where('company_type', 'provider')],
+            // The receiver: a provider of the platform, or a partner without an account. Exactly one of the two.
+            'provider' => ['required_without:external_provider', 'prohibits:external_provider', 'nullable', 'string', Rule::exists('companies', 'ulid')->where('company_type', 'provider')],
+            'external_provider' => ['nullable', 'string', new TenantExists(ExternalPartner::class)],
             'lots' => ['required', 'array', 'min:1', 'max:500'],
             'lots.*' => ['required', 'string', new TenantExists(WasteLot::class)],
             'treatment_channel' => ['nullable', 'string', Rule::exists('treatment_channels', 'code')->where('is_active', true)],
         ]);
-        $result = $requirements->evaluate((int) Company::query()->where('ulid', strtoupper($input['provider']))->value('id'),
-            $requirements->linesOfLots((int) $context->companyId(), array_map('strtoupper', $input['lots']), app(ReferenceCodes::class)->id('treatment_channels', $input['treatment_channel'] ?? null)));
+        $lots = array_map('strtoupper', $input['lots']);
+        $result = $requirements->evaluate((int) $context->companyId(),
+            isset($input['provider']) ? (int) Company::query()->where('ulid', strtoupper($input['provider']))->value('id') : null,
+            isset($input['external_provider']) ? (int) ExternalPartner::query()->where('ulid', strtoupper($input['external_provider']))->value('id') : null,
+            $requirements->linesOfLots((int) $context->companyId(), $lots, app(ReferenceCodes::class)->id('treatment_channels', $input['treatment_channel'] ?? null)));
+        $siteId = (int) DB::table('waste_lots')->where('company_id', $context->companyId())->whereIn('ulid', $lots)->value('site_id');
 
         // `blocked`: the request would be refused. `may_override`: this person may send it all the same, with a reason.
-        return ['data' => $result + ['may_override' => $request->user()->can('pickups.override_eligibility')]];
+        return ['data' => $result + ['may_override' => $request->user()->can('pickups.override_provider_requirements', $siteId)]];
     })->name('provider-requirements.check');
 
     Route::post('pickups/{pickup}/submit', function (Request $request, Pickup $pickup, PickupWorkflow $workflow, PickupNotifier $notifier) use ($allow, $show) {
         $allow($request, 'pickups.request', $pickup->site_id);
         // A blocking requirement of the receiver that fails refuses the request; someone entitled to may send it with a reason.
         $reason = $request->validate(['requirement_override_reason' => ['nullable', 'string', 'max:1000']])['requirement_override_reason'] ?? null;
-        $pickup = $workflow->submit($pickup, $request->user(), $reason, $request->user()->can('pickups.override_eligibility', $pickup->site_id));
+        $pickup = $workflow->submit($pickup, $request->user(), $reason, $request->user()->can('pickups.override_provider_requirements', $pickup->site_id));
         $notifier->requested($pickup);
 
         return $show($pickup);

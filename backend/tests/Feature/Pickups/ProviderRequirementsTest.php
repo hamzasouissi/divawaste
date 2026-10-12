@@ -4,11 +4,13 @@ namespace Tests\Feature\Pickups;
 
 use App\Modules\Catalog\Models\WasteType;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Models\UserRoleAssignment;
 use App\Modules\Providers\Models\ProviderAccreditation;
 use App\Modules\Providers\Models\ProviderProfile;
 use App\Modules\Sites\Models\Site;
 use App\Modules\Sites\Models\Zone;
 use App\Modules\Tenancy\Models\Company;
+use App\Modules\Tenancy\Models\CompanyUser;
 use Database\Seeders\AuthorizationSeeder;
 use Database\Seeders\ReferenceDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -46,13 +48,12 @@ class ProviderRequirementsTest extends TestCase
 
     private string $adminToken;
 
+    private string $requesterToken;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->seed([ReferenceDataSeeder::class, AuthorizationSeeder::class]);
-        // In this company the environment manager requests pickups; only the administrator may send one against a blocking requirement.
-        DB::table('role_has_permissions')->where('permission_id', DB::table('permissions')->where('name', 'pickups.override_eligibility')->value('id'))
-            ->where('role_id', DB::table('roles')->where('name', 'environment_manager')->value('id'))->delete();
         $this->industrial = $this->makeCompany();
         $this->provider = $this->makeCompany('provider');
         $this->site = $this->makeSite($this->industrial, 'SFX');
@@ -73,6 +74,18 @@ class ProviderRequirementsTest extends TestCase
         });
         $this->admin = $this->makeMember($this->industrial, ['client_admin' => null]);
         $this->adminToken = $this->tokenFor($this->admin, $this->industrial);
+        // A role of the company's own: it requests pickups, and even holds the unrelated right to pass over a provider's
+        // eligibility — but not the right to send a request against what the provider asks.
+        $role = DB::table('roles')->insertGetId(['company_id' => $this->industrial->id, 'name' => 'requester', 'guard_name' => 'web', 'label' => '{"fr":"Demandeur"}',
+            'audience' => 'industrial', 'is_system' => false, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('role_has_permissions')->insert(DB::table('permissions')->whereIn('name', ['app.web.access', 'lots.view', 'pickups.view', 'pickups.request', 'pickups.override_eligibility'])
+            ->pluck('id')->map(fn ($id) => ['permission_id' => $id, 'role_id' => $role])->all());
+        $requester = User::factory()->create();
+        $this->tenant()->runAs($this->industrial, function () use ($requester, $role) {
+            CompanyUser::query()->create(['user_id' => $requester->id, 'joined_at' => now()]);
+            UserRoleAssignment::query()->create(['user_id' => $requester->id, 'role_id' => $role, 'site_id' => null]);
+        });
+        $this->requesterToken = $this->tokenFor($requester, $this->industrial);
         $this->fresh($this->adminToken)->postJson('/api/v1/provider-partnerships', ['provider' => $this->provider->ulid])->assertCreated();
     }
 
@@ -120,34 +133,50 @@ class ProviderRequirementsTest extends TestCase
         [$a, $b] = [$this->lot($type, '200'), $this->lot($type, '120')];
 
         $check = $this->check([$a, $b])->json('data');
-        $this->assertSame(['exceeded', true, ['minimum:1'], false, 't', '0.320', '0.500', '0.180'], [$check['outcome'], $check['blocked'], $check['failing'], $check['may_override'],
-            $check['constraints'][0]['unit'], $check['constraints'][0]['used'], $check['constraints'][0]['min'], $check['constraints'][0]['shortfall']]);
+        $this->assertSame(['exceeded', true, ['minimum:1'], true, 't', '0.320', '0.500', '0.180', 'provider'], [$check['outcome'], $check['blocked'], $check['failing'], $check['may_override'],
+            $check['constraints'][0]['unit'], $check['constraints'][0]['used'], $check['constraints'][0]['min'], $check['constraints'][0]['shortfall'], $check['constraints'][0]['source']]);
 
+        // Without a reason nobody sends it, whoever they are: the environment manager, the administrator.
         $pickup = $this->pickup([$a, $b]);
-        $this->api()->postJson("/api/v1/pickups/{$pickup}/submit")->assertStatus(409)->assertJsonPath('code', 'PROVIDER_REQUIREMENT_NOT_MET')
-            ->assertJsonPath('context.constraints.0.shortfall', '0.180')->assertJsonPath('context.failing', ['minimum:1'])->assertJsonPath('context.may_override', false);
+        foreach ([$this->token, $this->adminToken] as $token) {
+            $this->fresh($token)->postJson("/api/v1/pickups/{$pickup}/submit")->assertStatus(409)->assertJsonPath('code', 'PROVIDER_REQUIREMENT_NOT_MET')
+                ->assertJsonPath('context.constraints.0.shortfall', '0.180')->assertJsonPath('context.failing', ['minimum:1'])->assertJsonPath('context.may_override', true);
+            $this->fresh($token)->postJson("/api/v1/pickups/{$pickup}/submit", ['requirement_override_reason' => '   '])->assertStatus(409)->assertJsonPath('code', 'PROVIDER_REQUIREMENT_NOT_MET');
+        }
         // Nothing moved: the pickup is still a draft, the lots are still in stock, nothing was recorded as decided.
         $this->assertSame(['draft', null], [DB::table('pickups')->value('status'), DB::table('pickups')->value('provider_requirements')]);
         $this->assertSame(0, DB::table('waste_lots')->where('status', 'awaiting_pickup')->count());
+        $this->assertSame(0, DB::table('audit_logs')->where('event', 'requirement_overridden')->count());
 
-        // Someone who may not decide it cannot send it, reason or not.
-        $this->api()->postJson("/api/v1/pickups/{$pickup}/submit", ['requirement_override_reason' => 'Accord du prestataire'])->assertStatus(409)
+        // Someone who requests pickups but may not decide this cannot send it, reason or not — and passing over a
+        // provider's eligibility, which this person may do, is not the same right.
+        $this->fresh($this->requesterToken)->postJson('/api/v1/provider-requirements/check', ['provider' => $this->provider->ulid, 'lots' => [$a, $b]])->assertOk()->assertJsonPath('data.may_override', false);
+        $this->fresh($this->requesterToken)->postJson("/api/v1/pickups/{$pickup}/submit")->assertStatus(409)->assertJsonPath('code', 'PROVIDER_REQUIREMENT_NOT_MET')->assertJsonPath('context.may_override', false);
+        $this->fresh($this->requesterToken)->postJson("/api/v1/pickups/{$pickup}/submit", ['requirement_override_reason' => 'Accord du prestataire'])->assertStatus(409)
             ->assertJsonPath('code', 'PROVIDER_REQUIREMENT_NEEDS_AUTHORIZATION')->assertJsonPath('context.may_override', false);
-        // Someone who may is told so, and still has to say why.
-        $this->fresh($this->adminToken)->postJson('/api/v1/provider-requirements/check', ['provider' => $this->provider->ulid, 'lots' => [$a, $b]])->assertOk()->assertJsonPath('data.may_override', true);
-        $this->fresh($this->adminToken)->postJson("/api/v1/pickups/{$pickup}/submit")->assertStatus(409)->assertJsonPath('code', 'PROVIDER_REQUIREMENT_NOT_MET')->assertJsonPath('context.may_override', true);
-        $this->fresh($this->adminToken)->postJson("/api/v1/pickups/{$pickup}/submit", ['requirement_override_reason' => '   '])->assertStatus(409)->assertJsonPath('code', 'PROVIDER_REQUIREMENT_NOT_MET');
+        $this->assertSame('draft', DB::table('pickups')->value('status'));
 
-        // Entitled, with a reason: the request goes out, and who decided it and why is kept — the provider reads it and
-        // still accepts or refuses the pickup.
-        $audits = DB::table('audit_logs')->count();
-        $this->fresh($this->adminToken)->postJson("/api/v1/pickups/{$pickup}/submit", ['requirement_override_reason' => 'Accord téléphonique du prestataire, tournée déjà prévue'])->assertOk()
+        // The environment manager, with a reason: the request goes out, and who decided it and why is kept — on the
+        // pickup, in the audit trail under its own event, and before the eyes of the provider, who still accepts or refuses.
+        $this->api()->postJson("/api/v1/pickups/{$pickup}/submit", ['requirement_override_reason' => 'Accord téléphonique du prestataire, tournée déjà prévue'])->assertOk()
             ->assertJsonPath('data.status', 'requested')->assertJsonPath('data.provider_requirements.blocked', true)->assertJsonPath('data.provider_requirements.outcome', 'exceeded')
             ->assertJsonPath('data.provider_requirements.override.reason', 'Accord téléphonique du prestataire, tournée déjà prévue')
-            ->assertJsonPath('data.provider_requirements.override.by', trim("{$this->admin->first_name} {$this->admin->last_name}"));
-        $this->assertGreaterThan($audits, DB::table('audit_logs')->count());
-        $this->fresh($this->providerToken)->getJson("/api/v1/pickups/{$pickup}")->assertOk()->assertJsonPath('data.provider_requirements.override.reason', 'Accord téléphonique du prestataire, tournée déjà prévue');
+            ->assertJsonPath('data.provider_requirements.override.by', trim("{$this->manager->first_name} {$this->manager->last_name}"));
+        $audit = DB::table('audit_logs')->where('event', 'requirement_overridden')->get();
+        $this->assertCount(1, $audit);
+        $this->assertSame(['pickups', DB::table('pickups')->value('id'), $this->manager->id, $this->industrial->id], [$audit[0]->auditable_type, (int) $audit[0]->auditable_id, (int) $audit[0]->actor_user_id, (int) $audit[0]->company_id]);
+        $this->assertSame(['reason' => 'Accord téléphonique du prestataire, tournée déjà prévue', 'failing' => ['minimum:1'], 'outcome' => 'exceeded'], json_decode((string) $audit[0]->new_values, true));
+        // The change of the pickup itself is in the trail too, with the requirement as it was judged.
+        $this->assertTrue(DB::table('audit_logs')->where('auditable_type', 'pickups')->where('event', 'updated')->where('new_values', 'like', '%provider_requirements%')->exists());
+        $this->fresh($this->providerToken)->getJson("/api/v1/pickups/{$pickup}")->assertOk()->assertJsonPath('data.provider_requirements.override.reason', 'Accord téléphonique du prestataire, tournée déjà prévue')
+            ->assertJsonPath('data.provider_requirements.constraints.0.source', 'provider');
         $this->fresh($this->providerToken)->postJson("/api/v1/pickups/{$pickup}/refuse", ['reason' => 'Minimum non atteint'])->assertOk()->assertJsonPath('data.status', 'refused');
+
+        // The administrator may do the same, and is named for it.
+        $again = $this->pickup([$a, $b]);
+        $this->fresh($this->adminToken)->postJson("/api/v1/pickups/{$again}/submit", ['requirement_override_reason' => 'Complément de tournée'])->assertOk()
+            ->assertJsonPath('data.provider_requirements.override.by', trim("{$this->admin->first_name} {$this->admin->last_name}"));
+        $this->assertSame([$this->manager->id, $this->admin->id], DB::table('audit_logs')->where('event', 'requirement_overridden')->orderBy('id')->pluck('actor_user_id')->map(fn ($id) => (int) $id)->all());
     }
 
     public function test_a_weight_nobody_measured_is_not_a_minimum_reached(): void
@@ -249,6 +278,101 @@ class ProviderRequirementsTest extends TestCase
         $this->makeSite($stranger, 'TUN');
         $this->fresh($this->tokenFor($this->makeMember($stranger, ['client_admin' => null]), $stranger))
             ->postJson('/api/v1/provider-requirements/check', ['provider' => $this->provider->ulid, 'lots' => [$small]])->assertStatus(422);
+    }
+
+    public function test_a_company_records_what_a_partner_without_an_account_asks_and_it_is_judged_as_its_own_unconfirmed_note(): void
+    {
+        $type = $this->type('CHUTES', 'textile_fibre');
+        $partner = $this->fresh($this->adminToken)->postJson('/api/v1/external-partners', ['legal_name' => 'Fibres du Cap', 'roles' => ['recycler', 'transporter']])->assertCreated()
+            ->assertJsonPath('data.requirements', [])->assertJsonPath('data.requirements_to_review', 0)->json('data.ulid');
+        $put = fn (array $lines, ?string $token = null) => $this->fresh($token ?? $this->adminToken)->putJson("/api/v1/external-partners/{$partner}/requirements", ['requirements' => $lines]);
+
+        // A line asks something, in a unit, and a minimum in packages says which packaging.
+        $put([['family' => 'textile_fibre', 'channel' => 'recycling']])->assertStatus(422)->assertJsonValidationErrors('requirements.0.min_quantity');
+        $put([['family' => 'textile_fibre', 'channel' => 'recycling', 'min_quantity' => '500']])->assertStatus(422)->assertJsonValidationErrors('requirements.0.min_unit');
+        $put([['family' => 'textile_fibre', 'channel' => 'recycling', 'min_quantity' => '5', 'min_unit' => 'package']])->assertStatus(422)->assertJsonValidationErrors('requirements.0.min_packaging_type');
+        // Only who manages the partners of the company writes them down; another company does not reach them.
+        $put([['family' => 'textile_fibre', 'channel' => 'recycling', 'min_quantity' => '500', 'min_unit' => 'kg']], $this->requesterToken)->assertForbidden();
+        $stranger = $this->makeCompany();
+        $put([], $this->tokenFor($this->makeMember($stranger, ['client_admin' => null]), $stranger))->assertNotFound();
+
+        // Written down from the contract: a warning unless the company says it must refuse.
+        $line = $put([['family' => 'textile_fibre', 'channel' => 'recycling', 'min_quantity' => '500', 'min_unit' => 'kg', 'contract_reference' => 'Contrat FC-2026-014, art. 3', 'notes' => 'Tournée mensuelle']])
+            ->assertOk()->assertJsonPath('data.requirements.0.min_quantity', '500.000')->assertJsonPath('data.requirements.0.is_blocking', false)
+            ->assertJsonPath('data.requirements.0.contract_reference', 'Contrat FC-2026-014, art. 3')->assertJsonPath('data.requirements.0.needs_review', false)
+            ->assertJsonPath('data.requirements.0.updated_by', trim("{$this->admin->first_name} {$this->admin->last_name}"))->json('data.requirements.0.ulid');
+        $created = DB::table('audit_logs')->where('auditable_type', 'partner_requirements')->where('event', 'created')->first();
+        $this->assertSame([$this->admin->id, $this->industrial->id, $line], [(int) $created->actor_user_id, (int) $created->company_id, $created->auditable_ulid]);
+        $this->assertStringContainsString('FC-2026-014', (string) $created->new_values);
+
+        // Judged like any requirement — on the whole collection, in its unit — and every answer says where it comes from.
+        [$a, $b] = [$this->lot($type, '200'), $this->lot($type, '120')];
+        $ask = fn (array $lots) => $this->api()->postJson('/api/v1/provider-requirements/check', ['external_provider' => $partner, 'lots' => $lots])->assertOk()->json('data');
+        $check = $ask([$a, $b]);
+        $this->assertSame(['warning', false, 'internal', '320.000', '180.000', 'internal', 'Contrat FC-2026-014, art. 3', false], [$check['outcome'], $check['blocked'], $check['constraints'][0]['source'],
+            $check['constraints'][0]['used'], $check['constraints'][0]['shortfall'], $check['constraints'][0]['rule']['source'], $check['constraints'][0]['rule']['contract_reference'], $check['constraints'][0]['rule']['needs_review']]);
+        $this->api()->postJson('/api/v1/provider-requirements/check', ['provider' => $this->provider->ulid, 'external_provider' => $partner, 'lots' => [$a]])->assertStatus(422);
+        $external = fn (array $lots) => $this->api()->postJson('/api/v1/pickups', ['site' => $this->site->ulid, 'external_provider' => $partner, 'requested_date' => now()->addDay()->toDateString(), 'lots' => $lots])->assertCreated()->json('data.ulid');
+        $pickup = $external([$a]);
+        $this->api()->postJson("/api/v1/pickups/{$pickup}/submit")->assertOk()->assertJsonPath('data.provider_requirements.outcome', 'warning')
+            ->assertJsonPath('data.provider_requirements.constraints.0.source', 'internal')->assertJsonPath('data.provider_requirements.constraints.0.rule.contract_reference', 'Contrat FC-2026-014, art. 3');
+
+        // Made blocking, explicitly: the change is in the trail with what it was and who made it, and it now refuses.
+        $put([['ulid' => $line, 'family' => 'textile_fibre', 'channel' => 'recycling', 'min_quantity' => '500', 'min_unit' => 'kg', 'is_blocking' => true, 'contract_reference' => 'Contrat FC-2026-014, art. 3', 'notes' => 'Tournée mensuelle']])
+            ->assertOk()->assertJsonPath('data.requirements.0.ulid', $line)->assertJsonPath('data.requirements.0.is_blocking', true);
+        $updated = DB::table('audit_logs')->where('auditable_type', 'partner_requirements')->where('event', 'updated')->first();
+        $this->assertSame([false, true, $this->admin->id], [(bool) json_decode((string) $updated->old_values, true)['is_blocking'], (bool) json_decode((string) $updated->new_values, true)['is_blocking'], (int) $updated->actor_user_id]);
+        $this->assertSame([true, true], [$ask([$b])['blocked'], $ask([$b])['may_override']]);
+        $second = $external([$b]);
+        $this->api()->postJson("/api/v1/pickups/{$second}/submit")->assertStatus(409)->assertJsonPath('code', 'PROVIDER_REQUIREMENT_NOT_MET')->assertJsonPath('context.provider', 'Fibres du Cap');
+        $this->api()->postJson("/api/v1/pickups/{$second}/submit", ['requirement_override_reason' => 'Enlèvement exceptionnel convenu par email du 12/10'])->assertOk()
+            ->assertJsonPath('data.provider_requirements.override.reason', 'Enlèvement exceptionnel convenu par email du 12/10');
+        // The pickup already requested keeps the warning it was judged with.
+        $this->api()->getJson("/api/v1/pickups/{$pickup}")->assertOk()->assertJsonPath('data.provider_requirements.constraints.0.blocking', false);
+
+        // A line left out of the list is removed, and that too is in the trail.
+        $put([])->assertOk()->assertJsonPath('data.requirements', []);
+        $this->assertSame(1, DB::table('audit_logs')->where('auditable_type', 'partner_requirements')->where('event', 'deleted')->where('auditable_ulid', $line)->count());
+        $this->assertSame([], $ask([$b])['constraints']);
+    }
+
+    public function test_when_the_partner_opens_an_account_what_the_company_wrote_down_waits_for_a_review_and_is_never_dropped_silently(): void
+    {
+        $type = $this->type('CHUTES', 'textile_fibre');
+        $partner = $this->fresh($this->adminToken)->postJson('/api/v1/external-partners', ['legal_name' => 'Ancien partenaire', 'roles' => ['recycler', 'transporter']])->assertCreated()->json('data.ulid');
+        $lines = $this->fresh($this->adminToken)->putJson("/api/v1/external-partners/{$partner}/requirements", ['requirements' => [
+            ['family' => 'textile_fibre', 'channel' => 'recycling', 'min_quantity' => '500', 'min_unit' => 'kg', 'contract_reference' => 'Contrat 2025'],
+            ['family' => 'textile_fibre', 'channel' => 'recycling', 'required_packaging_type' => 'bale'],
+        ]])->assertOk()->json('data.requirements');
+        $review = fn (string $line, string $decision) => $this->fresh($this->adminToken)->postJson("/api/v1/external-partners/{$partner}/requirements/{$line}/review", ['decision' => $decision]);
+        // Without an account there is nothing to reconcile: the lines are simply edited.
+        $review($lines[0]['ulid'], 'keep')->assertStatus(409)->assertJsonPath('code', 'PARTNER_NOT_LINKED');
+
+        // The partner opens an account and publishes its own minimum; the company ties the two.
+        $this->accepts([['channel' => 'recycling', 'family' => 'textile_fibre', 'min_quantity' => '300', 'min_unit' => 'kg']]);
+        $this->fresh($this->adminToken)->postJson("/api/v1/external-partners/{$partner}/link", ['provider' => $this->provider->ulid])->assertOk()
+            ->assertJsonPath('data.requirements_to_review', 2)->assertJsonPath('data.requirements.0.needs_review', true)->assertJsonPath('data.requirements.0.min_quantity', '500.000')
+            // Shown side by side: what the provider says itself, and what the company had noted.
+            ->assertJsonPath('data.provider_requirements.0.min_quantity', '300.000')->assertJsonCount(1, 'data.provider_requirements');
+        $this->assertSame(2, DB::table('partner_requirements')->count());
+
+        // Until someone looks at them, the notes still apply to the pickups sent to that provider — marked as the
+        // company's own and to be reviewed — beside what the provider publishes. Nothing was replaced.
+        $lot = $this->lotData($type, '400', ['packaging_type' => 'bag', 'package_count' => 4]);
+        $check = collect($this->check([$lot['ulid']])->json('data.constraints'));
+        $this->assertSame([['provider', 'minimum', '300.000', 'respected', false], ['internal', 'minimum', '500.000', 'warning', true], ['internal', 'packaging', null, 'warning', true]],
+            $check->map(fn (array $c) => [$c['source'], $c['kind'], $c['min'] ?? null, $c['outcome'], $c['rule']['needs_review']])->all());
+
+        // Kept: it stays the company's own requirement and stops asking for a review. Removed: the provider's word stands alone.
+        $review($lines[0]['ulid'], 'keep')->assertOk()->assertJsonPath('data.requirements_to_review', 1)->assertJsonPath('data.requirements.0.needs_review', false);
+        $review($lines[1]['ulid'], 'remove')->assertOk()->assertJsonPath('data.requirements_to_review', 0)->assertJsonCount(1, 'data.requirements');
+        $this->assertSame(1, DB::table('audit_logs')->where('auditable_type', 'partner_requirements')->where('event', 'deleted')->where('auditable_ulid', $lines[1]['ulid'])->count());
+        $this->assertTrue(DB::table('audit_logs')->where('auditable_type', 'partner_requirements')->where('event', 'updated')->where('auditable_ulid', $lines[0]['ulid'])->where('new_values', 'like', '%reviewed_at%')->exists());
+        $check = collect($this->check([$lot['ulid']])->json('data.constraints'));
+        $this->assertSame([['provider', '300.000', false], ['internal', '500.000', false]], $check->map(fn (array $c) => [$c['source'], $c['min'], $c['rule']['needs_review']])->all());
+        // A line of another partner is not reviewed through this one.
+        $other = $this->fresh($this->adminToken)->postJson('/api/v1/external-partners', ['legal_name' => 'Autre', 'roles' => ['recycler']])->assertCreated()->json('data.ulid');
+        $this->fresh($this->adminToken)->postJson("/api/v1/external-partners/{$other}/requirements/{$lines[0]['ulid']}/review", ['decision' => 'remove'])->assertNotFound();
     }
 
     private function type(string $code, string $family, string $unit = 'kg'): string
