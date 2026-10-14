@@ -488,7 +488,7 @@
       "pickup.cancelled": "Pickup cancelled by the manufacturer",
       "pickup.collected": "Lots loaded",
       "pickup.received": "Lots received by the provider",
-      "pickup.variance_flagged": "Weight variance on a pickup",
+      "pickup.variance_flagged": "Gap at reception on a pickup",
       "pickup.completed": "Pickup closed",
       "accreditation.expiring_soon": "A provider's accreditation expires soon",
       "accreditation.expired": "A provider's accreditation has expired",
@@ -528,7 +528,7 @@
       },
       "pickup.requested": {
         "title": "New pickup request {{number}}",
-        "body": "{{company}} — {{lots}} lots, {{weight_kg}} kg, on {{date}} ({{site}})."
+        "body": "{{company}} — {{lots}} lot(s), {{quantity}}, on {{date}} ({{site}})."
       },
       "pickup.confirmed": {
         "title": "Pickup {{number}} confirmed",
@@ -544,15 +544,15 @@
       },
       "pickup.collected": {
         "title": "Pickup {{number}} loaded",
-        "body": "{{weight_kg}} kg leaving the site."
+        "body": "{{quantity}} leaving the site."
       },
       "pickup.received": {
         "title": "Pickup {{number}} received",
-        "body": "{{provider}} received {{weight_kg}} kg."
+        "body": "{{provider}} received {{quantity}}."
       },
       "pickup.variance_flagged": {
-        "title": "Weight variance — pickup {{number}}",
-        "body": "{{received_kg}} kg received for {{departure_kg}} kg at departure ({{variance_pct}} %)."
+        "title": "Discrepancy at reception — pickup {{number}}",
+        "body": "{{received}} received for {{departure}} at departure: at least one lot is outside tolerance."
       },
       "pickup.completed": {
         "title": "Pickup {{number}} closed",
@@ -732,7 +732,7 @@
     "alerts": {
       "exceeded": "{{count}} stock limit(s) exceeded",
       "warning": "{{count}} stock limit(s) nearly reached",
-      "variance": "{{count}} pickup(s) with a weight variance to review",
+      "variance": "{{count}} pickup(s) with a gap at reception to review",
       "requested": "{{count}} pickup request(s) awaiting the provider's answer",
       "accreditationExpired": "Accreditation expired: {{provider}} can no longer be chosen",
       "accreditationExpiring": "Accreditation of {{provider}}: expires in {{days}} day(s)",
@@ -1057,7 +1057,7 @@
     "received": "Weight received",
     "variance": "Variance",
     "varianceFlagged": "Weight variance above the limit",
-    "varianceOnly": "With a weight variance",
+    "varianceOnly": "With a gap at reception",
     "lots": "Lots",
     "lotsCount": "{{count}} lot(s)",
     "emptyTitle": "No pickup",

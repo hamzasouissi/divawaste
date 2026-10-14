@@ -283,6 +283,7 @@ interface RequirementRow {
     .consequence { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--dw-1) var(--dw-3); align-items: center; font-size: 13px; }
     .mode { font-size: 12px; font-weight: 600; } .add { justify-self: start; }
     @media (max-width: 900px) { .row { grid-template-columns: 1fr 1fr; } .row .reference, .row .notes { grid-column: 1 / -1; } }
+    @media (max-width: 560px) { .row { grid-template-columns: 1fr; } }
   `,
 })
 export class PartnerRequirementsDialog {

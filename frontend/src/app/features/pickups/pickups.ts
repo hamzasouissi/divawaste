@@ -8,7 +8,7 @@ import { ButtonDirective } from 'primeng/button';
 import { Api } from '../../core/api/api';
 import { Pickup, PickupStatus } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
-import { DatePipe, KgPipe } from '../../core/format/pipes';
+import { DatePipe, KgPipe, KnownWeightPipe } from '../../core/format/pipes';
 import { Column, TABLE } from '../../ui/data-table';
 import { ListStore } from '../../ui/list-store';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
@@ -34,7 +34,7 @@ interface PickupFilter {
 @Component({
   imports: [
     HelpComponent, ToleranceSummary,
-    RouterLink, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, DatePipe, KgPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent,
+    RouterLink, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, DatePipe, KgPipe, KnownWeightPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -69,7 +69,11 @@ interface PickupFilter {
           <ng-template dwCell="site" let-pickup>{{ pickup.site?.name }}@if (provider && pickup.site?.city) { <span class="dw-faint"> · {{ pickup.site.city }}</span> }</ng-template>
           <ng-template dwCell="date" let-pickup>{{ pickup.confirmed_date ?? pickup.requested_date | dwDate }}</ng-template>
           <ng-template dwCell="lots" let-pickup>{{ pickup.lots_count }}</ng-template>
-          <ng-template dwCell="weight" let-pickup>{{ pickup.received_weight_kg ?? pickup.departure_weight_kg ?? pickup.declared_weight_kg | dwKg }}</ng-template>
+          <ng-template dwCell="weight" let-pickup>
+            @if (pickup.received_at) { {{ pickup.received_weight_kg | dwKgKnown: pickup.received_unweighed_lots }} }
+            @else if (pickup.collected_at) { {{ pickup.departure_weight_kg | dwKgKnown: pickup.departure_unweighed_lots }} }
+            @else { {{ pickup.declared_weight_kg | dwKg }} }
+          </ng-template>
           <ng-template dwCell="status" let-pickup>
             <dw-status kind="pickup" [value]="pickup.status" />
             @if (pickup.variance_flagged && !pickup.variance_acknowledged) { <dw-icon class="flag" [title]="t('pickups.varianceFlagged')" [attr.aria-label]="t('pickups.varianceFlagged')">scale</dw-icon> }

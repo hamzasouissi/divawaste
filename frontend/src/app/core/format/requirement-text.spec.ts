@@ -86,5 +86,9 @@ describe('notification parameters are those of the reader’s language', () => {
   it('still reads a stock-limit notification sent when limits were only in kilograms', () => {
     expect(notificationParams({ quantity_kg: '700.000', max_quantity_kg: '900.000' }, 'fr')).toEqual(expect.objectContaining({ quantity: '700 kg', max_quantity: '900 kg' }));
     expect(notificationParams({ quantity: '110 Sac', quantity_kg: '1.000' }, 'fr')['quantity']).toBe('110 Sac');
+    // Pickup messages: the units of the lots when they are given, the kilograms of older messages otherwise.
+    expect(notificationParams({ quantity: '298 pièce(s)', quantity_en: '298 piece(s)' }, 'en')['quantity']).toBe('298 piece(s)');
+    expect(notificationParams({ weight_kg: '1918.000' }, 'fr')['quantity']).toBe('1918 kg');
+    expect(notificationParams({ received_kg: '95.000', departure_kg: '100.000' }, 'fr')).toEqual(expect.objectContaining({ received: '95 kg', departure: '100 kg' }));
   });
 });

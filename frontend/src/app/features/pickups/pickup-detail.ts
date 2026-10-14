@@ -106,8 +106,8 @@ export class ConfirmDateDialog {
                 <div><dt>{{ t('pickups.transporter') }}</dt><dd>{{ p.transporter?.legal_name ?? t('pickups.receiverTransports') }} @if (p.transporter?.external) { <dw-status kind="member" value="suspended" tone="neutral" [label]="t('partners.noAccount')" /> }</dd></div>
                 <div><dt>{{ t('pickups.requestedDate') }}</dt><dd>{{ p.requested_date | dwDate }}</dd></div>
                 <div><dt>{{ t('pickups.confirmedDate') }}</dt><dd>{{ p.confirmed_date | dwDate }}</dd></div>
-                <div><dt>{{ t('pickups.departure') }}</dt><dd>{{ p.departure_weight_kg | dwKgKnown: (p.received_at ? 0 : p.unweighed_lots) }} @if (p.collected_at) { <span class="dw-faint">· {{ p.collected_at | dwDate: 'datetime' }}</span> }</dd></div>
-                <div><dt>{{ t('pickups.received') }}</dt><dd>{{ p.received_weight_kg | dwKgKnown: (p.received_at ? p.unweighed_lots : 0) }} @if (p.received_at) { <span class="dw-faint">· {{ p.received_at | dwDate: 'datetime' }}</span> }</dd></div>
+                <div><dt>{{ t('pickups.departure') }}</dt><dd>{{ p.departure_weight_kg | dwKgKnown: (p.departure_unweighed_lots ?? (p.received_at ? 0 : p.unweighed_lots)) }} @if (p.collected_at) { <span class="dw-faint">· {{ p.collected_at | dwDate: 'datetime' }}</span> }</dd></div>
+                <div><dt>{{ t('pickups.received') }}</dt><dd>{{ p.received_weight_kg | dwKgKnown: (p.received_unweighed_lots ?? (p.received_at ? p.unweighed_lots : 0)) }} @if (p.received_at) { <span class="dw-faint">· {{ p.received_at | dwDate: 'datetime' }}</span> }</dd></div>
                 @if (!provider && p.net_amount !== null && p.net_amount !== undefined) {
                   <div><dt>{{ t('pickups.netAmount') }}</dt><dd [class.neg]="+p.net_amount < 0"><strong>{{ p.net_amount | dwMoney: p.currency_code }}</strong></dd></div>
                 }
