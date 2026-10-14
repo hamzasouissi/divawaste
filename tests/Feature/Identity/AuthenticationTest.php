@@ -38,6 +38,29 @@ class AuthenticationTest extends TestCase
             'email' => 'unknown@example.test',
             'password' => 'wrong-password',
         ])->assertTooManyRequests();
+
+        // The limit is that account's: a colleague signing in from the same address is still answered.
+        $this->postJson('/api/v1/auth/login', ['email' => 'colleague@example.test', 'password' => 'wrong-password'])->assertUnauthorized();
+        $this->postJson('/api/v1/auth/login', ['email' => 'UNKNOWN@example.test', 'password' => 'wrong-password'])->assertTooManyRequests();
+    }
+
+    public function test_sign_in_attempts_from_one_address_have_a_ceiling_across_accounts(): void
+    {
+        config(['app.login_rate_limit_per_ip' => 8]);
+        for ($attempt = 0; $attempt < 8; $attempt++) {
+            $this->postJson('/api/v1/auth/login', ['email' => "someone{$attempt}@example.test", 'password' => 'wrong-password'])->assertUnauthorized();
+        }
+        $this->postJson('/api/v1/auth/login', ['email' => 'another@example.test', 'password' => 'wrong-password'])->assertTooManyRequests();
+    }
+
+    public function test_the_client_address_is_read_from_a_trusted_proxy_only(): void
+    {
+        $this->getJson('/api/v1/health', ['X-Forwarded-For' => '203.0.113.9']);
+        $this->assertNotSame('203.0.113.9', request()->ip());
+
+        config(['trustedproxy.proxies' => ['127.0.0.1']]);
+        $this->getJson('/api/v1/health', ['X-Forwarded-For' => '203.0.113.9']);
+        $this->assertSame('203.0.113.9', request()->ip());
     }
 
     public function test_login_issues_company_bound_token_for_single_active_membership(): void

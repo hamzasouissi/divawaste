@@ -271,7 +271,7 @@ final class ManifestWorkflow
             'is_hazardous' => (bool) $manifest->is_hazardous,
             'waste_code' => $code?->code,
             'waste_label' => $code === null ? null : (json_decode((string) $code->label, true)['fr'] ?? null),
-            'waste_type' => DB::table('waste_types')->where('id', $manifest->waste_type_id)->value('name'),
+            'waste_type' => self::designation($manifest),
             'package_count' => $manifest->package_count,
             'declared_weight_kg' => $manifest->declared_weight_kg === null ? null : (string) $manifest->declared_weight_kg,
             'producer' => $manifest->producer_snapshot,
@@ -287,6 +287,18 @@ final class ManifestWorkflow
                     'quantity' => $line->measure_dimension === 'mass' ? null : ($line->departure_quantity ?? $line->declared_quantity),
                     'received_quantity' => $line->received_quantity])->all(),
         ];
+    }
+
+    /**
+     * What the slip carries, in words. A slip is issued per regulatory code, and several waste types may share one:
+     * every type on it is named, as it was called when the lot was put on the pickup, in the order of the lots.
+     */
+    public static function designation(HazardousWasteManifest $manifest): ?string
+    {
+        $names = DB::table('pickup_lots')->where('hazardous_waste_manifest_id', $manifest->id)->orderBy('id')
+            ->pluck('waste_type_label_snapshot')->filter()->unique()->values();
+
+        return $names->isEmpty() ? DB::table('waste_types')->where('id', $manifest->waste_type_id)->value('name') : $names->implode(', ');
     }
 
     private function requestSignature(HazardousWasteManifest $manifest, SignerParty $party): void

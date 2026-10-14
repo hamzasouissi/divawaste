@@ -213,6 +213,12 @@ class StockLimitUnitsTest extends TestCase
         DB::table('stock_thresholds')->update(['alert_level' => null, 'alerted_at' => null, 'last_evaluated_at' => null]);
         $this->app->forgetScopedInstances();
         Notification::fake();
+        // A rehearsal first: it lists what would be announced, stores no state and sends nothing.
+        $this->artisan('limits:evaluate', ['--dry-run' => true])->expectsOutputToContain('Nothing was stored or sent')->assertSuccessful();
+        Notification::assertNothingSent();
+        $this->assertSame(0, DB::table('capacity_alerts')->count());
+        $this->assertSame(0, DB::table('stock_thresholds')->whereNotNull('alert_level')->count());
+        $this->app->forgetScopedInstances();
         $this->artisan('limits:evaluate')->expectsOutputToContain('2 site(s) evaluated')->assertSuccessful();
 
         $types = fn (User $user) => Notification::sent($user, BusinessEventNotification::class)->map(fn (BusinessEventNotification $n) => $n->type)->sort()->values()->all();

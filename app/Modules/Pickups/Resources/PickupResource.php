@@ -27,6 +27,11 @@ class PickupResource extends JsonResource
         $lines = $this->relationLoaded('lines') ? $this->lines : null;
         $parties = app(PartyDirectory::class);
         $declared = $this->resource->getAttributes()['lines_sum_declared_weight_kg'] ?? null;
+        // Counted from the lines when they are loaded (one pickup), by the query otherwise (a list).
+        $unweighed = [
+            'departure' => $lines?->filter(fn ($line) => $line->loaded_at !== null && $line->departure_weight_kg === null)->count() ?? $this->resource->getAttributes()['departure_unweighed_lots'] ?? null,
+            'received' => $lines?->filter(fn ($line) => $line->received_at !== null && $line->received_weight_kg === null)->count() ?? $this->resource->getAttributes()['received_unweighed_lots'] ?? null,
+        ];
         // The lot identifier belongs to the industrial: only the owner of the pickup receives it
         // (to record the loading and open the lot). A provider keeps working with lot numbers.
         $context = app(TenantContext::class);
@@ -70,6 +75,10 @@ class PickupResource extends JsonResource
             'lots_count' => $this->whenCounted('lines'),
             // Lots whose weight is not known: every weight of this pickup is the sum of the others, never of zeros.
             'unweighed_lots' => $this->when($lines !== null, fn () => $lines->filter(fn ($line) => ($line->received_weight_kg ?? $line->departure_weight_kg ?? $line->declared_weight_kg) === null)->count()),
+            // The same, stage by stage: lots that left without a weight, lots received without one. The departure and
+            // received totals above do not include them, and are empty when no lot has a weight at that stage.
+            'departure_unweighed_lots' => $this->when($unweighed['departure'] !== null, $unweighed['departure']),
+            'received_unweighed_lots' => $this->when($unweighed['received'] !== null, $unweighed['received']),
             'declared_weight_kg' => $this->when($declared !== null, fn () => (string) $declared),
             // Signed total: positive = revenue for the industrial, negative = cost.
             'net_amount' => $this->when($lines !== null, fn () => $lines->whereNotNull('net_amount')->isEmpty() ? null

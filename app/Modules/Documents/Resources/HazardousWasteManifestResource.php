@@ -3,6 +3,7 @@
 namespace App\Modules\Documents\Resources;
 
 use App\Modules\Common\Support\ReferenceCodes;
+use App\Modules\Documents\Actions\ManifestWorkflow;
 use App\Modules\Documents\Models\HazardousWasteManifest;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -32,7 +33,7 @@ final class HazardousWasteManifestResource extends JsonResource
             'pickup' => DB::table('pickups')->where('id', $this->pickup_id)->first(['ulid', 'pickup_number']),
             'regulatory_code' => app(ReferenceCodes::class)->code('regulatory_waste_codes', $this->regulatory_waste_code_id),
             'is_hazardous' => $this->is_hazardous,
-            'waste_type' => DB::table('waste_types')->where('id', $this->waste_type_id)->value('name'),
+            'waste_type' => ManifestWorkflow::designation($this->resource),
             'package_count' => $this->package_count,
             'declared_weight_kg' => $this->declared_weight_kg,
             'received_weight_kg' => $this->received_weight_kg,

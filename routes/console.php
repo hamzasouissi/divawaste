@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Str;
 use Knuckles\Scribe\Scribe;
@@ -59,16 +60,48 @@ Artisan::command('authorizations:alert', function (NotifyUsers $notify) {
 
 Schedule::command('authorizations:alert')->dailyAt('06:10')->withoutOverlapping()->onOneServer();
 
-Artisan::command('limits:evaluate', function (TenantContext $context) {
+Artisan::command('limits:evaluate {--dry-run : List what would be announced and to whom; store nothing, send nothing}', function (TenantContext $context) {
+    $dryRun = (bool) $this->option('dry-run');
+    // A rehearsal goes through the same code, with the notifications held back and every stored state undone.
+    $real = Notification::getFacadeRoot();
+    $held = $dryRun ? Notification::fake() : null;
+    if ($dryRun) {
+        DB::beginTransaction();
+    }
     $sites = 0;
-    foreach (Company::query()->whereIn('id', DB::table('sites')->where('is_active', true)->select('company_id'))->orderBy('id')->get() as $company) {
-        $sites += $context->runAs($company, function () use ($company) {
-            $ids = DB::table('sites')->where('company_id', $company->id)->where('is_active', true)->orderBy('id')->pluck('id');
-            // Resolved inside the company: what it reads and whom it tells belong to that company only.
-            $ids->each(fn ($siteId) => app(EvaluateStockThresholds::class)->forSite((int) $siteId));
+    try {
+        foreach (Company::query()->whereIn('id', DB::table('sites')->where('is_active', true)->select('company_id'))->orderBy('id')->get() as $company) {
+            $sites += $context->runAs($company, function () use ($company) {
+                $ids = DB::table('sites')->where('company_id', $company->id)->where('is_active', true)->orderBy('id')->pluck('id');
+                // Resolved inside the company: what it reads and whom it tells belong to that company only.
+                $ids->each(fn ($siteId) => app(EvaluateStockThresholds::class)->forSite((int) $siteId));
 
-            return $ids->count();
-        });
+                return $ids->count();
+            });
+        }
+    } finally {
+        if ($dryRun) {
+            DB::rollBack();
+            Notification::swap($real);
+        }
+    }
+    if ($held !== null) {
+        $rows = [];
+        foreach ($held->sentNotifications() as $byUser) {
+            foreach ($byUser as $byClass) {
+                foreach ($byClass as $sent) {
+                    foreach ($sent as $one) {
+                        $rows[] = [$one['notifiable']->email, $one['notification']->type, $one['notification']->params['scope'] ?? '', in_array('mail', $one['channels'], true) ? 'yes' : 'no'];
+                    }
+                }
+            }
+        }
+        usort($rows, fn (array $a, array $b) => [$a[2], $a[1], $a[0]] <=> [$b[2], $b[1], $b[0]]);
+        $this->table(['Recipient', 'Message', 'Limit', 'Email'], $rows);
+        $emails = count(array_filter($rows, fn (array $row) => $row[3] === 'yes'));
+        $this->info("Dry run: {$sites} site(s) evaluated. ".count($rows).' message(s) would be written for '.count(array_unique(array_column($rows, 0)))." person(s), {$emails} of them also by email. Nothing was stored or sent.");
+
+        return;
     }
     $this->info("Limits: {$sites} site(s) evaluated.");
 })->purpose('Compare every site with its limits (zone room and load, site weight, stock limits) and tell people about the states nobody was told about yet. Safe to run again: a state already announced is not announced twice');

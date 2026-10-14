@@ -1,6 +1,12 @@
 @use('App\Modules\Common\Support\DocumentLanguage', 'Doc')
 @php
     $kg = fn ($value) => Doc::number($value, 0).' kg';
+    // A line whose lots were not all weighed says so: nobody weighed it is not 0 kg.
+    $known = fn (array $row) => match (true) {
+        ($row['unweighed_lots'] ?? 0) === 0 => $kg($row['kg']),
+        $row['unweighed_lots'] >= $row['lots'] => __('documents.report.not_weighed'),
+        default => $kg($row['kg']).' '.__('documents.report.plus_unweighed', ['count' => $row['unweighed_lots']]),
+    };
     $t = fn ($value) => Doc::number((float) $value / 1000, 2).' t';
     $pct = fn ($value) => $value === null ? '—' : Doc::number($value, 1).' %';
     $money = fn ($value) => Doc::number($value).' '.$company->currency_code;
@@ -29,7 +35,7 @@
         <thead><tr><th>{{ __('documents.report.type') }}</th><th>{{ __('documents.report.hazardous') }}</th><th class="num">{{ __('documents.report.lots') }}</th><th class="num">{{ __('documents.report.quantity') }}</th></tr></thead>
         <tbody>
         @forelse ($data['by_waste_type'] as $row)
-            <tr><td>{{ $row['name'] }}</td><td>{{ $yesNo($row['is_hazardous']) }}</td><td class="num">{{ $row['lots'] }}</td><td class="num">{{ $kg($row['kg']) }}</td></tr>
+            <tr><td>{{ $row['name'] }}</td><td>{{ $yesNo($row['is_hazardous']) }}</td><td class="num">{{ $row['lots'] }}</td><td class="num">{{ $known($row) }}</td></tr>
         @empty
             <tr><td colspan="4">{{ __('documents.report.none_generated') }}</td></tr>
         @endforelse
@@ -54,7 +60,7 @@
         <thead><tr><th>{{ __('documents.report.site') }}</th><th class="num">{{ __('documents.report.lots') }}</th><th class="num">{{ __('documents.report.quantity') }}</th></tr></thead>
         <tbody>
         @foreach ($data['by_site'] as $row)
-            <tr><td>{{ $row['name'] }}</td><td class="num">{{ $row['lots'] }}</td><td class="num">{{ $kg($row['kg']) }}</td></tr>
+            <tr><td>{{ $row['name'] }}</td><td class="num">{{ $row['lots'] }}</td><td class="num">{{ $known($row) }}</td></tr>
         @endforeach
         </tbody>
     </table>

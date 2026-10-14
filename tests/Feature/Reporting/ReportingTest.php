@@ -137,6 +137,21 @@ class ReportingTest extends TestCase
         $content = $this->withToken($this->admin)->get("/api/v1/reports/{$pdf}/download")->assertOk()->assertHeader('Content-Type', 'application/pdf')->streamedContent();
         $this->assertStringStartsWith('%PDF-', $content);
 
+        // A waste type nobody weighed is not "0 kg" in the CSR report: its weight is left empty and its lots are
+        // counted beside it.
+        $zone = $this->tenant()->runAs($this->company, fn () => Zone::query()->where('site_id', $this->site->id)->firstOrFail());
+        $bales = $this->tenant()->runAs($this->company, fn () => WasteType::query()->create(['code' => 'BALLES', 'name' => 'Balles non pesées', 'activated_at' => now(),
+            'waste_family_id' => DB::table('waste_families')->where('code', 'textile_product')->value('id'), 'default_unit_id' => DB::table('units')->where('code', 'kg')->value('id')]));
+        $this->withToken($this->admin)->postJson('/api/v1/lots', ['site' => $this->site->ulid, 'zone' => $zone->ulid, 'waste_type' => $bales->ulid])->assertCreated();
+        $rse = $this->withToken($this->admin)->postJson("/api/v1/reports?{$this->period}", ['report_type' => 'rse_summary', 'format' => 'xlsx'])->assertStatus(202)->json('data.ulid');
+        $path = tempnam(sys_get_temp_dir(), 'dw').'.xlsx';
+        file_put_contents($path, $this->withToken($this->admin)->get("/api/v1/reports/{$rse}/download")->assertOk()->streamedContent());
+        $rows = IOFactory::load($path)->getActiveSheet()->toArray();
+        $line = collect($rows)->first(fn (array $row) => $row[1] === 'Balles non pesées');
+        $this->assertNotNull($line);
+        $this->assertSame([null, 1, 1], [$line[2], (int) $line[3], (int) $line[4]]);
+        $this->assertSame(0, (int) collect($rows)->first(fn (array $row) => $row[1] === 'Chutes de coupe')[4]);
+
         // An export belongs to the person who asked for it, and to nobody in another company.
         $colleague = $this->tokenFor($this->makeMember($this->company, ['client_admin' => null]), $this->company);
         $this->withToken($colleague)->get("/api/v1/reports/{$pdf}/download")->assertNotFound();

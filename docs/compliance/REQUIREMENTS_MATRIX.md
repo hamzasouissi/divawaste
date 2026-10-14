@@ -144,3 +144,6 @@ Nothing in the product uses mock data.
 8. An external penetration test and a load test before production.
 
 Every gap is classified (must fix, business decision, V2, hardware test, polish) in [MVP_ACCEPTANCE.md](../MVP_ACCEPTANCE.md).
+
+The whole-application audit of 12–13 October 2026 (after phases 1–5), with what was executed and what was fixed, is in
+[ACCEPTANCE_AUDIT_2026-10-13.md](ACCEPTANCE_AUDIT_2026-10-13.md).

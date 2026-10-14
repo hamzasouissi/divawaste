@@ -70,6 +70,14 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute((int) config('app.api_rate_limit', 240))
             ->by($request->user()?->id ? 'u:'.$request->user()->id : 'ip:'.$request->ip()));
 
+        // Sign-in: five attempts a minute for one account from one address, so that a shift signing in behind the
+        // same address is not refused because of a neighbour; a wider ceiling per address still stops a sweep over
+        // many accounts. The lockout of an account after five failures is separate (M0-09).
+        RateLimiter::for('login', fn (Request $request) => [
+            Limit::perMinute(5)->by('login:'.mb_strtolower((string) $request->input('email')).'|'.$request->ip()),
+            Limit::perMinute((int) config('app.login_rate_limit_per_ip', 60))->by('login-ip:'.$request->ip()),
+        ]);
+
         // Generated PDFs: only the glyphs used are embedded (a label drops from ~1 MB to a few kB), and a
         // document can never pull a remote resource or run PHP, whatever text ends up in it.
         config([

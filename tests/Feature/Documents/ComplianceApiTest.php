@@ -3,6 +3,8 @@
 namespace Tests\Feature\Documents;
 
 use App\Modules\Catalog\Models\WasteType;
+use App\Modules\Documents\Actions\ManifestWorkflow;
+use App\Modules\Documents\Models\HazardousWasteManifest;
 use App\Modules\Identity\Models\User;
 use App\Modules\Notifications\BusinessEventNotification;
 use App\Modules\Providers\Models\ProviderAccreditation;
@@ -142,6 +144,31 @@ class ComplianceApiTest extends TestCase
         $this->assertSame('04 02 22', $slip['regulatory_code']);
         $this->assertSame('80.000', $slip['declared_weight_kg']);
         $this->assertSame($lot['lot_number'], DB::table('pickup_lots')->whereNotNull('hazardous_waste_manifest_id')->value('lot_number_snapshot'));
+    }
+
+    public function test_a_slip_names_every_waste_type_that_shares_its_regulatory_code(): void
+    {
+        $offcuts = $this->lot('80', hazardous: false);
+        $yarn = $this->tenant()->runAs($this->company, fn () => WasteType::query()->create([
+            'code' => 'FILS', 'name' => 'Déchets de fil', 'is_hazardous' => false, 'activated_at' => now(),
+            'regulatory_waste_code_id' => DB::table('regulatory_waste_codes')->where('code', '04 02 22')->value('id'),
+            'waste_family_id' => DB::table('waste_families')->where('code', 'textile_fibre')->value('id'),
+            'default_unit_id' => DB::table('units')->where('code', 'kg')->value('id'),
+        ]));
+        $zone = $this->tenant()->runAs($this->company, fn () => Zone::query()->where('site_id', $this->site->id)->firstOrFail());
+        $second = $this->industrial()->postJson('/api/v1/lots', ['site' => $this->site->ulid, 'zone' => $zone->ulid, 'waste_type' => $yarn->ulid, 'net_weight_kg' => '20'])->assertCreated()->json('data');
+        $lots = [$offcuts['ulid'], $second['ulid']];
+        $pickup = $this->industrial()->postJson('/api/v1/pickups', ['site' => $this->site->ulid, 'provider' => $this->provider->ulid, 'requested_date' => now()->toDateString(), 'lots' => $lots])->assertCreated()->json('data.ulid');
+        $this->industrial()->postJson("/api/v1/pickups/{$pickup}/submit")->assertOk();
+        $this->asProvider()->postJson("/api/v1/pickups/{$pickup}/confirm", ['confirmed_date' => now()->toDateString()])->assertOk();
+        $this->industrial()->postJson("/api/v1/pickups/{$pickup}/collect", ['lots' => array_map(fn ($ulid) => ['lot' => $ulid], $lots)])->assertOk();
+
+        // One slip for the code, 100 kg; it does not present yarn waste as offcuts.
+        $slip = $this->industrial()->getJson("/api/v1/manifests?filter[pickup]={$pickup}")->assertOk()->assertJsonCount(1, 'data')->json('data.0');
+        $this->assertSame('100.000', $slip['declared_weight_kg']);
+        $this->assertSame('Chutes de coupe, Déchets de fil', $slip['waste_type']);
+        $manifest = HazardousWasteManifest::query()->withoutGlobalScopes()->where('ulid', $slip['ulid'])->firstOrFail();
+        $this->assertSame('Chutes de coupe, Déchets de fil', $this->tenant()->runAs($this->company, fn () => app(ManifestWorkflow::class)->payload($manifest)['waste_type']));
     }
 
     public function test_annual_declaration_is_computed_from_the_year_then_validated_and_archived(): void
