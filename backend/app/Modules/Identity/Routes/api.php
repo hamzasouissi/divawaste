@@ -36,7 +36,8 @@ use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
 
 /*
- * Public authentication endpoints (strict per-IP limits: they accept credentials or send mail).
+ * Public authentication endpoints (strict limits: they accept credentials or send mail). Sign-in is limited per
+ * account and address, the others per address.
  */
 Route::post('auth/login', fn (Request $request, AttemptLogin $action) => response()->json(['data' => $action->handle($request->validate([
     'email' => ['required', 'string', 'email'],
@@ -45,7 +46,7 @@ Route::post('auth/login', fn (Request $request, AttemptLogin $action) => respons
     'code' => ['sometimes', 'nullable', 'string', 'max:10'],
     'recovery_code' => ['sometimes', 'nullable', 'string', 'max:50'],
     'mode' => ['sometimes', 'nullable', Rule::in(['token', 'session'])],
-]), $request)]))->name('auth.login')->middleware('throttle:5,1');
+]), $request)]))->name('auth.login')->middleware('throttle:login');
 
 Route::post('auth/forgot-password', function (Request $request) {
     // Always the same answer: the endpoint must not reveal whether an address has an account.

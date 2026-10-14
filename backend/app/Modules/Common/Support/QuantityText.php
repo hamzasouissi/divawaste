@@ -14,8 +14,8 @@ final class QuantityText
     public const LOCALES = ['fr', 'en'];
 
     private const UNITS = [
-        'fr' => ['kg' => 'kg', 't' => 't', 'm3' => 'm³', 'l' => 'L', 'piece' => 'pièce(s)', 'lot' => 'lot(s)', 'package' => 'colis'],
-        'en' => ['kg' => 'kg', 't' => 't', 'm3' => 'm³', 'l' => 'L', 'piece' => 'piece(s)', 'lot' => 'lot(s)', 'package' => 'package(s)'],
+        'fr' => ['kg' => 'kg', 't' => 't', 'm3' => 'm³', 'l' => 'l', 'piece' => 'pièce(s)', 'lot' => 'lot(s)', 'package' => 'colis'],
+        'en' => ['kg' => 'kg', 't' => 't', 'm3' => 'm³', 'l' => 'l', 'piece' => 'piece(s)', 'lot' => 'lot(s)', 'package' => 'package(s)'],
     ];
 
     /** @var array<string, array<string, string>> */

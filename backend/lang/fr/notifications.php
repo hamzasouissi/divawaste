@@ -30,7 +30,7 @@ return [
     'pickup' => [
         'requested' => [
             'title' => 'Nouvelle demande d\'enlèvement :number',
-            'body' => ':company demande un enlèvement le :date sur le site :site (:lots lots, :weight_kg kg).',
+            'body' => ':company demande un enlèvement le :date sur le site :site (:lots lot(s) : :quantity).',
         ],
         'confirmed' => [
             'title' => 'Enlèvement :number confirmé',
@@ -46,15 +46,15 @@ return [
         ],
         'collected' => [
             'title' => 'Enlèvement :number chargé',
-            'body' => 'Les lots de l\'enlèvement :number ont quitté le site (:weight_kg kg au départ).',
+            'body' => 'Les lots de l\'enlèvement :number ont quitté le site (:quantity au départ).',
         ],
         'received' => [
             'title' => 'Enlèvement :number réceptionné',
-            'body' => ':provider a réceptionné :weight_kg kg pour l\'enlèvement :number.',
+            'body' => ':provider a réceptionné :quantity pour l\'enlèvement :number.',
         ],
         'variance_flagged' => [
-            'title' => 'Écart de poids sur l\'enlèvement :number',
-            'body' => 'Poids reçu :received_kg kg pour :departure_kg kg au départ, soit un écart de :variance_pct %.',
+            'title' => 'Écart à la réception sur l\'enlèvement :number',
+            'body' => ':flagged lot(s) reçu(s) hors tolérance : :received reçu(s) pour :departure au départ.',
         ],
         'completed' => [
             'title' => 'Enlèvement :number clôturé',

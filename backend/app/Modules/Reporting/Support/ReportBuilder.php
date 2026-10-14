@@ -76,9 +76,10 @@ final class ReportBuilder
         return $type === 'economic_balance'
             ? $this->xlsx($filename, $title, [__('documents.report.month'), __('documents.report.xlsx.evacuated_kg'), __('documents.report.xlsx.net_balance', ['currency' => $company->currency_code])],
                 array_map(fn (array $m) => [$m['month'], (float) $m['evacuated_kg'], (float) $m['net_balance']], $data['by_month']))
-            : $this->xlsx($filename, $title, [__('documents.report.xlsx.rubric'), __('documents.report.xlsx.label'), __('documents.report.xlsx.quantity_kg'), __('documents.report.lots')], [
-                ...array_map(fn (array $r) => [__('documents.report.xlsx.waste_type'), $r['name'], (float) $r['kg'], $r['lots']], $data['by_waste_type']),
-                ...array_map(fn (array $r) => [__('documents.report.site'), $r['name'], (float) $r['kg'], $r['lots']], $data['by_site']),
+            : $this->xlsx($filename, $title, [__('documents.report.xlsx.rubric'), __('documents.report.xlsx.label'), __('documents.report.xlsx.quantity_kg'), __('documents.report.lots'), __('documents.report.xlsx.unweighed_lots')], [
+                // No weighed lot on the line: the weight cell stays empty, and the unweighed lots are counted beside it.
+                ...array_map(fn (array $r) => [__('documents.report.xlsx.waste_type'), $r['name'], $r['unweighed_lots'] >= $r['lots'] ? null : (float) $r['kg'], $r['lots'], $r['unweighed_lots']], $data['by_waste_type']),
+                ...array_map(fn (array $r) => [__('documents.report.site'), $r['name'], $r['unweighed_lots'] >= $r['lots'] ? null : (float) $r['kg'], $r['lots'], $r['unweighed_lots']], $data['by_site']),
                 ...array_map(fn (array $r) => [__('documents.report.channel'), $r['channel'] === null ? __('documents.report.xlsx.channel_undeclared') : __('exports.channel.'.$r['channel']), (float) $r['kg'], null], $data['by_channel']),
                 ...array_map(fn (array $r) => [__('documents.report.xlsx.month_generated'), $r['month'], (float) $r['generated_kg'], null], $data['by_month']),
                 [__('documents.report.xlsx.indicator'), __('documents.report.xlsx.recovery_rate'), $data['totals']['recovery_rate_pct'] === null ? null : (float) $data['totals']['recovery_rate_pct'], null],

@@ -127,6 +127,7 @@ final class PickupWorkflow
     {
         return $this->step($pickup, [PickupStatus::Confirmed], PickupStatus::Collected, function (Pickup $p) use ($loaded, $actor, $quantities) {
             $total = '0';
+            $known = false;
             foreach ($this->lines($p) as $line) {
                 $lot = WasteLot::query()->findOrFail($line->waste_lot_id);
                 if (! array_key_exists($lot->ulid, $loaded)) {
@@ -143,9 +144,11 @@ final class PickupWorkflow
                     'departure_quantity' => $line->measure_dimension === 'mass' ? null : ($quantities[$lot->ulid] ?? $line->declared_quantity)])->save();
                 $this->lots->handle($lot, LotStatus::Collected, $actor);
                 $total = bcadd($total, $weight ?? '0', 3);
+                $known = $known || $weight !== null;
             }
             // The total is the sum of the weights that are known; the lots without one are counted apart, never as 0 kg.
-            $p->forceFill(['departure_weight_kg' => $total, 'departure_weight_source' => 'lots_sum', 'collected_at' => now(), 'collected_by_user_id' => $actor->id]);
+            // When no lot that left has a weight there is no total at all.
+            $p->forceFill(['departure_weight_kg' => $known ? $total : null, 'departure_weight_source' => 'lots_sum', 'collected_at' => now(), 'collected_by_user_id' => $actor->id]);
         });
     }
 
@@ -161,7 +164,8 @@ final class PickupWorkflow
     {
         return $this->step($pickup, [PickupStatus::Collected], PickupStatus::Received, function (Pickup $p) use ($received, $actor, $quantities) {
             $total = '0';
-            $weighed = ['departure' => '0', 'received' => '0', 'missing' => false, 'unknown' => false];
+            $known = false;
+            $weighed = ['departure' => '0', 'received' => '0', 'missing' => false, 'unknown' => false, 'lines' => 0];
             $statuses = [];
             foreach ($this->lines($p) as $line) {
                 if ($line->line_status !== 'loaded') {
@@ -208,8 +212,10 @@ final class PickupWorkflow
                 ])->save();
                 $statuses[] = $result['status'];
                 $total = bcadd($total, (string) ($kg ?? '0'), 3);
+                $known = $known || $kg !== null;
                 if ($mass) {
                     $weighed['received'] = bcadd($weighed['received'], (string) $kg, 3);
+                    $weighed['lines']++;
                 }
             }
 
@@ -222,7 +228,9 @@ final class PickupWorkflow
                 $statuses[] = $whole['status'];
             }
             $status = Tolerance::worst($statuses);
-            $p->forceFill(['received_weight_kg' => $total, 'weight_variance_kg' => $weighed['unknown'] ? null : ($whole['difference'] ?? bcsub($weighed['received'], $weighed['departure'], 3)),
+            // No lot received with a weight = no received total; no weighed lot compared = no difference in kilograms.
+            $p->forceFill(['received_weight_kg' => $known ? $total : null,
+                'weight_variance_kg' => $weighed['unknown'] || $weighed['lines'] === 0 ? null : ($whole['difference'] ?? bcsub($weighed['received'], $weighed['departure'], 3)),
                 'weight_variance_pct' => $whole['pct'], 'variance_threshold_pct' => $default['warning_pct'], 'tolerance_status' => $status,
                 'variance_flagged' => Tolerance::needsReview($status), 'received_at' => now(), 'received_by_user_id' => $actor->id]);
             $p->save();

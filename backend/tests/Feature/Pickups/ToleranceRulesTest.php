@@ -172,6 +172,17 @@ class ToleranceRulesTest extends TestCase
             // No weight was compared: none is reported.
             ->assertJsonPath('data.lots.0.weight_variance_pct', null)->assertJsonPath('data.lots.0.received_weight_kg', null);
 
+        // Nothing of this pickup was weighed: it has no weight at departure nor on arrival — not 0 kg — and says how
+        // many lots that is.
+        $this->as($this->manager)->getJson("/api/v1/pickups/{$pickup}")->assertJsonPath('data.departure_weight_kg', null)->assertJsonPath('data.received_weight_kg', null)
+            ->assertJsonPath('data.weight_variance_kg', null)->assertJsonPath('data.departure_unweighed_lots', 1)->assertJsonPath('data.received_unweighed_lots', 1);
+        // The messages each party received speak in pieces too, in both languages, and never of "0 kg".
+        $said = fn (string $type) => json_decode((string) DB::table('notifications')->where('type', $type)->value('data'), true)['params'];
+        $this->assertSame(['100 pièce(s)', '100 piece(s)'], [$said('pickup.requested')['quantity'], $said('pickup.requested')['quantity_en']]);
+        $this->assertSame('100 pièce(s)', $said('pickup.collected')['quantity']);
+        $this->assertSame('108 pièce(s)', $said('pickup.received')['quantity']);
+        $this->assertSame([1, '108 pièce(s)', '100 pièce(s)'], [$said('pickup.variance_flagged')['flagged'], $said('pickup.variance_flagged')['received'], $said('pickup.variance_flagged')['departure']]);
+
         // What was declared, what left and what arrived are three figures; none overwrote another.
         $line = DB::table('pickup_lots')->first();
         $this->assertSame(['100.000', '100.000', '108.000', '8.000'], [$line->declared_quantity, $line->departure_quantity, $line->received_quantity, $line->quantity_variance]);

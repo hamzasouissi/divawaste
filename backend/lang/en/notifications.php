@@ -27,13 +27,13 @@ return [
         'site_unverifiable' => ['title' => 'Site capacity cannot be verified — :site', 'body' => 'Known weight on the site: :detail, but :missing lot(s) are not weighed (:lots). This is not a confirmed exceedance; the capacity cannot be called respected: weigh these lots.'],
     ],
     'pickup' => [
-        'requested' => ['title' => 'New pickup request :number', 'body' => ':company requests a pickup on :date at site :site (:lots lots, :weight_kg kg).'],
+        'requested' => ['title' => 'New pickup request :number', 'body' => ':company requests a pickup on :date at site :site (:lots lot(s): :quantity).'],
         'confirmed' => ['title' => 'Pickup :number confirmed', 'body' => ':provider confirmed pickup :number for :date.'],
         'refused' => ['title' => 'Pickup :number refused', 'body' => ':provider refused pickup :number. Reason: :reason'],
         'cancelled' => ['title' => 'Pickup :number cancelled', 'body' => ':company cancelled pickup :number. Reason: :reason'],
-        'collected' => ['title' => 'Pickup :number loaded', 'body' => 'The lots of pickup :number left the site (:weight_kg kg at departure).'],
-        'received' => ['title' => 'Pickup :number received', 'body' => ':provider received :weight_kg kg for pickup :number.'],
-        'variance_flagged' => ['title' => 'Weight discrepancy on pickup :number', 'body' => 'Received :received_kg kg for :departure_kg kg at departure, a :variance_pct % discrepancy.'],
+        'collected' => ['title' => 'Pickup :number loaded', 'body' => 'The lots of pickup :number left the site (:quantity at departure).'],
+        'received' => ['title' => 'Pickup :number received', 'body' => ':provider received :quantity for pickup :number.'],
+        'variance_flagged' => ['title' => 'Discrepancy at reception on pickup :number', 'body' => ':flagged lot(s) received outside tolerance: :received received for :departure at departure.'],
         'completed' => ['title' => 'Pickup :number closed', 'body' => 'Pickup :number is closed.'],
     ],
     'accreditation' => [

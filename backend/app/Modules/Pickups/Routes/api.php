@@ -68,7 +68,10 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         $filter = $input['filter'] ?? [];
         $sort = $input['sort'] ?? '-requested_date';
 
-        return PickupResource::collection(Pickup::query()->withCount('lines')->withSum('lines', 'declared_weight_kg')
+        return PickupResource::collection(Pickup::query()->withSum('lines', 'declared_weight_kg')
+            // Beside each total, the lots it leaves out because nobody weighed them at that stage.
+            ->withCount(['lines', 'lines as departure_unweighed_lots' => fn ($query) => $query->whereNotNull('loaded_at')->whereNull('departure_weight_kg'),
+                'lines as received_unweighed_lots' => fn ($query) => $query->whereNotNull('received_at')->whereNull('received_weight_kg')])
             // A provider never sees drafts: they have not been sent to it.
             ->when($provider, fn ($query) => $query->where('status', '!=', PickupStatus::Draft))
             ->when($siteIds !== null, fn ($query) => $query->whereIn('site_id', $siteIds))

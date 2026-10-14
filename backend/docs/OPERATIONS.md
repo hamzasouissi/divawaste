@@ -33,6 +33,29 @@ Deploy steps: `composer install --no-dev --optimize-autoloader`, `php artisan mi
 `--class=ProvisionalReferenceSeeder` (all idempotent), `php artisan config:cache route:cache`, restart the queue workers.
 Never run `DemoSeeder` in production.
 
+### Upgrading an existing database (rehearsed on 12–13 Oct 2026 on a copy of the demo database)
+
+The copy was 7 migrations behind (2026_10_17 … 2026_10_23). Steps, in this order:
+
+1. Back up: `mysqldump --single-transaction --routines --triggers --hex-blob <db> > backup.sql`, then check it — the file
+   ends with "Dump completed", and a restore into an empty database gives the same checksum (`CHECKSUM TABLE`) and
+   structure for every table. Keep `storage/app/private` with it.
+2. `php artisan migrate --force` (about 4 s on the copy: 82 lots, 7 pickups, 561 audit rows).
+3. `php artisan db:seed --class=AuthorizationSeeder --force` — adds `pickups.override_provider_requirements` to client
+   administrator and environment manager; roles edited by hand and every assignment are left as they are.
+4. `php artisan limits:evaluate --dry-run`, read who would be told what, then `php artisan limits:evaluate`.
+
+What the migrations change in existing data: a 0 kg that was a flagged placeholder (counted waste nobody weighed)
+becomes empty on the lot and on its pickup line; every packaged lot gets a count of one marked as a default; every zone
+is measured in packages; existing stock limits become kilogram limits with the same figure. Issued slips, signatures,
+documents, audit rows and notifications are not touched.
+
+Going back: `php artisan migrate:rollback --step=7` restores the previous structure and data, except that a placeholder
+turned empty in a pickup's departure weight stays empty. **The exact way back is the backup.**
+
+The rehearsal ran on MySQL 8.0.44, the development server. The cahier requires MariaDB 10.11 or later: run the same
+rehearsal once on the staging MariaDB before going live.
+
 Static files: `ngsw-worker.js`, `ngsw.json` and `index.html` must be served with `Cache-Control: no-cache`; hashed files
 can be cached for a year.
 
@@ -49,7 +72,7 @@ Scheduled tasks (`routes/console.php`):
 |---|---|---|
 | 05:00 | `subscriptions:run` | Bills the periods that start, warns before the end of trials, marks overdue invoices and expired subscriptions |
 | 06:00 | `accreditations:alert` | Warns 30 days before an accreditation expires and when it has expired (M4-02) |
-| 06:20 | `limits:evaluate` | Compares every site with its limits (zone room and load, site weight, stock limits) and announces the states nobody was told about yet. Run it once by hand after a deployment that introduces limits (`php artisan limits:evaluate`); running it again announces nothing twice |
+| 06:20 | `limits:evaluate` | Compares every site with its limits (zone room and load, site weight, stock limits) and announces the states nobody was told about yet. Run it once by hand after a deployment that introduces limits (`php artisan limits:evaluate`); running it again announces nothing twice. `php artisan limits:evaluate --dry-run` lists first what it would announce, to whom and whether by email, and stores and sends nothing |
 
 Both are declared `withoutOverlapping()` and `onOneServer()`.
 
@@ -78,8 +101,10 @@ Not provided by the application. To set up on the infrastructure:
 - Real SMTP with SPF/DKIM for the sending domain.
 - Security headers at the web server (`X-Content-Type-Options`, `Referrer-Policy`, a Content-Security-Policy for the
   Angular application).
-- The API rate limiter is per user or per IP; put the reverse proxy's address in the trusted proxies so the real client
-  IP is used.
+- The API rate limiter is per user or per IP, and sign-in is limited to 5 attempts a minute per account and address
+  (60 a minute per address in all). Behind Nginx or Cloudflare set `TRUSTED_PROXIES` in `.env` (the proxy's addresses,
+  or `*` when the server is reachable only through it): without it every request carries the proxy's address, so the
+  limits, the audit log and the signatures would record one address for everybody.
 - An external penetration test has not been done.
 - Personal data export and erasure requests have no endpoint yet: handle them by hand and log them.
 
