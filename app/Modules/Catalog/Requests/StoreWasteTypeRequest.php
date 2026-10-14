@@ -59,6 +59,11 @@ class StoreWasteTypeRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator) {
+            // A hazardous type is created with its regulatory code — given here, or the catalogue's when it belongs to the
+            // company's nomenclature. Without it no tracking slip could be issued for its lots, and none is invented.
+            if ($validator->errors()->isEmpty() && $this->becomesHazardousWithoutCode()) {
+                $validator->errors()->add('regulatory_code', __('validation.custom.regulatory_code.hazardous'));
+            }
             $lines = $this->input('default_composition');
             if ($validator->errors()->isNotEmpty() || ! is_array($lines)) {
                 return;
@@ -69,6 +74,23 @@ class StoreWasteTypeRequest extends FormRequest
                 $validator->errors()->add('default_composition', 'Composition percentages must total 100.');
             }
         }];
+    }
+
+    private function becomesHazardousWithoutCode(): bool
+    {
+        if ($this->filled('regulatory_code')) {
+            return false;
+        }
+        $catalog = $this->filled('catalog_item') ? DB::table('waste_catalog_items')->where('code', $this->input('catalog_item'))
+            ->first(['default_regulatory_waste_code_id', 'default_is_hazardous']) : null;
+        $codeSystem = DB::table('companies as c')->join('countries as k', 'k.id', '=', 'c.country_id')
+            ->where('c.id', app(TenantContext::class)->companyId())->value('k.waste_code_system');
+        // The catalogue's code is kept only when it is one of the company's country (see CreateWasteType).
+        $catalogCode = $catalog?->default_regulatory_waste_code_id !== null
+            && DB::table('regulatory_waste_codes')->where('id', $catalog->default_regulatory_waste_code_id)->value('code_system') === $codeSystem;
+        $hazardous = $this->has('is_hazardous') ? $this->boolean('is_hazardous') : (bool) ($catalog->default_is_hazardous ?? false);
+
+        return $hazardous && ! $catalogCode;
     }
 
     public function toData(): CreateWasteTypeData

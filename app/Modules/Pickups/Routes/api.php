@@ -8,6 +8,7 @@ use App\Modules\Pickups\Actions\PickupWorkflow;
 use App\Modules\Pickups\Enums\PickupStatus;
 use App\Modules\Pickups\Models\Pickup;
 use App\Modules\Pickups\Resources\PickupResource;
+use App\Modules\Pickups\Support\PickupCompliance;
 use App\Modules\Pickups\Support\PickupNotifier;
 use App\Modules\Pickups\Support\ProviderRequirements;
 use App\Modules\Providers\Models\ExternalPartner;
@@ -61,6 +62,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'filter.from' => ['nullable', 'date'],
             'filter.to' => ['nullable', 'date', 'after_or_equal:filter.from'],
             'filter.variance_flagged' => ['nullable', 'boolean'],
+            'filter.documents_outstanding' => ['nullable', 'boolean'],
             'filter.search' => ['nullable', 'string', 'max:32'],
             'sort' => ['nullable', Rule::in(['requested_date', '-requested_date', 'pickup_number', '-pickup_number'])],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
@@ -68,7 +70,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         $filter = $input['filter'] ?? [];
         $sort = $input['sort'] ?? '-requested_date';
 
-        return PickupResource::collection(Pickup::query()->withSum('lines', 'declared_weight_kg')
+        return PickupResource::collection(PickupCompliance::withState(Pickup::query()->withSum('lines', 'declared_weight_kg'))
             // Beside each total, the lots it leaves out because nobody weighed them at that stage.
             ->withCount(['lines', 'lines as departure_unweighed_lots' => fn ($query) => $query->whereNotNull('loaded_at')->whereNull('departure_weight_kg'),
                 'lines as received_unweighed_lots' => fn ($query) => $query->whereNotNull('received_at')->whereNull('received_weight_kg')])
@@ -82,6 +84,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             ->when($filter['from'] ?? null, fn ($query, $value) => $query->whereDate('requested_date', '>=', $value))
             ->when($filter['to'] ?? null, fn ($query, $value) => $query->whereDate('requested_date', '<=', $value))
             ->when(isset($filter['variance_flagged']), fn ($query) => $query->where('variance_flagged', (bool) $filter['variance_flagged']))
+            // Pickups that left and whose slips are not all signed, or that carry a lot with no slip — closed or not.
+            ->when($filter['documents_outstanding'] ?? false, fn ($query) => PickupCompliance::whereOutstanding($query))
             ->when($filter['search'] ?? null, fn ($query, $value) => $query->where('pickup_number', 'like', addcslashes(strtoupper($value), '%_\\').'%'))
             ->orderBy(ltrim($sort, '-'), str_starts_with($sort, '-') ? 'desc' : 'asc')->orderByDesc('id')
             ->paginate(min((int) $request->integer('per_page', 25), 100)));
@@ -208,17 +212,27 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         $loaded = collect($input['lots'])->mapWithKeys(fn ($l) => [strtoupper($l['lot']) => isset($l['departure_weight_kg']) ? (string) $l['departure_weight_kg'] : null])->all();
         $pickup = $workflow->collect($pickup, $loaded, $request->user(), $quantities);
         $thresholds->forSite($pickup->site_id);
+        // The receiver is told what left and, when it asks for something, whether that is still met on what left.
         $notifier->collected($pickup);
-        // No waste leaves without its tracking slip: the ones not issued yet are issued now. A slip that cannot be
-        // issued (hazardous waste without a regulatory code) does not undo a loading that has physically happened.
+        // No waste leaves without its tracking slip: the ones not issued yet are issued now. A hazardous lot whose type
+        // has no regulatory code gets none — the others get theirs — and a loading that has physically happened is
+        // never undone for it.
         try {
             $manifests->generate($pickup, $request->user());
         } catch (BusinessRuleViolation) {
-            // Reported on the pickup page, where the slips are listed and can be issued again.
+            // Reported on the pickup page, where the slips are listed, the missing codes named, and the slips issued again.
         }
 
         return $show($pickup);
     })->name('pickups.collect');
+
+    // A blocking requirement of the receiver that was no longer met when the waste left: someone entitled to send a
+    // pickup against such a requirement says why. It explains the departure; it never undoes it.
+    Route::post('pickups/{pickup}/loading-requirements/acknowledge', function (Request $request, Pickup $pickup, ProviderRequirements $requirements) use ($allow, $show) {
+        $allow($request, 'pickups.override_provider_requirements', $pickup->site_id);
+
+        return $show($requirements->acknowledgeLoadingException($pickup, (string) $request->validate(['reason' => ['required', 'string', 'max:1000']])['reason'], $request->user()));
+    })->name('pickups.loading-requirements.acknowledge');
 
     Route::post('pickups/{pickup}/acknowledge-variance', function (Request $request, Pickup $pickup, PickupWorkflow $workflow) use ($allow, $show) {
         $allow($request, 'pickups.complete', $pickup->site_id);

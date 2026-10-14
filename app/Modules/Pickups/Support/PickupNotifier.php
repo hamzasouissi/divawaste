@@ -2,6 +2,7 @@
 
 namespace App\Modules\Pickups\Support;
 
+use App\Modules\Common\Support\Constraint;
 use App\Modules\Common\Support\QuantityText;
 use App\Modules\Notifications\Actions\NotifyUsers;
 use App\Modules\Pickups\Models\Pickup;
@@ -41,9 +42,65 @@ final class PickupNotifier
         $this->toProvider($pickup, 'provider.pickups.view', 'pickup.cancelled', ['reason' => $pickup->cancellation_reason]);
     }
 
+    /**
+     * What left. When the receiver asks something of a collection and it is no longer met — or can no longer be
+     * verified — on what left, the receiver is told that instead, with the requirements and their figures; the people
+     * who may send a pickup against a blocking requirement are asked to explain the exception. One loading, one message.
+     */
     public function collected(Pickup $pickup): void
     {
-        $this->toProvider($pickup, 'provider.pickups.receive', 'pickup.collected', $this->measure($pickup, 'departure', 'quantity'));
+        $quantity = $this->measure($pickup, 'departure', 'quantity');
+        $loading = $pickup->loading_requirements;
+        $unmet = array_values(array_filter($loading['constraints'] ?? [], fn (array $constraint) => in_array($constraint['key'], $loading['unmet'] ?? [], true)));
+        if ($unmet === []) {
+            $this->toProvider($pickup, 'provider.pickups.receive', 'pickup.collected', $quantity);
+
+            return;
+        }
+        $params = $this->names($pickup) + $quantity + $this->requirements($unmet) + ['left' => count($loading['left_behind'] ?? [])];
+        if ($pickup->provider_company_id !== null) {
+            $this->notify->toCompanyPermission((int) $pickup->provider_company_id, 'provider.pickups.receive', 'pickup.requirements_unmet_at_loading', $params, '/provider/pickups/'.$pickup->ulid);
+        }
+        if ($pickup->transporter_company_id !== null && $pickup->transporter_company_id !== $pickup->provider_company_id) {
+            $this->notify->toCompanyPermission((int) $pickup->transporter_company_id, 'provider.pickups.receive', 'pickup.collected', $this->names($pickup) + $quantity, '/provider/pickups/'.$pickup->ulid);
+        }
+        if (($loading['exception'] ?? null) !== null) {
+            $this->context->runAs(Company::query()->findOrFail($pickup->company_id), fn () => $this->notify
+                ->toSitePermission($pickup->site_id, 'pickups.override_provider_requirements', 'pickup.requirement_exception', $params, '/pickups/'.$pickup->ulid));
+        }
+    }
+
+    /**
+     * The requirements not met on what left, in words and in their units, for each language:
+     * "minimum 2 t : 1,66 t chargée(s), il manque 0,34 t" / "minimum 2 t: 1.66 t loaded, 0.34 t short".
+     *
+     * @param  list<array<string, mixed>>  $unmet
+     * @return array<string, string|null>
+     */
+    private function requirements(array $unmet): array
+    {
+        return QuantityText::localized('requirements', function (string $locale) use ($unmet): string {
+            $fr = $locale === 'fr';
+
+            return implode('; ', array_map(function (array $constraint) use ($fr, $locale): string {
+                if ($constraint['kind'] === 'packaging') {
+                    $packaging = QuantityText::packaging((string) $constraint['packaging_type'], $locale);
+
+                    return $fr ? "{$packaging} demandé : {$constraint['outside_count']} lot(s) dans un autre conditionnement"
+                        : "{$packaging} asked for: {$constraint['outside_count']} lot(s) in another packaging";
+                }
+                $packaging = $constraint['packaging_type'] ?? null;
+                $minimum = 'minimum '.QuantityText::amount($constraint['min'], (string) $constraint['unit'], $packaging, $locale);
+                $loaded = QuantityText::amount($constraint['used'], (string) $constraint['unit'], $packaging, $locale);
+                if ($constraint['outcome'] === Constraint::UNVERIFIABLE) {
+                    return $fr ? "{$minimum} : {$loaded} chargé(s), {$constraint['missing_count']} lot(s) sans quantité mesurée"
+                        : "{$minimum}: {$loaded} loaded, {$constraint['missing_count']} lot(s) with no measured quantity";
+                }
+                $short = QuantityText::amount($constraint['shortfall'], (string) $constraint['unit'], $packaging, $locale);
+
+                return $fr ? "{$minimum} : {$loaded} chargé(s), il manque {$short}" : "{$minimum}: {$loaded} loaded, {$short} short";
+            }, $unmet));
+        });
     }
 
     public function received(Pickup $pickup): void

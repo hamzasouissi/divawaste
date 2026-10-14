@@ -52,7 +52,9 @@ final class ManifestWorkflow
      */
     public function generate(Pickup $pickup, User $actor): Collection
     {
-        if (! in_array($pickup->status, [PickupStatus::Confirmed, PickupStatus::Collected, PickupStatus::Received], true)) {
+        // A closed pickup may still carry a lot that left without its slip (a hazardous type whose code was completed
+        // afterwards): that slip is issued then. The slips it already has are returned as they are.
+        if (! in_array($pickup->status, [PickupStatus::Confirmed, PickupStatus::Collected, PickupStatus::Received, PickupStatus::Completed], true)) {
             throw new BusinessRuleViolation('MANIFEST_PICKUP_NOT_READY', 'The slip is issued once the pickup has been confirmed.');
         }
 
@@ -66,8 +68,13 @@ final class ManifestWorkflow
             if ($lines->isEmpty()) {
                 throw new BusinessRuleViolation('MANIFEST_NO_LOTS', 'This pickup carries no lot: there is nothing to put on a slip.');
             }
-            if ($lines->contains(fn ($line) => $line->is_hazardous && $line->regulatory_waste_code_id === null)) {
-                throw new BusinessRuleViolation('MANIFEST_CODE_MISSING', 'A hazardous lot has no regulatory waste code: complete the waste type first.');
+            // A hazardous lot whose type has no regulatory code cannot be put on a slip: a slip without its code would
+            // mislead. Those lots wait — they are named on the pickup — and the other slips are issued all the same.
+            $lines = $lines->reject(fn ($line) => $line->is_hazardous && $line->regulatory_waste_code_id === null)->values();
+            if ($lines->isEmpty()) {
+                $missing = self::withoutCode($pickup->id);
+                throw new BusinessRuleViolation('MANIFEST_CODE_MISSING', 'No slip can be issued: '.$missing->map(fn ($type) => "{$type['name']} ({$type['code']}, lots ".implode(', ', $type['lots']).')')->implode('; ')
+                    .' is hazardous and has no regulatory waste code. Set the code on the waste type, then issue the slip.', ['waste_types' => $missing->all()]);
             }
 
             $owner = Company::query()->findOrFail($pickup->company_id);
@@ -287,6 +294,21 @@ final class ManifestWorkflow
                     'quantity' => $line->measure_dimension === 'mass' ? null : ($line->departure_quantity ?? $line->declared_quantity),
                     'received_quantity' => $line->received_quantity])->all(),
         ];
+    }
+
+    /**
+     * Hazardous lots of a pickup that no slip can carry because their waste type has no regulatory code, by type.
+     *
+     * @return Collection<int, array{waste_type: string, code: string, name: string, lots: list<string>}>
+     */
+    public static function withoutCode(int $pickupId): Collection
+    {
+        return DB::table('pickup_lots as pl')->join('waste_lots as l', 'l.id', '=', 'pl.waste_lot_id')->join('waste_types as t', 't.id', '=', 'l.waste_type_id')
+            ->where('pl.pickup_id', $pickupId)->where('pl.line_status', '!=', 'not_loaded')->where('pl.is_hazardous', true)
+            ->whereNull('pl.regulatory_waste_code_id')->whereNull('pl.hazardous_waste_manifest_id')->orderBy('pl.id')
+            ->get(['t.ulid', 't.code', 't.name', 'pl.lot_number_snapshot'])->groupBy('ulid')
+            ->map(fn (Collection $lots) => ['waste_type' => (string) $lots->first()->ulid, 'code' => (string) $lots->first()->code, 'name' => (string) $lots->first()->name,
+                'lots' => array_values($lots->pluck('lot_number_snapshot')->map(fn ($n) => (string) $n)->all())])->values();
     }
 
     /**

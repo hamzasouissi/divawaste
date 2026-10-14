@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Audit\Services\AuditLogger;
+use App\Modules\Catalog\Models\WasteType;
 use App\Modules\Catalog\Support\UnitConversion;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Models\StoredFile;
@@ -8,6 +9,7 @@ use App\Modules\Common\Support\FileStorage;
 use App\Modules\Common\Support\Measure;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Notifications\Actions\NotifyUsers;
+use App\Modules\Pickups\Support\ProviderRequirements;
 use App\Modules\Providers\Models\ExternalPartner;
 use App\Modules\Providers\Models\PartnerRequirement;
 use App\Modules\Providers\Models\ProviderAcceptedWaste;
@@ -17,6 +19,7 @@ use App\Modules\Providers\Models\ProviderProfile;
 use App\Modules\Providers\Support\ProviderDirectory;
 use App\Modules\Tenancy\Enums\CompanyType;
 use App\Modules\Tenancy\Models\Company;
+use App\Modules\Tenancy\Rules\TenantExists;
 use App\Modules\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -126,6 +129,12 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
         $codes = app(ReferenceCodes::class);
         $rule = fn (object $row): array => [
             'family' => $codes->code('waste_families', $row->waste_family_id === null ? null : (int) $row->waste_family_id),
+            // One waste type rather than the whole family: one of the company's own types for what it wrote down, an item
+            // of the shared catalogue for what a provider publishes. Its line replaces the family's for its lots unless
+            // it comes in addition to it.
+            'waste_type' => ($row->waste_type_id ?? null) === null ? null : (array) DB::table('waste_types')->where('id', $row->waste_type_id)->first(['ulid', 'code', 'name']),
+            'catalog_item' => $codes->code('waste_catalog_items', ($row->waste_catalog_item_id ?? null) === null ? null : (int) $row->waste_catalog_item_id),
+            'adds_to_family' => (bool) ($row->adds_to_family ?? false),
             'channel' => $codes->code('treatment_channels', (int) $row->treatment_channel_id),
             'min_quantity' => $row->min_quantity === null ? null : (string) $row->min_quantity, 'min_unit' => $row->min_unit_code,
             'min_packaging_type' => $codes->code('packaging_types', $row->min_packaging_type_id === null ? null : (int) $row->min_packaging_type_id),
@@ -206,6 +215,9 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
             'requirements' => ['present', 'array', 'max:100'],
             'requirements.*.ulid' => ['nullable', 'string', 'ulid'],
             'requirements.*.family' => ['required', 'string', Rule::exists('waste_families', 'code')],
+            // One of the company's own waste types of that family, when the requirement is about it alone.
+            'requirements.*.waste_type' => ['nullable', 'string', 'ulid', new TenantExists(WasteType::class)],
+            'requirements.*.adds_to_family' => ['sometimes', 'boolean'],
             'requirements.*.channel' => ['required', 'string', Rule::exists('treatment_channels', 'code')->where('is_active', true)],
             // A line asks something: a minimum, a packaging, or both.
             'requirements.*.min_quantity' => ['nullable', 'required_without:requirements.*.required_packaging_type', 'decimal:0,3', 'gt:0'],
@@ -217,8 +229,32 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
             'requirements.*.contract_reference' => ['nullable', 'string', 'max:191'],
             'requirements.*.notes' => ['nullable', 'string', 'max:500'],
         ]);
+        $types = WasteType::query()->whereIn('ulid', collect($input['requirements'])->pluck('waste_type')->filter()->map(fn ($ulid) => strtoupper((string) $ulid))->all())
+            ->get()->keyBy('ulid');
+        $errors = [];
+        foreach ($input['requirements'] as $index => $line) {
+            $type = isset($line['waste_type']) ? $types->get(strtoupper($line['waste_type'])) : null;
+            if ($type === null) {
+                continue;
+            }
+            if ((int) $type->waste_family_id !== (int) $codes->id('waste_families', $line['family'])) {
+                $errors["requirements.{$index}.waste_type"] = [__('validation.custom.requirement.family')];
+            }
+            // A minimum in pieces or in volume of a type that is neither counted that way nor convertible could never be verified.
+            $unit = $line['min_unit'] ?? null;
+            if ($unit !== null && ! Measure::suits($unit, $codes->code('units', $type->default_unit_id), $type->density_kg_m3 === null ? null : (string) $type->density_kg_m3,
+                $type->unit_weight_kg === null ? null : (string) $type->unit_weight_kg)) {
+                $errors["requirements.{$index}.min_unit"] = [__('validation.custom.requirement.unit', ['type' => $type->name, 'unit' => $unit])];
+            }
+        }
+        foreach (ProviderRequirements::duplicates(array_map(fn (array $line) => ['waste_type' => isset($line['waste_type']) ? strtoupper($line['waste_type']) : null] + $line, $input['requirements']), 'waste_type') as $index => $what) {
+            $errors["requirements.{$index}"] = [__('validation.custom.requirement.duplicate', ['what' => $what])];
+        }
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
 
-        DB::transaction(function () use ($input, $partner, $codes, $request) {
+        DB::transaction(function () use ($input, $partner, $codes, $request, $types) {
             $existing = PartnerRequirement::query()->where('external_partner_id', $partner->id)->lockForUpdate()->get()->keyBy('ulid');
             $kept = [];
             foreach ($input['requirements'] as $index => $line) {
@@ -226,6 +262,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
                 $unit = $minimum === null ? null : (string) $line['min_unit'];
                 $values = [
                     'waste_family_id' => $codes->id('waste_families', $line['family']), 'treatment_channel_id' => $codes->id('treatment_channels', $line['channel']),
+                    'waste_type_id' => isset($line['waste_type']) ? $types->get(strtoupper($line['waste_type']))?->id : null,
+                    'adds_to_family' => isset($line['waste_type']) && (bool) ($line['adds_to_family'] ?? false),
                     'min_quantity' => $minimum, 'min_unit_code' => $unit,
                     'min_packaging_type_id' => $unit === Measure::PACKAGE ? $codes->id('packaging_types', $line['min_packaging_type'] ?? null) : null,
                     'required_packaging_type_id' => $codes->id('packaging_types', $line['required_packaging_type'] ?? null),
@@ -312,7 +350,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
                 'min_quantity' => $row->min_quantity, 'min_unit' => $row->min_unit_code,
                 'min_packaging_type' => $codes->code('packaging_types', $row->min_packaging_type_id),
                 'required_packaging_type' => $codes->code('packaging_types', $row->required_packaging_type_id),
-                'is_blocking' => (bool) $row->is_blocking,
+                'is_blocking' => (bool) $row->is_blocking, 'adds_to_family' => (bool) $row->adds_to_family,
                 'min_quantity_kg' => $row->min_quantity_kg, 'notes' => $row->notes,
             ]),
         ];
@@ -344,10 +382,26 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
             'accepted_wastes.*.min_packaging_type' => ['nullable', 'required_if:accepted_wastes.*.min_unit,package', 'string', Rule::exists('packaging_types', 'code')->where('is_active', true)],
             'accepted_wastes.*.required_packaging_type' => ['nullable', 'string', Rule::exists('packaging_types', 'code')->where('is_active', true)],
             'accepted_wastes.*.is_blocking' => ['sometimes', 'boolean'],
+            // A line of one waste type (a catalogue item) replaces the line of its family for the lots of that type,
+            // unless it comes in addition to it.
+            'accepted_wastes.*.adds_to_family' => ['sometimes', 'boolean'],
             // The former name of a minimum in kilograms.
             'accepted_wastes.*.min_quantity_kg' => ['nullable', 'decimal:0,3', 'gte:0'],
             'accepted_wastes.*.notes' => ['nullable', 'string', 'max:500'],
         ]);
+        $errors = [];
+        foreach ($input['accepted_wastes'] as $index => $waste) {
+            $item = isset($waste['catalog_item']) ? DB::table('waste_catalog_items')->where('code', $waste['catalog_item'])->value('waste_family_id') : null;
+            if ($item !== null && isset($waste['family']) && (int) $item !== (int) $codes->id('waste_families', $waste['family'])) {
+                $errors["accepted_wastes.{$index}.catalog_item"] = [__('validation.custom.requirement.family')];
+            }
+        }
+        foreach (ProviderRequirements::duplicates($input['accepted_wastes'], 'catalog_item') as $index => $what) {
+            $errors["accepted_wastes.{$index}"] = [__('validation.custom.requirement.duplicate', ['what' => $what])];
+        }
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
 
         DB::transaction(function () use ($input, $codes) {
             ProviderProfile::query()->firstOrFail()->forceFill([
@@ -367,6 +421,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
                     'required_packaging_type_id' => $required,
                     // Nothing to refuse on without a requirement.
                     'is_blocking' => ($minimum !== null || $required !== null) && (bool) ($waste['is_blocking'] ?? false),
+                    'adds_to_family' => isset($waste['catalog_item']) && (bool) ($waste['adds_to_family'] ?? false),
                     'treatment_channel_id' => $codes->id('treatment_channels', $waste['channel']),
                     'waste_family_id' => $codes->id('waste_families', $waste['family'] ?? null),
                     'waste_catalog_item_id' => $codes->id('waste_catalog_items', $waste['catalog_item'] ?? null),

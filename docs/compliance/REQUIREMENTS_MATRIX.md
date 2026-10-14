@@ -147,3 +147,6 @@ Every gap is classified (must fix, business decision, V2, hardware test, polish)
 
 The whole-application audit of 12–13 October 2026 (after phases 1–5), with what was executed and what was fixed, is in
 [ACCEPTANCE_AUDIT_2026-10-13.md](ACCEPTANCE_AUDIT_2026-10-13.md).
+The business decisions taken after it (minimums at loading, requirements of one waste type, closure apart from compliance,
+capacity emails, hazardous codes) and the staging acceptance, including MariaDB 10.11, are in
+[STAGING_ACCEPTANCE_2026-10-14.md](STAGING_ACCEPTANCE_2026-10-14.md).

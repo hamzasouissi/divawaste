@@ -64,6 +64,16 @@ return [
         'measure' => ['unit' => 'Ce type de déchet se déclare en :unit : indiquez la quantité dans cette unité.', 'weight' => 'Le poids net est obligatoire pour un déchet pesé.'],
         'packages' => ['loose' => 'Un lot sans conditionnement (vrac) n’a pas de nombre de colis.', 'reason' => 'Le lot a quitté le site : indiquez le motif de la correction.'],
         'composition' => ['total' => 'La somme des pourcentages de composition doit être égale à 100.'],
+        'requirement' => [
+            'duplicate' => 'Une autre ligne demande déjà la même chose pour ce déchet et cette filière (:what) : gardez-en une seule, pour que la même exigence ne compte pas deux fois.',
+            'family' => 'Ce type de déchet n\'appartient pas à la famille choisie.',
+            'unit' => 'Les lots de :type ne peuvent pas être comptés en :unit (ni comptés ainsi, ni convertis : poids unitaire ou densité absents). Choisissez une autre unité ou complétez le type de déchet.',
+        ],
+        'regulatory_code' => [
+            'hazardous' => 'Un type de déchet dangereux doit avoir son code réglementaire : son bordereau de suivi ne peut pas être émis sans lui.',
+            'already_set' => 'Ce type de déchet a déjà un code réglementaire : il ne se change pas, les lots et les bordereaux le portent.',
+            'not_hazardous' => 'Le code se complète ici pour un type de déchet dangereux qui n\'en a pas.',
+        ],
         'email_verification' => ['invalid' => 'Ce lien de confirmation est invalide ou expiré.'],
         'invitation' => ['invalid' => 'Cette invitation est invalide, expirée ou déjà utilisée.'],
         'tenant' => ['missing' => 'La valeur sélectionnée n\'existe pas dans votre société.'],

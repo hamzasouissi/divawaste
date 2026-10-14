@@ -32,6 +32,8 @@ return [
         'refused' => ['title' => 'Pickup :number refused', 'body' => ':provider refused pickup :number. Reason: :reason'],
         'cancelled' => ['title' => 'Pickup :number cancelled', 'body' => ':company cancelled pickup :number. Reason: :reason'],
         'collected' => ['title' => 'Pickup :number loaded', 'body' => 'The lots of pickup :number left the site (:quantity at departure).'],
+        'requirements_unmet_at_loading' => ['title' => 'Pickup :number loaded — a requirement is not met', 'body' => 'The lots of pickup :number left the site (:quantity at departure, :left lot(s) left on site). On what left, your requirements are not all met: :requirements. You may raise it with :company before reception.'],
+        'requirement_exception' => ['title' => 'Pickup :number left under a requirement of :provider', 'body' => 'On what was loaded (:quantity), a blocking requirement of :provider is no longer met: :requirements. The departure is not undone; say why on the pickup page.'],
         'received' => ['title' => 'Pickup :number received', 'body' => ':provider received :quantity for pickup :number.'],
         'variance_flagged' => ['title' => 'Discrepancy at reception on pickup :number', 'body' => ':flagged lot(s) received outside tolerance: :received received for :departure at departure.'],
         'completed' => ['title' => 'Pickup :number closed', 'body' => 'Pickup :number is closed.'],

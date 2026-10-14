@@ -279,6 +279,8 @@ final class ZoneOrganisation
 
         $rows = $this->stock->lots([$siteId])
             ->groupBy('l.zone_id', 'l.packaging_type_id', 'l.waste_type_id', 'l.color_family_id')
+            // Packagings in the order their first lot arrived, on MySQL and MariaDB alike (a GROUP BY alone has no order).
+            ->reorder()->orderByRaw('MIN(l.id)')
             ->get(['l.zone_id', 'l.packaging_type_id', 'l.waste_type_id', 'l.color_family_id', DB::raw('COUNT(*) as lots'), DB::raw('COALESCE(SUM(l.net_weight_kg), 0) as kg'), DB::raw('SUM(l.net_weight_kg IS NULL) as unweighed'),
                 // A lot is as many packages as it says; a loose lot has none and is reported, not turned into one.
                 DB::raw('SUM(CASE WHEN l.packaging_type_id IS NULL THEN 1 ELSE COALESCE(l.package_count, 1) END) as packages'),
