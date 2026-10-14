@@ -98,6 +98,58 @@ export class ConfirmDateDialog {
               </section>
             }
 
+            <!-- The same requirements judged on what actually left, beside the request-time answer, which stays as it was. -->
+            @if (p.loading_requirements; as loaded) {
+              <section class="dw-panel dw-panel-body asked" data-testid="loading-requirements">
+                <h2 class="dw-h2">{{ t('requirements.titleLoading', { provider: p.provider?.legal_name }) }}</h2>
+                <p class="dw-muted">{{ t('requirements.loadingHint', { date: (loaded.evaluated_at | dwDate: 'datetime') }) }}</p>
+                @if (loaded.left_behind.length > 0) { <p class="dw-muted">{{ t('requirements.leftBehind', { count: loaded.left_behind.length }) }} <span class="dw-mono">{{ loaded.left_behind.join(', ') }}</span></p> }
+                @if (loaded.constraints.length === 0) { <p class="dw-muted">{{ t('requirements.loadingNone') }}</p> } @else { <dw-requirements [requirements]="loaded.constraints" /> }
+                @if (loaded.exception; as exception) {
+                  @if (exception.acknowledged; as explained) {
+                    <p class="banner" role="note"><dw-icon aria-hidden="true">gavel</dw-icon><span>{{ t('requirements.exceptionExplained', { by: explained.by, date: (explained.at | dwDate: 'datetime'), reason: explained.reason }) }}</span></p>
+                  } @else {
+                    <div class="banner danger" role="status">
+                      <dw-icon aria-hidden="true">gavel</dw-icon><span>{{ t('requirements.exceptionPending') }}</span>
+                      @if (!provider && session.can('pickups.override_provider_requirements', p.site?.ulid)) {
+                        <button pButton type="button" size="small" [disabled]="busy()" (click)="run('explainException')">{{ t('requirements.explain') }}</button>
+                      }
+                    </div>
+                  }
+                }
+              </section>
+            }
+
+            <!-- The documents, apart from the status: a pickup can be closed while a slip still waits for a signature. -->
+            @if (p.compliance; as documents) {
+              @if (documents.state !== 'not_due' && documents.state !== 'not_applicable') {
+                <section class="dw-panel dw-panel-body compliance" data-testid="compliance">
+                  <div class="head"><h2 class="dw-h2">{{ t('pickups.compliance.title') }}</h2><dw-status kind="compliance" [value]="documents.state" /></div>
+                  <p class="dw-muted">{{ t('pickups.compliance.hint.' + documents.state, { done: documents.slips_completed, total: documents.slips }) }}</p>
+                  @for (missing of documents.missing_codes; track missing.waste_type) {
+                    <p class="banner danger" role="status">
+                      <dw-icon aria-hidden="true">assignment_late</dw-icon>
+                      <span>{{ t('pickups.compliance.missingCode', { type: missing.name, code: missing.code, count: missing.lots.length, lots: missing.lots.join(', ') }) }}</span>
+                      @if (!provider && session.can('waste_types.manage')) { <a [routerLink]="['/waste-types']" [queryParams]="{ code: missing.waste_type }">{{ t('pickups.compliance.completeCode') }}</a> }
+                    </p>
+                  }
+                  @if (documents.lots_without_slip.length > 0) {
+                    <p class="banner danger" role="status"><dw-icon aria-hidden="true">assignment_late</dw-icon><span>{{ t('pickups.compliance.withoutSlip', { count: documents.lots_without_slip.length, lots: documents.lots_without_slip.join(', ') }) }}</span></p>
+                  }
+                  @if (documents.pending_slips.length > 0) {
+                    <ul class="pending">
+                      @for (slip of documents.pending_slips; track slip.ulid) {
+                        <li>
+                          <a class="dw-mono" [routerLink]="[provider ? '/provider/manifests' : '/compliance/manifests', slip.ulid]">{{ slip.number }}</a>
+                          <span>{{ t('pickups.compliance.waitingFor.' + slip.waiting_for) }}</span>
+                        </li>
+                      }
+                    </ul>
+                  }
+                </section>
+              }
+            }
+
             <section class="dw-panel dw-panel-body">
               <dl class="dw-facts">
                 <div><dt>{{ t('fields.site') }}</dt><dd>{{ p.site?.name }}<br /><span class="dw-muted">{{ p.site?.address_line1 }} {{ p.site?.city }}</span></dd></div>
@@ -207,12 +259,15 @@ export class ConfirmDateDialog {
     .hazard { font-size: 15px; width: 15px; height: 15px; color: var(--dw-warning); vertical-align: -2px; }
     .docs { list-style: none; margin: 0; padding: 0; } .docs li { display: flex; align-items: center; gap: 10px; padding: 10px var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); }
     .docs li:last-child { border-block-end: 0; } .docs dw-icon { font-size: 18px; color: var(--dw-ink-3); }
+    .compliance { display: grid; gap: var(--dw-2); } .compliance .head { display: flex; align-items: center; gap: var(--dw-2); flex-wrap: wrap; }
+    .banner { flex-wrap: wrap; } .banner a { font-weight: 600; }
+    .pending { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; } .pending li { display: flex; gap: var(--dw-2); flex-wrap: wrap; }
     .linkish { all: unset; cursor: pointer; color: var(--dw-primary); } .linkish:hover { text-decoration: underline; } .linkish:focus-visible { outline: 2px solid var(--dw-primary); outline-offset: 2px; }
   `,
 })
 export class PickupDetailPage implements OnInit {
   private readonly api = inject(Api);
-  private readonly session = inject(Session);
+  protected readonly session = inject(Session);
   private readonly dialog = inject(Dialogs);
   private readonly confirm = inject(Confirm);
   private readonly toast = inject(Toast);
@@ -280,7 +335,9 @@ export class PickupDetailPage implements OnInit {
           { key: 'authorize', icon: 'verified_user', primary: true, show: pickup.status === 'received' && this.next() === 'authorize' && can('pickups.complete') },
           { key: 'complete', icon: 'task_alt', primary: true, show: pickup.status === 'received' && !has('received') && (!pickup.variance_flagged || pickup.variance_acknowledged) && can('pickups.complete') },
           { key: 'price', icon: 'payments', show: ['collected', 'received', 'completed'].includes(pickup.status) && can('pickups.price') },
-          { key: 'manifest', icon: 'assignment_late', show: ['confirmed', 'collected', 'received'].includes(pickup.status) && this.manifests().length === 0 && can('documents.generate') },
+          // Slips are issued once confirmed; afterwards — closed or not — again whenever a lot that left has none yet.
+          { key: 'manifest', icon: 'assignment_late', show: can('documents.generate') && ((['confirmed', 'collected', 'received'].includes(pickup.status) && this.manifests().length === 0)
+            || (['collected', 'received', 'completed'].includes(pickup.status) && (pickup.compliance?.lots_without_slip.length ?? 0) > 0)) },
           { key: 'certificate', icon: 'upload_file', show: ['collected', 'received'].includes(pickup.status) && can('documents.upload') },
           { key: 'cancel', icon: 'cancel', danger: true, show: ['draft', 'requested', 'confirmed'].includes(pickup.status) && can('pickups.cancel') },
         ];
@@ -331,6 +388,12 @@ export class PickupDetailPage implements OnInit {
           ? this.call(this.api.post(`${base}/complete`), 'pickups.done.completed') : undefined;
       case 'manifest':
         return this.call(this.api.post(`${base}/manifests`), 'pickups.done.manifest');
+      case 'explainException': {
+        // The waste has left under a blocking requirement no longer met: the departure stands, the reason is kept.
+        const reason = await this.confirm.ask({ title: text('requirements.explainTitle'), message: text('requirements.explainHint'), reasonLabel: text('requirements.explainReason') });
+
+        return reason ? this.call(this.api.post(`${base}/loading-requirements/acknowledge`, { reason }), 'requirements.explained') : undefined;
+      }
       case 'cancel': {
         const reason = await this.confirm.ask({ title: text('pickups.actions.cancel'), reasonLabel: text('pickups.cancelReason'), danger: true });
 

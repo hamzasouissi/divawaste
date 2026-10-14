@@ -243,6 +243,8 @@ interface Preference {
   database: boolean;
   mail: boolean;
   mail_available: boolean;
+  /** Whether the email goes without asking: not a stock alert for someone who does not manage the stock. */
+  mail_by_default?: boolean;
 }
 
 interface NotificationPage {
@@ -286,11 +288,12 @@ interface NotificationPage {
                 <tr>
                   <th scope="row">{{ t('notifications.labels.' + preference.notification_type) }}</th>
                   <td><dw-checkbox [checked]="preference.database" (checkedChange)="set(preference, 'database', $event)" [ariaLabel]="t('notifications.inApp')" /></td>
-                  <td>@if (preference.mail_available) { <dw-checkbox [checked]="preference.mail" (checkedChange)="set(preference, 'mail', $event)" [ariaLabel]="t('notifications.byMail')" /> } @else { — }</td>
+                  <td>@if (preference.mail_available) { <dw-checkbox [checked]="preference.mail" (checkedChange)="set(preference, 'mail', $event)" [ariaLabel]="t('notifications.byMail')" />@if (preference.mail_by_default === false) { <span class="dw-faint" aria-hidden="true"> *</span> } } @else { — }</td>
                 </tr>
               }
             </tbody>
           </table>
+          @if (onRequest()) { <p class="dw-faint on-request">* {{ t('notifications.mailOnRequest') }}</p> }
         </section>
       </div>
     </ng-container>
@@ -305,6 +308,7 @@ interface NotificationPage {
     .prefs th, .prefs td { text-align: center; }
     .prefs tbody th[scope='row'] { text-align: start; font-weight: 400; padding: 7px var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); }
     .prefs thead th:first-child { text-align: start; }
+    .on-request { margin: 0; padding: var(--dw-2) var(--dw-3); font-size: 12px; }
   `,
 })
 export class NotificationsPage {
@@ -323,11 +327,13 @@ export class NotificationsPage {
   protected readonly preferences = computed(() => {
     const provider = this.session.audience() === 'provider';
     const hidden = provider
-      ? ['stock.', 'pickup.confirmed', 'pickup.refused', 'pickup.collected', 'pickup.received', 'pickup.variance_flagged', 'accreditation.expir', 'document.certificate_uploaded', 'report.', 'payment.', 'invoice.', 'subscription.', 'company.']
-      : ['pickup.requested', 'pickup.cancelled', 'pickup.completed', 'accreditation.reviewed', 'payment.declared', 'company.'];
+      ? ['stock.', 'capacity.', 'pickup.confirmed', 'pickup.refused', 'pickup.collected', 'pickup.received', 'pickup.variance_flagged', 'pickup.requirement_exception', 'accreditation.expir', 'document.certificate_uploaded', 'report.', 'payment.', 'invoice.', 'subscription.', 'company.']
+      : ['pickup.requested', 'pickup.cancelled', 'pickup.completed', 'pickup.requirements_unmet_at_loading', 'accreditation.reviewed', 'payment.declared', 'company.'];
 
     return this.all().filter((preference) => !hidden.some((prefix) => preference.notification_type.startsWith(prefix)));
   });
+  /** Some emails go only to those who ask for them here (stock and capacity alerts for whoever does not manage the stock). */
+  protected readonly onRequest = computed(() => this.preferences().some((preference) => preference.mail_available && preference.mail_by_default === false));
 
   constructor() {
     this.load(true);

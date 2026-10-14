@@ -1,17 +1,19 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormArray, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Tab, TabList, TabPanel, TabPanels, Tabs } from 'primeng/tabs';
 
-import { Api } from '../../core/api/api';
+import { Api, ApiError } from '../../core/api/api';
 import { Localized, WasteType } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
+import { Locale } from '../../core/i18n/i18n';
 import { CodePipe, LocalizedPipe } from '../../core/format/pipes';
 import { Column, TABLE } from '../../ui/data-table';
 import { ListStore } from '../../ui/list-store';
@@ -79,6 +81,7 @@ const num = (value: string | null): string | null => (!value || value.trim() ===
                 </dw-select>
               </dw-field>
               <dw-checkbox formControlName="is_hazardous">{{ t('common.hazardous') }}</dw-checkbox>
+              @if (form.controls.is_hazardous.value && !form.controls.regulatory_code.value) { <p class="bad dw-span-2" role="status">{{ t('wasteTypes.codeRequired') }}</p> }
             }
             <dw-checkbox class="dw-span-2" formControlName="requires_authorization">{{ t('wasteTypes.requiresAuthorization') }}</dw-checkbox>
             <dw-field [label]="t('wasteTypes.unit')">
@@ -232,6 +235,41 @@ export class WasteTypeDialog {
   }
 }
 
+/**
+ * The regulatory code of a hazardous waste type: chosen by someone who knows it, never guessed. Used when a catalogue item
+ * is activated without a code of the company's country, and to complete a type created before the code was required.
+ */
+@Component({
+  imports: [FormsModule, TranslocoDirective, LocalizedPipe, ButtonDirective, ...FIELD, ...SELECT, ...DIALOG_PARTS],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <ng-container *transloco="let t">
+      <dw-dialog-title>{{ t('wasteTypes.codeDialog.title', { name: data.name }) }}</dw-dialog-title>
+      <div class="dw-dialog-body">
+        <p class="dw-muted">{{ t(data.completing ? 'wasteTypes.codeDialog.completeHint' : 'wasteTypes.codeDialog.activateHint') }}</p>
+        <dw-field [label]="t('lots.regulatoryCode')">
+          <dw-select [ngModel]="code()" (ngModelChange)="code.set($event)" required>
+            @for (option of vocabulary()?.regulatory_waste_codes ?? []; track option.code) {
+              <dw-option [value]="option.code" [label]="option.code + ' — ' + (option.label | dwLocalized) + (option.is_hazardous ? ' *' : '')" />
+            }
+          </dw-select>
+        </dw-field>
+      </div>
+      <div class="dw-dialog-foot">
+        <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+        <button pButton type="button" [disabled]="!code()" (click)="ref.close(code())">{{ t('common.save') }}</button>
+      </div>
+    </ng-container>
+  `,
+  styles: '.dw-dialog-body { min-width: min(480px, 84vw); display: grid; gap: var(--dw-3); }',
+})
+export class RegulatoryCodeDialog {
+  protected readonly data = dialogData<{ name: string; completing: boolean }>();
+  protected readonly ref = inject(DialogRef);
+  protected readonly vocabulary = toSignal(inject(ReferenceData).vocabulary());
+  protected readonly code = signal<string | null>(null);
+}
+
 /** M1-02 / M1-03: the company's waste types and the reference catalogue they come from. */
 @Component({
   imports: [
@@ -264,7 +302,7 @@ export class WasteTypeDialog {
                 [clickable]="canManage" [emptyTitle]="t('wasteTypes.emptyTitle')" [emptyHint]="t('wasteTypes.emptyHint')" emptyIcon="category"
                 (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="edit($event)" (retry)="list.reload()">
                 <ng-template dwCell="code" let-type><span class="dw-mono">{{ type.code }}</span></ng-template>
-                <ng-template dwCell="name" let-type>{{ type.name }} @if (type.is_hazardous) { <dw-status kind="alert" value="warning" [label]="t('common.hazardous')" /> } @if (type.requires_authorization) { <dw-status kind="member" value="suspended" tone="neutral" [label]="t('wasteTypes.underAuthorization')" /> }</ng-template>
+                <ng-template dwCell="name" let-type>{{ type.name }} @if (type.is_hazardous) { <dw-status kind="alert" value="warning" [label]="t('common.hazardous')" /> } @if (type.regulatory_code_missing) { <dw-status kind="limit" value="exceeded" [label]="t('wasteTypes.codeMissing')" /> } @if (type.requires_authorization) { <dw-status kind="member" value="suspended" tone="neutral" [label]="t('wasteTypes.underAuthorization')" /> }</ng-template>
                 <ng-template dwCell="measure" let-type>{{ t('wasteTypes.methods.' + (type.measurement_method ?? 'weighed')) }} <span class="dw-faint">· {{ t('units.' + (type.unit ?? 'kg'), { count: 2 }) }}</span></ng-template>
                 <ng-template dwCell="regulatory" let-type><span class="dw-mono">{{ type.regulatory_code ?? '—' }}</span></ng-template>
                 <ng-template dwCell="channel" let-type>{{ type.treatment_channel ? t('channels.' + type.treatment_channel) : '—' }}</ng-template>
@@ -275,6 +313,9 @@ export class WasteTypeDialog {
                   <dw-status kind="member" [value]="type.is_active ? 'active' : 'suspended'" [label]="t(type.is_active ? 'common.active' : 'common.inactive')" />
                 </ng-template>
                 <ng-template dwCell="actions" let-type>
+                  @if (canManage && type.regulatory_code_missing) {
+                    <button pButton text type="button" (click)="completeCode(type); $event.stopPropagation()">{{ t('wasteTypes.completeCode') }}</button>
+                  }
                   @if (canManage) {
                     <button pButton text type="button" (click)="toggle(type); $event.stopPropagation()">{{ t(type.is_active ? 'common.deactivate' : 'common.activate') }}</button>
                   }
@@ -326,6 +367,7 @@ export class WasteTypesPage {
   private readonly dialog = inject(Dialogs);
   private readonly toast = inject(Toast);
   private readonly reference = inject(ReferenceData);
+  private readonly locale = inject(Locale);
 
   protected readonly canManage = inject(Session).can('waste_types.manage');
   protected readonly search = signal('');
@@ -339,6 +381,13 @@ export class WasteTypesPage {
   protected readonly tolerances = signal(false);
   private readonly catalogLoaded = computed(() => this.catalog().length > 0);
 
+  constructor() {
+    // Opened from a pickup whose hazardous lots wait for the code of their type: that type is offered at once.
+    const pending = inject(ActivatedRoute).snapshot.queryParamMap.get('code');
+    if (pending && this.canManage) {
+      this.api.get<WasteType>(`waste-types/${pending}`).subscribe({ next: (type) => void (type.regulatory_code_missing && this.completeCode(type)), error: () => undefined });
+    }
+  }
   protected readonly columns: Column<WasteType>[] = [
     { key: 'code', header: 'fields.code', width: '120px' },
     { key: 'name', header: 'fields.name' },
@@ -381,19 +430,46 @@ export class WasteTypesPage {
     this.dialog.open<WasteTypeDialog, WasteType | null, WasteType>(WasteTypeDialog, { data: type }).afterClosed().subscribe((saved) => saved && this.list.reload());
   }
 
-  /** Activation copies the catalogue defaults (code, hazard status, usual channel) into a type of the company. */
-  protected async activate(item: CatalogItem): Promise<void> {
+  /**
+   * Activation copies the catalogue defaults (code, hazard status, usual channel) into a type of the company. A hazardous
+   * item whose catalogue code is not one of the company's country asks for its code first: none is invented.
+   */
+  protected async activate(item: CatalogItem, regulatoryCode: string | null = null): Promise<void> {
     this.activating.set(item.code);
     try {
-      await firstValueFrom(this.api.post('waste-types', { catalog_item: item.code, code: item.code.toUpperCase().slice(0, 40) }));
+      await firstValueFrom(this.api.post('waste-types', { catalog_item: item.code, code: item.code.toUpperCase().slice(0, 40), regulatory_code: regulatoryCode }));
       this.reference.refreshWasteTypes();
       this.toast.success('wasteTypes.saved');
       this.loadCatalog(true);
       this.list.reload();
     } catch (error) {
+      if (regulatoryCode === null && error instanceof ApiError && error.errors?.['regulatory_code']) {
+        this.activating.set(null);
+        const code = await firstValueFrom(this.dialog.open<RegulatoryCodeDialog, { name: string; completing: boolean }, string>(RegulatoryCodeDialog,
+          { data: { name: this.locale.pick(item.name, item.code), completing: false } }).afterClosed());
+
+        return code ? this.activate(item, code) : undefined;
+      }
       this.toast.error(error);
     } finally {
       this.activating.set(null);
+    }
+  }
+
+  /** A hazardous type created before its code was required: the code is completed once, its waiting lots receive it. */
+  protected async completeCode(type: WasteType): Promise<void> {
+    const code = await firstValueFrom(this.dialog.open<RegulatoryCodeDialog, { name: string; completing: boolean }, string>(RegulatoryCodeDialog,
+      { data: { name: type.name, completing: true } }).afterClosed());
+    if (!code) {
+      return;
+    }
+    try {
+      await firstValueFrom(this.api.put(`waste-types/${type.ulid}/regulatory-code`, { regulatory_code: code }));
+      this.reference.refreshWasteTypes();
+      this.toast.success('wasteTypes.codeCompleted');
+      this.list.reload();
+    } catch (error) {
+      this.toast.error(error);
     }
   }
 

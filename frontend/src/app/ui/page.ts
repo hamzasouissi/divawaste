@@ -64,7 +64,9 @@ const TONES: Record<string, Record<string, Tone>> = {
   accreditation: { valid: 'success', expiring: 'warning', expired: 'danger', pending: 'warning', approved: 'success', rejected: 'danger', revoked: 'danger' },
   alert: { warning: 'warning', exceeded: 'danger', ok: 'success', unverifiable: 'warning' },
   limit: { respected: 'success', warning: 'warning', exceeded: 'danger', unverifiable: 'warning' },
-  manifest: { draft: 'neutral', pending_producer_signature: 'warning', pending_transporter_signature: 'warning', pending_receiver_signature: 'warning', completed: 'success', cancelled: 'danger' },
+  manifest: { draft: 'neutral', pending_producer_signature: 'warning', pending_transporter_signature: 'warning', pending_receiver_signature: 'warning', pending_signed_copy: 'warning', completed: 'success', cancelled: 'danger' },
+  // The documents of a pickup, apart from its status: closed is not complete.
+  compliance: { not_due: 'neutral', not_applicable: 'neutral', incomplete: 'danger', pending: 'warning', complete: 'success' },
   declaration: { draft: 'neutral', in_review: 'warning', validated: 'success', submitted: 'success' },
   document: { draft: 'neutral', pending_signatures: 'warning', issued: 'success', superseded: 'neutral', cancelled: 'danger' },
   report: { queued: 'neutral', processing: 'info', completed: 'success', failed: 'danger', expired: 'neutral' },

@@ -97,7 +97,7 @@ interface DirectoryFilter {
                     <ul class="asked">
                       @for (rule of rules; track $index) {
                         <li>
-                          <span class="dw-spacer"><strong>{{ rule.family | dwCode: 'family' }}</strong> · {{ t('channels.' + rule.channel) }} —
+                          <span class="dw-spacer"><strong>{{ rule.item ? (rule.item | dwCode: 'catalog') : (rule.family | dwCode: 'family') }}</strong>@if (rule.item) { <span class="dw-faint"> ({{ t(rule.adds ? 'requirements.scope.typeAdds' : 'requirements.scope.type') }})</span> } · {{ t('channels.' + rule.channel) }} —
                             @if (rule.minimum) { {{ t('requirements.atLeast', { min: rule.minimum }) }} }
                             @if (rule.minimum && rule.packaging) { ; }
                             @if (rule.packaging) { {{ t('requirements.inPackaging', { packaging: rule.packaging }) }} }
@@ -180,9 +180,9 @@ export class ProvidersPage {
   }
 
   /** What the provider asks of a collection, per waste and treatment: a minimum with its unit, a packaging. */
-  protected asked(provider: DirectoryProvider): { family: string | null; channel: string; minimum: string | null; packaging: string | null; blocking: boolean }[] {
+  protected asked(provider: DirectoryProvider): { family: string | null; item: string | null; adds: boolean; channel: string; minimum: string | null; packaging: string | null; blocking: boolean }[] {
     return provider.accepted_wastes.filter((rule) => rule.min_quantity !== null || rule.required_packaging_type !== null).map((rule) => ({
-      family: rule.family, channel: rule.channel, blocking: rule.is_blocking,
+      family: rule.family, item: rule.catalog_item, adds: rule.adds_to_family ?? false, channel: rule.channel, blocking: rule.is_blocking,
       minimum: rule.min_quantity === null ? null : this.limitText.quantity({ unit: rule.min_unit ?? 'kg', packaging_type: rule.min_packaging_type ?? undefined } as LimitResult, rule.min_quantity),
       packaging: rule.required_packaging_type ? this.code.transform(rule.required_packaging_type, 'packaging') : null,
     }));

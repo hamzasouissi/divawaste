@@ -24,6 +24,8 @@ interface PickupFilter {
   status?: PickupStatus[];
   site?: string | null;
   variance_flagged?: boolean | null;
+  /** Pickups whose waste left and whose slips are not all signed, closed or not. */
+  documents_outstanding?: boolean | null;
   search?: string;
 }
 
@@ -57,6 +59,7 @@ interface PickupFilter {
             </dw-select>
           }
           <dw-checkbox [checked]="list.filter().variance_flagged === true" (checkedChange)="list.setFilter({ variance_flagged: $event ? true : null })">{{ t('pickups.varianceOnly') }}</dw-checkbox>
+          <dw-checkbox [checked]="list.filter().documents_outstanding === true" (checkedChange)="list.setFilter({ documents_outstanding: $event ? true : null })">{{ t('pickups.compliance.outstandingOnly') }}</dw-checkbox>
         </dw-filter-bar>
 
         <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1"
@@ -77,6 +80,10 @@ interface PickupFilter {
           <ng-template dwCell="status" let-pickup>
             <dw-status kind="pickup" [value]="pickup.status" />
             @if (pickup.variance_flagged && !pickup.variance_acknowledged) { <dw-icon class="flag" [title]="t('pickups.varianceFlagged')" [attr.aria-label]="t('pickups.varianceFlagged')">scale</dw-icon> }
+          </ng-template>
+          <!-- Closed and documented are two things: the slips of a closed pickup may still wait for a signature. -->
+          <ng-template dwCell="documents" let-pickup>
+            @if (pickup.compliance_state && pickup.compliance_state !== 'not_due' && pickup.compliance_state !== 'not_applicable') { <dw-status kind="compliance" [value]="pickup.compliance_state" /> } @else { <span class="dw-faint">—</span> }
           </ng-template>
         </dw-data-table>
       </div>
@@ -114,6 +121,7 @@ export class PickupsPage {
     { key: 'lots', header: 'pickups.lots', align: 'end', hideBelow: 640 },
     { key: 'weight', header: 'fields.weight', align: 'end' },
     { key: 'status', header: 'fields.status' },
+    { key: 'documents', header: 'pickups.compliance.column', hideBelow: 720 },
   ];
 
   protected open(pickup: Pickup): void {

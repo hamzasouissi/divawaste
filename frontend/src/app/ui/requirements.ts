@@ -23,7 +23,11 @@ import { StatusComponent } from './page';
           <div class="line">
             <span class="name">{{ text.name(limit) }}</span>
             @if (limit.rule; as rule) {
-              <span class="dw-faint">{{ rule.family ? (rule.family | dwCode: 'family') : rule.catalog_item }}@if (rule.channel) { · {{ t('channels.' + rule.channel) }} }</span>
+              <span class="dw-faint">
+                @if (rule.waste_type) { {{ rule.waste_type.name }} } @else if (rule.catalog_item) { {{ rule.catalog_item | dwCode: 'catalog' }} } @else { {{ rule.family | dwCode: 'family' }} }
+                @if (rule.channel) { · {{ t('channels.' + rule.channel) }} }
+              </span>
+              @if (rule.scope === 'type') { <span class="scope">{{ t(rule.adds_to_family ? 'requirements.scope.typeAdds' : 'requirements.scope.type') }}</span> }
             }
             <dw-status kind="limit" [value]="limit.outcome" [label]="t('requirements.outcome.' + limit.outcome)" />
             <span class="mode" [class.blocking]="limit.blocking">{{ t(limit.blocking ? 'requirements.blocking' : 'requirements.warningOnly') }}</span>
@@ -37,6 +41,19 @@ import { StatusComponent } from './page';
           @if (limit.kind === 'minimum' && (limit.outside_count ?? 0) > 0) {
             <div class="dw-faint">{{ t('requirements.outside', { count: limit.outside_count, packaging: (limit.packaging_type ?? '' | dwCode: 'packaging') }) }} {{ (limit.outside_lots ?? []).join(', ') }}</div>
           }
+          @if ((limit.own_rule_lots ?? []).length > 0) {
+            <div class="dw-faint">{{ t('requirements.ownRule', { count: limit.own_rule_lots!.length }) }} {{ limit.own_rule_lots!.join(', ') }}</div>
+          }
+          @if (limit.at_request !== undefined) {
+            <div class="compare">
+              @if (limit.at_request; as before) {
+                {{ t('requirements.atRequest', { outcome: t('requirements.outcome.' + before.outcome) }) }}
+              } @else {
+                {{ t('requirements.atRequestChanged') }}
+              }
+              @if ((limit.left_lots ?? []).length > 0) { · {{ t('requirements.leftLots', { count: limit.left_lots!.length }) }} {{ limit.left_lots!.join(', ') }} }
+            </div>
+          }
         </li>
       }
     </ul>
@@ -48,6 +65,8 @@ import { StatusComponent } from './page';
     .name { font-weight: 600; }
     .mode { font-size: 12px; color: var(--dw-ink-2); } .mode.blocking { font-weight: 600; color: var(--dw-ink); }
     .source { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--dw-ink-2); } .source dw-icon { font-size: 14px; width: 14px; height: 14px; } .source.internal { font-style: italic; }
+    .scope { font-size: 12px; padding: 0 6px; border-radius: 999px; background: var(--dw-surface-2); color: var(--dw-ink-2); }
+    .compare { font-size: 12px; color: var(--dw-ink-2); overflow-wrap: anywhere; }
     .said { overflow-wrap: anywhere; } .exceeded .said { color: var(--dw-danger); font-weight: 600; } .warning .said, .unverifiable .said { color: var(--dw-warning); font-weight: 600; }
   `,
 })

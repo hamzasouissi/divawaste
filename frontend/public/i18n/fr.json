@@ -397,6 +397,13 @@
       "warning": "Attention",
       "exceeded": "Dépassé",
       "unverifiable": "Non vérifiable"
+    },
+    "compliance": {
+      "not_due": "À venir",
+      "not_applicable": "—",
+      "incomplete": "Bordereau manquant",
+      "pending": "Signatures en attente",
+      "complete": "Documents complets"
     }
   },
   "channels": {
@@ -469,7 +476,9 @@
     "providerRequirement": "{{provider}} ne prend pas cette collecte telle quelle — {{problems}}",
     "providerRequirementOverridable": "{{provider}} ne prend pas cette collecte telle quelle — {{problems}} Vous pouvez l’envoyer quand même en indiquant le motif.",
     "PROVIDER_REQUIREMENT_NEEDS_AUTHORIZATION": "Seule une personne autorisée peut envoyer une demande malgré une exigence bloquante du prestataire.",
-    "PARTNER_NOT_LINKED": "Ce partenaire n’a pas de compte : ses exigences se modifient simplement."
+    "PARTNER_NOT_LINKED": "Ce partenaire n’a pas de compte : ses exigences se modifient simplement.",
+    "REGULATORY_CODE_MISSING": "Un type de déchet dangereux de cet enlèvement n’a pas de code réglementaire : complétez-le sur le type de déchet, son bordereau ne peut pas être établi sans lui.",
+    "NO_REQUIREMENT_EXCEPTION": "Aucune exigence bloquante n’attend d’explication sur cet enlèvement."
   },
   "notifications": {
     "title": "Notifications",
@@ -515,7 +524,9 @@
       "capacity.load_unverifiable": "Charge d’une zone non vérifiable",
       "capacity.site_warning": "Capacité d’un site bientôt atteinte",
       "capacity.site_exceeded": "Capacité d’un site dépassée",
-      "capacity.site_unverifiable": "Capacité d’un site non vérifiable"
+      "capacity.site_unverifiable": "Capacité d’un site non vérifiable",
+      "pickup.requirements_unmet_at_loading": "Exigence non respectée au chargement",
+      "pickup.requirement_exception": "Départ sous une exigence bloquante"
     },
     "types": {
       "stock.threshold_warning": {
@@ -661,8 +672,17 @@
       "capacity.site_unverifiable": {
         "title": "Capacité du site non vérifiable — {{site}}",
         "body": "Poids connu sur le site : {{detail}}, mais {{missing}} lot(s) ne sont pas pesés ({{lots}}). Ce n’est pas un dépassement constaté ; la capacité ne peut pas être dite respectée : pesez ces lots."
+      },
+      "pickup.requirements_unmet_at_loading": {
+        "title": "Enlèvement {{number}} chargé — exigence non respectée",
+        "body": "{{quantity}} au départ, {{left}} lot(s) resté(s) sur site. Sur ce qui est parti : {{requirements}}."
+      },
+      "pickup.requirement_exception": {
+        "title": "Enlèvement {{number}} parti sous une exigence de {{provider}}",
+        "body": "Sur ce qui a été chargé ({{quantity}}) : {{requirements}}. Le départ n’est pas annulé ; indiquez pourquoi."
       }
-    }
+    },
+    "mailOnRequest": "E-mail envoyé seulement si vous le demandez : par défaut, les alertes de stock et de capacité partent par e-mail aux personnes qui gèrent les limites ou les zones du site. Vous les voyez toujours ici."
   },
   "onboarding": {
     "bannerTitle": "Terminez la mise en route.",
@@ -1040,6 +1060,15 @@
       "mass": "Les lots se déclarent au poids ; les écarts sont jugés en kilos.",
       "count": "Les lots se déclarent en nombre de pièces ; les écarts sont jugés en pièces, jamais convertis en kilos.",
       "volume": "Les lots se déclarent en volume ; les écarts sont jugés en volume."
+    },
+    "codeMissing": "Code réglementaire manquant",
+    "completeCode": "Compléter le code",
+    "codeCompleted": "Code réglementaire enregistré : les lots en attente le portent.",
+    "codeRequired": "Un déchet dangereux doit avoir son code réglementaire : sans lui, aucun bordereau ne peut être établi.",
+    "codeDialog": {
+      "title": "Code réglementaire — {{name}}",
+      "completeHint": "Ce type dangereux a été créé sans code. Le code choisi est enregistré une fois et ne change plus ; les lots de ce type qui n’en ont pas le reçoivent, et leurs bordereaux peuvent être établis. Les bordereaux existants ne sont pas modifiés.",
+      "activateHint": "Ce déchet du catalogue est dangereux et n’a pas de code de votre pays : choisissez-le pour l’activer."
     }
   },
   "pickups": {
@@ -1172,7 +1201,26 @@
       "departure": "Parti",
       "received": "Reçu"
     },
-    "priceNeedsWeight": "Non calculable : lot non pesé. Choisissez « forfait »."
+    "priceNeedsWeight": "Non calculable : lot non pesé. Choisissez « forfait ».",
+    "compliance": {
+      "title": "Documents de l’enlèvement",
+      "column": "Documents",
+      "outstandingOnly": "Documents en attente",
+      "hint": {
+        "incomplete": "Des lots partis n’ont pas de bordereau de suivi. {{done}} bordereau(x) complet(s) sur {{total}}.",
+        "pending": "Clôturer l’enlèvement ne complète pas ses documents : {{done}} bordereau(x) signé(s) par toutes les parties sur {{total}}.",
+        "complete": "Tous les bordereaux sont signés par toutes les parties et archivés ({{total}})."
+      },
+      "missingCode": "{{type}} ({{code}}) est dangereux et n’a pas de code réglementaire : {{count}} lot(s) sans bordereau ({{lots}}). Aucun code n’est deviné.",
+      "completeCode": "Compléter le code du type",
+      "withoutSlip": "{{count}} lot(s) parti(s) sans bordereau : {{lots}}. Établissez les bordereaux.",
+      "waitingFor": {
+        "producer": "attend la signature du producteur",
+        "transporter": "attend la signature du transporteur",
+        "receiver": "attend la signature du destinataire",
+        "signed_copy": "attend le scan du bordereau signé à la main"
+      }
+    }
   },
   "providers": {
     "title": "Prestataires",
@@ -1218,7 +1266,12 @@
     "blocking": "Refuser la demande si ce n’est pas respecté",
     "blockingOn": "Une collecte en dessous, ou dont la quantité ne peut pas être vérifiée, ne pourra pas vous être demandée — sauf décision motivée d’une personne autorisée chez le client, que vous pourrez refuser.",
     "blockingOff": "Le client est averti et peut envoyer sa demande ; vous la verrez avec cet avertissement.",
-    "minPackagingNone": "Sans objet"
+    "minPackagingNone": "Sans objet",
+    "wasteTypeOptional": "Type de déchet (facultatif)",
+    "wholeFamily": "Toute la famille",
+    "addsToFamily": "S’ajoute à l’exigence de la famille",
+    "addsToFamilyOn": "Les lots de ce type comptent aussi dans l’exigence de leur famille.",
+    "addsToFamilyOff": "Pour les lots de ce type, cette ligne remplace celle de la famille."
   },
   "compliance": {
     "register": {
@@ -2979,6 +3032,25 @@
       "toReview": "à revoir : le partenaire a maintenant un compte"
     },
     "canProceedInternal": "La demande peut être envoyée : ce sont des avertissements, d’après ce que votre société a noté.",
-    "blockedOverridableInternal": "La demande ne peut pas être envoyée telle quelle. Vous pouvez l’envoyer quand même en indiquant pourquoi : le motif est conservé avec l’enlèvement."
+    "blockedOverridableInternal": "La demande ne peut pas être envoyée telle quelle. Vous pouvez l’envoyer quand même en indiquant pourquoi : le motif est conservé avec l’enlèvement.",
+    "scope": {
+      "type": "ce type seulement",
+      "typeAdds": "ce type, en plus de sa famille"
+    },
+    "ownRule": "{{count}} lot(s) d’un type qui a sa propre exigence, jugés à part :",
+    "atRequest": "À la demande : {{outcome}}.",
+    "atRequestChanged": "Exigence modifiée depuis la demande.",
+    "leftLots": "{{count}} lot(s) concerné(s) resté(s) sur site :",
+    "titleLoading": "Au chargement : ce que {{provider}} demande, sur ce qui est parti",
+    "loadingHint": "Jugé le {{date}} sur les lots chargés, leurs poids et quantités au départ. La réponse donnée à la demande, ci-dessus, n’est pas modifiée. Rien n’est refusé au chargement.",
+    "leftBehind": "{{count}} lot(s) de la demande resté(s) sur site :",
+    "loadingNone": "Aucun lot chargé n’est concerné par ces exigences.",
+    "exceptionPending": "Une exigence bloquante n’est plus respectée sur ce qui est parti. Le départ n’est pas annulé : indiquez pourquoi il a eu lieu ainsi.",
+    "exceptionExplained": "Parti sous une exigence bloquante non respectée — expliqué par {{by}} le {{date}} : « {{reason}} »",
+    "explain": "Expliquer",
+    "explainTitle": "Expliquer le départ",
+    "explainHint": "Le prestataire lira ce motif. Le chargement reste enregistré tel qu’il a eu lieu.",
+    "explainReason": "Pourquoi ces lots sont-ils partis ainsi ?",
+    "explained": "Explication enregistrée."
   }
 }
