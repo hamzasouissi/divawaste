@@ -136,7 +136,9 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::post('pickups/{pickup}/manifests', function (Request $request, Pickup $pickup, ManifestWorkflow $workflow) {
         abort_unless($request->user()->can('documents.generate', $pickup->site_id), 403);
 
-        return HazardousWasteManifestResource::collection($workflow->generate($pickup, $request->user()))->response()->setStatusCode(201);
+        // The slips that could be issued, and the hazardous lots still waiting for the regulatory code of their type.
+        return HazardousWasteManifestResource::collection($workflow->generate($pickup, $request->user()))
+            ->additional(['meta' => ['lots_without_slip' => ManifestWorkflow::withoutCode($pickup->id)]])->response()->setStatusCode(201);
     })->name('manifests.store');
 
     Route::get('manifests/{manifest}', function (Request $request, HazardousWasteManifest $manifest) use ($canRead) {

@@ -48,10 +48,17 @@ class WasteTypeApiTest extends TestCase
 
     public function test_activation_from_catalog_copies_defaults(): void
     {
+        // The catalogue item is hazardous and carries no code of this company's country: none is invented, it is asked for.
         $this->post_(['catalog_item' => 'oils', 'code' => 'HUILES'])
+            ->assertStatus(422)->assertJsonValidationErrors(['regulatory_code']);
+        DB::table('regulatory_waste_codes')->insert(['code_system' => 'TN', 'code' => '13 02 05*', 'level' => 3, 'label' => '{}', 'is_hazardous' => true]);
+
+        $this->post_(['catalog_item' => 'oils', 'code' => 'HUILES', 'regulatory_code' => '13 02 05*'])
             ->assertCreated()
             ->assertJsonPath('data.name', 'Huiles')
-            ->assertJsonPath('data.is_hazardous', true);
+            ->assertJsonPath('data.is_hazardous', true)
+            ->assertJsonPath('data.regulatory_code', '13 02 05*')
+            ->assertJsonPath('data.regulatory_code_missing', false);
 
         $row = DB::table('waste_types')->where('code', 'HUILES')->first(['waste_catalog_item_id', 'waste_family_id']);
         $this->assertSame(DB::table('waste_catalog_items')->where('code', 'oils')->value('id'), $row->waste_catalog_item_id);

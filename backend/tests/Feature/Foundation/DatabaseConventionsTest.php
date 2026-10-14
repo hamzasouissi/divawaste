@@ -19,7 +19,8 @@ class DatabaseConventionsTest extends TestCase
 
     public function test_tests_run_on_mysql_in_utc_with_utf8mb4(): void
     {
-        $this->assertSame('mysql', DB::connection()->getDriverName());
+        // MySQL in development, MariaDB 10.11+ as the cahier requires for the servers: the suite runs on both.
+        $this->assertContains(DB::connection()->getDriverName(), ['mysql', 'mariadb']);
         $this->assertSame('+00:00', DB::scalar('select @@session.time_zone'));
         $this->assertSame('utf8mb4', DB::scalar('select @@character_set_database'));
     }

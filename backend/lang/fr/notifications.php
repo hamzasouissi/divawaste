@@ -48,6 +48,14 @@ return [
             'title' => 'Enlèvement :number chargé',
             'body' => 'Les lots de l\'enlèvement :number ont quitté le site (:quantity au départ).',
         ],
+        'requirements_unmet_at_loading' => [
+            'title' => 'Enlèvement :number chargé — exigence non respectée',
+            'body' => 'Les lots de l\'enlèvement :number ont quitté le site (:quantity au départ, :left lot(s) restés sur site). Sur ce qui est parti, vos exigences ne sont pas toutes respectées : :requirements. Vous pouvez en parler avec :company avant la réception.',
+        ],
+        'requirement_exception' => [
+            'title' => 'Enlèvement :number parti sous une exigence de :provider',
+            'body' => 'Sur ce qui a été chargé (:quantity), une exigence bloquante de :provider n\'est plus respectée : :requirements. Le départ n\'est pas annulé ; indiquez pourquoi sur la page de l\'enlèvement.',
+        ],
         'received' => [
             'title' => 'Enlèvement :number réceptionné',
             'body' => ':provider a réceptionné :quantity pour l\'enlèvement :number.',

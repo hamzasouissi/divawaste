@@ -193,6 +193,16 @@ return [
         'measure' => ['unit' => 'This waste type is declared in :unit: give the quantity in that unit.', 'weight' => 'The net weight is required for weighed waste.'],
         'packages' => ['loose' => 'A lot without packaging (loose) has no number of packages.', 'reason' => 'The lot has left the site: give the reason for the correction.'],
         'composition' => ['total' => 'The composition percentages must add up to 100.'],
+        'requirement' => [
+            'duplicate' => 'Another line already asks the same thing for this waste and this channel (:what): keep only one, so that one requirement is not counted twice.',
+            'family' => 'This waste type does not belong to the chosen family.',
+            'unit' => 'Lots of :type cannot be counted in :unit (neither counted that way nor converted: no unit weight or density). Choose another unit or complete the waste type.',
+        ],
+        'regulatory_code' => [
+            'hazardous' => 'A hazardous waste type needs its regulatory code: its tracking slip cannot be issued without it.',
+            'already_set' => 'This waste type already has a regulatory code: it is not changed, lots and slips carry it.',
+            'not_hazardous' => 'The code is completed here for a hazardous waste type that has none.',
+        ],
         'email_verification' => ['invalid' => 'This confirmation link is invalid or has expired.'],
         'invitation' => ['invalid' => 'This invitation is invalid, has expired or was already used.'],
         'tenant' => ['missing' => 'The selected value does not exist in your company.'],

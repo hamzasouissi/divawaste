@@ -29,6 +29,9 @@ class WasteTypeResource extends JsonResource
             'waste_family' => $codes->code('waste_families', $this->waste_family_id),
             'regulatory_code' => $codes->code('regulatory_waste_codes', $this->regulatory_waste_code_id),
             'is_hazardous' => $this->is_hazardous,
+            // A hazardous type created before the code was required: its lots cannot be requested, nor put on a slip,
+            // until the code is completed (PUT waste-types/{type}/regulatory-code).
+            'regulatory_code_missing' => $this->is_hazardous && $this->regulatory_waste_code_id === null,
             // This waste only leaves the site under an authorisation (declaration signed by customs) that still has room.
             'requires_authorization' => $this->requires_authorization,
             // M1-05: weights are stored in kg; the unit is how this type is usually counted.

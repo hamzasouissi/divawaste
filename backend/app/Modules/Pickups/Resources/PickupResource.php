@@ -5,6 +5,7 @@ namespace App\Modules\Pickups\Resources;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Pickups\Models\Pickup;
 use App\Modules\Pickups\Support\PartyDirectory;
+use App\Modules\Pickups\Support\PickupCompliance;
 use App\Modules\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -26,6 +27,7 @@ class PickupResource extends JsonResource
         $codes = app(ReferenceCodes::class);
         $lines = $this->relationLoaded('lines') ? $this->lines : null;
         $parties = app(PartyDirectory::class);
+        $compliance = $lines !== null ? PickupCompliance::of($this->resource) : null;
         $declared = $this->resource->getAttributes()['lines_sum_declared_weight_kg'] ?? null;
         // Counted from the lines when they are loaded (one pickup), by the query otherwise (a list).
         $unweighed = [
@@ -59,6 +61,13 @@ class PickupResource extends JsonResource
             // What the receiver asked of this collection when it was requested, the figures and the answer — and, when it
             // was sent although a blocking requirement failed, who decided it and why. Null when it asked for nothing.
             'provider_requirements' => $this->provider_requirements,
+            // The same requirements judged again on what was actually loaded, beside the first answer (which is not
+            // changed): figures of departure, lots left on site, and — when a blocking one was no longer met — the
+            // exception and who explained it. Null when the receiver asks for nothing, or before loading.
+            'loading_requirements' => $this->loading_requirements,
+            // The documents of the pickup, apart from its status: closing a pickup does not make its slips complete.
+            'compliance' => $this->when($compliance !== null, $compliance),
+            'compliance_state' => $compliance['state'] ?? PickupCompliance::fromCounts($this->resource),
             'departure_weight_kg' => $this->departure_weight_kg,
             'received_weight_kg' => $this->received_weight_kg,
             'weight_variance_kg' => $this->weight_variance_kg,

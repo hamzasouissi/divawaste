@@ -52,6 +52,9 @@ Route::middleware(['auth:sanctum', 'tenant:active,pending_approval'])->group(fun
             'units' => $localized(DB::table('units')->where('dimension', '!=', 'length')->orderBy('id')->get(['code', 'name', 'symbol', 'dimension'])),
             'material_units' => $localized(DB::table('units')->whereIn('code', ['m', 'kg', 'piece'])->orderByRaw("FIELD(code, 'm', 'kg', 'piece')")->get(['code', 'name', 'symbol'])),
             'waste_families' => $active('waste_families', ['code', 'name', 'is_textile'], ['is_textile']),
+            // The shared names of waste types: what a provider names when a requirement is about one type, not a family.
+            'waste_catalog_items' => $localized(DB::table('waste_catalog_items as i')->join('waste_families as f', 'f.id', '=', 'i.waste_family_id')
+                ->where('i.is_active', true)->orderBy('i.sort_order')->get(['i.code', 'i.name', 'f.code as waste_family'])),
             'materials' => $active('materials', ['code', 'name', 'material_class']),
             // The defaults of the platform and the colours this company added.
             'color_families' => $localized(Colors::visibleTo($context->companyId())->where('is_active', true)
@@ -154,6 +157,33 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
 
         return new WasteTypeResource($wasteType);
     })->name('waste-types.update');
+
+    // A hazardous type created before its regulatory code was required. The code is completed once — chosen by someone
+    // who knows it, never guessed — and is then frozen like any other. The lots of the type that carry no code yet
+    // receive it, and so do the pickup lines no slip carries yet: their slip can then be issued. Slips already issued,
+    // signed or archived are not touched.
+    Route::put('waste-types/{wasteType}/regulatory-code', function (Request $request, WasteType $wasteType) use ($allow) {
+        $allow($request, 'waste_types.manage');
+        if (! $wasteType->is_hazardous || $wasteType->regulatory_waste_code_id !== null) {
+            throw ValidationException::withMessages(['regulatory_code' => [__($wasteType->is_hazardous ? 'validation.custom.regulatory_code.already_set' : 'validation.custom.regulatory_code.not_hazardous')]]);
+        }
+        $codeSystem = DB::table('companies as c')->join('countries as k', 'k.id', '=', 'c.country_id')->where('c.id', $wasteType->company_id)->value('k.waste_code_system');
+        $code = (string) $request->validate(['regulatory_code' => ['required', 'string',
+            Rule::exists('regulatory_waste_codes', 'code')->where('code_system', $codeSystem)->where('is_selectable', true)]])['regulatory_code'];
+        $codeId = (int) DB::table('regulatory_waste_codes')->where('code_system', $codeSystem)->where('code', $code)->value('id');
+
+        DB::transaction(function () use ($wasteType, $code, $codeId) {
+            $wasteType->forceFill(['regulatory_waste_code_id' => $codeId])->save();
+            $lots = DB::table('waste_lots')->where('company_id', $wasteType->company_id)->where('waste_type_id', $wasteType->id)->whereNull('regulatory_waste_code_id')->pluck('id');
+            DB::table('waste_lots')->whereIn('id', $lots)->update(['regulatory_waste_code_id' => $codeId, 'updated_at' => now()]);
+            $lines = DB::table('pickup_lots')->where('company_id', $wasteType->company_id)->whereIn('waste_lot_id', DB::table('waste_lots')->where('company_id', $wasteType->company_id)->where('waste_type_id', $wasteType->id)->select('id'))
+                ->whereNull('regulatory_waste_code_id')->whereNull('hazardous_waste_manifest_id')
+                ->update(['regulatory_waste_code_id' => $codeId, 'regulatory_code_snapshot' => $code, 'updated_at' => now()]);
+            $wasteType->audit('regulatory_code_completed', ['regulatory_code' => null], ['regulatory_code' => $code, 'lots' => $lots->count(), 'pickup_lines' => $lines]);
+        });
+
+        return new WasteTypeResource($wasteType->refresh());
+    })->name('waste-types.regulatory-code');
 
     // Deactivated types remain on existing lots and documents; they simply stop being offered for new lots.
     Route::post('waste-types/{wasteType}/deactivate', function (Request $request, WasteType $wasteType, StockQuery $stock) use ($allow) {

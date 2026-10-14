@@ -98,6 +98,9 @@ Added: `limits:evaluate --dry-run` (F96).
 
 ## Remaining
 
+*Update 14 Oct 2026: the two proposals, the closure/signature question, the capacity-email recipients, the hazardous
+codes and MariaDB are resolved in [STAGING_ACCEPTANCE_2026-10-14.md](STAGING_ACCEPTANCE_2026-10-14.md) (F97–F103).*
+
 - **Business decisions**: the two proposals above; the open points of [MVP_ACCEPTANCE.md](../MVP_ACCEPTANCE.md)
   (prices, legal texts, official slip and ANGed layouts, legal value of the signature, VAT, reference data, stack
   deviations); whether closing a pickup should wait for signed slips (F21; slips of closed pickups are still unsigned

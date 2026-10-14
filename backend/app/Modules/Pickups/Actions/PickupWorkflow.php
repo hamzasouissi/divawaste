@@ -77,6 +77,7 @@ final class PickupWorkflow
     {
         return $this->step($pickup, [PickupStatus::Draft], PickupStatus::Requested, function (Pickup $pickup) use ($actor, $overrideReason, $mayOverride) {
             $this->assertEligible($pickup);
+            $this->assertRegulatoryCodes($pickup);
             // What the receiver asks of a collection: a minimum, a packaging. Judged on the whole pickup, kept with it.
             $this->requirements->decide($pickup, $actor, $overrideReason, $mayOverride);
             // Waste that needs an authorisation is requested only if one covers it; the request holds its share.
@@ -149,6 +150,8 @@ final class PickupWorkflow
             // The total is the sum of the weights that are known; the lots without one are counted apart, never as 0 kg.
             // When no lot that left has a weight there is no total at all.
             $p->forceFill(['departure_weight_kg' => $known ? $total : null, 'departure_weight_source' => 'lots_sum', 'collected_at' => now(), 'collected_by_user_id' => $actor->id]);
+            // What the receiver asks, judged again on what actually left. Kept beside the request-time answer; never refuses.
+            $this->requirements->atLoading($p);
         });
     }
 
@@ -412,6 +415,24 @@ final class PickupWorkflow
                 throw new BusinessRuleViolation('PROVIDER_NOT_ELIGIBLE', "{$partner->legal_name} is not in use, or has no authorisation valid on the pickup date for this waste.");
             }
         }
+    }
+
+    /**
+     * Hazardous waste leaves with its tracking slip, and a slip names the regulatory code of the waste: a hazardous lot
+     * whose waste type has no code is not requested. The code is never guessed — it is completed on the waste type.
+     */
+    private function assertRegulatoryCodes(Pickup $pickup): void
+    {
+        $missing = DB::table('pickup_lots as pl')->join('waste_lots as l', 'l.id', '=', 'pl.waste_lot_id')->join('waste_types as t', 't.id', '=', 'l.waste_type_id')
+            ->where('pl.pickup_id', $pickup->id)->where('pl.is_hazardous', true)->whereNull('pl.regulatory_waste_code_id')->orderBy('pl.id')
+            ->get(['t.ulid', 't.code', 't.name', 'pl.lot_number_snapshot as lot_number'])->groupBy('ulid');
+        if ($missing->isEmpty()) {
+            return;
+        }
+        $types = $missing->map(fn (Collection $lots) => ['waste_type' => $lots->first()->ulid, 'code' => $lots->first()->code, 'name' => $lots->first()->name,
+            'lots' => $lots->pluck('lot_number')->all()])->values()->all();
+        throw new BusinessRuleViolation('REGULATORY_CODE_MISSING', implode('; ', array_map(fn (array $type) => "{$type['name']} ({$type['code']}) is hazardous and has no regulatory waste code — lots "
+            .implode(', ', $type['lots']), $types)).'. Set the code on the waste type: its tracking slip cannot be issued without it.', ['waste_types' => $types]);
     }
 
     /**

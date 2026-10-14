@@ -22,14 +22,14 @@ class PartnerRequirement extends Model
     use HasPublicUlid;
 
     protected $fillable = [
-        'ulid', 'external_partner_id', 'waste_family_id', 'treatment_channel_id', 'min_quantity', 'min_unit_code', 'min_packaging_type_id',
-        'required_packaging_type_id', 'is_blocking', 'contract_reference', 'notes', 'reviewed_at', 'reviewed_by_user_id', 'created_by_user_id', 'updated_by_user_id',
+        'ulid', 'external_partner_id', 'waste_family_id', 'waste_type_id', 'treatment_channel_id', 'min_quantity', 'min_unit_code', 'min_packaging_type_id',
+        'required_packaging_type_id', 'is_blocking', 'adds_to_family', 'contract_reference', 'notes', 'reviewed_at', 'reviewed_by_user_id', 'created_by_user_id', 'updated_by_user_id',
     ];
 
-    protected $attributes = ['is_blocking' => false];
+    protected $attributes = ['is_blocking' => false, 'adds_to_family' => false];
 
     protected function casts(): array
     {
-        return ['min_quantity' => 'decimal:3', 'is_blocking' => 'boolean', 'reviewed_at' => 'datetime'];
+        return ['min_quantity' => 'decimal:3', 'is_blocking' => 'boolean', 'adds_to_family' => 'boolean', 'reviewed_at' => 'datetime'];
     }
 }

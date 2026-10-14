@@ -46,6 +46,7 @@ class Pickup extends Model
             'status' => PickupStatus::class, 'requested_date' => 'date', 'confirmed_date' => 'date', 'variance_flagged' => 'boolean',
             'departure_weight_kg' => 'decimal:3', 'received_weight_kg' => 'decimal:3', 'weight_variance_kg' => 'decimal:3',
             'weight_variance_pct' => 'decimal:2', 'collected_at' => 'datetime', 'received_at' => 'datetime', 'provider_requirements' => 'array',
+            'loading_requirements' => 'array',
         ];
     }
 

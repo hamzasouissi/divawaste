@@ -22,30 +22,36 @@ final class BusinessEventNotification extends Notification implements ShouldQueu
 
     /**
      * @param  array<string, scalar|null>  $params
+     * @param  list<int>|null  $mailByDefault  the recipients who get the email unless they switched it off; the others
+     *                                         get it only if they asked for it. Null = every recipient, by default.
      */
     public function __construct(
         public readonly string $type,
         public readonly array $params,
         public readonly ?string $link,
         public readonly ?int $companyId,
+        public readonly ?array $mailByDefault = null,
     ) {
         $this->afterCommit();
     }
 
     /**
-     * In-app and email by default; each can be switched off per user, company and type.
+     * In-app and, for the events worth it, email; each can be switched on or off per user, company and type. What a
+     * person chose always wins; without a choice, the email goes to everyone told, or only to `mailByDefault`.
      *
      * @return list<string>
      */
     public function via(object $notifiable): array
     {
-        $disabled = DB::table('notification_preferences')
+        $chosen = DB::table('notification_preferences')
             ->where('user_id', $notifiable->id)->where('company_id', $this->companyId)
-            ->where('notification_type', $this->type)->where('is_enabled', false)->pluck('channel')->all();
+            ->where('notification_type', $this->type)->pluck('is_enabled', 'channel')->map(fn ($enabled) => (bool) $enabled);
+        $mail = NotificationCatalog::sendsMail($this->type)
+            && ($chosen['mail'] ?? ($this->mailByDefault === null || in_array((int) $notifiable->id, $this->mailByDefault, true)));
 
         return array_values(array_filter([
-            in_array('database', $disabled, true) ? null : TenantDatabaseChannel::class,
-            in_array('mail', $disabled, true) || ! NotificationCatalog::sendsMail($this->type) ? null : 'mail',
+            ($chosen['database'] ?? true) ? TenantDatabaseChannel::class : null,
+            $mail ? 'mail' : null,
         ]));
     }
 

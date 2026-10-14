@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Notifications\Models\NotificationPreference;
 use App\Modules\Notifications\Resources\NotificationResource;
 use App\Modules\Notifications\Support\NotificationCatalog;
@@ -33,16 +34,25 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         return response()->noContent();
     })->name('me.notifications.read-all');
 
-    Route::get('me/notification-preferences', function (Request $request) {
-        $disabled = NotificationPreference::query()->where('user_id', $request->user()->id)->where('is_enabled', false)
-            ->get(['notification_type', 'channel'])->map(fn ($row) => $row->notification_type.'|'.$row->channel)->all();
+    Route::get('me/notification-preferences', function (Request $request, AccessResolver $access) {
+        $chosen = NotificationPreference::query()->where('user_id', $request->user()->id)
+            ->get(['notification_type', 'channel', 'is_enabled'])->mapWithKeys(fn ($row) => [$row->notification_type.'|'.$row->channel => (bool) $row->is_enabled]);
+        // Stock and capacity alerts are emailed by default to whoever manages limits or zones on a site; the others
+        // read them in the application unless they switch the email on here.
+        $manager = collect(NotificationCatalog::STOCK_MANAGERS)->contains(fn (string $permission) => $access->siteIdsFor($request->user(), $permission) !== []);
 
-        return response()->json(['data' => collect(NotificationCatalog::TYPES)->map(fn (array $definition, string $type) => [
-            'notification_type' => $type,
-            'database' => ! in_array($type.'|database', $disabled, true),
-            'mail' => $definition['mail'] && ! in_array($type.'|mail', $disabled, true),
-            'mail_available' => $definition['mail'],
-        ])->values()]);
+        return response()->json(['data' => collect(NotificationCatalog::TYPES)->map(function (array $definition, string $type) use ($chosen, $manager) {
+            $byDefault = $definition['mail'] && (NotificationCatalog::mailDefaultPermissions($type) === null || $manager);
+
+            return [
+                'notification_type' => $type,
+                'database' => $chosen[$type.'|database'] ?? true,
+                'mail' => $definition['mail'] && ($chosen[$type.'|mail'] ?? $byDefault),
+                'mail_available' => $definition['mail'],
+                // Whether the email goes without asking for it: false for a stock alert to someone who does not manage the stock.
+                'mail_by_default' => $byDefault,
+            ];
+        })->values()]);
     })->name('me.notification-preferences.index');
 
     Route::put('me/notification-preferences', function (Request $request) {

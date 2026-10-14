@@ -33,29 +33,34 @@ Deploy steps: `composer install --no-dev --optimize-autoloader`, `php artisan mi
 `--class=ProvisionalReferenceSeeder` (all idempotent), `php artisan config:cache route:cache`, restart the queue workers.
 Never run `DemoSeeder` in production.
 
-### Upgrading an existing database (rehearsed on 12–13 Oct 2026 on a copy of the demo database)
+### Upgrading an existing database (rehearsed on 12–14 Oct 2026 on copies of the demo database, MySQL 8.0.44 and MariaDB 10.11.10)
 
-The copy was 7 migrations behind (2026_10_17 … 2026_10_23). Steps, in this order:
+The copy was 8 migrations behind (2026_10_17 … 2026_10_24). Steps, in this order:
 
-1. Back up: `mysqldump --single-transaction --routines --triggers --hex-blob <db> > backup.sql`, then check it — the file
-   ends with "Dump completed", and a restore into an empty database gives the same checksum (`CHECKSUM TABLE`) and
-   structure for every table. Keep `storage/app/private` with it.
-2. `php artisan migrate --force` (about 4 s on the copy: 82 lots, 7 pickups, 561 audit rows).
+1. Back up: `mysqldump` (or `mariadb-dump`) `--single-transaction --routines --triggers --hex-blob <db> > backup.sql`, then
+   check it — the file ends with "Dump completed", and a restore into an empty database gives the same structure and data
+   for every table. Keep `storage/app/private` with it.
+2. `php artisan migrate --force` (4.9 s on MySQL, 2.3 s on MariaDB, on the copy: 82 lots, 7 pickups, 561 audit rows).
 3. `php artisan db:seed --class=AuthorizationSeeder --force` — adds `pickups.override_provider_requirements` to client
    administrator and environment manager; roles edited by hand and every assignment are left as they are.
-4. `php artisan limits:evaluate --dry-run`, read who would be told what, then `php artisan limits:evaluate`.
+4. `php artisan limits:evaluate --dry-run`, read who would be told what, then `php artisan limits:evaluate`. Stock and
+   capacity emails go to the people who manage limits or zones (F101); the others see the alerts in the application.
+5. On the waste types page, complete the code of any hazardous type flagged "Code réglementaire manquant" (F102), then
+   issue the slips the pickups list as missing.
 
 What the migrations change in existing data: a 0 kg that was a flagged placeholder (counted waste nobody weighed)
 becomes empty on the lot and on its pickup line; every packaged lot gets a count of one marked as a default; every zone
-is measured in packages; existing stock limits become kilogram limits with the same figure. Issued slips, signatures,
-documents, audit rows and notifications are not touched.
+is measured in packages; existing stock limits become kilogram limits with the same figure; requirements and pickups get
+empty new columns (`adds_to_family`, `waste_type_id`, `loading_requirements`). Issued slips, signatures, documents,
+audit rows and notifications are not touched.
 
-Going back: `php artisan migrate:rollback --step=7` restores the previous structure and data, except that a placeholder
-turned empty in a pickup's departure weight stays empty. **The exact way back is the backup.**
+Going back: `php artisan migrate:rollback --step=8` restores the previous structure (columns and indexes) and data, except
+that a placeholder turned empty in a pickup's departure weight stays empty. **The exact way back is the backup.**
 
-The rehearsal ran on MySQL 8.0.44, the development server. The cahier requires MariaDB 10.11 or later: run the same
-rehearsal once on the staging MariaDB before going live.
-
+MariaDB: a MySQL 8 dump of the copy imported into MariaDB 10.11 without change (same collations, same rows in all 93
+tables); the upgrade gave the same records, permissions and roles as on MySQL; the full test suite passes on both. When a
+table with a stored generated column (`user_role_assignments.site_scope_key`) is restored from a dump of the other engine,
+`CHECKSUM TABLE` differs although every value is the same: compare the rows, not the checksum.
 Static files: `ngsw-worker.js`, `ngsw.json` and `index.html` must be served with `Cache-Control: no-cache`; hashed files
 can be cached for a year.
 
