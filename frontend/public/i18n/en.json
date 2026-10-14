@@ -397,6 +397,13 @@
       "warning": "Attention",
       "exceeded": "Exceeded",
       "unverifiable": "Not verifiable"
+    },
+    "compliance": {
+      "not_due": "Not yet due",
+      "not_applicable": "—",
+      "incomplete": "Slip missing",
+      "pending": "Signatures pending",
+      "complete": "Documents complete"
     }
   },
   "channels": {
@@ -469,7 +476,9 @@
     "providerRequirement": "{{provider}} does not take this collection as it stands — {{problems}}",
     "providerRequirementOverridable": "{{provider}} does not take this collection as it stands — {{problems}} You may send it all the same by giving the reason.",
     "PROVIDER_REQUIREMENT_NEEDS_AUTHORIZATION": "Only an authorised person may send a request despite a blocking requirement of the provider.",
-    "PARTNER_NOT_LINKED": "This partner has no account: its requirements are simply edited."
+    "PARTNER_NOT_LINKED": "This partner has no account: its requirements are simply edited.",
+    "REGULATORY_CODE_MISSING": "A hazardous waste type of this pickup has no regulatory code: complete it on the waste type, its tracking slip cannot be issued without it.",
+    "NO_REQUIREMENT_EXCEPTION": "No blocking requirement is waiting for an explanation on this pickup."
   },
   "notifications": {
     "title": "Notifications",
@@ -515,7 +524,9 @@
       "capacity.load_unverifiable": "Zone load cannot be verified",
       "capacity.site_warning": "Site capacity almost reached",
       "capacity.site_exceeded": "Site capacity exceeded",
-      "capacity.site_unverifiable": "Site capacity cannot be verified"
+      "capacity.site_unverifiable": "Site capacity cannot be verified",
+      "pickup.requirements_unmet_at_loading": "Requirement not met at loading",
+      "pickup.requirement_exception": "Departure under a blocking requirement"
     },
     "types": {
       "stock.threshold_warning": {
@@ -661,8 +672,17 @@
       "capacity.site_unverifiable": {
         "title": "Site capacity cannot be verified — {{site}}",
         "body": "Known weight on the site: {{detail}}, but {{missing}} lot(s) are not weighed ({{lots}}). This is not a confirmed exceedance; the capacity cannot be called respected: weigh these lots."
+      },
+      "pickup.requirements_unmet_at_loading": {
+        "title": "Pickup {{number}} loaded — a requirement is not met",
+        "body": "{{quantity}} at departure, {{left}} lot(s) left on site. On what left: {{requirements}}."
+      },
+      "pickup.requirement_exception": {
+        "title": "Pickup {{number}} left under a requirement of {{provider}}",
+        "body": "On what was loaded ({{quantity}}): {{requirements}}. The departure is not undone; say why."
       }
-    }
+    },
+    "mailOnRequest": "Email only if you ask for it: by default, stock and capacity alerts are emailed to the people who manage the limits or the zones of the site. You always see them here."
   },
   "onboarding": {
     "bannerTitle": "Finish setting up.",
@@ -1040,6 +1060,15 @@
       "mass": "Lots are declared by weight; gaps are judged in kilos.",
       "count": "Lots are declared by number of pieces; gaps are judged in pieces, never converted to kilos.",
       "volume": "Lots are declared by volume; gaps are judged in volume."
+    },
+    "codeMissing": "Regulatory code missing",
+    "completeCode": "Complete the code",
+    "codeCompleted": "Regulatory code saved: the waiting lots carry it.",
+    "codeRequired": "A hazardous waste needs its regulatory code: without it no tracking slip can be issued.",
+    "codeDialog": {
+      "title": "Regulatory code — {{name}}",
+      "completeHint": "This hazardous type was created without a code. The code chosen is saved once and does not change; lots of this type without one receive it, and their slips can be issued. Existing slips are not changed.",
+      "activateHint": "This catalogue waste is hazardous and has no code of your country: choose it to activate the type."
     }
   },
   "pickups": {
@@ -1172,7 +1201,26 @@
       "departure": "Left",
       "received": "Received"
     },
-    "priceNeedsWeight": "Cannot be calculated: lot not weighed. Choose a flat amount."
+    "priceNeedsWeight": "Cannot be calculated: lot not weighed. Choose a flat amount.",
+    "compliance": {
+      "title": "Documents of the pickup",
+      "column": "Documents",
+      "outstandingOnly": "Documents outstanding",
+      "hint": {
+        "incomplete": "Lots that left have no tracking slip. {{done}} of {{total}} slip(s) complete.",
+        "pending": "Closing the pickup does not complete its documents: {{done}} of {{total}} slip(s) signed by every party.",
+        "complete": "Every slip is signed by every party and archived ({{total}})."
+      },
+      "missingCode": "{{type}} ({{code}}) is hazardous and has no regulatory code: {{count}} lot(s) without a slip ({{lots}}). No code is guessed.",
+      "completeCode": "Complete the code of the type",
+      "withoutSlip": "{{count}} lot(s) left without a slip: {{lots}}. Issue the slips.",
+      "waitingFor": {
+        "producer": "waits for the producer’s signature",
+        "transporter": "waits for the transporter’s signature",
+        "receiver": "waits for the receiver’s signature",
+        "signed_copy": "waits for the scan of the slip signed by hand"
+      }
+    }
   },
   "providers": {
     "title": "Providers",
@@ -1218,7 +1266,12 @@
     "blocking": "Refuse the request when this is not met",
     "blockingOn": "A collection below it, or whose quantity cannot be verified, cannot be requested from you — unless an authorised person at the client decides otherwise with a reason, which you may refuse.",
     "blockingOff": "The client is warned and may send the request; you will see it with this warning.",
-    "minPackagingNone": "N/A"
+    "minPackagingNone": "N/A",
+    "wasteTypeOptional": "Waste type (optional)",
+    "wholeFamily": "Whole family",
+    "addsToFamily": "Adds to the family requirement",
+    "addsToFamilyOn": "Lots of this type also count in the requirement of their family.",
+    "addsToFamilyOff": "For lots of this type, this line replaces the family line."
   },
   "compliance": {
     "register": {
@@ -2979,6 +3032,25 @@
       "toReview": "to review: the partner now has an account"
     },
     "canProceedInternal": "The request can be sent: these are warnings, from what your company noted.",
-    "blockedOverridableInternal": "The request cannot be sent as it stands. You may send it all the same by saying why: the reason is kept with the pickup."
+    "blockedOverridableInternal": "The request cannot be sent as it stands. You may send it all the same by saying why: the reason is kept with the pickup.",
+    "scope": {
+      "type": "this type only",
+      "typeAdds": "this type, in addition to its family"
+    },
+    "ownRule": "{{count}} lot(s) of a type with its own requirement, judged apart:",
+    "atRequest": "At request: {{outcome}}.",
+    "atRequestChanged": "Requirement changed since the request.",
+    "leftLots": "{{count}} lot(s) concerned left on site:",
+    "titleLoading": "At loading: what {{provider}} asks, on what left",
+    "loadingHint": "Judged on {{date}} on the lots loaded, with their weights and quantities at departure. The answer given at request, above, is not changed. Nothing is refused at loading.",
+    "leftBehind": "{{count}} lot(s) of the request left on site:",
+    "loadingNone": "No lot that was loaded is concerned by these requirements.",
+    "exceptionPending": "A blocking requirement is no longer met on what left. The departure is not undone: say why it happened this way.",
+    "exceptionExplained": "Left under a blocking requirement not met — explained by {{by}} on {{date}}: “{{reason}}”",
+    "explain": "Explain",
+    "explainTitle": "Explain the departure",
+    "explainHint": "The provider will read this reason. The loading stays recorded as it happened.",
+    "explainReason": "Why did these lots leave this way?",
+    "explained": "Explanation recorded."
   }
 }

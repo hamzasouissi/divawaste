@@ -26,6 +26,10 @@ import { SELECT } from '../../ui/select';
 interface AcceptedWaste {
   channel: string;
   family: string;
+  /** One waste type of the family (a catalogue item), or empty for the whole family. */
+  catalog_item: string;
+  /** A line of one type that also counts its lots in the family's line, instead of replacing it for them. */
+  adds_to_family: boolean;
   /** What a collection of this waste must reach, in `min_unit`; packages name the packaging they count. */
   min_quantity: string;
   min_unit: StockLimitUnit;
@@ -93,8 +97,14 @@ interface Profile {
                 @for (waste of wastes(); track $index; let index = $index) {
                   <div class="waste">
                     <dw-field [label]="t('providers.family')">
-                      <dw-select [ngModel]="waste.family" (ngModelChange)="patchWaste(index, { family: $event })" [ngModelOptions]="{ standalone: true }">
+                      <dw-select [ngModel]="waste.family" (ngModelChange)="patchWaste(index, { family: $event, catalog_item: '' })" [ngModelOptions]="{ standalone: true }">
                         @for (family of vocabulary()?.waste_families ?? []; track family.code) { <dw-option [value]="family.code" [label]="family.name | dwLocalized" /> }
+                      </dw-select>
+                    </dw-field>
+                    <dw-field [label]="t('providers.wasteTypeOptional')">
+                      <dw-select [ngModel]="waste.catalog_item" (ngModelChange)="patchWaste(index, { catalog_item: $event })" [ngModelOptions]="{ standalone: true }">
+                        <dw-option value="" [label]="t('providers.wholeFamily')" />
+                        @for (item of itemsOf(waste.family); track item.code) { <dw-option [value]="item.code" [label]="item.name | dwLocalized" /> }
                       </dw-select>
                     </dw-field>
                     <dw-field [label]="t('pickups.channel')">
@@ -135,6 +145,12 @@ interface Profile {
                         <span class="dw-faint">{{ t(waste.is_blocking ? 'providers.blockingOn' : 'providers.blockingOff') }}</span>
                       </div>
                     }
+                    @if (waste.catalog_item) {
+                      <div class="consequence">
+                        <dw-checkbox [checked]="waste.adds_to_family" (checkedChange)="patchWaste(index, { adds_to_family: $event })">{{ t('providers.addsToFamily') }}</dw-checkbox>
+                        <span class="dw-faint">{{ t(waste.adds_to_family ? 'providers.addsToFamilyOn' : 'providers.addsToFamilyOff') }}</span>
+                      </div>
+                    }
                   </div>
                 } @empty {
                   <p class="dw-faint">{{ t('common.none') }}</p>
@@ -150,8 +166,9 @@ interface Profile {
   styles: `
     .roles { margin-block: var(--dw-2) var(--dw-4); }
     .wastes { display: grid; gap: var(--dw-1); }
-    .waste { display: grid; grid-template-columns: 1.6fr 1.1fr 0.7fr 1.1fr 0.9fr 0.9fr; gap: var(--dw-2); align-items: end; padding-block-end: var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); }
-    .waste .notes { grid-column: 1 / span 5; } .waste > button { justify-self: end; }
+    /* Four columns: with the waste type a line holds seven fields, and a unit or a family must be read in full. */
+    .waste { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--dw-2); align-items: end; padding-block-end: var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); }
+    .waste .notes { grid-column: 1 / span 3; } .waste > button { justify-self: end; }
     .waste:last-child { border-block-end: 0; } .consequence { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--dw-1) var(--dw-3); align-items: center; font-size: 13px; }
     @media (max-width: 900px) { .waste { grid-template-columns: 1fr 1fr; } .waste .notes { grid-column: 1 / -1; } }
     /* On a phone each field takes the width: a waste family or a unit is read in full, not cut off. */
@@ -170,7 +187,7 @@ export class ProviderProfilePage {
   protected readonly roles = signal<string[]>([]);
   protected readonly wastes = signal<AcceptedWaste[]>([]);
   protected readonly units: StockLimitUnit[] = ['kg', 't', 'piece', 'l', 'm3', 'package'];
-  protected readonly valid = computed(() => this.roles().length > 0 && this.wastes().every((waste) => waste.channel && waste.family
+  protected readonly valid = computed(() => this.roles().length > 0 && this.wastes().every((waste) => waste.channel && (waste.family || waste.catalog_item)
     && (waste.min_unit === 'package' ? /^\d*$/.test(waste.min_quantity.trim()) && (waste.min_quantity.trim() === '' || !!waste.min_packaging_type) : /^(\d+([.,]\d{1,3})?)?$/.test(waste.min_quantity.trim()))));
   protected readonly form = inject(FormBuilder).nonNullable.group({
     description: [''], service_area: [''], public_contact_name: [''], public_contact_phone: [''], public_contact_email: ['', Validators.email],
@@ -190,7 +207,7 @@ export class ProviderProfilePage {
   }
 
   protected addWaste(): void {
-    this.wastes.update((rows) => [...rows, { channel: '', family: '', min_quantity: '', min_unit: 'kg', min_packaging_type: '', required_packaging_type: '', is_blocking: false, notes: '' }]);
+    this.wastes.update((rows) => [...rows, { channel: '', family: '', catalog_item: '', adds_to_family: false, min_quantity: '', min_unit: 'kg', min_packaging_type: '', required_packaging_type: '', is_blocking: false, notes: '' }]);
   }
 
   protected patchWaste(index: number, change: Partial<AcceptedWaste>): void {
@@ -200,6 +217,11 @@ export class ProviderProfilePage {
   /** Whether the line asks anything of a collection: only then is there something to refuse or to warn about. */
   protected asks(waste: AcceptedWaste): boolean {
     return Number(waste.min_quantity.replace(',', '.')) > 0 || waste.required_packaging_type !== '';
+  }
+
+  /** The waste types of a family, by their shared names; all of them while no family is chosen. */
+  protected itemsOf(family: string): { code: string; name: Localized; waste_family: string }[] {
+    return (this.vocabulary()?.waste_catalog_items ?? []).filter((item) => !family || item.waste_family === family);
   }
 
   protected removeWaste(index: number): void {
@@ -223,7 +245,7 @@ export class ProviderProfilePage {
           const minimum = Number(waste.min_quantity.replace(',', '.')) > 0 ? waste.min_quantity.trim().replace(',', '.') : null;
 
           return {
-            channel: waste.channel, family: waste.family, min_quantity: minimum, min_unit: minimum ? waste.min_unit : null,
+            channel: waste.channel, family: waste.family || null, catalog_item: waste.catalog_item || null, adds_to_family: !!waste.catalog_item && waste.adds_to_family, min_quantity: minimum, min_unit: minimum ? waste.min_unit : null,
             min_packaging_type: minimum && waste.min_unit === 'package' ? waste.min_packaging_type : null,
             required_packaging_type: waste.required_packaging_type || null, is_blocking: this.asks(waste) && waste.is_blocking, notes: waste.notes || null,
           };
@@ -242,9 +264,9 @@ export class ProviderProfilePage {
   private show(profile: Profile): void {
     this.profile.set(profile);
     this.roles.set(profile.roles);
-    // Entries tied to a precise catalogue item are kept as their family here (the form works by family).
-    this.wastes.set(profile.accepted_wastes.filter((waste) => waste.family).map((waste) => ({
-      channel: waste.channel, family: waste.family ?? '', min_quantity: waste.min_quantity === null ? '' : String(Number(waste.min_quantity)).replace('.', ','), min_unit: waste.min_unit ?? 'kg',
+    // A line names a family, or one waste type of it (a catalogue item) — kept as it is, never folded into its family.
+    this.wastes.set(profile.accepted_wastes.map((waste) => ({
+      channel: waste.channel, family: waste.family ?? '', catalog_item: waste.catalog_item ?? '', adds_to_family: waste.adds_to_family ?? false, min_quantity: waste.min_quantity === null ? '' : String(Number(waste.min_quantity)).replace('.', ','), min_unit: waste.min_unit ?? 'kg',
       min_packaging_type: waste.min_packaging_type ?? '', required_packaging_type: waste.required_packaging_type ?? '', is_blocking: waste.is_blocking, notes: waste.notes ?? '',
     })));
     this.form.reset({

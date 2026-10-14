@@ -8,7 +8,7 @@ import { InputText } from 'primeng/inputtext';
 import { Textarea } from 'primeng/textarea';
 
 import { Api } from '../../core/api/api';
-import { ExternalPartner, LimitResult, PartnerRequirement, RequirementRule, StockLimitUnit } from '../../core/api/models';
+import { ExternalPartner, LimitResult, PartnerRequirement, RequirementRule, StockLimitUnit, WasteType } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Confirm } from '../../ui/confirm';
 import { ReferenceData } from '../../core/data/reference';
@@ -168,6 +168,10 @@ export class LinkPartnerDialog {
 interface RequirementRow {
   ulid: string | null;
   family: string;
+  /** One of the company's own waste types of the family, or empty for the whole family. */
+  waste_type: string;
+  /** A line of one type that also counts its lots in the family's line, instead of replacing it for them. */
+  adds_to_family: boolean;
   channel: string;
   min_quantity: string;
   min_unit: StockLimitUnit;
@@ -201,7 +205,7 @@ interface RequirementRow {
                 <p class="dw-label">{{ t('partners.requirements.published', { name: account.legal_name }) }}</p>
                 <ul>
                   @for (rule of partner().provider_requirements ?? []; track $index) {
-                    <li>{{ rule.family | dwCode: 'family' }} · {{ t('channels.' + rule.channel) }} — {{ summary(rule, t) }} <span class="mode">{{ t(rule.is_blocking ? 'requirements.blocking' : 'requirements.warningOnly') }}</span></li>
+                    <li>{{ rule.catalog_item ? (rule.catalog_item | dwCode: 'catalog') : (rule.family | dwCode: 'family') }} · {{ t('channels.' + rule.channel) }} — {{ summary(rule, t) }} <span class="mode">{{ t(rule.is_blocking ? 'requirements.blocking' : 'requirements.warningOnly') }}</span></li>
                   }
                 </ul>
               } @else { <p class="dw-faint">{{ t('partners.requirements.publishedNone', { name: account.legal_name }) }}</p> }
@@ -212,8 +216,14 @@ interface RequirementRow {
           @for (row of rows(); track $index; let index = $index) {
             <div class="row" [class.to-review]="row.needs_review">
               <dw-field [label]="t('providers.family')">
-                <dw-select [ngModel]="row.family" (ngModelChange)="patch(index, { family: $event })" [ngModelOptions]="{ standalone: true }">
+                <dw-select [ngModel]="row.family" (ngModelChange)="patch(index, { family: $event, waste_type: '' })" [ngModelOptions]="{ standalone: true }">
                   @for (family of vocabulary()?.waste_families ?? []; track family.code) { <dw-option [value]="family.code" [label]="family.name | dwLocalized" /> }
+                </dw-select>
+              </dw-field>
+              <dw-field [label]="t('providers.wasteTypeOptional')">
+                <dw-select [ngModel]="row.waste_type" (ngModelChange)="patch(index, { waste_type: $event })" [ngModelOptions]="{ standalone: true }">
+                  <dw-option value="" [label]="t('providers.wholeFamily')" />
+                  @for (type of typesOf(row.family); track type.ulid) { <dw-option [value]="type.ulid" [label]="type.name" /> }
                 </dw-select>
               </dw-field>
               <dw-field [label]="t('pickups.channel')">
@@ -253,6 +263,12 @@ interface RequirementRow {
                 <dw-checkbox [checked]="row.is_blocking" (checkedChange)="patch(index, { is_blocking: $event })">{{ t('partners.requirements.blocking') }}</dw-checkbox>
                 <span class="dw-faint">{{ t(row.is_blocking ? 'partners.requirements.blockingOn' : 'partners.requirements.blockingOff') }}</span>
               </div>
+              @if (row.waste_type) {
+                <div class="consequence">
+                  <dw-checkbox [checked]="row.adds_to_family" (checkedChange)="patch(index, { adds_to_family: $event })">{{ t('providers.addsToFamily') }}</dw-checkbox>
+                  <span class="dw-faint">{{ t(row.adds_to_family ? 'providers.addsToFamilyOn' : 'providers.addsToFamilyOff') }}</span>
+                </div>
+              }
               @if (row.needs_review && row.ulid) {
                 <div class="consequence ask">
                   <strong>{{ t('partners.requirements.toReview') }}</strong>
@@ -277,9 +293,9 @@ interface RequirementRow {
     .note { display: flex; gap: 8px; margin: 0; padding: 8px 10px; border-radius: var(--dw-radius); background: var(--dw-surface-2); font-size: 13px; } .note dw-icon { flex: none; font-size: 18px; }
     .note.review { background: var(--dw-primary-soft); } .note p { margin: 0 0 4px; } .note ul { margin: 0; padding-inline-start: 18px; }
     .rows { display: grid; gap: var(--dw-2); }
-    .row { display: grid; grid-template-columns: 1.6fr 1.1fr 0.7fr 1.1fr 0.9fr 0.9fr; gap: var(--dw-2); align-items: end; padding-block-end: var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); }
+    .row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--dw-2); align-items: end; padding-block-end: var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); }
     .row.to-review { padding: var(--dw-2); border: 1px solid var(--dw-warning); border-radius: var(--dw-radius); }
-    .row .reference { grid-column: 1 / span 2; } .row .notes { grid-column: 3 / span 3; } .row > button { justify-self: end; }
+    .row .reference { grid-column: 1 / span 2; } .row .notes { grid-column: 3 / span 1; } .row > button { justify-self: end; }
     .consequence { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--dw-1) var(--dw-3); align-items: center; font-size: 13px; }
     .mode { font-size: 12px; font-weight: 600; } .add { justify-self: start; }
     @media (max-width: 900px) { .row { grid-template-columns: 1fr 1fr; } .row .reference, .row .notes { grid-column: 1 / -1; } }
@@ -294,6 +310,8 @@ export class PartnerRequirementsDialog {
   protected readonly ref = inject(DialogRef);
 
   protected readonly vocabulary = toSignal(inject(ReferenceData).vocabulary());
+  /** The company's own waste types: a line may be about one of them rather than the whole family. */
+  private readonly types = toSignal(inject(ReferenceData).wasteTypes(), { initialValue: [] as WasteType[] });
   protected readonly units: StockLimitUnit[] = ['kg', 't', 'piece', 'l', 'm3', 'package'];
   protected readonly partner = signal(dialogData<ExternalPartner>());
   protected readonly rows = signal<RequirementRow[]>(this.fromPartner(this.partner()));
@@ -305,11 +323,15 @@ export class PartnerRequirementsDialog {
     && (row.min_unit === 'package' ? /^\d*$/.test(row.min_quantity.trim()) && (this.minimum(row) === null || !!row.min_packaging_type) : /^(\d+([.,]\d{1,3})?)?$/.test(row.min_quantity.trim()))));
 
   protected add(): void {
-    this.rows.update((rows) => [...rows, { ulid: null, family: '', channel: '', min_quantity: '', min_unit: 'kg', min_packaging_type: '', required_packaging_type: '', is_blocking: false, contract_reference: '', notes: '', needs_review: false }]);
+    this.rows.update((rows) => [...rows, { ulid: null, family: '', waste_type: '', adds_to_family: false, channel: '', min_quantity: '', min_unit: 'kg', min_packaging_type: '', required_packaging_type: '', is_blocking: false, contract_reference: '', notes: '', needs_review: false }]);
   }
 
   protected patch(index: number, change: Partial<RequirementRow>): void {
     this.rows.update((rows) => rows.map((row, position) => (position === index ? { ...row, ...change } : row)));
+  }
+
+  protected typesOf(family: string): WasteType[] {
+    return this.types().filter((type) => type.waste_family === family);
   }
 
   protected remove(index: number): void {
@@ -336,7 +358,7 @@ export class PartnerRequirementsDialog {
           const minimum = this.minimum(row);
 
           return {
-            ulid: row.ulid, family: row.family, channel: row.channel, min_quantity: minimum, min_unit: minimum ? row.min_unit : null,
+            ulid: row.ulid, family: row.family, waste_type: row.waste_type || null, adds_to_family: !!row.waste_type && row.adds_to_family, channel: row.channel, min_quantity: minimum, min_unit: minimum ? row.min_unit : null,
             min_packaging_type: minimum && row.min_unit === 'package' ? row.min_packaging_type : null, required_packaging_type: row.required_packaging_type || null,
             is_blocking: row.is_blocking, contract_reference: row.contract_reference.trim() || null, notes: row.notes.trim() || null,
           };
@@ -375,7 +397,7 @@ export class PartnerRequirementsDialog {
 
   private fromPartner(partner: ExternalPartner): RequirementRow[] {
     return (partner.requirements ?? []).map((line) => ({
-      ulid: line.ulid, family: line.family ?? '', channel: line.channel, min_quantity: line.min_quantity === null ? '' : String(Number(line.min_quantity)).replace('.', ','), min_unit: line.min_unit ?? 'kg',
+      ulid: line.ulid, family: line.family ?? '', waste_type: line.waste_type?.ulid ?? '', adds_to_family: line.adds_to_family ?? false, channel: line.channel, min_quantity: line.min_quantity === null ? '' : String(Number(line.min_quantity)).replace('.', ','), min_unit: line.min_unit ?? 'kg',
       min_packaging_type: line.min_packaging_type ?? '', required_packaging_type: line.required_packaging_type ?? '', is_blocking: line.is_blocking,
       contract_reference: line.contract_reference ?? '', notes: line.notes ?? '', needs_review: line.needs_review,
     }));

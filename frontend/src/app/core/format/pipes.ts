@@ -187,12 +187,12 @@ export class CodePipe implements PipeTransform {
   private readonly locale = inject(Locale);
   private readonly vocabulary = toSignal(inject(ReferenceData).vocabulary());
 
-  transform(code: string | null | undefined, kind: 'packaging' | 'color' | 'material' | 'unit' | 'family' | 'zone'): string {
+  transform(code: string | null | undefined, kind: 'packaging' | 'color' | 'material' | 'unit' | 'family' | 'zone' | 'catalog'): string {
     if (!code) {
       return '—';
     }
     const vocabulary = this.vocabulary();
-    const list = { packaging: vocabulary?.packaging_types, color: vocabulary?.color_families, material: vocabulary?.materials, unit: vocabulary?.units, family: vocabulary?.waste_families, zone: vocabulary?.zone_types }[kind];
+    const list = { packaging: vocabulary?.packaging_types, color: vocabulary?.color_families, material: vocabulary?.materials, unit: vocabulary?.units, family: vocabulary?.waste_families, zone: vocabulary?.zone_types, catalog: vocabulary?.waste_catalog_items }[kind];
     const item = list?.find((entry) => entry.code === code);
     if (kind === 'unit' && item && 'symbol' in item) {
       return String(item.symbol);

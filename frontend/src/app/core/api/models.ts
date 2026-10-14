@@ -103,7 +103,21 @@ export interface LimitResult {
   shortfall?: string | number | null;
   /** A requirement of a provider: how many lots of the collection it concerns, and the rule as it stood. */
   lots?: number;
-  rule?: { channel: string | null; family: string | null; catalog_item: string | null; notes: string | null; source?: 'provider' | 'internal'; contract_reference?: string | null; needs_review?: boolean };
+  rule?: {
+    channel: string | null; family: string | null; catalog_item: string | null; notes: string | null; source?: 'provider' | 'internal'; contract_reference?: string | null; needs_review?: boolean;
+    /** One of the company's own waste types (requirements the company wrote down). */
+    waste_type?: { code: string; name: string } | null;
+    /** 'family': every lot of the family except those of a type with its own requirement; 'type': the lots of one type. */
+    scope?: 'family' | 'type';
+    /** A requirement of one type that also counts its lots in the family's. */
+    adds_to_family?: boolean;
+  };
+  /** A family requirement: lots of a type whose own requirement answers instead. */
+  own_rule_lots?: string[];
+  /** At loading: lots of the request this requirement concerned that stayed on site. */
+  left_lots?: string[];
+  /** At loading: the same requirement as it was answered when the pickup was requested (null if it changed since). */
+  at_request?: { outcome: LimitResult['outcome']; used: string | number | null; outside_count: number | null } | null;
   /** A requirement: 'provider' = published by the provider itself; 'internal' = written down by the company, not confirmed by the partner. */
   source?: 'provider' | 'internal';
   /** Packages, per packaging the limit names. */
@@ -194,6 +208,8 @@ export interface WasteType {
   waste_family: string | null;
   regulatory_code: string | null;
   is_hazardous: boolean;
+  /** A hazardous type created before its code was required: its lots wait until the code is completed. */
+  regulatory_code_missing?: boolean;
   /** This waste only leaves the site under an authorisation (declaration signed by customs). */
   requires_authorization: boolean;
   unit: string | null;
@@ -453,6 +469,11 @@ export interface Pickup {
   cancellation_reason: string | null;
   /** What the receiver asked of this collection when it was requested, and the answer; null when it asked for nothing. */
   provider_requirements?: ProviderRequirements | null;
+  /** The same requirements judged again on what was loaded, beside the first answer; null before loading or when nothing is asked. */
+  loading_requirements?: LoadingRequirements | null;
+  /** Where the documents stand, apart from the status: a closed pickup may still wait for signatures. */
+  compliance?: PickupCompliance;
+  compliance_state?: PickupComplianceState | null;
   departure_weight_kg: string | null;
   received_weight_kg: string | null;
   weight_variance_kg: string | null;
@@ -541,6 +562,12 @@ export interface ExternalPartner {
 /** What is asked of a collection of one waste for one treatment: a minimum in a unit, a packaging, and whether falling short refuses. */
 export interface RequirementRule {
   family: string | null;
+  /** One of the company's own waste types, for what the company writes down about a partner. */
+  waste_type?: { ulid: string; code: string; name: string } | null;
+  /** An item of the shared catalogue, for what a provider publishes. */
+  catalog_item?: string | null;
+  /** A line of one type that also counts its lots in the family's line, instead of replacing it for them. */
+  adds_to_family?: boolean;
   channel: string;
   min_quantity: string | null;
   min_unit: StockLimitUnit | null;
@@ -869,6 +896,8 @@ export interface Reference {
   /** How a raw material is counted: metres, kilograms or pieces. */
   material_units: { code: string; name: Localized; symbol: string }[];
   waste_families: { code: string; name: Localized }[];
+  /** Shared names of waste types, each in its family: what a provider names for a requirement of one type. */
+  waste_catalog_items?: { code: string; name: Localized; waste_family: string }[];
   materials: { code: string; name: Localized }[];
   color_families: { code: string; name: Localized; hex_color: string | null; pantone_reference: string | null; color_system: string; collection: string | null }[];
   treatment_channels: { code: string; name: Localized; is_valorization: boolean; is_landfill: boolean }[];
@@ -893,6 +922,8 @@ export interface AcceptedWasteRule {
   /** The packaging the provider asks this waste to arrive in. */
   required_packaging_type: string | null;
   is_blocking: boolean;
+  /** A line of one catalogue item that also counts its lots in the family's line. */
+  adds_to_family?: boolean;
   min_quantity_kg: string | null;
   notes: string | null;
 }
@@ -909,4 +940,32 @@ export interface ProviderRequirements {
   decided_at?: string;
   /** Sent although a blocking requirement failed: who decided it, and why. */
   override?: { reason: string; by: string; at: string } | null;
+}
+
+/** What the receiver asks, judged again on what left. Nothing is refused then; a blocking requirement no longer met is an exception someone explains. */
+export interface LoadingRequirements {
+  evaluated_at: string;
+  constraints: LimitResult[];
+  outcome: LimitResult['outcome'] | null;
+  /** Requirements not met, or not verifiable, on what left. */
+  unmet: string[];
+  /** Among them, the blocking ones. */
+  failing: string[];
+  /** Lots of the request that stayed on site. */
+  left_behind: string[];
+  exception: { failing: string[]; acknowledged: { reason: string; by: string; at: string } | null } | null;
+}
+
+/** not_due: nothing has left yet · incomplete: a lot that left has no slip · pending: a signature or a signed copy is missing · complete. */
+export type PickupComplianceState = 'not_applicable' | 'not_due' | 'incomplete' | 'pending' | 'complete';
+
+export interface PickupCompliance {
+  state: PickupComplianceState;
+  slips: number;
+  slips_completed: number;
+  pending_slips: { ulid: string; number: string; waiting_for: 'producer' | 'transporter' | 'receiver' | 'signed_copy' }[];
+  /** Hazardous lots no slip can carry: their waste type has no regulatory code yet. */
+  missing_codes: { waste_type: string; code: string; name: string; lots: string[] }[];
+  /** Lots that left and are on no slip yet for another reason. */
+  lots_without_slip: string[];
 }
