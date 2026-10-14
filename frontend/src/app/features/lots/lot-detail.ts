@@ -53,7 +53,7 @@ import { COLOR } from '../../ui/swatch';
                 <div class="dw-panel-body">
                   <dl class="dw-facts">
                     <div><dt>{{ t('fields.wasteType') }}</dt><dd>{{ l.waste_type?.name }} @if (l.is_hazardous) { <dw-status kind="alert" value="warning" [label]="t('common.hazardous')" /> }</dd></div>
-                    <div><dt>{{ t('fields.weight') }}</dt><dd class="weight">{{ l | dwLotMeasure }}@if (l.weight_basis && l.weight_basis !== 'measured') { <div class="dw-faint basis">{{ t('lots.weightBasis.' + l.weight_basis) }}</div> }</dd></div>
+                    <div><dt>{{ t(l.quantity !== null && l.unit && l.unit !== 'kg' ? 'fields.quantity' : 'fields.weight') }}</dt><dd class="weight">{{ l | dwLotMeasure }}@if (l.weight_basis && l.weight_basis !== 'measured') { <div class="dw-faint basis">{{ t('lots.weightBasis.' + l.weight_basis) }}</div> }</dd></div>
                     <div><dt>{{ t('fields.site') }}</dt><dd>{{ l.site?.name }}</dd></div>
                     <div><dt>{{ t('fields.zone') }}</dt><dd>{{ l.zone?.name }}</dd></div>
                     <div><dt>{{ t('lots.regulatoryCode') }}</dt><dd class="dw-mono">{{ l.regulatory_code ?? '—' }}</dd></div>

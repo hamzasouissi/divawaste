@@ -8,7 +8,8 @@ type Params = Record<string, string | number | boolean | null | undefined>;
  * one language to the next ("17 m³ sur 20 m³" / "17 m³ of 20 m³") come once per language: `detail` holds the French
  * text and `detail_en` the English one, and the one of the reader replaces the default.
  *
- * Stock-limit notifications sent before limits had a unit only carry kilograms: they are still read as such.
+ * Stock-limit notifications sent before limits had a unit only carry kilograms: they are still read as such. So are
+ * pickup notifications sent before they spoke in the units of the lots.
  */
 export function notificationParams(params: Params | null | undefined, language: string): Params {
   const result: Params = { ...(params ?? {}) };
@@ -18,7 +19,7 @@ export function notificationParams(params: Params | null | undefined, language: 
       result[key.slice(0, -suffix.length)] = value;
     }
   }
-  for (const [recent, former] of [['quantity', 'quantity_kg'], ['max_quantity', 'max_quantity_kg']] as const) {
+  for (const [recent, former] of [['quantity', 'quantity_kg'], ['max_quantity', 'max_quantity_kg'], ['quantity', 'weight_kg'], ['received', 'received_kg'], ['departure', 'departure_kg']] as const) {
     if (result[recent] === undefined && result[former] !== undefined && result[former] !== null) {
       result[recent] = `${Number(result[former])} kg`;
     }

@@ -488,7 +488,7 @@
       "pickup.cancelled": "Enlèvement annulé par l'industriel",
       "pickup.collected": "Lots chargés",
       "pickup.received": "Lots réceptionnés par le prestataire",
-      "pickup.variance_flagged": "Écart de poids à l'enlèvement",
+      "pickup.variance_flagged": "Écart à la réception d'un enlèvement",
       "pickup.completed": "Enlèvement clôturé",
       "accreditation.expiring_soon": "Agrément d'un prestataire bientôt expiré",
       "accreditation.expired": "Agrément d'un prestataire expiré",
@@ -528,7 +528,7 @@
       },
       "pickup.requested": {
         "title": "Nouvelle demande d'enlèvement {{number}}",
-        "body": "{{company}} — {{lots}} lots, {{weight_kg}} kg, le {{date}} ({{site}})."
+        "body": "{{company}} — {{lots}} lot(s), {{quantity}}, le {{date}} ({{site}})."
       },
       "pickup.confirmed": {
         "title": "Enlèvement {{number}} confirmé",
@@ -544,15 +544,15 @@
       },
       "pickup.collected": {
         "title": "Enlèvement {{number}} chargé",
-        "body": "{{weight_kg}} kg au départ du site."
+        "body": "{{quantity}} au départ du site."
       },
       "pickup.received": {
         "title": "Enlèvement {{number}} réceptionné",
-        "body": "{{provider}} a réceptionné {{weight_kg}} kg."
+        "body": "{{provider}} a réceptionné {{quantity}}."
       },
       "pickup.variance_flagged": {
-        "title": "Écart de poids — enlèvement {{number}}",
-        "body": "{{received_kg}} kg reçus pour {{departure_kg}} kg au départ ({{variance_pct}} %)."
+        "title": "Écart à la réception — enlèvement {{number}}",
+        "body": "{{received}} reçu(s) pour {{departure}} au départ : au moins un lot est hors tolérance."
       },
       "pickup.completed": {
         "title": "Enlèvement {{number}} clôturé",
@@ -732,7 +732,7 @@
     "alerts": {
       "exceeded": "{{count}} limite(s) de stock dépassée(s)",
       "warning": "{{count}} limite(s) de stock bientôt atteinte(s)",
-      "variance": "{{count}} enlèvement(s) avec écart de poids à examiner",
+      "variance": "{{count}} enlèvement(s) avec écart à la réception à examiner",
       "requested": "{{count}} demande(s) d'enlèvement en attente de réponse du prestataire",
       "accreditationExpired": "Agrément expiré : {{provider}} ne peut plus être choisi",
       "accreditationExpiring": "Agrément de {{provider}} : expire dans {{days}} jour(s)",
@@ -1057,7 +1057,7 @@
     "received": "Poids reçu",
     "variance": "Écart",
     "varianceFlagged": "Écart de poids supérieur à la limite",
-    "varianceOnly": "Avec écart de poids",
+    "varianceOnly": "Avec écart à la réception",
     "lots": "Lots",
     "lotsCount": "{{count}} lot(s)",
     "emptyTitle": "Aucun enlèvement",

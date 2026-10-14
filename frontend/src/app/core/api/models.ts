@@ -468,6 +468,9 @@ export interface Pickup {
   lots_count?: number;
   /** Lots of the pickup whose weight is not known: its weights are the sum of the others. */
   unweighed_lots?: number;
+  /** The same per stage: lots that left without a weight, lots received without one. The totals leave them out. */
+  departure_unweighed_lots?: number;
+  received_unweighed_lots?: number;
   declared_weight_kg?: string;
   net_amount?: string | null;
   lots?: PickupLine[];

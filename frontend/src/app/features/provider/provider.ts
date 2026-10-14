@@ -154,6 +154,8 @@ interface Profile {
     .waste .notes { grid-column: 1 / span 5; } .waste > button { justify-self: end; }
     .waste:last-child { border-block-end: 0; } .consequence { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--dw-1) var(--dw-3); align-items: center; font-size: 13px; }
     @media (max-width: 900px) { .waste { grid-template-columns: 1fr 1fr; } .waste .notes { grid-column: 1 / -1; } }
+    /* On a phone each field takes the width: a waste family or a unit is read in full, not cut off. */
+    @media (max-width: 560px) { .waste { grid-template-columns: 1fr; } .dw-panel-head { flex-wrap: wrap; gap: var(--dw-2); } }
   `,
 })
 export class ProviderProfilePage {
