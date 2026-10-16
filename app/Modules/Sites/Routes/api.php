@@ -69,12 +69,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'region' => ['nullable', 'string', 'max:100'],
             'timezone' => ['nullable', 'timezone:all'],
             'regulatory_identifier' => ['nullable', 'string', 'max:64'],
-            // The weight the site may hold in all, and from which percentage of it people are alerted.
-            'capacity_kg' => ['nullable', 'decimal:0,3', 'min:0'],
-            'capacity_alert_pct' => ['sometimes', 'integer', 'between:1,100'],
         ]));
-        // The weight already on the site may be above the new capacity.
-        app(EvaluateCapacityAlerts::class)->forSite($site->id);
 
         return new SiteResource($site->load('zones'));
     })->name('sites.update');
@@ -191,12 +186,12 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             ->when($filter['zone'] ?? null, fn ($query, $value) => $query->where('z.ulid', strtoupper($value)))
             ->when($filter['waste_type'] ?? null, fn ($query, $value) => $query->where('t.ulid', strtoupper($value)))
             ->when(array_key_exists('hazardous', $filter) && $filter['hazardous'] !== null, fn ($query) => $query->where('l.is_hazardous', (bool) $filter['hazardous']))
-            ->groupBy('l.site_id', 'l.zone_id', 'l.waste_type_id', 's.ulid', 's.name', 's.capacity_kg', 's.capacity_alert_pct', 'z.ulid', 'z.name', 'z.capacity_kg', 'z.capacity_m3', 'z.space_method', 'z.capacity_alert_pct',
+            ->groupBy('l.site_id', 'l.zone_id', 'l.waste_type_id', 's.ulid', 's.name', 'z.ulid', 'z.name', 'z.capacity_kg', 'z.capacity_m3', 'z.space_method', 'z.capacity_alert_pct',
                 't.ulid', 't.name', 't.is_hazardous', 't.default_unit_id', 't.density_kg_m3', 't.unit_weight_kg')
             ->orderBy('s.name')->orderBy('z.name')->orderBy('t.name')
             ->get([
                 'l.site_id', 'l.zone_id', 'l.waste_type_id', 's.ulid as site', 's.name as site_name', 'z.ulid as zone', 'z.name as zone_name',
-                'z.capacity_kg', 'z.capacity_m3', 'z.space_method', 'z.capacity_alert_pct', 's.capacity_kg as site_capacity_kg', 's.capacity_alert_pct as site_alert_pct', 't.ulid as waste_type', 't.name as waste_type_name', 't.is_hazardous',
+                'z.capacity_kg', 'z.capacity_m3', 'z.space_method', 'z.capacity_alert_pct', 't.ulid as waste_type', 't.name as waste_type_name', 't.is_hazardous',
                 't.default_unit_id', 't.density_kg_m3', 't.unit_weight_kg',
                 DB::raw('COALESCE(SUM(l.net_weight_kg), 0) as quantity_kg'), DB::raw('COUNT(*) as lots'),
                 DB::raw('SUM(l.net_weight_kg IS NULL) as unweighed_lots'),
@@ -208,9 +203,9 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         $fills = $rows->unique('zone_id')->mapWithKeys(fn ($row) => [$row->zone_id => $organisation->fill(
             (int) $row->site_id, (int) $row->zone_id, $row->capacity_kg === null ? null : (string) $row->capacity_kg, (int) $row->capacity_alert_pct,
             $row->capacity_m3 === null ? null : (string) $row->capacity_m3, (string) $row->space_method)]);
-        // The weight each site holds against the weight it may hold: every lot once, whatever the filters and the zones.
-        $sites = $rows->unique('site_id')->map(fn ($row) => ['site' => $row->site, 'site_name' => $row->site_name, 'capacity_kg' => $row->site_capacity_kg === null ? null : (string) $row->site_capacity_kg]
-            + $organisation->siteLoad((int) $row->site_id, $row->site_capacity_kg === null ? null : (string) $row->site_capacity_kg, (int) $row->site_alert_pct))->values();
+        // The weight each site holds: every lot once, whatever the filters and the zones. A limit on the whole site is a
+        // stock limit like the others (every zone, every waste type), listed with them.
+        $sites = $rows->unique('site_id')->map(fn ($row) => ['site' => $row->site, 'site_name' => $row->site_name] + $organisation->siteLoad((int) $row->site_id))->values();
         $thresholds = StockThreshold::query()->where('is_active', true)->when($siteIds !== null, fn ($query) => $query->whereIn('site_id', $siteIds))
             ->orderBy('id')->get();
 

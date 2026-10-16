@@ -31,10 +31,10 @@ class SiteApiTest extends TestCase
         $admin = $this->makeMember($this->company, ['client_admin' => null]);
 
         $this->withToken($this->tokenFor($admin, $this->company))
-            ->postJson('/api/v1/sites', ['code' => 'SFX', 'name' => 'Usine Sfax', 'country' => 'TN', 'capacity_kg' => '2500.500'])
+            ->postJson('/api/v1/sites', ['code' => 'SFX', 'name' => 'Usine Sfax', 'country' => 'TN'])
             ->assertCreated()
             ->assertJsonPath('data.code', 'SFX')
-            ->assertJsonPath('data.capacity_kg', '2500.500')
+            ->assertJsonMissingPath('data.capacity_kg')
             ->assertJsonMissingPath('data.id');
 
         $this->assertSame($this->company->id, DB::table('sites')->where('code', 'SFX')->value('company_id'));

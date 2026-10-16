@@ -28,6 +28,7 @@ All emails are already confirmed and no account has two-factor authentication.
 | User | Email | Password | Role | Company | Site | Main purpose |
 |---|---|---|---|---|---|---|
 | Karim Ben Salah | `karim@sahel-recyclage.test` | `DivaWaste!2026` | Administrateur prestataire | Recyclage du Sahel (provider) | — | Confirm / refuse requests, reception, treatment, sign slips, certificates, profile, accreditations |
+| Youssef Ayari | `youssef@transcap.test` | `DivaWaste!2026` | Administrateur prestataire | Trans Cap Logistique (provider, **transports only**) | — | Partner of Textile du Cap Bon. Chosen as **transporter** on a request (never as receiver): confirms the date the receiver set, or refuses; signs the slip as transporter |
 | Nour Belhadj | `nour@monastir-jeans.test` | `DivaWaste!2026` | Administrateur client | Monastir Jeans Confection (industrial, paying) | all | **Tenant isolation** (its own 3 lots); a paying client with an invoice and a declared bank transfer |
 | Mehdi Chaabane | `mehdi@tissages-kh.test` | `DivaWaste!2026` | Administrateur client | Tissages de Ksar Hellal (industrial) | — | Registration **awaiting approval**: sees only the status page |
 | Sonia Hammami | `sonia@sfax-eco.test` | `DivaWaste!2026` | Administrateur prestataire | Sfax Éco-Collecte (provider) | — | Provider awaiting approval, with one accreditation to review |

@@ -101,47 +101,29 @@ class CapacityAlertsTest extends TestCase
         $this->assertEquals(['load' => 'exceeded', 'space' => 'unverifiable'], DB::table('capacity_alerts')->pluck('alert_level', 'capacity_type')->all());
 
         // Emails follow the stock limits: an exceedance and an incomplete measure are mailed, a warning is not.
-        $this->assertSame([false, true, true, true, true], array_map(NotificationCatalog::sendsMail(...), ['capacity.space_warning', 'capacity.space_unverifiable', 'capacity.space_exceeded', 'capacity.load_exceeded', 'capacity.site_unverifiable']));
+        $this->assertSame([false, true, true, true, true], array_map(NotificationCatalog::sendsMail(...), ['capacity.space_warning', 'capacity.space_unverifiable', 'capacity.space_exceeded', 'capacity.load_exceeded', 'capacity.load_unverifiable']));
 
         // A limit that is removed has no state left to remember.
         $this->api()->putJson("/api/v1/zones/{$zone}", ['code' => 'A', 'name' => 'Atelier A', 'capacity_kg' => null, 'capacities' => []])->assertOk();
         $this->assertSame(0, DB::table('capacity_alerts')->count());
     }
 
-    public function test_the_weight_of_a_site_is_announced_when_its_capacity_is_set_too_low_or_cannot_be_verified(): void
+    public function test_the_weight_of_a_whole_site_is_watched_by_a_stock_limit_on_the_site(): void
     {
         Notification::fake();
         $zone = $this->api()->postJson("/api/v1/sites/{$this->site->ulid}/zones", ['code' => 'C', 'name' => 'Cour'])->assertCreated()->json('data.ulid');
+        // A site has no capacity of its own any more: what is sent for it is not kept, and its weight is still given.
+        $this->api()->putJson("/api/v1/sites/{$this->site->ulid}", ['name' => $this->site->name, 'site_kind' => $this->site->site_kind, 'capacity_kg' => '1000'])->assertOk()
+            ->assertJsonMissingPath('data.capacity_kg')->assertJsonPath('data.load.quantity_kg', '0.000');
+        // The whole site — every zone, every waste type — is watched by a stock limit, here 1,000 kg.
+        $this->api()->postJson('/api/v1/stock-thresholds', ['site' => $this->site->ulid, 'max_quantity' => '1000', 'unit' => 'kg', 'warning_pct' => 90])->assertCreated();
         $this->lot($zone, '1100');
-        Notification::assertNothingSent();
-        $capacity = fn (string $kg) => $this->api()->putJson("/api/v1/sites/{$this->site->ulid}", ['name' => $this->site->name, 'site_kind' => $this->site->site_kind, 'capacity_kg' => $kg, 'capacity_alert_pct' => 90])->assertOk();
-
-        // The weight already on the site is above the capacity just entered: said at once, with the excess.
-        $capacity('1000');
-        $exceeded = $this->told('site_exceeded');
+        $exceeded = Notification::sent($this->manager, BusinessEventNotification::class, fn (BusinessEventNotification $n) => $n->type === 'stock.threshold_exceeded')->values();
         $this->assertCount(1, $exceeded);
-        $this->assertSame([$this->site->name, null, '1 100 kg sur 1 000 kg', '100 kg'], [$exceeded[0]->params['site'], $exceeded[0]->params['zone'], $exceeded[0]->params['detail'], $exceeded[0]->params['excess']]);
-        // Saved again unchanged, and another lot placed: still exceeded, not announced again.
-        Notification::fake();
-        $capacity('1000');
-        $this->lot($zone, '5');
-        Notification::assertNothingSent();
-
-        // A capacity that fits clears the state, silently.
-        $capacity('2000');
-        Notification::assertNothingSent();
-        $this->assertSame([null], DB::table('capacity_alerts')->where('capacity_type', 'site_load')->pluck('alert_level')->all());
-
-        // Below the capacity on what is known, with a lot nobody weighed: not verifiable, the lot named.
-        $unweighed = $this->lot($zone, null)->json('data.lot_number');
-        $unverifiable = $this->told('site_unverifiable');
-        $this->assertSame(['1 105 kg sur 2 000 kg', 1, $unweighed], [$unverifiable[0]->params['detail'], $unverifiable[0]->params['missing'], $unverifiable[0]->params['lots']]);
-        $this->assertCount(0, $this->told('site_exceeded'));
-
-        // Weighed: 1,905 kg, above the 90 % alert for certain — said as a warning.
-        Notification::fake();
-        $this->api()->postJson('/api/v1/lots/'.DB::table('waste_lots')->where('lot_number', $unweighed)->value('ulid').'/weigh', ['net_weight_kg' => '800'])->assertOk();
-        $this->assertSame(['1 905 kg sur 2 000 kg', '95'], [$this->told('site_warning')[0]->params['detail'], $this->told('site_warning')[0]->params['pct']]);
+        $this->assertSame($this->site->name, $exceeded[0]->params['site']);
+        // No capacity alert is kept for the site itself.
+        $this->assertSame(0, DB::table('capacity_alerts')->whereNull('zone_id')->count());
+        $this->assertCount(0, Notification::sent($this->manager, BusinessEventNotification::class, fn (BusinessEventNotification $n) => str_starts_with($n->type, 'capacity.site')));
     }
 
     public function test_a_room_in_volume_is_unverifiable_until_the_volume_of_its_packaging_is_known(): void

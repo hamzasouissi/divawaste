@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\Concerns\InteractsWithTenants;
 use Tests\TestCase;
@@ -191,17 +192,19 @@ class StockLimitUnitsTest extends TestCase
     public function test_the_states_nobody_was_told_about_are_announced_once_by_the_reconciliation_and_never_again(): void
     {
         $type = $this->type('CHUTES');
-        DB::table('sites')->where('id', $this->site->id)->update(['capacity_kg' => '1000', 'capacity_alert_pct' => 90]);
+        // The whole site may hold 1,000 kg: a stock limit on the site, every zone and every waste type.
+        $this->limit(['max_quantity' => '1000', 'unit' => 'kg'])->assertCreated();
         $room = $this->api()->postJson("/api/v1/sites/{$this->site->ulid}/zones", ['code' => 'B', 'name' => 'Hall B', 'capacity_kg' => '5000',
             'capacities' => [['packaging_type' => 'bag', 'max_count' => 100]]])->assertCreated()->json('data.ulid');
         $this->limit(['waste_type' => $type, 'max_quantity' => '100', 'unit' => 'package', 'packaging_type' => 'bag'])->assertCreated();
         $this->api()->postJson('/api/v1/lots', ['site' => $this->site->ulid, 'zone' => $room, 'waste_type' => $type, 'net_weight_kg' => '1200', 'packaging_type' => 'bag', 'package_count' => 110])->assertCreated();
 
-        // Another company with its own site over its capacity: its people, and only they, hear about it.
+        // Another company with its own site over its limit: its people, and only they, hear about it.
         $other = $this->makeCompany();
         $otherSite = $this->makeSite($other, 'TUN');
         $otherManager = $this->makeMember($other, ['environment_manager' => $otherSite]);
-        DB::table('sites')->where('id', $otherSite->id)->update(['capacity_kg' => '100']);
+        DB::table('stock_thresholds')->insert(['ulid' => strtoupper((string) Str::ulid()), 'company_id' => $other->id, 'site_id' => $otherSite->id, 'max_quantity' => '100',
+            'unit_code' => 'kg', 'measure_key' => 'mass', 'warning_pct' => 90, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()]);
         $this->tenant()->runAs($other, function () use ($otherSite, $otherManager) {
             $zone = Zone::query()->create(['code' => 'Z', 'site_id' => $otherSite->id, 'zone_type_id' => DB::table('zone_types')->value('id'), 'name' => 'Z']);
             $type = WasteType::query()->create(['code' => 'X', 'name' => 'X', 'waste_family_id' => DB::table('waste_families')->value('id'), 'default_unit_id' => DB::table('units')->where('code', 'kg')->value('id'), 'activated_at' => now()]);
@@ -222,14 +225,13 @@ class StockLimitUnitsTest extends TestCase
         $this->artisan('limits:evaluate')->expectsOutputToContain('2 site(s) evaluated')->assertSuccessful();
 
         $types = fn (User $user) => Notification::sent($user, BusinessEventNotification::class)->map(fn (BusinessEventNotification $n) => $n->type)->sort()->values()->all();
-        $this->assertSame(['capacity.site_exceeded', 'capacity.space_exceeded', 'stock.threshold_exceeded'], $types($this->manager));
-        $this->assertSame(['capacity.site_exceeded'], $types($otherManager));
+        $this->assertSame(['capacity.space_exceeded', 'stock.threshold_exceeded', 'stock.threshold_exceeded'], $types($this->manager));
+        $this->assertSame(['stock.threshold_exceeded'], $types($otherManager));
         // English readers get the figures in English too.
         $space = Notification::sent($this->manager, BusinessEventNotification::class, fn (BusinessEventNotification $n) => $n->type === 'capacity.space_exceeded')->first();
         $this->assertSame(['110 sur 100 Sac', '110 of 100 Bag'], [$space->params['detail'], $space->params['detail_en']]);
-        $site = Notification::sent($this->manager, BusinessEventNotification::class, fn (BusinessEventNotification $n) => $n->type === 'capacity.site_exceeded')->first();
-        $this->assertSame(['1 200 kg sur 1 000 kg', '1,200 kg of 1,000 kg', '200 kg', '200 kg'], [$site->params['detail'], $site->params['detail_en'], $site->params['excess'], $site->params['excess_en']]);
-        $this->assertSame(3, DB::table('capacity_alerts')->where('company_id', $this->company->id)->whereNotNull('alert_level')->count() + DB::table('stock_thresholds')->where('alert_level', 'exceeded')->count());
+        $this->assertSame(3, DB::table('capacity_alerts')->where('company_id', $this->company->id)->whereNotNull('alert_level')->count()
+            + DB::table('stock_thresholds')->where('company_id', $this->company->id)->where('alert_level', 'exceeded')->count());
 
         // Run again, and again the next day: the same states are not announced twice.
         Notification::fake();

@@ -12,8 +12,8 @@ use App\Modules\Sites\Support\ZoneOrganisation;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Tells people when what a zone or a site can physically hold becomes a concern: the room of a zone, its load, the
- * weight of the site. Same rule as the stock limits: a message when the state gets worse (nothing → warning →
+ * Tells people when what a zone can physically hold becomes a concern: its room and its load (a limit on the whole
+ * site is a stock limit, evaluated with the others). Same rule as the stock limits: a message when the state gets worse (nothing → warning →
  * unverifiable → exceeded), or when an unverifiable limit turns out to be at its warning; never twice for the same
  * state, never when it falls back. "Exceeded" is a fact on what is known; "unverifiable" is an incomplete measure, and
  * the two are different messages. Nothing here refuses a lot.
@@ -42,9 +42,6 @@ final class EvaluateCapacityAlerts
                 $limits[$zone->id.'|'.$limit['key']] = ['zone' => $zone, 'limit' => $limit];
             }
         }
-        foreach ($this->organisation->siteLoad($siteId, $site->capacity_kg, (int) ($site->capacity_alert_pct ?? 90))['constraints'] as $limit) {
-            $limits['|site_load'] = ['zone' => null, 'limit' => $limit];
-        }
 
         $stored = DB::table('capacity_alerts')->where('site_id', $siteId)->get()->keyBy(fn ($row) => $row->zone_id.'|'.$row->capacity_type);
         foreach ($limits as $key => ['zone' => $zone, 'limit' => $limit]) {
@@ -57,7 +54,7 @@ final class EvaluateCapacityAlerts
                 : DB::table('capacity_alerts')->where('id', $row->id)->update($state);
 
             if ($level !== null && EvaluateStockThresholds::tells($previous, $level)) {
-                $this->notify->toSitePermission($siteId, 'stock.view', 'capacity.'.self::subject($limit['key']).'_'.$level->value, $this->describe($site, $zone, $limit), '/stock');
+                $this->notify->toSitePermission($siteId, 'stock.view', 'capacity.'.$limit['key'].'_'.$level->value, $this->describe($site, $zone, $limit), '/stock');
             }
         }
         // A limit that no longer exists (removed, or its zone closed) has no state to remember.
@@ -70,11 +67,6 @@ final class EvaluateCapacityAlerts
         foreach (DB::table('sites')->where('company_id', $companyId)->where('is_active', true)->pluck('id') as $siteId) {
             $this->forSite((int) $siteId);
         }
-    }
-
-    private static function subject(string $key): string
-    {
-        return $key === 'site_load' ? 'site' : $key;
     }
 
     /**

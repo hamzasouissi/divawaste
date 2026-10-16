@@ -62,6 +62,12 @@ again with a transporter, or complete the receiver's profile if it does fetch th
 transporter of the platform is confirmed only once that transporter confirms. With this migration, roll back with
 `--step=9`.
 
+Added the same day (a tenth migration, `2026_10_26_000100_site_capacity_becomes_a_site_stock_limit`, F107): the weight a
+site may hold becomes a stock limit on the whole site (no zone, no waste type, in kg), with the same figure, the same alert
+percentage and the state already announced; a site that already had such a limit keeps it. `sites.capacity_kg` and
+`sites.capacity_alert_pct` are then dropped. Rolling back restores the two columns empty and leaves the limits in place;
+the exact way back is the backup. Roll back everything with `--step=10`.
+
 Going back: `php artisan migrate:rollback --step=8` restores the previous structure (columns and indexes) and data, except
 that a placeholder turned empty in a pickup's departure weight stays empty. **The exact way back is the backup.**
 

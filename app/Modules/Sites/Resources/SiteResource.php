@@ -29,10 +29,8 @@ class SiteResource extends JsonResource
             'region' => $this->region,
             'timezone' => $this->timezone,
             'regulatory_identifier' => $this->regulatory_identifier,
-            'capacity_kg' => $this->capacity_kg,
-            'capacity_alert_pct' => $this->capacity_alert_pct ?? 90,
-            // The weight on the site against the weight it may hold: every lot once, whatever its zone.
-            'load' => app(ZoneOrganisation::class)->siteLoad($this->id, $this->capacity_kg, (int) ($this->capacity_alert_pct ?? 90)),
+            // The weight on the site: every lot once, whatever its zone. A limit on it is a stock limit on the whole site.
+            'load' => app(ZoneOrganisation::class)->siteLoad($this->id),
             'is_active' => $this->is_active,
             'zones_count' => $this->whenCounted('zones'),
             // Zones with a volume on record that their room does not use: to be reviewed by whoever manages the zones.

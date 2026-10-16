@@ -165,24 +165,18 @@ final class ZoneOrganisation
     }
 
     /**
-     * The weight a site holds against the weight it may hold. Every lot on the site is counted once, whatever its zone
-     * (this is not a sum of zones: a zone without a limit still weighs on the site). Lots nobody weighed are named, and
-     * the limit is then exceeded on what is known or not verifiable — never respected. A site alerts; it refuses nothing.
+     * The weight a site holds. Every lot on the site is counted once, whatever its zone (not a sum of zones: a zone
+     * without a limit still weighs on the site); lots nobody weighed are counted apart. Watching it is the work of a
+     * stock limit on the whole site, in the unit chosen for it.
      *
-     * @return array{constraints: list<array<string, mixed>>, outcome: string|null, quantity_kg: string, lots: int, unweighed_lots: int}
+     * @return array{quantity_kg: string, lots: int, unweighed_lots: int}
      */
-    public function siteLoad(int $siteId, ?string $capacityKg, int $alertPct): array
+    public function siteLoad(int $siteId): array
     {
         $zones = $this->usage($siteId);
-        $kg = array_reduce($zones, fn (string $sum, array $zone) => bcadd($sum, $zone['kg'], 3), '0.000');
-        $unweighed = array_sum(array_column($zones, 'unweighed'));
-        $constraints = [];
-        if ($capacityKg !== null && bccomp($capacityKg, '0', 3) > 0) {
-            $constraints[] = Constraint::quantity('site_load', 'kg', $kg, $capacityKg, $alertPct, $unweighed > 0 ? $this->stock->unweighedNumbers($siteId, null, null) : []);
-        }
 
-        return ['constraints' => $constraints, 'outcome' => Constraint::overall($constraints)['outcome'], 'quantity_kg' => $kg,
-            'lots' => array_sum(array_column($zones, 'lots')), 'unweighed_lots' => $unweighed];
+        return ['quantity_kg' => array_reduce($zones, fn (string $sum, array $zone) => bcadd($sum, $zone['kg'], 3), '0.000'),
+            'lots' => array_sum(array_column($zones, 'lots')), 'unweighed_lots' => array_sum(array_column($zones, 'unweighed'))];
     }
 
     /**

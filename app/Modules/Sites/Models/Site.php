@@ -29,7 +29,7 @@ class Site extends Model
 
     protected $fillable = [
         'ulid', 'code', 'name', 'site_kind', 'address_line1', 'address_line2', 'city', 'postal_code', 'region',
-        'country_id', 'latitude', 'longitude', 'regulatory_identifier', 'timezone', 'capacity_kg', 'capacity_alert_pct',
+        'country_id', 'latitude', 'longitude', 'regulatory_identifier', 'timezone',
         'activated_at', 'created_by_user_id',
     ];
 
@@ -37,8 +37,6 @@ class Site extends Model
     {
         return [
             'site_kind' => SiteKind::class,
-            'capacity_kg' => 'decimal:3',
-            'capacity_alert_pct' => 'integer',
             'is_active' => 'boolean',
             'activated_at' => 'datetime',
             'deactivated_at' => 'datetime',
