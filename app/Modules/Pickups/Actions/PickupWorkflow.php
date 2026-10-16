@@ -89,22 +89,72 @@ final class PickupWorkflow
         });
     }
 
+    /**
+     * The receiver's answer: the date. When a transporter of the platform other than the receiver carries the waste,
+     * the request stays requested until that transporter confirms the date; otherwise the pickup is confirmed.
+     */
     public function confirm(Pickup $pickup, string $confirmedDate, User $actor): Pickup
     {
         return $this->step($pickup, [PickupStatus::Requested], PickupStatus::Confirmed, function (Pickup $p) use ($confirmedDate, $actor) {
+            $this->assertAwaiting($p, 'receiver');
             $p->forceFill(['confirmed_date' => $confirmedDate, 'confirmed_at' => now(), 'confirmed_by_user_id' => $actor->id]);
             $this->assertEligible($p);
             // The confirmed date may fall outside the period of the authorisation held at request time.
             $this->authorizations->reserve($p);
+
+            return $p->transporterConfirms() ? PickupStatus::Requested : null;
         });
     }
 
     public function refuse(Pickup $pickup, string $reason, User $actor): Pickup
     {
         return $this->step($pickup, [PickupStatus::Requested], PickupStatus::Refused, function (Pickup $p) use ($reason, $actor) {
+            $this->assertAwaiting($p, 'receiver');
             $this->releaseLots($p, $actor);
-            $p->forceFill(['refusal_reason' => $reason, 'refused_at' => now(), 'refused_by_user_id' => $actor->id]);
+            $p->forceFill(['refusal_reason' => $reason, 'refused_at' => now(), 'refused_by_user_id' => $actor->id, 'refused_by_party' => 'receiver']);
         });
+    }
+
+    /**
+     * The transporter confirms that it carries the waste on the date the receiver set: the pickup is confirmed.
+     */
+    public function confirmTransport(Pickup $pickup, User $actor): Pickup
+    {
+        return $this->step($pickup, [PickupStatus::Requested], PickupStatus::Confirmed, function (Pickup $p) use ($actor) {
+            $this->assertAwaiting($p, 'transporter');
+            $p->forceFill(['transporter_confirmed_at' => now(), 'transporter_confirmed_by_user_id' => $actor->id]);
+            $this->assertEligible($p);
+        });
+    }
+
+    /**
+     * The transporter refuses, before or after the receiver answered: the lots go back to stock, and the company
+     * requests the pickup again with another transporter.
+     */
+    public function refuseTransport(Pickup $pickup, string $reason, User $actor): Pickup
+    {
+        return $this->step($pickup, [PickupStatus::Requested], PickupStatus::Refused, function (Pickup $p) use ($reason, $actor) {
+            if (! $p->transporterConfirms()) {
+                throw new BusinessRuleViolation('NOT_THE_TRANSPORTER', 'This pickup has no transporter apart from its receiver.');
+            }
+            $this->releaseLots($p, $actor);
+            $p->forceFill(['refusal_reason' => $reason, 'refused_at' => now(), 'refused_by_user_id' => $actor->id, 'refused_by_party' => 'transporter']);
+        });
+    }
+
+    /**
+     * @param  'receiver'|'transporter'  $party
+     */
+    private function assertAwaiting(Pickup $pickup, string $party): void
+    {
+        if ($party === 'transporter' && ! $pickup->transporterConfirms()) {
+            throw new BusinessRuleViolation('NOT_THE_TRANSPORTER', 'This pickup has no transporter apart from its receiver.');
+        }
+        if ($pickup->awaiting() !== $party) {
+            throw $party === 'receiver'
+                ? new BusinessRuleViolation('ALREADY_ANSWERED', 'The receiver has already confirmed this pickup; it now waits for the transporter.')
+                : new BusinessRuleViolation('AWAITING_RECEIVER', 'The receiver has not set the date yet: the transporter confirms it afterwards.');
+        }
     }
 
     public function cancel(Pickup $pickup, string $reason, User $actor): Pickup
@@ -377,6 +427,22 @@ final class PickupWorkflow
         $date = $pickup->confirmed_date ?? $pickup->requested_date;
         $hazardous = DB::table('pickup_lots')->where('pickup_id', $pickup->id)->where('is_hazardous', true)->exists();
 
+        // Each company does what its profile says: a company that only transports never receives waste, and a receiver
+        // that neither collects nor transports needs a transporter to come and fetch it.
+        $roles = DB::table('provider_profiles')->whereIn('company_id', array_filter([$pickup->provider_company_id, $pickup->transporter_company_id]))
+            ->get(['company_id', 'is_collector', 'is_transporter', 'is_recycler', 'is_eliminator'])->keyBy('company_id');
+        $name = fn (int $id): string => (string) DB::table('companies')->where('id', $id)->value('legal_name');
+        $receiverRoles = $pickup->provider_company_id === null ? null : ($roles[$pickup->provider_company_id] ?? null);
+        if ($receiverRoles !== null && ! $receiverRoles->is_collector && ! $receiverRoles->is_recycler && ! $receiverRoles->is_eliminator) {
+            throw new BusinessRuleViolation('PARTNER_ROLE_MISMATCH', "{$name((int) $pickup->provider_company_id)} only transports waste: it cannot be the receiver.");
+        }
+        if ($receiverRoles !== null && ! $receiverRoles->is_collector && ! $receiverRoles->is_transporter && $pickup->transporter_company_id === null && $pickup->external_transporter_id === null) {
+            throw new BusinessRuleViolation('TRANSPORTER_REQUIRED', "{$name((int) $pickup->provider_company_id)} does not transport waste: choose a transporter.");
+        }
+        if ($pickup->transporterConfirms() && ! ($roles[$pickup->transporter_company_id]->is_transporter ?? false)) {
+            throw new BusinessRuleViolation('PARTNER_ROLE_MISMATCH', "{$name((int) $pickup->transporter_company_id)} is not recorded as a transporter.");
+        }
+
         foreach (array_filter([$pickup->provider_company_id, $pickup->transporter_company_id]) as $providerId) {
             $partner = DB::table('provider_partnerships')->where('company_id', $pickup->company_id)
                 ->where('provider_company_id', $providerId)->where('status', 'active')->exists();
@@ -437,7 +503,7 @@ final class PickupWorkflow
 
     /**
      * @param  list<PickupStatus>  $from
-     * @param  callable(Pickup): void  $apply
+     * @param  callable(Pickup): (PickupStatus|null|void)  $apply  may return the status to stay in instead of $to
      */
     private function step(Pickup $pickup, array $from, PickupStatus $to, callable $apply): Pickup
     {
@@ -447,8 +513,9 @@ final class PickupWorkflow
                 throw new BusinessRuleViolation('INVALID_PICKUP_TRANSITION', "Pickup cannot go from {$pickup->status->value} to {$to->value}.");
             }
             // Lot side effects belong to the owner company, also when a provider acts (party access).
-            $this->context->runAs(Company::query()->findOrFail($pickup->company_id), fn () => $apply($pickup));
-            $pickup->status = $to;
+            // A step may stay where it is (a request answered by its receiver, still waiting for its transporter).
+            $next = $this->context->runAs(Company::query()->findOrFail($pickup->company_id), fn () => $apply($pickup));
+            $pickup->status = $next instanceof PickupStatus ? $next : $to;
             $pickup->save();
 
             return $pickup;

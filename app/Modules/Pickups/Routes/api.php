@@ -33,14 +33,19 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     $show = fn (Pickup $pickup) => new PickupResource($pickup->load('lines'));
     // A stage that belongs to the receiver. A receiver with an account does it itself; for a partner without an
     // account, the industrial that owns the pickup records it. Returns true when the industrial acts on its behalf.
+    // A transporter reaches the pickup too (party scope), but never does the receiver's stages.
     $receiverStage = function (Request $request, Pickup $pickup, string $providerPermission, string $ownerPermission): bool {
-        $owner = app(TenantContext::class)->companyId() === (int) $pickup->company_id;
+        $company = app(TenantContext::class)->companyId();
+        $owner = $company === (int) $pickup->company_id;
         abort_unless($owner
             ? $pickup->external_provider_id !== null && $request->user()->can($ownerPermission, $pickup->site_id)
-            : $request->user()->can($providerPermission), 403);
+            : $company === (int) $pickup->provider_company_id && $request->user()->can($providerPermission), 403);
 
         return $owner;
     };
+    // The answer of a transporter of the platform other than the receiver: its own, nobody answers for it.
+    $transporterStage = fn (Request $request, Pickup $pickup) => abort_unless($pickup->transporterConfirms()
+        && app(TenantContext::class)->companyId() === (int) $pickup->transporter_company_id && $request->user()->can('provider.pickups.respond'), 403);
     /*
      * Lists. An industrial sees the pickups of the sites it may view; a provider or transporter the ones addressed to it
      * (party scope applied by TenantScope).
@@ -273,7 +278,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::post('pickups/{pickup}/confirm', function (Request $request, Pickup $pickup, PickupWorkflow $workflow, PickupNotifier $notifier) use ($receiverStage, $show) {
         $onBehalf = $receiverStage($request, $pickup, 'provider.pickups.respond', 'pickups.request');
         $pickup = $workflow->confirm($pickup, (string) $request->validate(['confirmed_date' => ['required', 'date', 'after_or_equal:today']])['confirmed_date'], $request->user());
-        $onBehalf || $notifier->confirmed($pickup);
+        // Waiting for its transporter, the request is not confirmed yet: the transporter is asked, the company told.
+        $pickup->status === PickupStatus::Requested ? $notifier->awaitingTransporter($pickup, $onBehalf) : ($onBehalf || $notifier->confirmed($pickup));
 
         return $show($pickup);
     })->name('pickups.confirm');
@@ -285,6 +291,26 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
         return $show($pickup);
     })->name('pickups.refuse');
+
+    /*
+     * Transporter side: a transporter of the platform that is not the receiver confirms the date the receiver set, or
+     * refuses to carry the waste (the lots go back to stock).
+     */
+    Route::post('pickups/{pickup}/transport/confirm', function (Request $request, Pickup $pickup, PickupWorkflow $workflow, PickupNotifier $notifier) use ($transporterStage, $show) {
+        $transporterStage($request, $pickup);
+        $pickup = $workflow->confirmTransport($pickup, $request->user());
+        $notifier->transportConfirmed($pickup);
+
+        return $show($pickup);
+    })->name('pickups.transport.confirm');
+
+    Route::post('pickups/{pickup}/transport/refuse', function (Request $request, Pickup $pickup, PickupWorkflow $workflow, PickupNotifier $notifier) use ($transporterStage, $show) {
+        $transporterStage($request, $pickup);
+        $pickup = $workflow->refuseTransport($pickup, (string) $request->validate(['reason' => ['required', 'string', 'max:1000']])['reason'], $request->user());
+        $notifier->transportRefused($pickup);
+
+        return $show($pickup);
+    })->name('pickups.transport.refuse');
 
     Route::post('pickups/{pickup}/receive', function (Request $request, Pickup $pickup, PickupWorkflow $workflow, PickupNotifier $notifier) use ($receiverStage, $show) {
         $onBehalf = $receiverStage($request, $pickup, 'provider.pickups.receive', 'pickups.complete');

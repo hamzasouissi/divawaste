@@ -54,6 +54,14 @@ is measured in packages; existing stock limits become kilogram limits with the s
 empty new columns (`adds_to_family`, `waste_type_id`, `loading_requirements`). Issued slips, signatures, documents,
 audit rows and notifications are not touched.
 
+Added on 16 Oct 2026 (a ninth migration, `2026_10_25_000100_transporter_confirms_pickup`, F104–F106): three empty
+columns on `pickups` (`transporter_confirmed_at`, `transporter_confirmed_by_user_id`, `refused_by_party`). Pickups already
+confirmed are not touched. A request still waiting for its answer whose receiver of the platform neither collects nor
+transports and that names no transporter is refused at confirmation (`TRANSPORTER_REQUIRED`): cancel it and request it
+again with a transporter, or complete the receiver's profile if it does fetch the waste. A request waiting for a
+transporter of the platform is confirmed only once that transporter confirms. With this migration, roll back with
+`--step=9`.
+
 Going back: `php artisan migrate:rollback --step=8` restores the previous structure (columns and indexes) and data, except
 that a placeholder turned empty in a pickup's departure weight stays empty. **The exact way back is the backup.**
 

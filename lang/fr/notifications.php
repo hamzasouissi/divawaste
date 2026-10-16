@@ -40,6 +40,22 @@ return [
             'title' => 'Enlèvement :number refusé',
             'body' => ':provider a refusé l\'enlèvement :number. Motif : :reason',
         ],
+        'transport_requested' => [
+            'title' => 'Transport à confirmer — enlèvement :number',
+            'body' => ':provider a confirmé l\'enlèvement :number de :company pour le :date. Vous en êtes le transporteur : confirmez que vous le transportez ce jour-là, ou refusez.',
+        ],
+        'awaiting_transporter' => [
+            'title' => 'Enlèvement :number : en attente du transporteur',
+            'body' => ':provider a confirmé l\'enlèvement :number pour le :date. Il sera confirmé quand :transporter aura confirmé le transport.',
+        ],
+        'transport_confirmed' => [
+            'title' => 'Enlèvement :number confirmé',
+            'body' => ':transporter a confirmé le transport de l\'enlèvement :number le :date vers :provider. L\'enlèvement est confirmé.',
+        ],
+        'transport_refused' => [
+            'title' => 'Transport de l\'enlèvement :number refusé',
+            'body' => ':transporter refuse de transporter l\'enlèvement :number. Motif : :reason. Les lots reviennent en stock ; demandez l\'enlèvement avec un autre transporteur.',
+        ],
         'cancelled' => [
             'title' => 'Enlèvement :number annulé',
             'body' => ':company a annulé l\'enlèvement :number. Motif : :reason',

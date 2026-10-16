@@ -103,7 +103,10 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     })->name('documents.download');
 
     Route::post('pickups/{pickup}/certificates', function (UploadCertificateRequest $request, Pickup $pickup, UploadCertificate $action, NotifyUsers $notify, TenantContext $context) use ($isProvider) {
-        abort_unless($isProvider() ? $request->user()->can('provider.certificates.upload') : $request->user()->can('documents.upload', $pickup->site_id), 403);
+        // The certificate of treatment is the receiver's: a transporter reaches the pickup but does not treat the waste.
+        abort_unless($isProvider()
+            ? $context->companyId() === (int) $pickup->provider_company_id && $request->user()->can('provider.certificates.upload')
+            : $request->user()->can('documents.upload', $pickup->site_id), 403);
         $document = $action->handle($pickup, $request->toData(), $request->user()->id);
 
         if ($isProvider()) {

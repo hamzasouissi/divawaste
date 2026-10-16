@@ -177,7 +177,7 @@ class ExternalPartnerTest extends TestCase
         $provider->forceFill(['tax_id' => '1234567A'])->save();
         $unpublished = $this->makeCompany('provider');
         $this->client()->postJson("/api/v1/external-partners/{$partner['ulid']}/link", ['provider' => $provider->ulid])->assertUnprocessable();
-        $this->tenant()->runAs($provider, fn () => ProviderProfile::query()->create(['is_recycler' => true, 'is_published' => true, 'published_at' => now()]));
+        $this->tenant()->runAs($provider, fn () => ProviderProfile::query()->create(['is_collector' => true, 'is_recycler' => true, 'is_published' => true, 'published_at' => now()]));
         $this->client()->getJson('/api/v1/external-partners')->assertOk()->assertJsonPath('data.0.suggested_company.ulid', $provider->ulid);
         $this->client()->postJson("/api/v1/external-partners/{$partner['ulid']}/link", ['provider' => $unpublished->ulid])->assertUnprocessable();
 

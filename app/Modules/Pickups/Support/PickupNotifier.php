@@ -35,6 +35,32 @@ final class PickupNotifier
     public function refused(Pickup $pickup): void
     {
         $this->toOwner($pickup, 'pickup.refused', ['reason' => $pickup->refusal_reason]);
+        $this->toTransporter($pickup, 'pickup.refused', ['reason' => $pickup->refusal_reason]);
+    }
+
+    /**
+     * The receiver set the date: the transporter is asked to confirm it, and the company is told that the request waits
+     * for it (unless the company answered itself for a receiver without an account).
+     */
+    public function awaitingTransporter(Pickup $pickup, bool $onBehalf): void
+    {
+        $params = ['date' => $pickup->confirmed_date->format('d/m/Y')];
+        $this->toTransporter($pickup, 'pickup.transport_requested', $params);
+        $onBehalf || $this->toOwner($pickup, 'pickup.awaiting_transporter', $params);
+    }
+
+    public function transportConfirmed(Pickup $pickup): void
+    {
+        $params = ['date' => $pickup->confirmed_date->format('d/m/Y')];
+        $this->toOwner($pickup, 'pickup.transport_confirmed', $params);
+        $this->toReceiver($pickup, 'pickup.transport_confirmed', $params);
+    }
+
+    public function transportRefused(Pickup $pickup): void
+    {
+        $params = ['reason' => $pickup->refusal_reason];
+        $this->toOwner($pickup, 'pickup.transport_refused', $params);
+        $this->toReceiver($pickup, 'pickup.transport_refused', $params);
     }
 
     public function cancelled(Pickup $pickup): void
@@ -170,6 +196,28 @@ final class PickupNotifier
     }
 
     /**
+     * A transporter of the platform other than the receiver; nobody when the receiver carries the waste itself.
+     *
+     * @param  array<string, scalar|null>  $params
+     */
+    private function toTransporter(Pickup $pickup, string $type, array $params): void
+    {
+        if ($pickup->transporterConfirms()) {
+            $this->notify->toCompanyPermission((int) $pickup->transporter_company_id, 'provider.pickups.respond', $type, $this->names($pickup) + $params, '/provider/pickups/'.$pickup->ulid);
+        }
+    }
+
+    /**
+     * @param  array<string, scalar|null>  $params
+     */
+    private function toReceiver(Pickup $pickup, string $type, array $params): void
+    {
+        if ($pickup->provider_company_id !== null) {
+            $this->notify->toCompanyPermission((int) $pickup->provider_company_id, 'provider.pickups.view', $type, $this->names($pickup) + $params, '/provider/pickups/'.$pickup->ulid);
+        }
+    }
+
+    /**
      * People of the industrial who follow pickups on the pickup's site.
      *
      * @param  array<string, scalar|null>  $params
@@ -185,10 +233,15 @@ final class PickupNotifier
      */
     private function names(Pickup $pickup): array
     {
-        $names = DB::table('companies')->whereIn('id', array_filter([$pickup->company_id, $pickup->provider_company_id]))->pluck('legal_name', 'id');
+        $names = DB::table('companies')->whereIn('id', array_filter([$pickup->company_id, $pickup->provider_company_id, $pickup->transporter_company_id]))->pluck('legal_name', 'id');
         $provider = $pickup->provider_company_id !== null ? $names[$pickup->provider_company_id]
             : DB::table('external_partners')->where('id', $pickup->external_provider_id)->value('legal_name');
+        $transporter = match (true) {
+            $pickup->transporter_company_id !== null => $names[$pickup->transporter_company_id],
+            $pickup->external_transporter_id !== null => DB::table('external_partners')->where('id', $pickup->external_transporter_id)->value('legal_name'),
+            default => $provider,
+        };
 
-        return ['number' => $pickup->pickup_number, 'company' => (string) $names[$pickup->company_id], 'provider' => (string) $provider];
+        return ['number' => $pickup->pickup_number, 'company' => (string) $names[$pickup->company_id], 'provider' => (string) $provider, 'transporter' => (string) $transporter];
     }
 }

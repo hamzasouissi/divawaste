@@ -112,11 +112,14 @@ return [
 
     /*
     | Outside production the HTML of every email is kept in storage/app/mail-outbox, so it can be read without a
-    | mailbox (php artisan mail:outbox). The trace in notification_logs is written in every environment.
+    | mailbox (php artisan mail:outbox). The trace in notification_logs is written in every environment. The test suite
+    | keeps its own folder: its email numbers would otherwise replace the emails kept for the demonstration.
     */
     'outbox' => [
         'keep_bodies' => (bool) env('MAIL_OUTBOX', env('APP_ENV', 'production') !== 'production'),
-        'path' => storage_path('app'.DIRECTORY_SEPARATOR.'mail-outbox'),
+        'path' => env('APP_ENV') === 'testing'
+            ? storage_path('framework'.DIRECTORY_SEPARATOR.'testing'.DIRECTORY_SEPARATOR.'mail-outbox')
+            : storage_path('app'.DIRECTORY_SEPARATOR.'mail-outbox'),
     ],
 
     'from' => [

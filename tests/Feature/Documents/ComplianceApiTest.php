@@ -59,7 +59,7 @@ class ComplianceApiTest extends TestCase
         $this->providerUser->forceFill(['password' => self::PASSWORD])->save();
 
         $this->tenant()->runAs($this->provider, function () {
-            ProviderProfile::query()->create(['is_eliminator' => true, 'is_published' => true, 'published_at' => now()]);
+            ProviderProfile::query()->create(['is_collector' => true, 'is_eliminator' => true, 'is_published' => true, 'published_at' => now()]);
             $file = DB::table('stored_files')->insertGetId(['ulid' => strtoupper((string) Str::ulid()), 'company_id' => $this->provider->id, 'disk' => 'local',
                 'path' => 'x.pdf', 'original_name' => 'x.pdf', 'mime_type' => 'application/pdf', 'extension' => 'pdf', 'size_bytes' => 1,
                 'checksum_sha256' => str_repeat('a', 64), 'purpose' => 'accreditations', 'created_at' => now(), 'updated_at' => now()]);

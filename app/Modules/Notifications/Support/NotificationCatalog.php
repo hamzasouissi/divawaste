@@ -31,6 +31,11 @@ final class NotificationCatalog
         'pickup.requested' => ['mail' => true],
         'pickup.confirmed' => ['mail' => true],
         'pickup.refused' => ['mail' => true],
+        // A transporter of the platform other than the receiver confirms the date the receiver set, or refuses.
+        'pickup.transport_requested' => ['mail' => true],
+        'pickup.awaiting_transporter' => ['mail' => false],
+        'pickup.transport_confirmed' => ['mail' => true],
+        'pickup.transport_refused' => ['mail' => true],
         'pickup.cancelled' => ['mail' => true],
         'pickup.collected' => ['mail' => false],
         // What the receiver asks of a collection, no longer met on what left: told to the receiver, and to those who explain the exception.

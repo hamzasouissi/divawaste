@@ -64,7 +64,7 @@ class ProviderRequirementsTest extends TestCase
             'zone_type_id' => DB::table('zone_types')->value('id'), 'name' => 'Aire']));
 
         $this->tenant()->runAs($this->provider, function () {
-            ProviderProfile::query()->create(['is_recycler' => true, 'is_published' => true, 'published_at' => now()]);
+            ProviderProfile::query()->create(['is_collector' => true, 'is_recycler' => true, 'is_published' => true, 'published_at' => now()]);
             $file = DB::table('stored_files')->insertGetId(['ulid' => strtoupper((string) Str::ulid()), 'company_id' => $this->provider->id, 'disk' => 's3',
                 'path' => 'tenants/p/agrement.pdf', 'original_name' => 'agrement.pdf', 'mime_type' => 'application/pdf', 'extension' => 'pdf',
                 'size_bytes' => 1, 'checksum_sha256' => str_repeat('a', 64), 'purpose' => 'accreditation', 'created_at' => now(), 'updated_at' => now()]);
@@ -220,7 +220,7 @@ class ProviderRequirementsTest extends TestCase
             ['channel' => 'recycling', 'family' => 'chemical_sludge', 'min_quantity' => '1', 'min_unit' => 'm3'],
         ])->assertJsonPath('data.accepted_wastes.0.min_packaging_type', 'bale')->assertJsonPath('data.accepted_wastes.0.required_packaging_type', 'bale')
             ->assertJsonPath('data.accepted_wastes.0.min_quantity_kg', null);
-        $this->fresh($this->providerToken)->putJson('/api/v1/provider/profile', ['roles' => ['recycler'], 'accepted_wastes' => [['channel' => 'recycling', 'family' => 'packaging', 'min_quantity' => '20', 'min_unit' => 'package']]])
+        $this->fresh($this->providerToken)->putJson('/api/v1/provider/profile', ['roles' => ['collector', 'recycler'], 'accepted_wastes' => [['channel' => 'recycling', 'family' => 'packaging', 'min_quantity' => '20', 'min_unit' => 'package']]])
             ->assertStatus(422)->assertJsonValidationErrors('accepted_wastes.0.min_packaging_type');
 
         // One lot of 12 bales is 12 bales; a lot of 5 bags is not bales, and it is not in the packaging asked for.
@@ -272,7 +272,7 @@ class ProviderRequirementsTest extends TestCase
         $this->api()->postJson("/api/v1/pickups/{$other}/submit")->assertOk()->assertJsonPath('data.provider_requirements', null);
 
         // Only the provider sets what it asks; only people who request pickups ask whether it is met.
-        $this->api()->putJson('/api/v1/provider/profile', ['roles' => ['recycler'], 'accepted_wastes' => []])->assertForbidden();
+        $this->api()->putJson('/api/v1/provider/profile', ['roles' => ['collector', 'recycler'], 'accepted_wastes' => []])->assertForbidden();
         $this->fresh($this->providerToken)->postJson('/api/v1/provider-requirements/check', ['provider' => $this->provider->ulid, 'lots' => [$small]])->assertStatus(403);
         $stranger = $this->makeCompany();
         $this->makeSite($stranger, 'TUN');
@@ -387,7 +387,7 @@ class ProviderRequirementsTest extends TestCase
      */
     private function accepts(array $wastes): TestResponse
     {
-        return $this->fresh($this->providerToken)->putJson('/api/v1/provider/profile', ['roles' => ['recycler'], 'accepted_wastes' => $wastes])->assertOk();
+        return $this->fresh($this->providerToken)->putJson('/api/v1/provider/profile', ['roles' => ['collector', 'recycler'], 'accepted_wastes' => $wastes])->assertOk();
     }
 
     /**

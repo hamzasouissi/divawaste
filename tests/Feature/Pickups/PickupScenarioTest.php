@@ -281,7 +281,7 @@ class PickupScenarioTest extends TestCase
         $provider = $this->makeCompany('provider');
 
         $this->tenant()->runAs($provider, function () use ($provider, $accreditationType, $expiresOn, $published) {
-            ProviderProfile::query()->create(['is_recycler' => true, 'is_published' => $published, 'published_at' => now()]);
+            ProviderProfile::query()->create(['is_collector' => true, 'is_recycler' => true, 'is_published' => $published, 'published_at' => now()]);
             $file = DB::table('stored_files')->insertGetId(['ulid' => strtoupper((string) Str::ulid()), 'company_id' => $provider->id, 'disk' => 'local',
                 'path' => "tenants/{$provider->ulid}/agrement.pdf", 'original_name' => 'agrement.pdf', 'mime_type' => 'application/pdf', 'extension' => 'pdf',
                 'size_bytes' => 1, 'checksum_sha256' => str_repeat('a', 64), 'purpose' => 'accreditations', 'created_at' => now(), 'updated_at' => now()]);

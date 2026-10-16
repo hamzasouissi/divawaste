@@ -137,7 +137,7 @@ class CatalogAndAlertsTest extends TestCase
     private function accreditation(Company $provider, mixed $expiresOn): void
     {
         $this->tenant()->runAs($provider, function () use ($provider, $expiresOn) {
-            ProviderProfile::query()->create(['is_recycler' => true, 'is_published' => true, 'published_at' => now()]);
+            ProviderProfile::query()->create(['is_collector' => true, 'is_recycler' => true, 'is_published' => true, 'published_at' => now()]);
             $file = DB::table('stored_files')->insertGetId(['ulid' => strtoupper((string) Str::ulid()), 'company_id' => $provider->id, 'disk' => 'local',
                 'path' => 'x.pdf', 'original_name' => 'x.pdf', 'mime_type' => 'application/pdf', 'extension' => 'pdf', 'size_bytes' => 1,
                 'checksum_sha256' => str_repeat('a', 64), 'purpose' => 'accreditations', 'created_at' => now(), 'updated_at' => now()]);
