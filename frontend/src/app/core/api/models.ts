@@ -147,10 +147,8 @@ export interface ZoneFill {
 }
 
 /** The weight a site holds against the weight it may hold: every lot once, whatever its zone. */
+/** The weight on a site, every lot once. A limit on it is a stock limit on the whole site. */
 export interface SiteLoad {
-  /** One limit ('site_load') when the site states a capacity; empty otherwise. */
-  constraints: LimitResult[];
-  outcome: LimitResult['outcome'] | null;
   quantity_kg: string;
   lots: number;
   unweighed_lots: number;
@@ -189,8 +187,6 @@ export interface Site {
   region: string | null;
   timezone: string | null;
   regulatory_identifier: string | null;
-  capacity_kg: string | null;
-  capacity_alert_pct: number;
   load?: SiteLoad;
   /** Zones of the site with a volume on record that their room does not use. */
   inactive_volume_zones?: number;
@@ -388,7 +384,7 @@ export interface StockResponse {
   /** Each limit with what it measures, in its own unit. `quantity_kg` and `max_quantity_kg` only exist for a limit that is a weight. */
   thresholds: { ulid: string; unit: StockLimitUnit; packaging_type: string | null; quantity: string; max_quantity: string; quantity_kg: string | null; unweighed_lots?: number; max_quantity_kg: string | null; alert_level: 'warning' | 'exceeded' | 'unverifiable' | null; constraint: LimitResult }[];
   /** Each site of the rows with the weight it holds against its capacity. */
-  sites: ({ site: string; site_name: string; capacity_kg: string | null } & SiteLoad)[];
+  sites: ({ site: string; site_name: string } & SiteLoad)[];
   meta: { total_kg: string; unweighed_lots?: number; generated_at: string };
 }
 
