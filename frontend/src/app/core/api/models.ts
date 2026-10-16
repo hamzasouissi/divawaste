@@ -465,6 +465,15 @@ export interface Pickup {
   confirmed_date: string | null;
   collected_at: string | null;
   received_at: string | null;
+  /** Who a request waits for: the receiver (it sets the date), then a transporter of the platform other than the receiver. */
+  awaiting?: 'receiver' | 'transporter' | null;
+  /** Whether a transporter of the platform, other than the receiver, confirms the date too. */
+  transporter_confirms?: boolean;
+  transporter_confirmed_at?: string | null;
+  /** What the provider reading the pickup is on it; empty for the owner. */
+  viewer_roles?: ('receiver' | 'transporter')[];
+  /** Whose refusal it was. */
+  refused_by?: 'receiver' | 'transporter' | null;
   refusal_reason: string | null;
   cancellation_reason: string | null;
   /** What the receiver asked of this collection when it was requested, and the answer; null when it asked for nothing. */

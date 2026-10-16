@@ -478,7 +478,12 @@
     "PROVIDER_REQUIREMENT_NEEDS_AUTHORIZATION": "Seule une personne autorisée peut envoyer une demande malgré une exigence bloquante du prestataire.",
     "PARTNER_NOT_LINKED": "Ce partenaire n’a pas de compte : ses exigences se modifient simplement.",
     "REGULATORY_CODE_MISSING": "Un type de déchet dangereux de cet enlèvement n’a pas de code réglementaire : complétez-le sur le type de déchet, son bordereau ne peut pas être établi sans lui.",
-    "NO_REQUIREMENT_EXCEPTION": "Aucune exigence bloquante n’attend d’explication sur cet enlèvement."
+    "NO_REQUIREMENT_EXCEPTION": "Aucune exigence bloquante n’attend d’explication sur cet enlèvement.",
+    "ALREADY_ANSWERED": "Le destinataire a déjà répondu : l’enlèvement attend maintenant le transporteur.",
+    "AWAITING_RECEIVER": "Le destinataire n’a pas encore fixé la date : le transporteur confirme après lui.",
+    "NOT_THE_TRANSPORTER": "Cet enlèvement n’a pas d’autre transporteur que son destinataire.",
+    "TRANSPORTER_REQUIRED": "Ce destinataire ne vient pas chercher les déchets : choisissez un transporteur.",
+    "PARTNER_ROLE_MISMATCH": "Ce prestataire ne peut pas tenir ce rôle : une société qui ne fait que transporter n’est jamais destinataire, et le transporteur doit être déclaré transporteur."
   },
   "notifications": {
     "title": "Notifications",
@@ -526,7 +531,11 @@
       "capacity.site_exceeded": "Capacité d’un site dépassée",
       "capacity.site_unverifiable": "Capacité d’un site non vérifiable",
       "pickup.requirements_unmet_at_loading": "Exigence non respectée au chargement",
-      "pickup.requirement_exception": "Départ sous une exigence bloquante"
+      "pickup.requirement_exception": "Départ sous une exigence bloquante",
+      "pickup.transport_requested": "Transport à confirmer (transporteur)",
+      "pickup.awaiting_transporter": "Enlèvement en attente du transporteur",
+      "pickup.transport_confirmed": "Transport confirmé par le transporteur",
+      "pickup.transport_refused": "Transport refusé par le transporteur"
     },
     "types": {
       "stock.threshold_warning": {
@@ -680,6 +689,22 @@
       "pickup.requirement_exception": {
         "title": "Enlèvement {{number}} parti sous une exigence de {{provider}}",
         "body": "Sur ce qui a été chargé ({{quantity}}) : {{requirements}}. Le départ n’est pas annulé ; indiquez pourquoi."
+      },
+      "pickup.transport_requested": {
+        "title": "Transport à confirmer — enlèvement {{number}}",
+        "body": "{{provider}} a confirmé l’enlèvement {{number}} de {{company}} pour le {{date}} : confirmez le transport, ou refusez."
+      },
+      "pickup.awaiting_transporter": {
+        "title": "Enlèvement {{number}} : en attente du transporteur",
+        "body": "{{provider}} a confirmé pour le {{date}} ; {{transporter}} doit encore confirmer le transport."
+      },
+      "pickup.transport_confirmed": {
+        "title": "Enlèvement {{number}} confirmé",
+        "body": "{{transporter}} transporte l’enlèvement {{number}} le {{date}} vers {{provider}}."
+      },
+      "pickup.transport_refused": {
+        "title": "Transport de l’enlèvement {{number}} refusé",
+        "body": "{{transporter}} : {{reason}}. Les lots reviennent en stock."
       }
     },
     "mailOnRequest": "E-mail envoyé seulement si vous le demandez : par défaut, les alertes de stock et de capacité partent par e-mail aux personnes qui gèrent les limites ou les zones du site. Vous les voyez toujours ici."
@@ -1115,7 +1140,8 @@
         "covered": "couvert par l’autorisation {{reference}}. Chaque limite après cet enlèvement :",
         "unverifiable": "l’autorisation {{reference}} est limitée en poids et ces lots n’ont pas de poids mesuré : {{lots}}. Pesez-les avant de demander l’enlèvement.",
         "blocked": "Demande bloquée — limite(s) en cause : {{limits}}."
-      }
+      },
+      "transporterConfirms": "Ce transporteur a un compte : il confirmera la date après le destinataire."
     },
     "actions": {
       "submit": "Envoyer la demande",
@@ -1130,7 +1156,9 @@
       "treat": "Déclarer le traitement",
       "manifest": "Établir les bordereaux de suivi",
       "certificate": "Déposer un certificat",
-      "authorize": "Accepter l’écart"
+      "authorize": "Accepter l’écart",
+      "confirmTransport": "Confirmer le transport",
+      "refuseTransport": "Refuser le transport"
     },
     "cancelReason": "Motif de l'annulation",
     "refuseReason": "Motif du refus",
@@ -1178,7 +1206,9 @@
       "received": "Réception enregistrée.",
       "treated": "Traitement déclaré.",
       "manifest": "Bordereaux établis.",
-      "certificate": "Certificat déposé."
+      "certificate": "Certificat déposé.",
+      "transportConfirmed": "Transport confirmé : l’enlèvement est confirmé.",
+      "transportRefused": "Transport refusé."
     },
     "documents": "Documents",
     "certificateType": {
@@ -1220,7 +1250,14 @@
         "receiver": "attend la signature du destinataire",
         "signed_copy": "attend le scan du bordereau signé à la main"
       }
-    }
+    },
+    "transportConfirmTitle": "Confirmer le transport le {{date}} ?",
+    "transportConfirmHint": "{{receiver}} a fixé l’enlèvement au {{date}}. En confirmant, vous vous engagez à venir chercher les lots ce jour-là et à les livrer à {{receiver}}.",
+    "awaitingReceiver": "{{receiver}} fixe d’abord la date ; {{transporter}} confirme ensuite le transport.",
+    "awaitingTransporter": "{{receiver}} a confirmé pour le {{date}}. L’enlèvement sera confirmé quand {{transporter}} aura confirmé le transport.",
+    "refusedByTransporter": "Transport refusé par {{transporter}} : {{reason}}. Les lots sont revenus en stock ; demandez l’enlèvement avec un autre transporteur.",
+    "transporterConfirmedOn": "confirmé le {{date}}",
+    "waitingTransporter": "En attente du transporteur"
   },
   "providers": {
     "title": "Prestataires",

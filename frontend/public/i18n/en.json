@@ -478,7 +478,12 @@
     "PROVIDER_REQUIREMENT_NEEDS_AUTHORIZATION": "Only an authorised person may send a request despite a blocking requirement of the provider.",
     "PARTNER_NOT_LINKED": "This partner has no account: its requirements are simply edited.",
     "REGULATORY_CODE_MISSING": "A hazardous waste type of this pickup has no regulatory code: complete it on the waste type, its tracking slip cannot be issued without it.",
-    "NO_REQUIREMENT_EXCEPTION": "No blocking requirement is waiting for an explanation on this pickup."
+    "NO_REQUIREMENT_EXCEPTION": "No blocking requirement is waiting for an explanation on this pickup.",
+    "ALREADY_ANSWERED": "The receiver has already answered: the pickup now waits for the transporter.",
+    "AWAITING_RECEIVER": "The receiver has not set the date yet: the transporter confirms after it.",
+    "NOT_THE_TRANSPORTER": "This pickup has no transporter other than its receiver.",
+    "TRANSPORTER_REQUIRED": "This receiver does not come and fetch the waste: choose a transporter.",
+    "PARTNER_ROLE_MISMATCH": "This provider cannot hold that role: a company that only transports is never the receiver, and the transporter must be recorded as one."
   },
   "notifications": {
     "title": "Notifications",
@@ -526,7 +531,11 @@
       "capacity.site_exceeded": "Site capacity exceeded",
       "capacity.site_unverifiable": "Site capacity cannot be verified",
       "pickup.requirements_unmet_at_loading": "Requirement not met at loading",
-      "pickup.requirement_exception": "Departure under a blocking requirement"
+      "pickup.requirement_exception": "Departure under a blocking requirement",
+      "pickup.transport_requested": "Transport to confirm (transporter)",
+      "pickup.awaiting_transporter": "Pickup waiting for the transporter",
+      "pickup.transport_confirmed": "Transport confirmed by the transporter",
+      "pickup.transport_refused": "Transport refused by the transporter"
     },
     "types": {
       "stock.threshold_warning": {
@@ -680,6 +689,22 @@
       "pickup.requirement_exception": {
         "title": "Pickup {{number}} left under a requirement of {{provider}}",
         "body": "On what was loaded ({{quantity}}): {{requirements}}. The departure is not undone; say why."
+      },
+      "pickup.transport_requested": {
+        "title": "Transport to confirm — pickup {{number}}",
+        "body": "{{provider}} confirmed pickup {{number}} of {{company}} for {{date}}: confirm the transport, or refuse."
+      },
+      "pickup.awaiting_transporter": {
+        "title": "Pickup {{number}}: waiting for the transporter",
+        "body": "{{provider}} confirmed for {{date}}; {{transporter}} has yet to confirm the transport."
+      },
+      "pickup.transport_confirmed": {
+        "title": "Pickup {{number}} confirmed",
+        "body": "{{transporter}} carries pickup {{number}} on {{date}} to {{provider}}."
+      },
+      "pickup.transport_refused": {
+        "title": "Transport of pickup {{number}} refused",
+        "body": "{{transporter}}: {{reason}}. The lots go back to stock."
       }
     },
     "mailOnRequest": "Email only if you ask for it: by default, stock and capacity alerts are emailed to the people who manage the limits or the zones of the site. You always see them here."
@@ -1115,7 +1140,8 @@
         "covered": "covered by authorisation {{reference}}. Each limit after this pickup:",
         "unverifiable": "authorisation {{reference}} is limited in weight and these lots have no measured weight: {{lots}}. Weigh them before requesting the pickup.",
         "blocked": "Request blocked — limit(s) concerned: {{limits}}."
-      }
+      },
+      "transporterConfirms": "This transporter has an account: it confirms the date after the receiver."
     },
     "actions": {
       "submit": "Send the request",
@@ -1130,7 +1156,9 @@
       "treat": "Declare the treatment",
       "manifest": "Issue the tracking slips",
       "certificate": "Upload a certificate",
-      "authorize": "Accept the gap"
+      "authorize": "Accept the gap",
+      "confirmTransport": "Confirm the transport",
+      "refuseTransport": "Refuse the transport"
     },
     "cancelReason": "Reason for the cancellation",
     "refuseReason": "Reason for the refusal",
@@ -1178,7 +1206,9 @@
       "received": "Reception recorded.",
       "treated": "Treatment declared.",
       "manifest": "Slips issued.",
-      "certificate": "Certificate uploaded."
+      "certificate": "Certificate uploaded.",
+      "transportConfirmed": "Transport confirmed: the pickup is confirmed.",
+      "transportRefused": "Transport refused."
     },
     "documents": "Documents",
     "certificateType": {
@@ -1220,7 +1250,14 @@
         "receiver": "waits for the receiver’s signature",
         "signed_copy": "waits for the scan of the slip signed by hand"
       }
-    }
+    },
+    "transportConfirmTitle": "Confirm the transport on {{date}}?",
+    "transportConfirmHint": "{{receiver}} set the pickup for {{date}}. By confirming, you commit to fetching the lots on that day and delivering them to {{receiver}}.",
+    "awaitingReceiver": "{{receiver}} sets the date first; {{transporter}} then confirms the transport.",
+    "awaitingTransporter": "{{receiver}} confirmed for {{date}}. The pickup will be confirmed once {{transporter}} confirms the transport.",
+    "refusedByTransporter": "Transport refused by {{transporter}}: {{reason}}. The lots went back to stock; request the pickup with another transporter.",
+    "transporterConfirmedOn": "confirmed on {{date}}",
+    "waitingTransporter": "Waiting for the transporter"
   },
   "providers": {
     "title": "Providers",

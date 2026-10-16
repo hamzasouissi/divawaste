@@ -79,6 +79,7 @@ interface PickupFilter {
           </ng-template>
           <ng-template dwCell="status" let-pickup>
             <dw-status kind="pickup" [value]="pickup.status" />
+            @if (pickup.awaiting === 'transporter') { <div class="dw-faint">{{ t('pickups.waitingTransporter') }}</div> }
             @if (pickup.variance_flagged && !pickup.variance_acknowledged) { <dw-icon class="flag" [title]="t('pickups.varianceFlagged')" [attr.aria-label]="t('pickups.varianceFlagged')">scale</dw-icon> }
           </ng-template>
           <!-- Closed and documented are two things: the slips of a closed pickup may still wait for a signature. -->
