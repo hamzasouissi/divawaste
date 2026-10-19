@@ -116,7 +116,7 @@ class PhysicalCapacityTest extends TestCase
         $this->assertSame(['bag' => 50, 'box' => 25], $byVolume['packages']);
     }
 
-    public function test_the_weight_a_site_may_hold_counts_every_lot_once_whatever_its_zone(): void
+    public function test_the_weight_on_a_site_counts_every_lot_once_whatever_its_zone(): void
     {
         $type = $this->type('CHUTES');
         $other = $this->type('FILS');
@@ -124,36 +124,26 @@ class PhysicalCapacityTest extends TestCase
         $free = $this->api()->postJson("/api/v1/sites/{$this->site->ulid}/zones", ['code' => 'B', 'name' => 'Cour'])->assertCreated()->json('data.ulid');
         $site = fn () => $this->refreshed()->getJson("/api/v1/sites/{$this->site->ulid}")->assertOk()->json('data');
 
-        // No capacity on the site: nothing is watched, and the weight is still given.
+        // A zone without any limit still weighs on the site: 1,000 + 1,500 = 2,500 kg, two lots. The site has no capacity
+        // of its own: a limit on the whole site is a stock limit.
         $this->lot($limited, $type, '1000');
-        $this->assertSame([[], null, '1000.000'], [$site()['load']['constraints'], $site()['load']['outcome'], $site()['load']['quantity_kg']]);
-
-        // 3,000 kg, alert at 80 %.
-        $this->api()->putJson("/api/v1/sites/{$this->site->ulid}", ['name' => $this->site->name, 'site_kind' => $this->site->site_kind, 'capacity_kg' => '3000', 'capacity_alert_pct' => 80])
-            ->assertOk()->assertJsonPath('data.capacity_alert_pct', 80);
-        // A zone without any limit still weighs on the site: 1,000 + 1,500 = 2,500 kg, two lots, 83 %.
         $this->lot($free, $other, '1500');
-        $load = $site()['load'];
-        $this->assertEquals(['site_load', 'kg', '2500.000', '3000.000', 83.3, 'warning', '500.000', false, 2], [$load['constraints'][0]['key'], $load['constraints'][0]['unit'], $load['constraints'][0]['used'],
-            $load['constraints'][0]['max'], $load['constraints'][0]['pct'], $load['constraints'][0]['outcome'], $load['constraints'][0]['remaining'], $load['constraints'][0]['blocking'], $load['lots']]);
-        // The zone has its own answer: 1,000 of 2,000 kg. Neither replaces the other.
+        $this->assertSame(['2500.000', 2, 0], [$site()['load']['quantity_kg'], $site()['load']['lots'], $site()['load']['unweighed_lots']]);
+        $this->assertArrayNotHasKey('constraints', $site()['load']);
+        // The zone has its own answer: 1,000 of 2,000 kg.
         $this->assertEquals([50, 'respected'], [$this->fill($limited)['limits']['load']['pct'], $this->fill($limited)['limits']['load']['outcome']]);
 
-        // A lot nobody weighed: the site can no longer be called within its capacity, and the lot is named.
-        $unweighed = $this->lot($free, $type, null)->json('data.lot_number');
-        $this->assertSame(['unverifiable', [$unweighed], 1, 3], [$site()['load']['constraints'][0]['outcome'], $site()['load']['constraints'][0]['missing_lots'], $site()['load']['unweighed_lots'], $site()['load']['lots']]);
-
-        // 600 kg more: 3,100 kg known, exceeded by 100 kg, the unweighed lot still named. Nothing was refused.
-        $this->lot($limited, $type, '600');
-        $this->assertSame(['exceeded', '3100.000', '100.000', 1], [$site()['load']['constraints'][0]['outcome'], $site()['load']['constraints'][0]['used'], $site()['load']['constraints'][0]['excess'], $site()['load']['constraints'][0]['missing_count']]);
+        // A lot nobody weighed is counted apart, never as a zero.
+        $this->lot($free, $type, null);
+        $this->assertSame(['2500.000', 3, 1], [$site()['load']['quantity_kg'], $site()['load']['lots'], $site()['load']['unweighed_lots']]);
 
         // The stock page gives the same figure per site, whatever the filter applied to its rows.
-        $stock = $this->refreshed()->getJson('/api/v1/stock?filter[waste_type]='.$other)->assertOk();
-        $stock->assertJsonCount(1, 'data')->assertJsonCount(1, 'sites')->assertJsonPath('sites.0.site', $this->site->ulid)->assertJsonPath('sites.0.capacity_kg', '3000.000')
-            ->assertJsonPath('sites.0.quantity_kg', '3100.000')->assertJsonPath('sites.0.lots', 4)->assertJsonPath('sites.0.constraints.0.outcome', 'exceeded');
+        $this->refreshed()->getJson('/api/v1/stock?filter[waste_type]='.$other)->assertOk()->assertJsonCount(1, 'data')->assertJsonCount(1, 'sites')
+            ->assertJsonPath('sites.0.site', $this->site->ulid)->assertJsonPath('sites.0.quantity_kg', '2500.000')->assertJsonPath('sites.0.lots', 3)
+            ->assertJsonMissingPath('sites.0.capacity_kg');
         // A lot that leaves the site leaves its weight.
-        DB::table('waste_lots')->where('net_weight_kg', '600.000')->update(['status' => 'collected']);
-        $this->assertSame(['unverifiable', '2500.000'], [$site()['load']['constraints'][0]['outcome'], $site()['load']['constraints'][0]['used']]);
+        DB::table('waste_lots')->where('net_weight_kg', '1500.000')->update(['status' => 'collected']);
+        $this->assertSame('1000.000', $site()['load']['quantity_kg']);
     }
 
     public function test_packaging_volumes_belong_to_the_company_and_are_set_by_those_who_manage_sites(): void

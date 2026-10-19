@@ -56,6 +56,7 @@ use RuntimeException;
  *   direction@capbon.test       management, read-only
  *   audit@capbon.test           auditor
  *   karim@sahel-recyclage.test  provider administrator
+ *   youssef@transcap.test       transporter of the platform (transports only: carries to a receiver)
  *   nour@monastir-jeans.test    client administrator of a second, unrelated industrial (tenant isolation checks)
  *   mehdi@tissages-kh.test      contact of a registration awaiting approval
  *   sonia@sfax-eco.test         contact of a provider awaiting approval
@@ -71,10 +72,10 @@ class DemoSeeder extends Seeder
     /**
      * What the main company must never see, and what the platform has to decide:
      * a second industrial with its own data, a registration awaiting approval, a provider awaiting approval with an
-     * accreditation to review, and a provider whose accreditation has expired.
+     * accreditation to review, a provider whose accreditation has expired, and a company that only transports.
      */
     private function otherCompanies(TenantContext $context, \Closure $company, \Closure $user, \Closure $role, Company $provider, CreateWasteType $createType,
-        CreateWasteLot $createLot, StartTrial $trial, FileStorage $files): void
+        CreateWasteLot $createLot, StartTrial $trial, FileStorage $files): Company
     {
         $member = fn (User $who, string $roleName) => [CompanyUser::query()->create(['user_id' => $who->id, 'joined_at' => now()]),
             UserRoleAssignment::query()->create(['user_id' => $who->id, 'role_id' => $role($roleName), 'site_id' => null])];
@@ -128,6 +129,21 @@ class DemoSeeder extends Seeder
                 'public_contact_name' => 'Walid Dridi', 'public_contact_email' => $walid->email, 'is_published' => true, 'published_at' => now()->subYear()]);
             $accreditation($expired, $walid, 'recycling_recovery', 'ANGED-REC-2024-031', now()->subDays(10), 'approved');
         });
+
+        // A company of the platform that only transports: it carries the waste to a receiver and confirms the date
+        // that receiver sets. It cannot be chosen as the receiver.
+        $carrier = $company('provider', 'Trans Cap Logistique', '7531902G', 'Nabeul');
+        $youssef = $user('Youssef', 'Ayari', 'youssef@transcap.test');
+        $carrier->forceFill(['primary_contact_user_id' => $youssef->id])->save();
+        $context->runAs($carrier, function () use ($carrier, $youssef, $member, $accreditation) {
+            $member($youssef, 'provider_admin');
+            ProviderProfile::query()->create(['is_transporter' => true, 'service_area' => 'Cap Bon, Sahel, Grand Tunis', 'description' => 'Transport de déchets industriels, dangereux compris.',
+                'public_contact_name' => 'Youssef Ayari', 'public_contact_email' => $youssef->email, 'is_published' => true, 'published_at' => now()->subMonths(6)]);
+            $accreditation($carrier, $youssef, 'collection_transport', 'ANGED-CT-2025-311', now()->addYear(), 'approved');
+            $accreditation($carrier, $youssef, 'collection_transport_hazardous', 'ANGED-CTD-2025-312', now()->addYear(), 'approved');
+        });
+
+        return $carrier;
     }
 
     /**
@@ -227,9 +243,9 @@ class DemoSeeder extends Seeder
         $industrial->forceFill(['primary_contact_user_id' => $amira->id])->save();
         $trial->handle($industrial);
 
-        $this->otherCompanies($context, $company, $user, $role, $provider, $createType, $createLot, $trial, $files);
+        $carrier = $this->otherCompanies($context, $company, $user, $role, $provider, $createType, $createLot, $trial, $files);
 
-        $context->runAs($industrial, function () use ($context, $industrial, $provider, $amira, $karim, $user, $role, $createType, $createLot, $pickups, $manifests) {
+        $context->runAs($industrial, function () use ($context, $industrial, $provider, $carrier, $amira, $karim, $user, $role, $createType, $createLot, $pickups, $manifests) {
             DB::table('company_textile_activities')->insert(DB::table('textile_activities')->whereIn('code', ['weaving', 'garment_making', 'dyeing'])->pluck('id')
                 ->map(fn ($id) => ['company_id' => $industrial->id, 'textile_activity_id' => $id, 'created_at' => now()])->all());
 
@@ -260,6 +276,7 @@ class DemoSeeder extends Seeder
                     composition: $code === 'CHUTES' ? [['material' => 'CO', 'pct' => '65.00'], ['material' => 'PES', 'pct' => '35.00']] : null), $amira);
             }
             ProviderPartnership::query()->create(['provider_company_id' => $provider->id, 'status' => 'active', 'started_at' => now()->subMonths(4), 'created_by_user_id' => $amira->id]);
+            ProviderPartnership::query()->create(['provider_company_id' => $carrier->id, 'status' => 'active', 'started_at' => now()->subMonths(2), 'created_by_user_id' => $amira->id]);
             // Garment rejects come from fabric imported under a customs regime: they only leave under an authorisation.
             $types['REBUTS']->forceFill(['requires_authorization' => true])->save();
             $authorization = WasteAuthorization::query()->create(['waste_type_id' => $types['REBUTS']->id, 'reference' => 'DOUANE-2026-0187',

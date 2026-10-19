@@ -17,8 +17,6 @@ final readonly class CreateSiteData
         public ?string $region = null,
         public ?string $timezone = null,
         public ?string $regulatoryIdentifier = null,
-        public ?string $capacityKg = null,
-        public ?int $capacityAlertPct = null,
     ) {}
 
     /**
@@ -37,8 +35,6 @@ final readonly class CreateSiteData
             region: $data['region'] ?? null,
             timezone: $data['timezone'] ?? null,
             regulatoryIdentifier: $data['regulatory_identifier'] ?? null,
-            capacityKg: isset($data['capacity_kg']) ? (string) $data['capacity_kg'] : null,
-            capacityAlertPct: isset($data['capacity_alert_pct']) ? (int) $data['capacity_alert_pct'] : null,
         );
     }
 }

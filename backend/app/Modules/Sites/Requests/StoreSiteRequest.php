@@ -33,8 +33,6 @@ class StoreSiteRequest extends FormRequest
             'region' => ['nullable', 'string', 'max:100'],
             'timezone' => ['nullable', 'timezone:all'],
             'regulatory_identifier' => ['nullable', 'string', 'max:64'],
-            'capacity_kg' => ['nullable', 'decimal:0,3', 'min:0'],
-            'capacity_alert_pct' => ['nullable', 'integer', 'between:1,100'],
         ];
     }
 

@@ -22,8 +22,6 @@ final class CreateSite
             'region' => $data->region,
             'timezone' => $data->timezone,
             'regulatory_identifier' => $data->regulatoryIdentifier,
-            'capacity_kg' => $data->capacityKg,
-            'capacity_alert_pct' => $data->capacityAlertPct ?? 90,
             'activated_at' => now(),
             'created_by_user_id' => $actor->id,
         ]));

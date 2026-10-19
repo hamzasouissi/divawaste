@@ -3,10 +3,12 @@
 namespace App\Modules\Pickups\Resources;
 
 use App\Modules\Common\Support\ReferenceCodes;
+use App\Modules\Pickups\Enums\PickupStatus;
 use App\Modules\Pickups\Models\Pickup;
 use App\Modules\Pickups\Support\PartyDirectory;
 use App\Modules\Pickups\Support\PickupCompliance;
 use App\Modules\Tenancy\TenantContext;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\DB;
@@ -40,6 +42,7 @@ class PickupResource extends JsonResource
         $lotUlids = $lines !== null && $context->hasTenant() && $context->companyId() === (int) $this->company_id
             ? DB::table('waste_lots')->whereIn('id', $lines->pluck('waste_lot_id'))->pluck('ulid', 'id')
             : collect();
+        $viewer = $context->hasTenant() && $context->companyId() !== (int) $this->company_id ? $context->companyId() : null;
 
         return [
             'ulid' => $this->ulid,
@@ -55,6 +58,17 @@ class PickupResource extends JsonResource
             'confirmed_date' => $this->confirmed_date?->toDateString(),
             'collected_at' => $this->collected_at?->toIso8601ZuluString(),
             'received_at' => $this->received_at?->toIso8601ZuluString(),
+            // A request waits for its receiver (the date), then for a transporter of the platform other than the receiver.
+            'awaiting' => $this->resource->awaiting(),
+            'transporter_confirms' => $this->resource->transporterConfirms(),
+            'transporter_confirmed_at' => $this->transporter_confirmed_at === null ? null : Carbon::parse($this->transporter_confirmed_at)->toIso8601ZuluString(),
+            // What the company reading this is on the pickup (a receiver without a transporter carries the waste); empty for the owner.
+            'viewer_roles' => array_keys(array_filter([
+                'receiver' => $viewer !== null && $viewer === (int) $this->provider_company_id,
+                'transporter' => $viewer !== null && ($viewer === (int) $this->transporter_company_id || ($this->transporter_company_id === null && $viewer === (int) $this->provider_company_id)),
+            ])),
+            // Whose refusal it was: the transporter's, or the receiver's (refusals recorded before this was kept are the receiver's).
+            'refused_by' => $this->status === PickupStatus::Refused ? ($this->refused_by_party ?? 'receiver') : null,
             'refusal_reason' => $this->refusal_reason,
             'cancellation_reason' => $this->cancellation_reason,
             'notes' => $this->notes,

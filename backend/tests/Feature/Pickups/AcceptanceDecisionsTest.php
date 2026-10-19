@@ -195,10 +195,10 @@ class AcceptanceDecisionsTest extends TestCase
 
         // The same minimum twice for one waste is refused — a weight in kilograms and one in tonnes are the same question;
         // a weight and a number of bales are two. A type of another family is refused too.
-        $this->fresh($this->providerToken)->putJson('/api/v1/provider/profile', ['roles' => ['recycler'], 'accepted_wastes' => [$family, ['min_quantity' => '800', 'min_unit' => 'kg'] + $family]])
+        $this->fresh($this->providerToken)->putJson('/api/v1/provider/profile', ['roles' => ['collector', 'recycler'], 'accepted_wastes' => [$family, ['min_quantity' => '800', 'min_unit' => 'kg'] + $family]])
             ->assertStatus(422)->assertJsonValidationErrors(['accepted_wastes.1']);
         $this->accepts([$family, ['min_quantity' => '10', 'min_unit' => 'package', 'min_packaging_type' => 'bale'] + $family]);
-        $this->fresh($this->providerToken)->putJson('/api/v1/provider/profile', ['roles' => ['recycler'], 'accepted_wastes' => [['catalog_item' => 'cutting_scraps'] + $item]])
+        $this->fresh($this->providerToken)->putJson('/api/v1/provider/profile', ['roles' => ['collector', 'recycler'], 'accepted_wastes' => [['catalog_item' => 'cutting_scraps'] + $item]])
             ->assertStatus(422)->assertJsonValidationErrors(['accepted_wastes.0.catalog_item']);
     }
 

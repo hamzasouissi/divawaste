@@ -71,6 +71,7 @@ class CertificateUploadTest extends TestCase
             $this->provider,
             function (): void {
                 ProviderProfile::query()->create([
+                    'is_collector' => true,
                     'is_recycler' => true,
                     'is_published' => true,
                     'published_at' => now(),
