@@ -99,7 +99,7 @@ function today(): string {
             }
 
             <div class="providers" role="radiogroup" [attr.aria-label]="t('pickups.provider')">
-              @for (item of providers(); track item.ulid) {
+              @for (item of platformReceivers(); track item.ulid) {
                 <button type="button" role="radio" class="provider" [attr.aria-checked]="provider() === 'c:' + item.ulid" [class.on]="provider() === 'c:' + item.ulid" [disabled]="!choosable(item)" (click)="choose('c:' + item.ulid)">
                   <span class="name">{{ item.legal_name }}</span>
                   <span class="dw-faint">{{ item.city }} · {{ item.channels.length > 0 ? channelNames(item, t) : '—' }}</span>
@@ -117,7 +117,7 @@ function today(): string {
                   @if (blocked(item); as reason) { <dw-status kind="accreditation" value="expired" [label]="t('pickups.create.notSelectable.' + reason)" /> }
                 </button>
               }
-              @if (providers().length === 0 && receivers().length === 0) {
+              @if (platformReceivers().length === 0 && receivers().length === 0) {
                 <p class="dw-muted">{{ t('pickups.create.noReceiver') }} <a routerLink="/providers">{{ t('nav.providers') }}</a></p>
               }
             </div>
@@ -144,6 +144,7 @@ function today(): string {
                 @for (item of transporters(); track item.key) { <dw-option [value]="item.key" [label]="item.label" /> }
               </dw-select>
               @if (transporterRequired()) { <small dwError>{{ t('pickups.create.transporterRequired') }}</small> }
+              @else if (transporter().startsWith('c:')) { <small dwHint>{{ t('pickups.create.transporterConfirms') }}</small> }
             </dw-field>
 
             <dw-field [label]="t('pickups.plannedChannel')">
@@ -204,6 +205,8 @@ export class PickupCreatePage {
   protected readonly selected = signal<string[]>([]);
   protected readonly providers = signal<DirectoryProvider[]>([]);
   private readonly externals = signal<ExternalPartner[]>([]);
+  /** Providers of the platform that may receive waste: a company that only transports never does. */
+  protected readonly platformReceivers = computed(() => this.providers().filter((item) => item.roles.some((role) => role !== 'transporter')));
   /** Partners without an account that may receive waste. */
   protected readonly receivers = computed(() => this.externals().filter((partner) => partner.roles.some((role) => role !== 'transporter')));
   /** For the waste types that only leave under an authorisation: what covers the selection on the chosen date. */
@@ -237,11 +240,11 @@ export class PickupCreatePage {
     ...this.externals().filter((item) => item.roles.includes('transporter') && this.blocked(item, false) === null)
       .map((item) => ({ key: `x:${item.ulid}`, label: `${item.legal_name} — ${this.toast.text('partners.noAccount')}` })),
   ].filter((item) => item.key !== this.provider()));
-  /** A partner that only recycles or eliminates cannot come and fetch the waste. */
+  /** A receiver that only recycles or eliminates cannot come and fetch the waste: one that collects or transports can. */
   protected readonly transporterRequired = computed(() => {
-    const receiver = this.externals().find((item) => `x:${item.ulid}` === this.provider());
+    const receiver = this.providers().find((item) => `c:${item.ulid}` === this.provider()) ?? this.externals().find((item) => `x:${item.ulid}` === this.provider());
 
-    return receiver !== undefined && !receiver.roles.includes('transporter') && this.transporter() === '';
+    return receiver !== undefined && !receiver.roles.some((role) => role === 'transporter' || role === 'collector') && this.transporter() === '';
   });
   protected readonly ready = computed(() => {
     const provider = this.providers().find((item) => `c:${item.ulid}` === this.provider());

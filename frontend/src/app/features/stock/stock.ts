@@ -284,12 +284,15 @@ export class ThresholdDialog {
                   <section class="dw-panel">
                     <div class="dw-panel-head"><h2 class="dw-h2">{{ group.name }}</h2><span class="dw-spacer"></span><strong>{{ group.total | dwKg: 'auto' }}</strong></div>
                     <div class="site-load">
-                      <span class="what">{{ t('sites.siteLoad') }}</span>
-                      @if (group.load?.constraints?.length) {
-                        <dw-limits class="grow" [limits]="group.load!.constraints" />
-                      } @else {
-                        <span class="none"><dw-icon aria-hidden="true">info</dw-icon>{{ t('sites.noSiteCapacity') }}</span>
-                        @if (session.can('sites.manage')) { <a class="define" [routerLink]="['/sites', group.site]">{{ t('stock.defineCapacity') }}</a> }
+                      <!-- The whole site — every zone, every waste type — is watched by a stock limit like any other. -->
+                      <span class="what">{{ t('stock.wholeSite') }}</span>
+                      @if (siteLimits(group.site); as limits) {
+                        @if (limits.length > 0) {
+                          <dw-limits class="grow" [limits]="limits" />
+                        } @else {
+                          <span class="none"><dw-icon aria-hidden="true">info</dw-icon>{{ t('stock.noSiteLimit') }}</span>
+                          @if (session.can('stock.thresholds.manage', group.site)) { <button type="button" class="define" (click)="defineForSite(group.site)">{{ t('stock.defineLimit') }}</button> }
+                        }
                       }
                     </div>
                     @for (zone of group.zones; track zone.zone) {
@@ -532,6 +535,18 @@ export class StockPage {
         scope: limit.zone && limit.waste_type ? null : limit.zone ? 'zone' : limit.waste_type ? 'siteType' : 'site',
       };
     });
+  }
+
+  /** The limits on a whole site (no zone, no waste type), each with what it measures now. */
+  protected siteLimits(site: string): LimitResult[] {
+    return this.thresholds().filter((item) => item.is_active && item.site === site && item.zone === null && item.waste_type === null)
+      .map((item) => this.current(item.ulid)?.constraint).filter((limit): limit is LimitResult => !!limit);
+  }
+
+  /** A new limit on the whole site: every zone, every waste type. */
+  protected defineForSite(site: string): void {
+    this.dialog.open<ThresholdDialog, LimitDialogData, boolean>(ThresholdDialog, { data: { limit: null, prefill: { site, zone: '', waste_type: '' } } })
+      .afterClosed().subscribe((saved) => saved && this.load());
   }
 
   /** A new limit for exactly this line: this zone and this waste type. */

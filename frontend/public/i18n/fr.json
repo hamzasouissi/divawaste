@@ -48,7 +48,8 @@
     "selected": "{{count}} sélectionné(s)",
     "collapseNavigation": "Réduire la navigation",
     "expandNavigation": "Déployer la navigation",
-    "or": "ou"
+    "or": "ou",
+    "and": "et"
   },
   "paginator": {
     "perPage": "Lignes par page",
@@ -478,7 +479,12 @@
     "PROVIDER_REQUIREMENT_NEEDS_AUTHORIZATION": "Seule une personne autorisée peut envoyer une demande malgré une exigence bloquante du prestataire.",
     "PARTNER_NOT_LINKED": "Ce partenaire n’a pas de compte : ses exigences se modifient simplement.",
     "REGULATORY_CODE_MISSING": "Un type de déchet dangereux de cet enlèvement n’a pas de code réglementaire : complétez-le sur le type de déchet, son bordereau ne peut pas être établi sans lui.",
-    "NO_REQUIREMENT_EXCEPTION": "Aucune exigence bloquante n’attend d’explication sur cet enlèvement."
+    "NO_REQUIREMENT_EXCEPTION": "Aucune exigence bloquante n’attend d’explication sur cet enlèvement.",
+    "ALREADY_ANSWERED": "Le destinataire a déjà répondu : l’enlèvement attend maintenant le transporteur.",
+    "AWAITING_RECEIVER": "Le destinataire n’a pas encore fixé la date : le transporteur confirme après lui.",
+    "NOT_THE_TRANSPORTER": "Cet enlèvement n’a pas d’autre transporteur que son destinataire.",
+    "TRANSPORTER_REQUIRED": "Ce destinataire ne vient pas chercher les déchets : choisissez un transporteur.",
+    "PARTNER_ROLE_MISMATCH": "Ce prestataire ne peut pas tenir ce rôle : une société qui ne fait que transporter n’est jamais destinataire, et le transporteur doit être déclaré transporteur."
   },
   "notifications": {
     "title": "Notifications",
@@ -526,7 +532,11 @@
       "capacity.site_exceeded": "Capacité d’un site dépassée",
       "capacity.site_unverifiable": "Capacité d’un site non vérifiable",
       "pickup.requirements_unmet_at_loading": "Exigence non respectée au chargement",
-      "pickup.requirement_exception": "Départ sous une exigence bloquante"
+      "pickup.requirement_exception": "Départ sous une exigence bloquante",
+      "pickup.transport_requested": "Transport à confirmer (transporteur)",
+      "pickup.awaiting_transporter": "Enlèvement en attente du transporteur",
+      "pickup.transport_confirmed": "Transport confirmé par le transporteur",
+      "pickup.transport_refused": "Transport refusé par le transporteur"
     },
     "types": {
       "stock.threshold_warning": {
@@ -680,6 +690,22 @@
       "pickup.requirement_exception": {
         "title": "Enlèvement {{number}} parti sous une exigence de {{provider}}",
         "body": "Sur ce qui a été chargé ({{quantity}}) : {{requirements}}. Le départ n’est pas annulé ; indiquez pourquoi."
+      },
+      "pickup.transport_requested": {
+        "title": "Transport à confirmer — enlèvement {{number}}",
+        "body": "{{provider}} a confirmé l’enlèvement {{number}} de {{company}} pour le {{date}} : confirmez le transport, ou refusez."
+      },
+      "pickup.awaiting_transporter": {
+        "title": "Enlèvement {{number}} : en attente du transporteur",
+        "body": "{{provider}} a confirmé pour le {{date}} ; {{transporter}} doit encore confirmer le transport."
+      },
+      "pickup.transport_confirmed": {
+        "title": "Enlèvement {{number}} confirmé",
+        "body": "{{transporter}} transporte l’enlèvement {{number}} le {{date}} vers {{provider}}."
+      },
+      "pickup.transport_refused": {
+        "title": "Transport de l’enlèvement {{number}} refusé",
+        "body": "{{transporter}} : {{reason}}. Les lots reviennent en stock."
       }
     },
     "mailOnRequest": "E-mail envoyé seulement si vous le demandez : par défaut, les alertes de stock et de capacité partent par e-mail aux personnes qui gèrent les limites ou les zones du site. Vous les voyez toujours ici."
@@ -907,7 +933,7 @@
     "waiting": "En attente d'enlèvement",
     "usage": "Utilisation",
     "warnAt": "alerte à {{pct}} %",
-    "limitsHint": "Une limite est un poids maximal pour un site, une zone ou un type de déchet. Vous recevez une alerte à l'approche de la limite, puis une autre si elle est dépassée.",
+    "limitsHint": "Une limite est une quantité maximale — en t, kg, m³, l ou colis — pour tout un site, une zone ou un type de déchet. Vous recevez une alerte à l’approche de la limite, puis une autre si elle est dépassée.",
     "limitIntro": "Choisissez ce que la limite surveille (un site, une zone, un type de déchet) et dans quelle unité : poids, pièces, volume ou nombre de colis. Un même stock peut avoir plusieurs limites, par exemple un poids et un nombre de sacs ; chacune est évaluée séparément.",
     "maxHint": "Quantité à ne pas dépasser, dans l’unité choisie.",
     "warningHint": "Vous êtes prévenu quand le stock atteint ce pourcentage de la limite.",
@@ -949,7 +975,9 @@
     "unitFixed": "L’unité d’une limite ne se modifie pas. Pour surveiller le même stock dans une autre unité, ajoutez une autre limite : chacune a sa propre réponse.",
     "limitPreview": "{{where}} : alerte quand le stock de « {{what}} » dépasse {{max}} {{unit}}, et dès {{pct}} % de cette limite. Aucun lot n’est refusé.",
     "limitPreviewAll": "{{where}} : alerte quand le stock, tous déchets confondus, dépasse {{max}} {{unit}}, et dès {{pct}} % de cette limite. Aucun lot n’est refusé.",
-    "limitOutside": "{{count}} autre(s) lot(s) du périmètre en vrac ou dans un autre conditionnement que {{packaging}} : non concernés par cette limite."
+    "limitOutside": "{{count}} autre(s) lot(s) du périmètre en vrac ou dans un autre conditionnement que {{packaging}} : non concernés par cette limite.",
+    "wholeSite": "Tout le site",
+    "noSiteLimit": "Aucune limite sur le site entier"
   },
   "sites": {
     "title": "Sites et zones",
@@ -980,9 +1008,9 @@
     "closeHint": "Le site reste dans l'historique et les documents ; il n'est plus proposé pour les nouveaux lots.",
     "noZoneType": "Aucun type",
     "capacity": "Capacité",
-    "capacityHint": "Indiquez combien de colis la zone contient quand elle ne reçoit qu’un seul conditionnement : « 40 balles », « 100 sacs ». Les conditionnements mélangés partagent la même place : 20 balles sur 40 et 50 sacs sur 100 remplissent la zone. Un lot en vrac ou dans un conditionnement non prévu est signalé, jamais converti.",
+    "capacityHint": "Une ligne par conditionnement que la zone reçoit, avec le nombre de colis qu’elle contient quand elle n’a que celui-là. Les lignes décrivent une seule place, partagée. Un lot en vrac ou dans un conditionnement qui n’est pas listé est signalé, jamais converti.",
     "addCapacity": "Ajouter un conditionnement",
-    "maxLots": "Nombre de lots",
+    "maxLots": "Colis au maximum",
     "capacityKgLimit": "Charge maximale de la zone (kg), facultatif",
     "noLimit": "Sans limite",
     "reservedFor": "Réservée à",
@@ -992,23 +1020,18 @@
     "anyType": "Tous les types",
     "anyColor": "Toutes les couleurs",
     "anything": "Tout",
-    "siteCapacity": "Capacité du site",
-    "siteCapacityHint": "Le poids total que le site peut contenir, toutes zones confondues. Chaque lot présent compte une fois, même dans une zone sans limite. Laissez vide si rien ne doit être surveillé. Dépasser cette capacité alerte, sans jamais refuser un lot.",
-    "siteCapacityKg": "Poids maximal sur le site (kg), facultatif",
     "siteLoad": "Poids sur le site",
-    "siteLoadHint": "Tous les lots présents sur le site, comptés une fois chacun quelle que soit leur zone, comparés au poids maximal du site.",
-    "noSiteCapacity": "Capacité du site non définie",
-    "noSiteCapacityLong": "Capacité du site non définie : {{kg}} sur le site ({{count}} lot(s)), rien n’est surveillé.",
+    "siteLoadHint": "Tous les lots présents sur le site, comptés une fois chacun quelle que soit leur zone.",
     "spaceMethod": "Place mesurée en",
     "spaceMethods": {
-      "packaging": "Colis par conditionnement (« 100 sacs ou 50 cartons »)",
+      "packaging": "Nombre de colis",
       "volume": "Volume (m³)"
     },
     "capacityM3": "Volume de la zone (m³)",
     "capacityM3Required": "Indiquez le volume de la zone, supérieur à 0.",
-    "volumeHint": "La place occupée est la somme des volumes des lots : colis × volume d’un colis (à renseigner dans Sites › Volume des conditionnements), ou volume mesuré du lot en vrac, ou son poids ÷ la densité de son type de déchet. Un lot dont le volume n’est pas connu est signalé, jamais estimé. Une zone est mesurée d’une seule façon : en volume, les quantités par conditionnement ne sont pas utilisées.",
-    "packagingVolumes": "Volume des conditionnements",
-    "packagingVolumesHint": "La place qu’occupe un colis une fois stocké, en m³. Sert aux zones dont la place est mesurée en volume. Laissez vide si vous ne le connaissez pas : les lots concernés seront signalés « sans volume connu », jamais estimés.",
+    "volumeHint": "La place occupée est la somme des volumes des lots : nombre de colis × volume d’un colis (bouton « Volume d’un colis » de la page Sites), sinon le volume mesuré du lot en vrac, sinon son poids ÷ la densité de son type de déchet. Un lot dont le volume n’est pas connu est signalé, jamais estimé.",
+    "packagingVolumes": "Volume d’un colis",
+    "packagingVolumesHint": "Ne sert qu’aux zones dont la place est mesurée en volume (m³) : la place d’un lot = nombre de colis × volume d’un colis. Laissez vide ce que vous ne connaissez pas : les lots concernés sont signalés « sans volume connu », jamais estimés.",
     "packagingVolumesInvalid": "Un volume doit être un nombre supérieur à 0 (4 décimales au plus), ou vide.",
     "packagingVolumesSaved": "Volumes des conditionnements enregistrés.",
     "spaceBy": {
@@ -1020,7 +1043,12 @@
     "inactiveVolumeCount": "{{count}} volume(s) enregistré(s) non utilisé(s)",
     "inactiveVolumeHint": "Des zones de ce site ont un volume (m³) enregistré alors que leur place est mesurée en colis. Ouvrez le site pour les examiner.",
     "inactiveVolumeBanner": "{{count}} zone(s) ont un volume (m³) enregistré qui n’est pas utilisé : leur place est mesurée en colis. Rien n’a été effacé. Ouvrez chaque zone (« Examiner ») et choisissez « Volume (m³) » si ce volume est bien la capacité de la zone ; sinon laissez-la en colis.",
-    "inactiveVolumeInForm": "Un volume de {{m3}} m³ est enregistré pour cette zone et n’est pas utilisé : sa place est mesurée en colis. Choisissez « Volume (m³) » ci-dessus pour l’utiliser. Il reste enregistré tant que vous ne le modifiez pas."
+    "inactiveVolumeInForm": "Un volume de {{m3}} m³ est enregistré pour cette zone et n’est pas utilisé : sa place est mesurée en colis. Choisissez « Volume (m³) » ci-dessus pour l’utiliser. Il reste enregistré tant que vous ne le modifiez pas.",
+    "siteLimitNote": "Le site n’a pas de capacité à part : pour surveiller tout ce qu’il contient, fixez une limite de stock sur le site entier (toutes zones, tous types de déchets), en t, kg, m³, l ou colis.",
+    "siteLimitLink": "Fixer une limite sur le site",
+    "siteLoadLots": "sur le site ({{count}} lot(s))",
+    "sharedRoom": "Une seule place, partagée : la zone contient {{lines}}, ou un mélange — par exemple {{half}}. Chaque colis en prend sa part.",
+    "orMix": "ou un mélange (place partagée)"
   },
   "wasteTypes": {
     "title": "Types de déchets",
@@ -1115,7 +1143,8 @@
         "covered": "couvert par l’autorisation {{reference}}. Chaque limite après cet enlèvement :",
         "unverifiable": "l’autorisation {{reference}} est limitée en poids et ces lots n’ont pas de poids mesuré : {{lots}}. Pesez-les avant de demander l’enlèvement.",
         "blocked": "Demande bloquée — limite(s) en cause : {{limits}}."
-      }
+      },
+      "transporterConfirms": "Ce transporteur a un compte : il confirmera la date après le destinataire."
     },
     "actions": {
       "submit": "Envoyer la demande",
@@ -1130,7 +1159,9 @@
       "treat": "Déclarer le traitement",
       "manifest": "Établir les bordereaux de suivi",
       "certificate": "Déposer un certificat",
-      "authorize": "Accepter l’écart"
+      "authorize": "Accepter l’écart",
+      "confirmTransport": "Confirmer le transport",
+      "refuseTransport": "Refuser le transport"
     },
     "cancelReason": "Motif de l'annulation",
     "refuseReason": "Motif du refus",
@@ -1178,7 +1209,9 @@
       "received": "Réception enregistrée.",
       "treated": "Traitement déclaré.",
       "manifest": "Bordereaux établis.",
-      "certificate": "Certificat déposé."
+      "certificate": "Certificat déposé.",
+      "transportConfirmed": "Transport confirmé : l’enlèvement est confirmé.",
+      "transportRefused": "Transport refusé."
     },
     "documents": "Documents",
     "certificateType": {
@@ -1220,7 +1253,14 @@
         "receiver": "attend la signature du destinataire",
         "signed_copy": "attend le scan du bordereau signé à la main"
       }
-    }
+    },
+    "transportConfirmTitle": "Confirmer le transport le {{date}} ?",
+    "transportConfirmHint": "{{receiver}} a fixé l’enlèvement au {{date}}. En confirmant, vous vous engagez à venir chercher les lots ce jour-là et à les livrer à {{receiver}}.",
+    "awaitingReceiver": "{{receiver}} fixe d’abord la date ; {{transporter}} confirme ensuite le transport.",
+    "awaitingTransporter": "{{receiver}} a confirmé pour le {{date}}. L’enlèvement sera confirmé quand {{transporter}} aura confirmé le transport.",
+    "refusedByTransporter": "Transport refusé par {{transporter}} : {{reason}}. Les lots sont revenus en stock ; demandez l’enlèvement avec un autre transporteur.",
+    "transporterConfirmedOn": "confirmé le {{date}}",
+    "waitingTransporter": "En attente du transporteur"
   },
   "providers": {
     "title": "Prestataires",
@@ -2777,7 +2817,7 @@
     "hide": "Masquer",
     "stock": {
       "title": "Comment lire le stock",
-      "text": "Le stock est calculé à chaque affichage à partir des lots présents sur site : rien n'est saisi ici.\nCapacité : la place disponible dans une zone, en nombre de colis par conditionnement (un lot peut contenir plusieurs colis) et/ou en poids. La place (colis) et la charge (poids) sont deux limites distinctes : chacune a sa ligne, ses chiffres et son résultat, jamais un pourcentage commun. Elle se règle sur la page du site.\nLimite : un poids maximal que vous fixez pour un site, une zone ou un type de déchet. Vous êtes prévenu avant qu'elle soit atteinte, puis quand elle est dépassée.\n« Aucune limite » ou « Capacité non définie » signifie que rien ne surveille cette ligne : cliquez « Définir » pour en ajouter une."
+      "text": "Le stock est calculé à chaque affichage à partir des lots présents sur site : rien n’est saisi ici.\nCapacité : ce qu’une zone peut physiquement contenir — sa place (en colis, partagée entre conditionnements, ou en m³) et sa charge (kg). Elle se règle sur la page du site.\nLimite : une quantité maximale que vous fixez pour tout un site, une zone ou un type de déchet (le cahier demande le stock « par site, zone et type »), en t, kg, m³, l ou colis. Vous êtes prévenu avant qu’elle soit atteinte, puis quand elle est dépassée.\n« Aucune limite » ou « Capacité non définie » signifie que rien ne surveille cette ligne : cliquez « Définir » pour en ajouter une."
     },
     "lots": {
       "title": "Les lots de déchets",
@@ -2793,7 +2833,7 @@
     },
     "zones": {
       "title": "Les zones de ce site",
-      "text": "Capacité : la place d’une zone se mesure d’une seule façon — en colis par conditionnement (« 40 balles ou 100 sacs », les conditionnements mélangés partagent la même place) ou en volume (m³). La charge maximale (kg) est une limite à part. Le site a aussi son poids maximal, où chaque lot compte une fois. Chaque limite a sa ligne et son résultat ; aucune ne refuse un lot.\nRéservée à : les types de déchets et couleurs prévus dans la zone. Un lot qui ne correspond pas est signalé, jamais refusé.\nLe type de la zone (coupe, confection…) est facultatif ; il sert à savoir de quelle étape de production vient un déchet.\n« Sans limite » signifie que le remplissage de la zone n'est pas surveillé."
+      "text": "Capacité : la place d’une zone se mesure d’une seule façon. En nombre de colis : une ligne par conditionnement, et ces lignes décrivent une seule place partagée — « 100 sacs, 50 balles » veut dire 100 sacs, ou 50 balles, ou un mélange (50 sacs et 25 balles). Ou en volume (m³). La charge maximale (kg) est une limite à part, avec sa propre ligne. Aucune ne refuse un lot.\nLe site entier se surveille avec une limite de stock (page Stock), dans l’unité de votre choix.\nRéservée à : les types de déchets et couleurs prévus dans la zone. Un lot qui ne correspond pas est signalé, jamais refusé.\nLe type de la zone (coupe, confection…) est facultatif ; il sert à savoir de quelle étape de production vient un déchet.\n« Sans limite » signifie que le remplissage de la zone n’est pas surveillé."
     },
     "wasteTypes": {
       "title": "Types de déchets et couleurs",
@@ -2991,7 +3031,10 @@
       "measureUnknown": "quantité inconnue dans cette unité pour {{lots}} : complétez le poids ou la quantité de ce(s) lot(s)"
     },
     "missingVolume": "{{count}} lot(s) sans volume connu :",
-    "missingMeasure": "{{count}} lot(s) non compté(s) dans cette unité :"
+    "missingMeasure": "{{count}} lot(s) non compté(s) dans cette unité :",
+    "emptyRoom": "vide",
+    "sharedRoomOf": "Place partagée :",
+    "orMix": " (ou un mélange)"
   },
   "requirements": {
     "name": {

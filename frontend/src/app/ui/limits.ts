@@ -37,7 +37,12 @@ export function failingLimits<T extends Pick<LimitResult, 'outcome' | 'blocking'
               } @else if (limit.packaging_type) {
                 {{ limit.used }} / {{ limit.max }} × {{ limit.packaging_type | dwCode: 'packaging' }}
               } @else if (limit.lines; as lines) {
-                @for (line of lines; track line.packaging_type; let first = $first) { @if (!first) { + } {{ line.used }} / {{ line.max }} × {{ line.packaging_type | dwCode: 'packaging' }} }
+                @if (lines.length === 1) { {{ lines[0].used }} / {{ lines[0].max }} × {{ lines[0].packaging_type | dwCode: 'packaging' }} }
+                @else {
+                  <!-- One room shared by several packagings: what is in it, then the room it is a share of. -->
+                  @for (line of present(lines); track line.packaging_type; let first = $first) { @if (!first) { + } {{ line.used }} × {{ line.packaging_type | dwCode: 'packaging' }} }
+                  @empty { {{ t('limits.emptyRoom') }} }
+                }
               } @else if (limit.unit === 'kg' || limit.unit === 'm3') {
                 {{ text.quantity(limit, limit.used) }} / {{ text.quantity(limit, limit.max) }}
               } @else {
@@ -51,6 +56,9 @@ export function failingLimits<T extends Pick<LimitResult, 'outcome' | 'blocking'
             @if (limit.key !== 'unlisted' || limit.outcome !== 'respected') { <dw-status kind="limit" [value]="limit.outcome" /> }
           </div>
           <div class="more">
+            @if (limit.lines && limit.lines.length > 1) {
+              <span class="shared">{{ t('limits.sharedRoomOf') }} @for (line of limit.lines; track line.packaging_type; let first = $first) { @if (!first) { {{ t('common.or') }} } {{ line.max }} × {{ line.packaging_type | dwCode: 'packaging' }} }<span>{{ t('limits.orMix') }}</span></span>
+            }
             @if (limit.outcome === 'exceeded') {
               <span class="over">
                 @if (limit.lines; as lines) {
@@ -90,7 +98,7 @@ export function failingLimits<T extends Pick<LimitResult, 'outcome' | 'blocking'
     .bar { display: block; height: 100%; max-inline-size: 100%; background: var(--dw-success); }
     .warning .bar, .unverifiable .bar { background: #d68a00; } .exceeded .bar { background: var(--dw-danger); }
     .more { display: flex; flex-wrap: wrap; gap: 0 var(--dw-3); font-size: 12.5px; line-height: 18px; }
-    .over { color: var(--dw-danger); font-weight: 600; } .missing { color: var(--dw-warning); font-weight: 600; overflow-wrap: anywhere; }
+    .over { color: var(--dw-danger); font-weight: 600; } .shared { color: var(--dw-ink-2); flex-basis: 100%; } .missing { color: var(--dw-warning); font-weight: 600; overflow-wrap: anywhere; }
     .compact .meter { flex-basis: 64px; inline-size: 64px; } .compact .name { min-inline-size: 0; }
   `,
 })
@@ -99,6 +107,11 @@ export class LimitsComponent {
   /** In a table cell: what is left is only said when it matters. */
   readonly compact = input(false);
   protected readonly text = inject(LimitText);
+
+  /** The packagings actually in a shared room: an absent one adds nothing to say. */
+  protected present<T extends { used: number }>(lines: T[]): T[] {
+    return lines.filter((line) => line.used > 0);
+  }
 
   protected round(value: number): number {
     return Math.round(value);

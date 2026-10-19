@@ -70,7 +70,15 @@ export class ConfirmDateDialog {
           </dw-page-header>
 
           <div class="dw-stack">
-            @if (p.status === 'refused') { <p class="banner danger" role="status">{{ t('pickups.refused', { reason: p.refusal_reason }) }}</p> }
+            @if (p.status === 'refused') {
+              <p class="banner danger" role="status">{{ p.refused_by === 'transporter' ? t('pickups.refusedByTransporter', { transporter: p.transporter?.legal_name, reason: p.refusal_reason }) : t('pickups.refused', { reason: p.refusal_reason }) }}</p>
+            }
+            <!-- A transporter of the platform other than the receiver confirms the date the receiver set. -->
+            @if (p.awaiting === 'transporter') {
+              <p class="banner info" role="status" data-testid="awaiting-transporter"><dw-icon aria-hidden="true">local_shipping</dw-icon><span>{{ t('pickups.awaitingTransporter', { receiver: p.provider?.legal_name, transporter: p.transporter?.legal_name, date: (p.confirmed_date | dwDate) }) }}</span></p>
+            } @else if (p.awaiting === 'receiver' && p.transporter_confirms) {
+              <p class="banner info" role="note"><dw-icon aria-hidden="true">local_shipping</dw-icon><span>{{ t('pickups.awaitingReceiver', { receiver: p.provider?.legal_name, transporter: p.transporter?.legal_name }) }}</span></p>
+            }
             @if (p.status === 'cancelled') { <p class="banner danger" role="status">{{ t('pickups.cancelled', { reason: p.cancellation_reason }) }}</p> }
             @if (onBehalf()) { <p class="banner info" role="note"><dw-icon aria-hidden="true">info</dw-icon><span>{{ t('pickups.onBehalf', { name: p.provider?.legal_name }) }}</span></p> }
             @if (p.variance_flagged) {
@@ -155,7 +163,8 @@ export class ConfirmDateDialog {
                 <div><dt>{{ t('fields.site') }}</dt><dd>{{ p.site?.name }}<br /><span class="dw-muted">{{ p.site?.address_line1 }} {{ p.site?.city }}</span></dd></div>
                 @if (provider) { <div><dt>{{ t('pickups.client') }}</dt><dd>{{ p.company?.legal_name }}</dd></div> }
                 <div><dt>{{ t('pickups.receiver') }}</dt><dd>{{ p.provider?.legal_name }} @if (p.provider?.external) { <dw-status kind="member" value="suspended" tone="neutral" [label]="t('partners.noAccount')" /> }</dd></div>
-                <div><dt>{{ t('pickups.transporter') }}</dt><dd>{{ p.transporter?.legal_name ?? t('pickups.receiverTransports') }} @if (p.transporter?.external) { <dw-status kind="member" value="suspended" tone="neutral" [label]="t('partners.noAccount')" /> }</dd></div>
+                <div><dt>{{ t('pickups.transporter') }}</dt><dd>{{ p.transporter?.legal_name ?? t('pickups.receiverTransports') }} @if (p.transporter?.external) { <dw-status kind="member" value="suspended" tone="neutral" [label]="t('partners.noAccount')" /> }
+                  @if (p.transporter_confirmed_at) { <span class="dw-faint">· {{ t('pickups.transporterConfirmedOn', { date: (p.transporter_confirmed_at | dwDate: 'datetime') }) }}</span> }</dd></div>
                 <div><dt>{{ t('pickups.requestedDate') }}</dt><dd>{{ p.requested_date | dwDate }}</dd></div>
                 <div><dt>{{ t('pickups.confirmedDate') }}</dt><dd>{{ p.confirmed_date | dwDate }}</dd></div>
                 <div><dt>{{ t('pickups.departure') }}</dt><dd>{{ p.departure_weight_kg | dwKgKnown: (p.departure_unweighed_lots ?? (p.received_at ? 0 : p.unweighed_lots)) }} @if (p.collected_at) { <span class="dw-faint">· {{ p.collected_at | dwDate: 'datetime' }}</span> }</dd></div>
@@ -271,6 +280,7 @@ export class PickupDetailPage implements OnInit {
   private readonly dialog = inject(Dialogs);
   private readonly confirm = inject(Confirm);
   private readonly toast = inject(Toast);
+  private readonly dates = new DatePipe();
 
   readonly ulid = input.required<string>();
   protected readonly provider = this.session.audience() === 'provider';
@@ -314,19 +324,24 @@ export class PickupDetailPage implements OnInit {
     const has = (status: string): boolean => lines.some((line) => line.line_status === status);
     const can = (permission: string): boolean => this.session.can(permission, this.provider ? undefined : site);
     const external = pickup.provider?.external === true;
+    // A provider is the receiver, the transporter, or both: each does only its own part.
+    const receiver = pickup.viewer_roles?.includes('receiver') ?? true;
+    const carrier = pickup.transporter_confirms === true && (pickup.viewer_roles?.includes('transporter') ?? false);
     const all: { key: string; icon: string; show: boolean; primary?: boolean; danger?: boolean }[] = this.provider
       ? [
-          { key: 'confirm', icon: 'event_available', primary: true, show: pickup.status === 'requested' && can('provider.pickups.respond') },
-          { key: 'refuse', icon: 'block', danger: true, show: pickup.status === 'requested' && can('provider.pickups.respond') },
-          { key: 'receive', icon: 'scale', primary: true, show: pickup.status === 'collected' && can('provider.pickups.receive') },
-          { key: 'treat', icon: 'recycling', primary: true, show: pickup.status === 'received' && has('received') && can('provider.pickups.receive') },
-          { key: 'certificate', icon: 'upload_file', show: ['collected', 'received'].includes(pickup.status) && can('provider.certificates.upload') },
+          { key: 'confirm', icon: 'event_available', primary: true, show: receiver && pickup.awaiting === 'receiver' && can('provider.pickups.respond') },
+          { key: 'refuse', icon: 'block', danger: true, show: receiver && pickup.awaiting === 'receiver' && can('provider.pickups.respond') },
+          { key: 'confirmTransport', icon: 'local_shipping', primary: true, show: carrier && pickup.awaiting === 'transporter' && can('provider.pickups.respond') },
+          { key: 'refuseTransport', icon: 'block', danger: true, show: carrier && pickup.status === 'requested' && can('provider.pickups.respond') },
+          { key: 'receive', icon: 'scale', primary: true, show: receiver && pickup.status === 'collected' && can('provider.pickups.receive') },
+          { key: 'treat', icon: 'recycling', primary: true, show: receiver && pickup.status === 'received' && has('received') && can('provider.pickups.receive') },
+          { key: 'certificate', icon: 'upload_file', show: receiver && ['collected', 'received'].includes(pickup.status) && can('provider.certificates.upload') },
         ]
       : [
           { key: 'submit', icon: 'send', primary: true, show: pickup.status === 'draft' && can('pickups.request') },
           // Stages of a receiver without an account, recorded by the industrial.
-          { key: 'confirm', icon: 'event_available', primary: true, show: external && pickup.status === 'requested' && can('pickups.request') },
-          { key: 'refuse', icon: 'block', danger: true, show: external && pickup.status === 'requested' && can('pickups.request') },
+          { key: 'confirm', icon: 'event_available', primary: true, show: external && pickup.awaiting === 'receiver' && can('pickups.request') },
+          { key: 'refuse', icon: 'block', danger: true, show: external && pickup.awaiting === 'receiver' && can('pickups.request') },
           { key: 'receive', icon: 'scale', primary: true, show: external && pickup.status === 'collected' && can('pickups.complete') },
           { key: 'treat', icon: 'recycling', primary: true, show: external && pickup.status === 'received' && has('received') && can('pickups.complete') },
           { key: 'collect', icon: 'local_shipping', primary: true, show: pickup.status === 'confirmed' && can('pickups.load') },
@@ -403,6 +418,17 @@ export class PickupDetailPage implements OnInit {
         const reason = await this.confirm.ask({ title: text('pickups.actions.refuse'), reasonLabel: text('pickups.refuseReason'), danger: true });
 
         return reason ? this.call(this.api.post(`${base}/refuse`, { reason }), 'pickups.done.refused') : undefined;
+      }
+      case 'confirmTransport': {
+        const params = { receiver: pickup.provider?.legal_name, date: this.dates.transform(pickup.confirmed_date) };
+
+        return (await this.confirm.ask({ title: text('pickups.transportConfirmTitle', params), message: text('pickups.transportConfirmHint', params), confirmLabel: text('pickups.actions.confirmTransport') }))
+          ? this.call(this.api.post(`${base}/transport/confirm`), 'pickups.done.transportConfirmed') : undefined;
+      }
+      case 'refuseTransport': {
+        const reason = await this.confirm.ask({ title: text('pickups.actions.refuseTransport'), reasonLabel: text('pickups.refuseReason'), danger: true });
+
+        return reason ? this.call(this.api.post(`${base}/transport/refuse`, { reason }), 'pickups.done.transportRefused') : undefined;
       }
       case 'acknowledge':
       case 'authorize': {

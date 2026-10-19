@@ -1,15 +1,14 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
-import { TranslocoDirective } from '@jsverse/transloco';
+import { Router, RouterLink } from '@angular/router';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom, map } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 
 import { Api } from '../../core/api/api';
 import { Localized, Site, Zone } from '../../core/api/models';
-import { LimitsComponent } from '../../ui/limits';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
@@ -56,13 +55,8 @@ const num = (value: string): string | null => (value.trim() === '' ? null : valu
             <dw-field [label]="t('fields.city')"><input pInputText formControlName="city" /></dw-field>
             <dw-field [label]="t('fields.postalCode')"><input pInputText formControlName="postal_code" /></dw-field>
             <dw-field [label]="t('sites.regulatoryId')"><input pInputText formControlName="regulatory_identifier" /></dw-field>
-            <section class="dw-span-2 part">
-              <h3 class="dw-h3">{{ t('sites.siteCapacity') }}</h3>
-              <p class="dw-muted">{{ t('sites.siteCapacityHint') }}</p>
-            </section>
-            <dw-field [label]="t('sites.siteCapacityKg')"><input pInputText formControlName="capacity_kg" inputmode="decimal" /></dw-field>
-            <dw-field [label]="t('sites.alertPct')"><input pInputText type="number" formControlName="capacity_alert_pct" min="1" max="100" /></dw-field>
           </div>
+          <p class="dw-muted note">{{ t('sites.siteLimitNote') }}</p>
         </div>
         <div class="dw-dialog-foot">
           <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
@@ -71,7 +65,7 @@ const num = (value: string): string | null => (value.trim() === '' ? null : valu
       </form>
     </ng-container>
   `,
-  styles: '.dw-dialog-body { min-width: min(600px, 82vw); } .part { display: grid; gap: var(--dw-1); margin-block-start: var(--dw-2); } .part p { margin: 0; font-size: 13px; }',
+  styles: '.dw-dialog-body { inline-size: min(560px, 90vw); } .note { margin: var(--dw-3) 0 0; font-size: 13px; }',
 })
 export class SiteDialog {
   protected readonly data = dialogData<Site | null>();
@@ -90,8 +84,6 @@ export class SiteDialog {
     city: [this.data?.city ?? ''],
     postal_code: [this.data?.postal_code ?? ''],
     regulatory_identifier: [this.data?.regulatory_identifier ?? ''],
-    capacity_kg: [this.data?.capacity_kg ?? '', DECIMAL],
-    capacity_alert_pct: [this.data?.capacity_alert_pct ?? 90, [Validators.required, Validators.min(1), Validators.max(100)]],
   });
 
   protected async submit(): Promise<void> {
@@ -102,7 +94,7 @@ export class SiteDialog {
     }
     this.busy.set(true);
     const value = this.form.getRawValue();
-    const body = { ...value, capacity_kg: num(value.capacity_kg), country: this.session.company()?.country };
+    const body = { ...value, country: this.session.company()?.country };
     try {
       const site = await firstValueFrom(this.data ? this.api.put<Site>(`sites/${this.data.ulid}`, body) : this.api.post<Site>('sites', body));
       // A new site changes what the user may do (company-wide roles cover it at once).
@@ -171,6 +163,7 @@ interface ZoneDialogData {
                 </div>
               }
               <button pButton text type="button" class="add" (click)="addCapacity()"><dw-icon>add</dw-icon>{{ t('sites.addCapacity') }}</button>
+              @if (sharedRoom(); as room) { <p class="shared" role="status">{{ t('sites.sharedRoom', room) }}</p> }
               }
             </section>
             <dw-field [label]="t('sites.capacityKgLimit')"><input pInputText formControlName="capacity_kg" inputmode="decimal" /></dw-field>
@@ -205,6 +198,7 @@ interface ZoneDialogData {
     .part p { margin: 0; font-size: 13px; }
     .line { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: var(--dw-2); align-items: center; }
     .add { justify-self: start; }
+    .shared { padding: 8px 10px; border-radius: var(--dw-radius); background: var(--dw-surface-2); color: var(--dw-ink); }
     .legacy { padding: 8px 10px; border-radius: var(--dw-radius); background: var(--dw-warning-soft, #fdf1d8); color: var(--dw-ink); }
   `,
 })
@@ -216,6 +210,8 @@ export class ZoneDialog {
   private readonly ref = inject(DialogRef);
 
   private readonly fb = inject(FormBuilder);
+  private readonly transloco = inject(TranslocoService);
+  private readonly localized = new LocalizedPipe();
 
   protected readonly vocabulary = toSignal(this.reference.vocabulary());
   protected readonly types = toSignal(this.reference.wasteTypes(), { initialValue: [] });
@@ -253,6 +249,26 @@ export class ZoneDialog {
       packaging_type: [packaging, Validators.required],
       max_count: [count, [Validators.required, Validators.min(1), Validators.max(100000)]],
     });
+  }
+
+  /**
+   * Several packagings share one room: "100 × Sac ou 50 × Balle, ou un mélange : 50 × Sac et 25 × Balle". Read from the
+   * form each time the dialog is checked, so the sentence follows what is typed.
+   */
+  protected sharedRoom(): { lines: string; half: string } | null {
+    const names = new Map((this.vocabulary()?.packaging_types ?? []).map((type) => [type.code, type.name]));
+    const lines = this.capacities.controls.map((line) => ({ code: String(line.value.packaging_type ?? ''), max: Number(line.value.max_count ?? 0) }))
+      .filter((line) => line.code && line.max > 0);
+    if (lines.length < 2) {
+      return null;
+    }
+    const name = (code: string): string => this.localized.transform(names.get(code) ?? null, code);
+    const or = ` ${this.transloco.translate('common.or')} `;
+
+    return {
+      lines: lines.map((line) => `${line.max} × ${name(line.code)}`).join(or),
+      half: lines.slice(0, 2).map((line) => `${Math.floor(line.max / 2)} × ${name(line.code)}`).join(` ${this.transloco.translate('common.and')} `),
+    };
   }
 
   protected addCapacity(): void {
@@ -374,7 +390,7 @@ export class PackagingVolumesDialog {
 
 /** M1-01: the company's sites. */
 @Component({
-  imports: [HelpComponent, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, KgPipe, IconComponent, ButtonDirective, CheckboxComponent, FilterBarComponent, LimitsComponent],
+  imports: [HelpComponent, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, KgPipe, IconComponent, ButtonDirective, CheckboxComponent, FilterBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -399,8 +415,8 @@ export class PackagingVolumesDialog {
             @if ((site.inactive_volume_zones ?? 0) > 0) { <div class="legacy" [title]="t('sites.inactiveVolumeHint')">{{ t('sites.inactiveVolumeCount', { count: site.inactive_volume_zones }) }}</div> }
           </ng-template>
           <ng-template dwCell="capacity" let-site>
-            @if (site.load?.constraints?.length) { <dw-limits [limits]="site.load.constraints" [compact]="true" /> }
-            @else { <span class="dw-faint">{{ site.load ? (site.load.quantity_kg | dwKg: 'auto') : '—' }} · {{ t('sites.noSiteCapacity') }}</span> }
+            {{ site.load ? (site.load.quantity_kg | dwKg: 'auto') : '—' }}
+            @if ((site.load?.unweighed_lots ?? 0) > 0) { <div class="dw-faint">{{ t('lots.plusUnweighed', { count: site.load.unweighed_lots }) }}</div> }
           </ng-template>
           <ng-template dwCell="status" let-site><dw-status kind="member" [value]="site.is_active ? 'active' : 'suspended'" [label]="t(site.is_active ? 'common.active' : 'common.inactive')" /></ng-template>
           @if (canManage) { <button dwEmptyAction pButton type="button" (click)="create()"><dw-icon>add</dw-icon>{{ t('sites.new') }}</button> }
@@ -445,7 +461,7 @@ export class SitesPage {
 
 /** A site and its zones. Zones holding waste cannot be closed; nothing is ever deleted (traceability). */
 @Component({
-  imports: [HelpComponent, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KgPipe, NumberPipe, CodePipe, LocalizedPipe, IconComponent, ButtonDirective, ZoneFillComponent, LimitsComponent, ...COLOR],
+  imports: [HelpComponent, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KgPipe, NumberPipe, CodePipe, LocalizedPipe, IconComponent, ButtonDirective, ZoneFillComponent, RouterLink, ...COLOR],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -471,13 +487,9 @@ export class SitesPage {
 
             <section class="dw-panel dw-panel-body">
               <h2 class="dw-h2">{{ t('sites.siteLoad') }}</h2>
-              <p class="dw-muted">{{ t('sites.siteLoadHint') }}</p>
-              @if (s.load?.constraints?.length) {
-                <dw-limits [limits]="s.load!.constraints" />
-              } @else {
-                <p class="none"><dw-icon aria-hidden="true">info</dw-icon>{{ t('sites.noSiteCapacityLong', { kg: (s.load?.quantity_kg | dwKg: 'auto'), count: s.load?.lots ?? 0 }) }}
-                  @if ((s.load?.unweighed_lots ?? 0) > 0) { {{ t('lots.plusUnweighed', { count: s.load?.unweighed_lots }) }} }</p>
-              }
+              <p class="none"><strong>{{ s.load?.quantity_kg | dwKg: 'auto' }}</strong>&nbsp;{{ t('sites.siteLoadLots', { count: s.load?.lots ?? 0 }) }}
+                @if ((s.load?.unweighed_lots ?? 0) > 0) { {{ t('lots.plusUnweighed', { count: s.load?.unweighed_lots }) }} }</p>
+              <p class="dw-muted">{{ t('sites.siteLimitNote') }} @if (canSetLimits()) { <a routerLink="/stock">{{ t('sites.siteLimitLink') }}</a> }</p>
             </section>
 
             <section class="dw-panel">
@@ -501,6 +513,7 @@ export class SitesPage {
                         @else {
                           @if (zone.capacities.length > 0) { <div class="dw-faint">{{ t('sites.spaceBy.packaging') }}</div> }
                           @for (line of zone.capacities; track line.packaging_type; let first = $first) { <div>@if (!first) { {{ t('common.or') }} } {{ line.max_count }} × {{ line.packaging_type | dwCode: 'packaging' }}</div> }
+                          @if (zone.capacities.length > 1) { <div class="dw-faint">{{ t('sites.orMix') }}</div> }
                           @if (zone.inactive_volume) {
                             <div class="legacy">{{ t('sites.inactiveVolume', { m3: (zone.capacity_m3 | dwNumber: 2) }) }}
                               @if (canManageZones()) { <button type="button" class="linkish" (click)="editZone(zone)">{{ t('sites.inactiveVolumeReview') }}</button> }</div>
@@ -584,6 +597,10 @@ export class SiteDetailPage implements OnInit {
     const others = ulids.length - known.length;
 
     return [...known, ...(others > 0 ? [`+${others}`] : [])].join(', ');
+  }
+
+  protected canSetLimits(): boolean {
+    return this.session.can('stock.thresholds.manage', this.ulid());
   }
 
   protected canManageZones(): boolean {

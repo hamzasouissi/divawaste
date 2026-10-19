@@ -48,7 +48,8 @@
     "selected": "{{count}} selected",
     "collapseNavigation": "Collapse navigation",
     "expandNavigation": "Expand navigation",
-    "or": "or"
+    "or": "or",
+    "and": "and"
   },
   "paginator": {
     "perPage": "Rows per page",
@@ -478,7 +479,12 @@
     "PROVIDER_REQUIREMENT_NEEDS_AUTHORIZATION": "Only an authorised person may send a request despite a blocking requirement of the provider.",
     "PARTNER_NOT_LINKED": "This partner has no account: its requirements are simply edited.",
     "REGULATORY_CODE_MISSING": "A hazardous waste type of this pickup has no regulatory code: complete it on the waste type, its tracking slip cannot be issued without it.",
-    "NO_REQUIREMENT_EXCEPTION": "No blocking requirement is waiting for an explanation on this pickup."
+    "NO_REQUIREMENT_EXCEPTION": "No blocking requirement is waiting for an explanation on this pickup.",
+    "ALREADY_ANSWERED": "The receiver has already answered: the pickup now waits for the transporter.",
+    "AWAITING_RECEIVER": "The receiver has not set the date yet: the transporter confirms after it.",
+    "NOT_THE_TRANSPORTER": "This pickup has no transporter other than its receiver.",
+    "TRANSPORTER_REQUIRED": "This receiver does not come and fetch the waste: choose a transporter.",
+    "PARTNER_ROLE_MISMATCH": "This provider cannot hold that role: a company that only transports is never the receiver, and the transporter must be recorded as one."
   },
   "notifications": {
     "title": "Notifications",
@@ -526,7 +532,11 @@
       "capacity.site_exceeded": "Site capacity exceeded",
       "capacity.site_unverifiable": "Site capacity cannot be verified",
       "pickup.requirements_unmet_at_loading": "Requirement not met at loading",
-      "pickup.requirement_exception": "Departure under a blocking requirement"
+      "pickup.requirement_exception": "Departure under a blocking requirement",
+      "pickup.transport_requested": "Transport to confirm (transporter)",
+      "pickup.awaiting_transporter": "Pickup waiting for the transporter",
+      "pickup.transport_confirmed": "Transport confirmed by the transporter",
+      "pickup.transport_refused": "Transport refused by the transporter"
     },
     "types": {
       "stock.threshold_warning": {
@@ -680,6 +690,22 @@
       "pickup.requirement_exception": {
         "title": "Pickup {{number}} left under a requirement of {{provider}}",
         "body": "On what was loaded ({{quantity}}): {{requirements}}. The departure is not undone; say why."
+      },
+      "pickup.transport_requested": {
+        "title": "Transport to confirm — pickup {{number}}",
+        "body": "{{provider}} confirmed pickup {{number}} of {{company}} for {{date}}: confirm the transport, or refuse."
+      },
+      "pickup.awaiting_transporter": {
+        "title": "Pickup {{number}}: waiting for the transporter",
+        "body": "{{provider}} confirmed for {{date}}; {{transporter}} has yet to confirm the transport."
+      },
+      "pickup.transport_confirmed": {
+        "title": "Pickup {{number}} confirmed",
+        "body": "{{transporter}} carries pickup {{number}} on {{date}} to {{provider}}."
+      },
+      "pickup.transport_refused": {
+        "title": "Transport of pickup {{number}} refused",
+        "body": "{{transporter}}: {{reason}}. The lots go back to stock."
       }
     },
     "mailOnRequest": "Email only if you ask for it: by default, stock and capacity alerts are emailed to the people who manage the limits or the zones of the site. You always see them here."
@@ -907,7 +933,7 @@
     "waiting": "Awaiting pickup",
     "usage": "Usage",
     "warnAt": "alert at {{pct}} %",
-    "limitsHint": "A limit is a maximum weight for a site, a zone or a waste type. You get an alert when the limit is close, then another if it is exceeded.",
+    "limitsHint": "A limit is a maximum quantity — in t, kg, m³, l or packages — for a whole site, a zone or a waste type. You are alerted as it gets close, then again if it is exceeded.",
     "limitIntro": "Choose what the limit watches (a site, a zone, a waste type) and in which unit: weight, pieces, volume or number of packages. The same stock may have several limits, for example a weight and a number of bags; each is evaluated separately.",
     "maxHint": "Quantity not to exceed, in the unit chosen.",
     "warningHint": "You are warned when the stock reaches this percentage of the limit.",
@@ -949,7 +975,9 @@
     "unitFixed": "The unit of a limit cannot be changed. To watch the same stock in another unit, add another limit: each has its own answer.",
     "limitPreview": "{{where}}: alert when the stock of \"{{what}}\" exceeds {{max}} {{unit}}, and from {{pct}} % of that limit. No lot is refused.",
     "limitPreviewAll": "{{where}}: alert when the stock, all waste together, exceeds {{max}} {{unit}}, and from {{pct}} % of that limit. No lot is refused.",
-    "limitOutside": "{{count}} other lot(s) of the scope, loose or in another packaging than {{packaging}}: not concerned by this limit."
+    "limitOutside": "{{count}} other lot(s) of the scope, loose or in another packaging than {{packaging}}: not concerned by this limit.",
+    "wholeSite": "Whole site",
+    "noSiteLimit": "No limit on the whole site"
   },
   "sites": {
     "title": "Sites and zones",
@@ -980,9 +1008,9 @@
     "closeHint": "The site stays in the history and in documents; it is no longer offered for new lots.",
     "noZoneType": "No type",
     "capacity": "Capacity",
-    "capacityHint": "Say how many packages the zone holds when it receives a single packaging: \"40 bales\", \"100 bags\". Mixed packagings share the same room: 20 bales of 40 and 50 bags of 100 fill the zone. A lot that is loose or in a packaging that is not planned is reported, never converted.",
+    "capacityHint": "One line per packaging the zone takes, with how many packages it holds when it holds only that one. The lines describe one shared room. A loose lot or one in a packaging not listed is reported, never converted.",
     "addCapacity": "Add a packaging",
-    "maxLots": "Number of lots",
+    "maxLots": "Packages at most",
     "capacityKgLimit": "Maximum load of the zone (kg), optional",
     "noLimit": "No limit",
     "reservedFor": "Reserved for",
@@ -992,23 +1020,18 @@
     "anyType": "All types",
     "anyColor": "All colours",
     "anything": "Anything",
-    "siteCapacity": "Site capacity",
-    "siteCapacityHint": "The total weight the site may hold, all zones together. Every lot on the site counts once, even in a zone without a limit. Leave empty if nothing is to be watched. Going over this capacity alerts; it never refuses a lot.",
-    "siteCapacityKg": "Maximum weight on the site (kg), optional",
     "siteLoad": "Weight on the site",
-    "siteLoadHint": "Every lot on the site, counted once whatever its zone, against the maximum weight of the site.",
-    "noSiteCapacity": "Site capacity not defined",
-    "noSiteCapacityLong": "Site capacity not defined: {{kg}} on the site ({{count}} lot(s)), nothing is watched.",
+    "siteLoadHint": "Every lot on the site, each counted once whatever its zone.",
     "spaceMethod": "Room measured in",
     "spaceMethods": {
-      "packaging": "Packages per packaging (\"100 bags or 50 boxes\")",
+      "packaging": "Number of packages",
       "volume": "Volume (m³)"
     },
     "capacityM3": "Volume of the zone (m³)",
     "capacityM3Required": "Enter the volume of the zone, above 0.",
-    "volumeHint": "The room taken is the sum of the volumes of the lots: packages × volume of one package (set in Sites › Packaging volumes), or the measured volume of a loose lot, or its weight ÷ the density of its waste type. A lot whose volume is not known is reported, never estimated. A zone is measured one way: in volume, the quantities per packaging are not used.",
-    "packagingVolumes": "Packaging volumes",
-    "packagingVolumesHint": "The room one package takes once stored, in m³. Used by zones whose room is measured in volume. Leave empty if you do not know it: the lots concerned will be reported \"without a known volume\", never estimated.",
+    "volumeHint": "The room taken is the sum of the volumes of the lots: number of packages × volume of one package (\"Volume of one package\" button on the Sites page), else the measured volume of a loose lot, else its weight ÷ the density of its waste type. A lot whose volume is not known is reported, never estimated.",
+    "packagingVolumes": "Volume of one package",
+    "packagingVolumesHint": "Only used by zones whose room is measured in volume (m³): the room a lot takes = number of packages × volume of one package. Leave empty what you do not know: those lots are reported \"no known volume\", never estimated.",
     "packagingVolumesInvalid": "A volume must be a number above 0 (4 decimals at most), or empty.",
     "packagingVolumesSaved": "Packaging volumes saved.",
     "spaceBy": {
@@ -1020,7 +1043,12 @@
     "inactiveVolumeCount": "{{count}} volume(s) on record, not used",
     "inactiveVolumeHint": "Some zones of this site have a volume (m³) on record while their room is measured in packages. Open the site to review them.",
     "inactiveVolumeBanner": "{{count}} zone(s) have a volume (m³) on record that is not used: their room is measured in packages. Nothing was erased. Open each zone (\"Review\") and choose \"Volume (m³)\" if that volume really is the capacity of the zone; otherwise leave it in packages.",
-    "inactiveVolumeInForm": "A volume of {{m3}} m³ is on record for this zone and is not used: its room is measured in packages. Choose \"Volume (m³)\" above to use it. It stays on record as long as you do not change it."
+    "inactiveVolumeInForm": "A volume of {{m3}} m³ is on record for this zone and is not used: its room is measured in packages. Choose \"Volume (m³)\" above to use it. It stays on record as long as you do not change it.",
+    "siteLimitNote": "A site has no capacity of its own: to watch everything it holds, set a stock limit on the whole site (every zone, every waste type), in t, kg, m³, l or packages.",
+    "siteLimitLink": "Set a limit on the site",
+    "siteLoadLots": "on the site ({{count}} lot(s))",
+    "sharedRoom": "One room, shared: the zone holds {{lines}}, or a mix — for instance {{half}}. Each package takes its share.",
+    "orMix": "or a mix (shared room)"
   },
   "wasteTypes": {
     "title": "Waste types",
@@ -1115,7 +1143,8 @@
         "covered": "covered by authorisation {{reference}}. Each limit after this pickup:",
         "unverifiable": "authorisation {{reference}} is limited in weight and these lots have no measured weight: {{lots}}. Weigh them before requesting the pickup.",
         "blocked": "Request blocked — limit(s) concerned: {{limits}}."
-      }
+      },
+      "transporterConfirms": "This transporter has an account: it confirms the date after the receiver."
     },
     "actions": {
       "submit": "Send the request",
@@ -1130,7 +1159,9 @@
       "treat": "Declare the treatment",
       "manifest": "Issue the tracking slips",
       "certificate": "Upload a certificate",
-      "authorize": "Accept the gap"
+      "authorize": "Accept the gap",
+      "confirmTransport": "Confirm the transport",
+      "refuseTransport": "Refuse the transport"
     },
     "cancelReason": "Reason for the cancellation",
     "refuseReason": "Reason for the refusal",
@@ -1178,7 +1209,9 @@
       "received": "Reception recorded.",
       "treated": "Treatment declared.",
       "manifest": "Slips issued.",
-      "certificate": "Certificate uploaded."
+      "certificate": "Certificate uploaded.",
+      "transportConfirmed": "Transport confirmed: the pickup is confirmed.",
+      "transportRefused": "Transport refused."
     },
     "documents": "Documents",
     "certificateType": {
@@ -1220,7 +1253,14 @@
         "receiver": "waits for the receiver’s signature",
         "signed_copy": "waits for the scan of the slip signed by hand"
       }
-    }
+    },
+    "transportConfirmTitle": "Confirm the transport on {{date}}?",
+    "transportConfirmHint": "{{receiver}} set the pickup for {{date}}. By confirming, you commit to fetching the lots on that day and delivering them to {{receiver}}.",
+    "awaitingReceiver": "{{receiver}} sets the date first; {{transporter}} then confirms the transport.",
+    "awaitingTransporter": "{{receiver}} confirmed for {{date}}. The pickup will be confirmed once {{transporter}} confirms the transport.",
+    "refusedByTransporter": "Transport refused by {{transporter}}: {{reason}}. The lots went back to stock; request the pickup with another transporter.",
+    "transporterConfirmedOn": "confirmed on {{date}}",
+    "waitingTransporter": "Waiting for the transporter"
   },
   "providers": {
     "title": "Providers",
@@ -2777,7 +2817,7 @@
     "hide": "Hide",
     "stock": {
       "title": "How to read the stock",
-      "text": "The stock is calculated at each display from the lots present on site: nothing is typed here.\nCapacity: the room available in a zone, as a number of packages per packaging (one lot may hold several packages) and/or a weight. Room (packages) and load (weight) are two separate limits: each has its own line, figures and result, never a shared percentage. It is set on the page of the site.\nLimit: a maximum weight you set for a site, a zone or a waste type. You are warned before it is reached, then when it is exceeded.\n\"No limit\" or \"Capacity not defined\" means nothing watches this line: click \"Define\" to add one."
+      "text": "Stock is computed at each display from the lots on site: nothing is entered here.\nCapacity: what a zone can physically hold — its room (in packages, shared between packagings, or in m³) and its load (kg). It is set on the site page.\nLimit: a maximum quantity you set for a whole site, a zone or a waste type (the specification asks for stock \"per site, zone and type\"), in t, kg, m³, l or packages. You are warned before it is reached, then when it is exceeded.\n\"No limit\" or \"Capacity not set\" means nothing watches that line: click \"Set\" to add one."
     },
     "lots": {
       "title": "Waste lots",
@@ -2793,7 +2833,7 @@
     },
     "zones": {
       "title": "The zones of this site",
-      "text": "Capacity: the room of a zone is measured one way — in packages per packaging (\"40 bales or 100 bags\", mixed packagings share the same room) or in volume (m³). The maximum load (kg) is a separate limit. The site also has its maximum weight, where every lot counts once. Each limit has its own line and result; none refuses a lot.\nReserved for: the waste types and colours planned in the zone. A lot that does not match is reported, never refused.\nThe type of the zone (cutting, sewing…) is optional; it tells which production stage a waste comes from.\n\"No limit\" means the filling of the zone is not watched."
+      "text": "Capacity: the room of a zone is measured one way. In packages: one line per packaging, and the lines describe one shared room — \"100 bags, 50 bales\" means 100 bags, or 50 bales, or a mix (50 bags and 25 bales). Or in volume (m³). The maximum load (kg) is a separate limit, on its own line. None of them refuses a lot.\nThe whole site is watched with a stock limit (Stock page), in the unit you choose.\nReserved for: the waste types and colours planned for the zone. A lot that does not match is reported, never refused.\nThe zone type (cutting, sewing…) is optional; it tells which production step a waste comes from.\n\"No limit\" means the filling of the zone is not watched."
     },
     "wasteTypes": {
       "title": "Waste types and colours",
@@ -2991,7 +3031,10 @@
       "measureUnknown": "quantity unknown in this unit for {{lots}}: complete the weight or the quantity of these lot(s)"
     },
     "missingVolume": "{{count}} lot(s) without a known volume:",
-    "missingMeasure": "{{count}} lot(s) not counted in this unit:"
+    "missingMeasure": "{{count}} lot(s) not counted in this unit:",
+    "emptyRoom": "empty",
+    "sharedRoomOf": "Shared room:",
+    "orMix": " (or a mix)"
   },
   "requirements": {
     "name": {
