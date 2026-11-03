@@ -3,6 +3,7 @@
 namespace App\Modules\Tenancy\Actions;
 
 use App\Modules\Common\Support\FileStorage;
+use App\Modules\Identity\Actions\ConfirmEmail;
 use App\Modules\Identity\Models\Role;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Models\UserRoleAssignment;
@@ -31,7 +32,7 @@ final class RegisterCompany
      */
     public function handle(array $input, Request $request): Company
     {
-        return DB::transaction(function () use ($input, $request) {
+        $company = DB::transaction(function () use ($input, $request) {
             $type = CompanyType::from($input['company_type']);
             $country = DB::table('countries')->where('iso2', strtoupper($input['company']['country']))
                 ->first(['id', 'currency_code', 'default_timezone', 'default_locale']);
@@ -96,10 +97,20 @@ final class RegisterCompany
                 $request,
             );
 
-            $user->notify(new VerifyEmailNotification);
+            if (! config('app.auto_verify_emails')) {
+                $user->notify(new VerifyEmailNotification);
+            }
 
             return $company;
         });
+
+        // Tests and demonstrations: the address counts as confirmed at once, no link to click (config app.auto_verify_emails).
+        if (config('app.auto_verify_emails')) {
+            app(ConfirmEmail::class)->handle(User::query()->findOrFail($company->primary_contact_user_id));
+            $company->refresh();
+        }
+
+        return $company;
     }
 
     /**

@@ -60,6 +60,7 @@ final class ManageInvitations
         ]);
 
         $this->send($invitation, $token, $inviter, $role);
+        $invitation->plainToken = $token;
 
         return $invitation;
     }
@@ -78,6 +79,7 @@ final class ManageInvitations
         ])->save();
 
         $this->send($invitation, $token, $inviter, Role::query()->findOrFail($invitation->role_id));
+        $invitation->plainToken = $token;
 
         return $invitation;
     }

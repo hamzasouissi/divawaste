@@ -318,6 +318,12 @@ php artisan registry:import-anged
   has no account until it registers. A partner filled from the list keeps its authorisation number ("ANGed 19-2025")
   and end date, so the usual expiry warnings apply.
 
+## Automatic confirmation and approval of registrations (tests)
+
+`AUTO_VERIFY_EMAILS=true` counts a registration's email as confirmed at once: no confirmation email is sent, no link
+needs clicking, and the sign-up page says so. An invitation still sends its email, and its link also comes back to the
+person who invited (a "Copier le lien" dialog on Utilisateurs), so a made-up address can join. Off by default.
+
 ## Automatic approval of registrations
 
 `AUTO_APPROVE_SIGNUPS=true` in `.env` approves a company as soon as its contact confirms the email: the trial starts (an

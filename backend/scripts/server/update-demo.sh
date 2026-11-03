@@ -51,7 +51,9 @@ COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-
 php artisan migrate --force
 
 say "3/8 Settings (.env)"
-# Registrations are approved as soon as the email is confirmed (the demo); false brings back Diva Software's review.
+# Testing: a registration's email counts as confirmed at once (no link to click; invitations give their link back)
+# and the account is approved at the same time. false on both brings back the email link and Diva Software's review.
+setenv AUTO_VERIFY_EMAILS true
 setenv AUTO_APPROVE_SIGNUPS true
 # The assistant runs on the PC and reaches this server through an SSH tunnel (davi/serve-server.ps1) on 127.0.0.1:8040.
 setenv DAVI_URL http://127.0.0.1:8040

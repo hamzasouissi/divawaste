@@ -20,6 +20,9 @@ class UserInvitation extends Model
 
     public const VALIDITY_DAYS = 7;
 
+    /** The link's token, only in memory right after it is made (never stored: the database keeps its hash). */
+    public ?string $plainToken = null;
+
     protected $attributes = [
         'status' => 'pending',
         'pending_flag' => true,
