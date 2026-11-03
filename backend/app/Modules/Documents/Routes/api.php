@@ -280,7 +280,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'usage' => $usage,
         ];
     };
-    $rules = [
+    // Made per request: a rule holding a closure cannot be cached with the routes (route:cache).
+    $rules = fn () => [
         'waste_type' => ['required', 'string', new TenantExists(WasteType::class, fn ($q) => $q->where('requires_authorization', true))],
         'reference' => ['required', 'string', 'max:100'],
         'issued_on' => ['nullable', 'date'],
@@ -324,7 +325,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
     Route::post('waste-authorizations', function (Request $request, ReferenceCodes $codes) use ($allow, $data, $rules, $save) {
         $allow($request, 'waste_types.manage');
-        $input = $request->validate($rules);
+        $input = $request->validate($rules());
         $authorization = DB::transaction(function () use ($input, $save, $codes, $request) {
             $authorization = (new WasteAuthorization)->forceFill(['created_by_user_id' => $request->user()->id]);
             $save($authorization, $input, $codes);
@@ -339,7 +340,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     // frozen. A different authorisation is a new one. Reference, notes, alert level and withdrawal stay editable.
     Route::put('waste-authorizations/{authorization}', function (Request $request, WasteAuthorization $authorization, ReferenceCodes $codes) use ($allow, $data, $rules, $save) {
         $allow($request, 'waste_types.manage');
-        $input = $request->validate($rules);
+        $input = $request->validate($rules());
 
         if (DB::table('pickup_lots')->where('waste_authorization_id', $authorization->id)->exists()) {
             $current = $data($authorization);
