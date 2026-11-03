@@ -27,6 +27,10 @@ final class TableClassification
         'produced_lots', 'production_order_expenses', 'customer_order_invoices',
         // Party-shared: owner company_id + provider/transporter columns.
         'pickups', 'pickup_lots',
+        // The bourse: owned by the seller; negotiations and proposals shared with their buyer.
+        'marketplace_listings', 'marketplace_listing_lots', 'marketplace_negotiations', 'marketplace_proposals',
+        // Contracts with receivers and transporters: owned by the company, read by the provider they name.
+        'contracts', 'contract_prices', 'contract_charges',
         'documents',
         'document_waste_lots',
         'document_signatures',
@@ -34,7 +38,7 @@ final class TableClassification
         'annual_declarations',
         'production_volumes',
         'waste_daily_stats',
-        'generated_reports',
+        'generated_reports', 'report_schedules',
         'notification_preferences',
     ];
 
@@ -45,7 +49,7 @@ final class TableClassification
         'currencies', 'countries', 'tax_rates', 'textile_activities', 'legal_documents', 'zone_types',
         'packaging_types', 'units', 'waste_families', 'materials', 'treatment_channels',
         'regulatory_waste_codes', 'waste_catalog_items', 'accreditation_types', 'subscription_plans',
-        'subscription_plan_prices', 'permissions', 'role_has_permissions',
+        'subscription_plan_prices', 'permissions', 'role_has_permissions', 'regulatory_operators',
     ];
 
     public const SYSTEM = [

@@ -3,6 +3,7 @@
 namespace App\Modules\Tenancy\Resources;
 
 use App\Modules\Tenancy\Models\Company;
+use App\Modules\Tenancy\Support\CompanyModules;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\DB;
@@ -42,6 +43,10 @@ class CompanyResource extends JsonResource
                 ->join('textile_activities as a', 'a.id', '=', 'cta.textile_activity_id')
                 ->where('cta.company_id', $this->id)->orderBy('a.sort_order')->pluck('a.code'),
             'weight_variance_threshold_pct' => (string) ($this->settings['weight_variance_threshold_pct'] ?? '5.00'),
+            // The parts of the product this company uses, and its answers to the first onboarding questions.
+            'modules' => CompanyModules::of($this->resource),
+            'profile' => CompanyModules::profile($this->resource),
+            'industry' => CompanyModules::industry($this->resource),
             'submitted_at' => $this->submitted_at?->toIso8601ZuluString(),
             'approved_at' => $this->approved_at?->toIso8601ZuluString(),
         ];

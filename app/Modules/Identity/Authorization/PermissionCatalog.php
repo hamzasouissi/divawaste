@@ -68,8 +68,16 @@ final class PermissionCatalog
             // with a written reason. Nothing else: the eligibility of a provider is another matter.
             'pickups.override_provider_requirements' => [self::S, $ind],
             'pickups.authorize_variance' => [self::S, $ind],
+            // The bourse (M4-06): see the listings of a site and their offers; prepare, publish, cancel a listing and make
+            // counter-offers; accept or refuse an offer — a commitment of the company, given apart.
+            'marketplace.view' => [self::S, $ind],
+            'marketplace.manage' => [self::S, $ind],
+            'marketplace.accept' => [self::S, $ind],
             'providers.view' => [self::C, $ind],
             'providers.partnerships.manage' => [self::C, $ind],
+            // Contracts with receivers and transporters: read them; write, activate and terminate them.
+            'contracts.view' => [self::C, $ind],
+            'contracts.manage' => [self::C, $ind],
             'documents.view' => [self::S, $ind],
             'documents.generate' => [self::S, $ind],
             'documents.upload' => [self::S, $ind],
@@ -95,6 +103,11 @@ final class PermissionCatalog
             'provider.pickups.receive' => [self::C, $prv],
             'provider.certificates.upload' => [self::C, $prv],
             'provider.manifests.sign' => [self::C, $prv],
+            // The bourse, buyer side: read the listings it may bid on; make, answer, accept or withdraw offers.
+            'provider.marketplace.view' => [self::C, $prv],
+            'provider.marketplace.offer' => [self::C, $prv],
+            // The contracts the provider is a party to, read only.
+            'provider.contracts.view' => [self::C, $prv],
             'platform.support.view' => [self::P, $plt],
             'platform.companies.review' => [self::P, $plt],
             'platform.companies.suspend' => [self::P, $plt],
@@ -137,7 +150,7 @@ final class PermissionCatalog
                 ['app.web.access', 'reports.export'],
                 array_filter($industrial, fn (string $name) => str_ends_with($name, '.view')),
             )],
-            'auditor' => [Audience::Industrial, ['app.web.access', 'lots.view', 'documents.view', 'pickups.view', 'reports.view']],
+            'auditor' => [Audience::Industrial, ['app.web.access', 'lots.view', 'documents.view', 'pickups.view', 'reports.view', 'audit.view']],
             'provider_admin' => [Audience::Provider, array_merge(
                 ['app.web.access', 'company.view', 'company.update', 'users.view', 'users.invite', 'users.manage'],
                 $of(Audience::Provider),

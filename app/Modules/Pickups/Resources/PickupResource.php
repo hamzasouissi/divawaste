@@ -3,6 +3,7 @@
 namespace App\Modules\Pickups\Resources;
 
 use App\Modules\Common\Support\ReferenceCodes;
+use App\Modules\Marketplace\Support\MarketplaceDeal;
 use App\Modules\Pickups\Enums\PickupStatus;
 use App\Modules\Pickups\Models\Pickup;
 use App\Modules\Pickups\Support\PartyDirectory;
@@ -94,6 +95,12 @@ class PickupResource extends JsonResource
             'variance_decision' => $this->variance_decision,
             'variance_comment' => $this->variance_comment,
             'currency_code' => $this->currency_code,
+            // The deal of the bourse this pickup carries out (its agreed price is applied at reception); null otherwise.
+            'marketplace_deal' => $this->marketplace_negotiation_id === null ? null : MarketplaceDeal::summary((int) $this->marketplace_negotiation_id),
+            // The contracts of the receiver and of the transporter this pickup falls under, and their fees for it (signed).
+            'contract' => $this->contract_id === null ? null : DB::table('contracts')->where('id', $this->contract_id)->first(['ulid', 'contract_number', 'title']),
+            'transport_contract' => $this->transport_contract_id === null ? null : DB::table('contracts')->where('id', $this->transport_contract_id)->first(['ulid', 'contract_number', 'title']),
+            'contract_fees_amount' => $this->contract_fees_amount === null ? null : (string) $this->contract_fees_amount,
             'version' => $this->version,
             'lots_count' => $this->whenCounted('lines'),
             // Lots whose weight is not known: every weight of this pickup is the sum of the others, never of zeros.
@@ -111,6 +118,8 @@ class PickupResource extends JsonResource
                 'lot_number_snapshot' => $line->lot_number_snapshot,
                 'qr_tag_value_snapshot' => $line->qr_tag_value_snapshot,
                 'waste_type_label_snapshot' => $line->waste_type_label_snapshot,
+                // [{material, pct}] the lot is made of, as it was put on the pickup; null when not known.
+                'composition' => $line->composition_snapshot,
                 'regulatory_code_snapshot' => $line->regulatory_code_snapshot,
                 'is_hazardous' => $line->is_hazardous,
                 'line_status' => $line->line_status,

@@ -5,11 +5,16 @@ use App\Modules\Catalog\Support\ColorCatalogueImporter;
 use App\Modules\Catalog\Support\Colors;
 use App\Modules\Common\Docs\ApiRoutes;
 use App\Modules\Common\Docs\DemoData;
+use App\Modules\Contracts\Actions\ManageContracts;
 use App\Modules\Identity\Models\User;
+use App\Modules\Marketplace\Actions\ManageListings;
 use App\Modules\Notifications\Actions\NotifyUsers;
 use App\Modules\Notifications\Support\EmailLog;
+use App\Modules\Production\Support\ErpFeeds;
 use App\Modules\Production\Support\ProductionVolumes;
 use App\Modules\Providers\Actions\AlertExpiringAccreditations;
+use App\Modules\Providers\Support\OperatorRegistry;
+use App\Modules\Reporting\Support\RecurringWork;
 use App\Modules\Sites\Actions\EvaluateStockThresholds;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\TenantContext;
@@ -110,6 +115,36 @@ Artisan::command('limits:evaluate {--dry-run : List what would be announced and 
 // when the limits were introduced, a limit left unevaluated.
 Schedule::command('limits:evaluate')->dailyAt('06:20')->withoutOverlapping()->onOneServer();
 
+Artisan::command('marketplace:expire', function () {
+    $this->info('Bourse: '.ManageListings::expireDue().' listing(s) expired.');
+})->purpose('Close the listings of the bourse whose closing date passed without a deal: lots back to stock, buyers told');
+
+Schedule::command('marketplace:expire')->hourly()->withoutOverlapping()->onOneServer();
+
+Artisan::command('contracts:alert', function () {
+    $this->info('Contracts: '.ManageContracts::alertEnding().' ending within 30 days announced.');
+})->purpose('Tell the company and the provider once, 30 days before a contract ends');
+
+Schedule::command('contracts:alert')->dailyAt('06:30')->withoutOverlapping()->onOneServer();
+
+Artisan::command('contracts:remind', function () {
+    $this->info('Contracts: '.ManageContracts::remindDue().' pickup(s) due today or tomorrow announced.');
+})->purpose('Tell who requests pickups, the day before and on the day, that a contract\'s next pickup is due and none is requested');
+
+Schedule::command('contracts:remind')->dailyAt('06:40')->withoutOverlapping()->onOneServer();
+
+Artisan::command('reports:scheduled', function (RecurringWork $work) {
+    $this->info('Scheduled reports: '.$work->scheduledReports().' queued for last month.');
+})->purpose('Generate every monthly report someone asked for, on the month before; the requester is notified when it is ready');
+
+Schedule::command('reports:scheduled')->monthlyOn(1, '07:00')->withoutOverlapping()->onOneServer();
+
+Artisan::command('declarations:draft', function (RecurringWork $work) {
+    $this->info('Declarations: '.$work->draftDeclarations().' drafted for last year.');
+})->purpose('Draft the annual declaration of last year for every site that produced waste, to be reviewed and validated');
+
+Schedule::command('declarations:draft')->yearlyOn(1, 2, '06:40')->withoutOverlapping()->onOneServer();
+
 Artisan::command('production:volumes', function () {
     $companies = DB::table('production_orders')->distinct()->pluck('company_id');
     $companies->each(fn ($companyId) => ProductionVolumes::sync((int) $companyId));
@@ -117,6 +152,13 @@ Artisan::command('production:volumes', function () {
 })->purpose('Count the pieces produced per site and month from the finished manufacturing orders');
 
 Schedule::command('production:volumes')->dailyAt('04:30')->withoutOverlapping()->onOneServer();
+
+Artisan::command('production:erp-pull', function (ErpFeeds $feeds) {
+    $this->info('ERP exports: '.$feeds->pullAll().' read.');
+})->purpose('Read every ERP export a company publishes at an address, with the columns of its last import (G-03)');
+
+// Before the production volumes of the day are counted from what the ERP sent.
+Schedule::command('production:erp-pull')->dailyAt('04:00')->withoutOverlapping()->onOneServer();
 
 Artisan::command('colors:import {path : A JSON file of a colour library, or a folder of them} {--collection= : Collection of the file, when its name does not say it} {--source= : Where the data comes from (kept on each colour)} {--dry-run : Read and report, write nothing}', function (ColorCatalogueImporter $importer) {
     $path = (string) $this->argument('path');
@@ -155,6 +197,23 @@ Artisan::command('colors:remove-catalogue {--collection= : Only this collection}
     $removed = Colors::catalogue()->when($this->option('collection'), fn ($query, $collection) => $query->where('collection', $collection))->delete();
     $this->info("Catalogue: {$removed} colour(s) removed.");
 })->purpose('Remove the imported reference catalogue (for example if the right to use it is not confirmed)');
+
+Artisan::command('registry:import-anged {path=database/data/anged/operators.json : The file scripts/anged/extract.py wrote} {--dry-run : Read and report, write nothing}', function (OperatorRegistry $registry) {
+    try {
+        $path = (string) $this->argument('path');
+        $summary = $registry->import(is_file($path) ? $path : base_path($path), (bool) $this->option('dry-run'));
+    } catch (InvalidArgumentException $exception) {
+        $this->error($exception->getMessage());
+
+        return 1;
+    }
+    $this->table(['Registry', 'Entries', 'Inserted', 'Updated', 'Unchanged', 'Removed', 'Invalid'], [array_values($summary)]);
+    if ($this->option('dry-run')) {
+        $this->comment('Dry run: nothing was written.');
+    }
+
+    return 0;
+})->purpose('Load the lists of authorised waste operators published by ANGed (replaces the previous load; running it again changes nothing)');
 
 Artisan::command('subscriptions:run', function (ManageSubscription $subscriptions) {
     $this->info('Subscriptions: '.json_encode($subscriptions->runDaily()));

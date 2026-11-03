@@ -112,7 +112,7 @@ class ProductionReferenceTest extends TestCase
             'OF-100;JEAN-501;Levant Denim;CMD-88;1 000;15/09/2026;Confection;KOR;x',
             'OF-101;VESTE-1;Levant Denim;CMD-88;abc;16/09/2026;Coupe;NAB;x',
             'OF-102;VESTE-1;Levant Denim;CMD-89;250;32/13/2026;Coupe;NAB;x',
-            'OF-103;VESTE-1;Levant Denim;CMD-89;250;17/09/2026;Tricotage;NAB;x',
+            'OF-103;VESTE-1;Levant Denim;CMD-89;250;17/09/2026;Sérigraphie;NAB;x',
         ]);
         $file = fn () => UploadedFile::fake()->createWithContent('export-of.csv', str_replace(';', ',', $csv));
 

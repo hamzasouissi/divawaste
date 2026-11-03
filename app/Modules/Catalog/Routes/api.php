@@ -11,7 +11,9 @@ use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Sites\Support\StockQuery;
+use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\Rules\TenantExists;
+use App\Modules\Tenancy\Support\CompanyModules;
 use App\Modules\Tenancy\TenantContext;
 use App\Modules\Waste\Support\ToleranceRules;
 use Illuminate\Http\Request;
@@ -43,15 +45,19 @@ Route::middleware(['auth:sanctum', 'tenant:active,pending_approval'])->group(fun
     Route::get('reference', function (TenantContext $context) use ($localized) {
         $active = fn (string $table, array $columns, array $booleans = []) => $localized(
             DB::table($table)->where('is_active', true)->orderBy('sort_order')->get($columns), $booleans);
+        // zone types and waste families of the company's industry (and those of every industry)
+        $industry = CompanyModules::industry(Company::query()->findOrFail($context->companyId()));
+        $ofIndustry = fn (string $table, array $columns, array $booleans = []) => $localized(
+            CompanyModules::forIndustry(DB::table($table)->where('is_active', true), $industry)->orderBy('sort_order')->get($columns), $booleans);
         $codeSystem = DB::table('companies as c')->join('countries as k', 'k.id', '=', 'c.country_id')->where('c.id', $context->companyId())->value('k.waste_code_system');
 
         return response()->json(['data' => [
-            'zone_types' => $active('zone_types', ['code', 'name', 'is_waste_storage'], ['is_waste_storage']),
+            'zone_types' => $ofIndustry('zone_types', ['code', 'name', 'is_waste_storage'], ['is_waste_storage']),
             'packaging_types' => $active('packaging_types', ['code', 'name', 'default_tare_kg']),
             // Units a waste is counted in. Metres are for raw materials only.
             'units' => $localized(DB::table('units')->where('dimension', '!=', 'length')->orderBy('id')->get(['code', 'name', 'symbol', 'dimension'])),
             'material_units' => $localized(DB::table('units')->whereIn('code', ['m', 'kg', 'piece'])->orderByRaw("FIELD(code, 'm', 'kg', 'piece')")->get(['code', 'name', 'symbol'])),
-            'waste_families' => $active('waste_families', ['code', 'name', 'is_textile'], ['is_textile']),
+            'waste_families' => $ofIndustry('waste_families', ['code', 'name', 'is_textile'], ['is_textile']),
             // The shared names of waste types: what a provider names when a requirement is about one type, not a family.
             'waste_catalog_items' => $localized(DB::table('waste_catalog_items as i')->join('waste_families as f', 'f.id', '=', 'i.waste_family_id')
                 ->where('i.is_active', true)->orderBy('i.sort_order')->get(['i.code', 'i.name', 'f.code as waste_family'])),
@@ -75,7 +81,14 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
         $activated = DB::table('waste_types')->where('company_id', $context->companyId())->whereNull('deleted_at')
             ->whereNotNull('waste_catalog_item_id')->pluck('ulid', 'waste_catalog_item_id');
 
-        return ['data' => $localized(DB::table('waste_catalog_items')->where('is_active', true)->orderBy('sort_order')
+        // the catalogue of the company's industry; ?all=1 adds the other industries' (a company may handle them too)
+        $industry = CompanyModules::industry(Company::query()->findOrFail($context->companyId()));
+        $items = DB::table('waste_catalog_items')->where('is_active', true);
+        if (! $request->boolean('all')) {
+            CompanyModules::forIndustry($items, $industry);
+        }
+
+        return ['data' => $localized($items->orderBy('sort_order')
             ->get(['id', 'code', 'name', 'description', 'waste_family_id', 'default_regulatory_waste_code_id', 'default_is_hazardous', 'default_treatment_channel_id']))
             ->map(fn (array $item) => [
                 'code' => $item['code'], 'name' => $item['name'], 'description' => $item['description'],

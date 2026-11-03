@@ -103,6 +103,12 @@ final class TransformLots
         if (! $lot->status->isTransformable() || $lot->trashed()) {
             throw new BusinessRuleViolation('LOT_NOT_TRANSFORMABLE', "Lot {$lot->lot_number} cannot be split or grouped.");
         }
+        // A lot offered on the bourse is sold as it was described: it is not split or grouped while offered.
+        $listing = DB::table('marketplace_listing_lots as ml')->join('marketplace_listings as l', 'l.id', '=', 'ml.marketplace_listing_id')
+            ->where('ml.waste_lot_id', $lot->id)->where('ml.is_active_flag', true)->value('l.listing_number');
+        if ($listing !== null) {
+            throw new BusinessRuleViolation('LOT_LISTED', "Lot {$lot->lot_number} is offered on the bourse (listing {$listing}): it cannot be split or grouped while offered.", ['listing' => $listing, 'lot' => $lot->lot_number]);
+        }
         // Splitting and grouping share out a weight. A lot of a type counted in pieces or litres would lose its quantity on the way.
         if (in_array(DB::table('waste_types as t')->join('units as u', 'u.id', '=', 't.default_unit_id')->where('t.id', $lot->waste_type_id)->value('u.dimension'), ['count', 'volume'], true)) {
             throw new BusinessRuleViolation('LOT_NOT_WEIGHED', "Lot {$lot->lot_number} is counted, not weighed: it cannot be split or grouped by weight.");
@@ -142,7 +148,7 @@ final class TransformLots
         ] + $origin + $template->only(['site_id', 'waste_type_id', 'packaging_type_id', 'is_hazardous', 'regulatory_waste_code_id',
             'color_family_id', 'color_label', 'grammage_gsm', 'extra_attributes']));
 
-        LotComposition::apply($lot, $composition);
+        LotComposition::apply($lot, $composition, $originType === 'grouping' ? 'grouping' : 'split');
         LotTag::query()->create(['waste_lot_id' => $lot->id, 'tag_type' => 'qr', 'tag_value' => $lot->ulid, 'assigned_at' => now(), 'assigned_by_user_id' => $actor->id]);
         WasteLotEvent::record($lot, 'created', ['to_status' => LotStatus::Created, 'to_site_id' => $lot->site_id, 'to_zone_id' => $zoneId,
             'weight_kg' => $netKg, 'weight_source' => 'computed', 'user_id' => $actor->id]);

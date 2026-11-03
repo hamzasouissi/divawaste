@@ -1,6 +1,6 @@
 # API
 
-Base path `/api/v1`. JSON only. 155 routes.
+Base path `/api/v1`. JSON only. The generated reference lists 238 operations (regenerated 2026-10-19); the readable list below may lag behind it.
 
 **The reference is generated from the code**: `php artisan api:docs --env=demo` writes [api/openapi.yaml](api/openapi.yaml)
 (OpenAPI 3), [api/postman.json](api/postman.json) and the HTML page served at `/docs` — parameters, permissions, errors and

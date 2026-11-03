@@ -25,6 +25,8 @@ final class RouteMetadata extends Strategy
         'Sync' => 'Workshop application: device registration, reference data and replay of the operations recorded offline (M2-08).',
         'Providers' => 'Provider directory, partnerships, accepted waste and accreditations (M4).',
         'Pickups' => 'Pickups from request to closing, on the industrial and on the provider side (M5).',
+        'Marketplace' => 'The bourse: listings of produced lots, private negotiations with eligible providers, deals that become pickups (M4-06).',
+        'Contracts' => 'Contracts with receivers and transporters: prices, fees, pickup schedule, duration, and how each stands.',
         'Documents' => 'Register, documents, certificates, tracking slips and annual declarations (M6).',
         'Reporting' => 'Dashboard, production volumes and generated reports (M7).',
         'Notifications' => 'In-app notifications and notification preferences (M7-01).',

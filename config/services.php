@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    // DAVI, the assistant (docs/platform-intelligence/davi/server.py): reached only from this API, with a shared key.
+    'davi' => [
+        'url' => env('DAVI_URL', 'http://127.0.0.1:8040'),
+        'key' => env('DAVI_KEY'),
+    ],
+
 ];

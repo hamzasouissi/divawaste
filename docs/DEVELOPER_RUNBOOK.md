@@ -292,6 +292,40 @@ php artisan colors:remove-catalogue                        # removes the catalog
 colour libraries. They were used to test the importer (3,245 records, none invalid, one warning) and are not in the
 repository. Do not load them on a server that serves clients before the right to use them is confirmed.
 
+## Authorised operators (ANGed lists)
+
+ANGed publishes on www.anged.nat.tn who may collect, carry, recycle or treat waste in Tunisia: 11 lists for hazardous
+waste (authorisations of the ministry, with a number and validity dates) and 17 for non-hazardous waste (companies that
+filed the "cahier des charges": textile, carton, plastics, metals…). The platform keeps them in `regulatory_operators`
+(one row per entry, no company): a company searches them from **Prestataires → Liste ANGed** and fills a partner
+without an account from an entry; the back-office reads them under **Liste ANGed**.
+
+```powershell
+cd C:\Projects\diva-waste
+# 1. download the PDFs listed on the two pages (about 19 MB), into a folder of your choice
+# 2. turn them into one JSON file (needs: python -m pip install pdfplumber)
+python scriptsnged\extract.py C:\path	o\pdfs database\datanged\operators.json
+# 3. load it (replaces the previous load; running it again changes nothing)
+php artisan registry:import-anged --dry-run
+php artisan registry:import-anged
+```
+
+- The file in the repository (`database/data/anged/operators.json`) was read on 2026-11-03: 5,653 entries.
+- An entry is copied as printed; the governorate is read from the "Gouvernorat" column, else from the plant's address,
+  else from the head office. Activities become roles: collecte → collector, transport → transporter, recyclage /
+  valorisation / traitement / élimination → recycler, tri → sorter, stockage → storer.
+- The lists are public, but they are the agency's word: the platform does not check them, and an operator listed there
+  has no account until it registers. A partner filled from the list keeps its authorisation number ("ANGed 19-2025")
+  and end date, so the usual expiry warnings apply.
+
+## Automatic approval of registrations
+
+`AUTO_APPROVE_SIGNUPS=true` in `.env` approves a company as soon as its contact confirms the email: the trial starts (an
+industrial company), the profile is published (a provider), the usual approval email is sent and the audit log records
+an approval without a reviewer (tag `automatic`). The confirmation page then says the account is active. Leave it off
+(`false`, the default) when Diva Software reviews each registration (M0-06). After changing it on a server:
+`php artisan config:cache`.
+
 ## Static analysis (Larastan)
 
 ```powershell

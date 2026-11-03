@@ -13,6 +13,7 @@ use App\Modules\Providers\Models\ProviderProfile;
 use App\Modules\Tenancy\Enums\CompanyType;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\Models\CompanyUser;
+use App\Modules\Tenancy\Support\CompanyModules;
 use App\Modules\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -61,8 +62,13 @@ final class RegisterCompany
             ]);
             $company->forceFill([
                 'primary_contact_user_id' => $user->id,
-                'settings' => ['requested_plan' => $input['plan'] ?? null],
+                'settings' => array_filter(['requested_plan' => $input['plan'] ?? null, 'industry' => $input['company']['industry'] ?? null], fn ($value) => $value !== null),
             ])->save();
+            // A new factory starts with the basics: production, customs permits and the bourse appear when its answers
+            // to the first onboarding step ask for them (CompanyModules::answer), never before.
+            if ($type === CompanyType::Industrial) {
+                CompanyModules::set($company, ['production' => false, 'production_finance' => false, 'authorizations' => false, 'marketplace' => false]);
+            }
 
             $this->context->runAs($company, function () use ($company, $user, $type, $input) {
                 CompanyUser::query()->create(['user_id' => $user->id, 'joined_at' => now()]);
@@ -106,14 +112,14 @@ final class RegisterCompany
             'is_collector' => in_array('collector', $roles, true),
             'is_transporter' => in_array('transporter', $roles, true),
             'is_recycler' => in_array('recycler', $roles, true),
-            'is_eliminator' => in_array('eliminator', $roles, true),
+            'is_sorter' => in_array('sorter', $roles, true),
             'service_area' => $input['provider']['service_area'] ?? null,
             'public_contact_name' => $user->fullName(),
             'public_contact_email' => $user->email,
             'public_contact_phone' => $user->phone,
         ]);
 
-        foreach ($input['provider']['accreditations'] as $accreditation) {
+        foreach ($input['provider']['accreditations'] ?? [] as $accreditation) {
             $file = $this->files->store($accreditation['file'], $company, 'accreditations', $user->id, $company->id);
 
             ProviderAccreditation::query()->create([

@@ -71,6 +71,7 @@ return [
         'loose' => 'vrac',
         'plus_unweighed' => '+ :count lot(s) non pesé(s)',
         'lot_number' => 'N° de lot',
+        'composition' => 'Composition',
         'signatures' => 'Signatures',
         'method' => 'Mode',
         'electronic' => 'Électronique',

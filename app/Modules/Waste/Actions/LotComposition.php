@@ -7,14 +7,19 @@ use App\Modules\Waste\Models\WasteLotComposition;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Writes a lot's composition rows and its denormalized label ("CO 80% / PES 20%").
+ * Writes a lot's composition rows, its denormalized label ("CO 80% / PES 20%") and where it comes from: typed by a
+ * person, copied from a raw material or from the defaults of the waste type, averaged from grouped lots, or kept from
+ * the lot it was split from. A company that does not follow its production enters it on the lot itself.
  */
 final class LotComposition
 {
+    public const SOURCES = ['entered', 'raw_material', 'waste_type', 'grouping', 'split'];
+
     /**
      * @param  list<array{material: string, pct: string}>  $lines
+     * @param  string|null  $source  one of SOURCES; ignored when there is no line
      */
-    public static function apply(WasteLot $lot, array $lines): void
+    public static function apply(WasteLot $lot, array $lines, ?string $source = null): void
     {
         $materials = DB::table('materials')->whereIn('code', array_column($lines, 'material'))->pluck('id', 'code');
         $labels = [];
@@ -24,7 +29,43 @@ final class LotComposition
             $labels[] = $line['material'].' '.rtrim(rtrim($pct, '0'), '.').'%';
         }
 
-        $lot->forceFill(['composition_label' => $labels === [] ? null : implode(' / ', $labels)])->saveQuietly();
+        $lot->forceFill(['composition_label' => $labels === [] ? null : implode(' / ', $labels), 'composition_source' => $labels === [] ? null : $source])->saveQuietly();
+    }
+
+    /**
+     * Replaces what the lot is made of (an empty list = not known). The pickup lines of a lot that has not left carry
+     * the new composition; what a lot that left carried stays with its pickup and its slip.
+     *
+     * @param  list<array{material: string, pct: string}>  $lines
+     */
+    public static function replace(WasteLot $lot, array $lines): void
+    {
+        WasteLotComposition::query()->where('waste_lot_id', $lot->id)->delete();
+        self::apply($lot, $lines, 'entered');
+        DB::table('pickup_lots')->where('waste_lot_id', $lot->id)->where('is_active_flag', true)->where('line_status', 'planned')
+            ->update(['composition_snapshot' => self::encode($lot->id), 'updated_at' => now()]);
+    }
+
+    /**
+     * The composition of a lot, largest share first: [{material, pct}].
+     *
+     * @return list<array{material: string, pct: string}>
+     */
+    public static function of(int $lotId): array
+    {
+        return DB::table('waste_lot_compositions as c')->join('materials as m', 'm.id', '=', 'c.material_id')
+            ->where('c.waste_lot_id', $lotId)->orderByDesc('c.percentage')->orderBy('m.code')->get(['m.code', 'c.percentage'])
+            ->map(fn ($row) => ['material' => (string) $row->code, 'pct' => (string) $row->percentage])->values()->all();
+    }
+
+    /**
+     * The composition as kept on a pickup line, or null when the lot has none.
+     */
+    public static function encode(int $lotId): ?string
+    {
+        $lines = self::of($lotId);
+
+        return $lines === [] ? null : (string) json_encode($lines);
     }
 
     /**

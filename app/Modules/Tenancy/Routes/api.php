@@ -3,11 +3,13 @@
 use App\Modules\Common\Models\StoredFile;
 use App\Modules\Common\Support\FileStorage;
 use App\Modules\Identity\Support\LegalAcceptance;
+use App\Modules\Production\Support\ImportEngine;
 use App\Modules\Tenancy\Actions\RegisterCompany;
 use App\Modules\Tenancy\Actions\ReviewCompany;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\Requests\RegisterCompanyRequest;
 use App\Modules\Tenancy\Resources\CompanyResource;
+use App\Modules\Tenancy\Support\CompanyModules;
 use App\Modules\Tenancy\Support\Onboarding;
 use App\Modules\Tenancy\TenantContext;
 use Illuminate\Http\Request;
@@ -49,6 +51,39 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     $current = fn () => Company::query()->findOrFail(app(TenantContext::class)->companyId());
 
     Route::get('company', fn () => new CompanyResource($current()))->name('company.show');
+
+    /*
+     * API keys: an ERP or a script of the company talks to DivaWaste directly (the owner, 2026-10-30: "maybe link to
+     * their API"). A key acts with the rights of the person who made it, for this company only; it is shown once, and
+     * lasts a year unless revoked. Only who may change the company makes or revokes them.
+     */
+    Route::get('company/api-keys', function (Request $request) use ($current) {
+        abort_unless($request->user()->can('company.update'), 403);
+
+        return ['data' => DB::table('personal_access_tokens as t')->join('users as u', 'u.id', '=', 't.tokenable_id')
+            ->where('t.company_id', $current()->id)->where('t.name', 'like', 'api-key:%')->where(fn ($q) => $q->whereNull('t.expires_at')->orWhere('t.expires_at', '>', now()))
+            ->orderByDesc('t.id')->get(['t.id', 't.name', 't.created_at', 't.last_used_at', 't.expires_at', 'u.first_name', 'u.last_name'])
+            ->map(fn ($row) => ['id' => $row->id, 'name' => substr($row->name, 8), 'created_at' => $row->created_at, 'last_used_at' => $row->last_used_at,
+                'expires_at' => $row->expires_at, 'owner' => trim("{$row->first_name} {$row->last_name}")])->all()];
+    })->name('company.api-keys.index');
+
+    Route::post('company/api-keys', function (Request $request) use ($current) {
+        abort_unless($request->user()->can('company.update'), 403);
+        $name = $request->validate(['name' => ['required', 'string', 'max:80']])['name'];
+        $issued = $request->user()->createToken('api-key:'.trim($name), ['*'], now()->addYear());
+        $issued->accessToken->forceFill(['company_id' => $current()->id])->save();
+
+        return response()->json(['data' => ['id' => $issued->accessToken->id, 'name' => trim($name), 'token' => $issued->plainTextToken,
+            'expires_at' => $issued->accessToken->expires_at?->toIso8601ZuluString()]], 201);
+    })->name('company.api-keys.store')->middleware('throttle:action');
+
+    Route::delete('company/api-keys/{id}', function (Request $request, int $id) use ($current) {
+        abort_unless($request->user()->can('company.update'), 403);
+        $deleted = DB::table('personal_access_tokens')->where('id', $id)->where('company_id', $current()->id)->where('name', 'like', 'api-key:%')->delete();
+        abort_if($deleted === 0, 404);
+
+        return response()->noContent();
+    })->name('company.api-keys.destroy');
 
     Route::put('company', function (Request $request) use ($current) {
         abort_unless($request->user()->can('company.update'), 403);
@@ -96,6 +131,49 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
         return Storage::disk($file->disk)->response($file->path, null, ['Content-Type' => $file->mime_type, 'Cache-Control' => 'private, max-age=300']);
     })->name('company.logo.show');
+
+    // The modules the company uses (they shape the interface only) and its answers to the first onboarding questions.
+    Route::put('company/modules', function (Request $request) use ($current) {
+        abort_unless($request->user()->can('company.update'), 403);
+        $input = $request->validate([
+            'modules' => ['nullable', 'array'],
+            'modules.*' => ['boolean'],
+            'profile' => ['nullable', 'array'],
+            'profile.*' => ['boolean'],
+            'industry' => ['nullable', Rule::in(CompanyModules::INDUSTRIES)],
+        ]);
+        $company = $current();
+        if (isset($input['industry'])) {
+            CompanyModules::setIndustry($company, $input['industry']);
+        }
+        if (isset($input['profile'])) {
+            CompanyModules::answer($company, $input['profile']);
+        }
+        if (isset($input['modules'])) {
+            CompanyModules::set($company, $input['modules']);
+        }
+
+        return new CompanyResource($company->refresh());
+    })->name('company.modules.update');
+
+    // PRD-05: the columns chosen for each kind of import file, by header name, found again on the next file.
+    Route::get('company/import-mappings', function (Request $request) use ($current) {
+        abort_unless(collect(array_keys(ImportEngine::TARGETS))->contains(fn (string $target) => ImportEngine::allowed($request->user(), $target)), 403);
+
+        return response()->json(['data' => (object) ($current()->settings['import_mappings'] ?? [])]);
+    })->name('company.import-mappings.index');
+
+    Route::put('company/import-mappings/{target}', function (Request $request, string $target) use ($current) {
+        abort_unless(preg_match('/^[a-z_]{2,40}$/', $target) === 1, 404);
+        abort_unless(ImportEngine::allowed($request->user(), $target), 403);
+        $mapping = $request->validate(['mapping' => ['present', 'array', 'max:60'], 'mapping.*' => ['string', 'max:191']])['mapping'];
+        $company = $current();
+        $saved = ($company->settings['import_mappings'] ?? []);
+        $saved[$target] = $mapping;
+        $company->forceFill(['settings' => ['import_mappings' => $saved] + ($company->settings ?? [])])->save();
+
+        return response()->json(['data' => (object) $saved]);
+    })->name('company.import-mappings.update');
 
     // M0-07.
     Route::get('onboarding', fn () => response()->json(['data' => Onboarding::state($current())]))->name('onboarding.show');

@@ -9,10 +9,14 @@ use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Reporting\Jobs\GenerateReport;
 use App\Modules\Reporting\Models\GeneratedReport;
 use App\Modules\Reporting\Models\ProductionVolume;
+use App\Modules\Reporting\Models\ReportSchedule;
 use App\Modules\Reporting\Resources\GeneratedReportResource;
+use App\Modules\Reporting\Support\Attention;
+use App\Modules\Reporting\Support\GlobalSearch;
 use App\Modules\Reporting\Support\ReportBuilder;
 use App\Modules\Reporting\Support\WasteStatistics;
 use App\Modules\Sites\Models\Site;
+use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -21,6 +25,23 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
 
 Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
+    // What waits for someone in the company: slips to sign, documents, codes, declarations, gaps, agréments, contracts.
+    Route::get('attention', function (Request $request, Attention $attention) {
+        $company = Company::query()->findOrFail(app(TenantContext::class)->companyId());
+        abort_unless(in_array($company->company_type->value, ['industrial', 'provider'], true), 403);
+
+        return response()->json(['data' => $attention->for($request->user(), $company)]);
+    })->name('attention.index');
+
+    // One search box for every number and name: lots, pickups, contracts, annonces, slips, providers, types, sites.
+    Route::get('search', function (Request $request, GlobalSearch $search) {
+        $company = Company::query()->findOrFail(app(TenantContext::class)->companyId());
+        abort_unless($company->company_type->value === 'industrial', 403);
+        $query = (string) $request->validate(['q' => ['required', 'string', 'max:80']])['q'];
+
+        return response()->json(['data' => $search->for($request->user(), $company, $query)]);
+    })->name('search.index')->middleware('throttle:search');
+
     /*
      * Period and site filter shared by the dashboard, the register and the exports. The sites are always
      * intersected with the ones the user may see for the given permission.
@@ -134,6 +155,37 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
         return (new GeneratedReportResource($report->refresh()))->response()->setStatusCode(202);
     })->name('reports.store');
+
+    // R-03: the reports a user receives every month, generated on the month before.
+    Route::get('report-schedules', function (Request $request) {
+        abort_unless($request->user()->can('reports.export'), 403);
+
+        return response()->json(['data' => ReportSchedule::query()->where('user_id', $request->user()->id)->orderBy('id')->get()
+            ->map(fn (ReportSchedule $schedule) => ['ulid' => $schedule->ulid, 'report_type' => $schedule->report_type, 'format' => $schedule->format,
+                'lang' => $schedule->lang, 'last_run_on' => $schedule->last_run_on?->toDateString()])]);
+    })->name('report-schedules.index');
+
+    Route::post('report-schedules', function (Request $request) {
+        abort_unless($request->user()->can('reports.export'), 403);
+        $input = $request->validate([
+            'report_type' => ['required', Rule::in(ReportBuilder::TYPES)],
+            'format' => ['required', Rule::in(['pdf', 'xlsx'])],
+            'lang' => ['nullable', Rule::in(UseRequestLanguage::SUPPORTED)],
+        ]);
+        $schedule = ReportSchedule::query()->updateOrCreate(
+            ['user_id' => $request->user()->id, 'report_type' => $input['report_type'], 'format' => $input['format']],
+            ['lang' => $input['lang'] ?? DocumentLanguage::of($request), 'is_active' => true],
+        );
+
+        return response()->json(['data' => ['ulid' => $schedule->ulid, 'report_type' => $schedule->report_type, 'format' => $schedule->format, 'lang' => $schedule->lang, 'last_run_on' => null]], 201);
+    })->name('report-schedules.store');
+
+    Route::delete('report-schedules/{schedule}', function (Request $request, ReportSchedule $schedule) {
+        abort_unless($schedule->user_id === $request->user()->id, 404);
+        $schedule->delete();
+
+        return response()->noContent();
+    })->name('report-schedules.destroy');
 
     $own = fn (Request $request, GeneratedReport $report) => abort_unless($report->requested_by_user_id === $request->user()->id, 404);
 

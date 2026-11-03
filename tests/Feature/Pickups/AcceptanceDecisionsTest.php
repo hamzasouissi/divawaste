@@ -299,7 +299,7 @@ class AcceptanceDecisionsTest extends TestCase
             'default_treatment_channel_id' => DB::table('treatment_channels')->where('code', 'recycling')->value('id'), 'activated_at' => now()])->ulid);
         $this->fresh($this->adminToken)->getJson("/api/v1/waste-types/{$legacy}")->assertOk()->assertJsonPath('data.regulatory_code_missing', true);
         $fibre = $this->type('FILS', 'textile_fibre');
-        $partner = $this->fresh($this->adminToken)->postJson('/api/v1/external-partners', ['legal_name' => 'Eco Traitement', 'roles' => ['eliminator', 'transporter'],
+        $partner = $this->fresh($this->adminToken)->postJson('/api/v1/external-partners', ['legal_name' => 'Eco Traitement', 'roles' => ['sorter', 'transporter'],
             'accreditation_reference' => 'ANGED-77', 'covers_hazardous' => true])->assertCreated()->json('data.ulid');
         [$sludge, $yarn] = [$this->lotData($legacy, '300'), $this->lotData($fibre, '500')];
 

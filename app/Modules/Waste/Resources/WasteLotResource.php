@@ -50,6 +50,9 @@ class WasteLotResource extends JsonResource
             'color_label' => $this->color_label,
             'grammage_gsm' => $this->grammage_gsm,
             'composition_label' => $this->composition_label,
+            // Where the composition comes from: 'entered' by a person, 'raw_material', 'waste_type' (defaults, to be
+            // checked), 'grouping' (average of grouped lots), 'split' (kept from the lot split); null = not known.
+            'composition_source' => $this->composition_label === null ? null : $this->composition_source,
             'notes' => $this->notes,
             // Where the waste comes from in production: OF, order, client, article, stage, raw material, supplier (null when unknown).
             'origin' => app(LotOrigin::class)->describe($this->resource),
