@@ -1,7 +1,7 @@
 {
-  "name": "DivaWaste Textile",
+  "name": "DivaWaste",
   "short_name": "DivaWaste",
-  "description": "Traçabilité et valorisation des déchets textiles",
+  "description": "Traçabilité et valorisation des déchets industriels",
   "lang": "fr",
   "dir": "auto",
   "start_url": "/m",

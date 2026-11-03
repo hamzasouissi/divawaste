@@ -128,7 +128,10 @@ export class PartyListComponent {
   private readonly dialog = inject(Dialogs);
 
   readonly kind = input.required<Kind>();
-  protected readonly canManage = inject(Session).can('production.manage');
+  private readonly productionSession = inject(Session);
+  protected get canManage(): boolean {
+    return this.productionSession.canEditProduction();
+  }
   protected readonly search = signal('');
   protected readonly inactive = signal(false);
   protected readonly list = new ListStore<Party>((query) => this.api.list<Party>(`production/${this.kind()}`, { ...query, search: this.search(), with_inactive: this.inactive() }));

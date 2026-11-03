@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, effect, inject, untracked } from '@
 import { RouterOutlet } from '@angular/router';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Toast } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 
 import { Api } from './core/api/api';
 import { Session } from './core/auth/session';
@@ -21,6 +22,7 @@ const ICONS: Record<string, string> = { success: 'check_circle', info: 'info', w
       <ng-template #message let-message>
         <dw-icon class="dw-toast-icon">{{ icons[message.severity] || 'info' }}</dw-icon>
         <span class="dw-toast-text">{{ message.detail }}</span>
+        @if (message.data?.undo) { <button type="button" class="dw-toast-undo" (click)="message.data.undo(); messages.clear()">{{ message.data.label }}</button> }
       </ng-template>
     </p-toast>
     <p-confirmdialog styleClass="dw-confirm" />
@@ -30,6 +32,7 @@ export class App {
   // Instantiated here so <html lang dir> follows the active language from the first render.
   protected readonly locale = inject(Locale);
   protected readonly icons = ICONS;
+  protected readonly messages = inject(MessageService);
 
   constructor() {
     const session = inject(Session);

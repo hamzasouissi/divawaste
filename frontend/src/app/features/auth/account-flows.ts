@@ -36,7 +36,7 @@ const RESULT_STYLES = `
         @case ('done') {
           <dw-icon class="ok" aria-hidden="true">check_circle</dw-icon>
           <h1 class="dw-h1">{{ t('auth.verify.doneTitle') }}</h1>
-          <p class="dw-muted">{{ t('auth.verify.doneBody') }}</p>
+          <p class="dw-muted">{{ t(approved() ? 'auth.verify.doneApproved' : 'auth.verify.doneBody') }}</p>
           <a pButton routerLink="/login">{{ t('auth.login.submit') }}</a>
         }
         @default {
@@ -57,10 +57,15 @@ export class VerifyEmailPage implements OnInit {
   readonly expires = input<string>();
   readonly signature = input<string>();
   protected readonly state = signal<'pending' | 'done' | 'failed'>('pending');
+  /** The platform approved the account on confirmation (automatic approval): it can be used right away. */
+  protected readonly approved = signal(false);
 
   async ngOnInit(): Promise<void> {
     try {
-      await firstValueFrom(this.api.post('auth/email/verify', { user: this.user(), expires: Number(this.expires()), signature: this.signature() }));
+      const result = await firstValueFrom(
+        this.api.post<{ approved?: boolean } | undefined>('auth/email/verify', { user: this.user(), expires: Number(this.expires()), signature: this.signature() }),
+      );
+      this.approved.set(result?.approved === true);
       this.state.set('done');
     } catch {
       this.state.set('failed');

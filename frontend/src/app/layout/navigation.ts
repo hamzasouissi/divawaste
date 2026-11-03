@@ -1,133 +1,218 @@
 import { Audience, Session } from '../core/auth/session';
+import { CompanyModule } from '../core/api/models';
 
-export interface NavItem {
+/** A page of a section, shown as a tab above the content when the section has more than one. */
+export interface NavTab {
   path: string;
   /** Translation key. */
   label: string;
-  icon: string;
   /** Shown when the user holds at least one of these permissions (tenant or platform). */
   permissions?: string[];
+  /** Shown only when the company uses this part of the product. */
+  module?: CompanyModule;
+  /** Other addresses that belong to this tab (detail pages). */
+  match?: string[];
+}
+
+export interface NavItem {
+  /** Where the entry leads: its first tab the user may open. */
+  path: string;
+  label: string;
+  icon: string;
+  tabs: NavTab[];
+  /** Addresses of the section that are not tabs (settings pages, detail pages). */
+  match?: string[];
 }
 
 export interface NavGroup {
+  /** Translation key; empty for the main group, which has no heading. */
   label: string;
   items: NavItem[];
 }
 
+interface SectionDef {
+  label: string;
+  icon: string;
+  tabs: NavTab[];
+  match?: string[];
+}
+
+interface GroupDef {
+  label: string;
+  sections: SectionDef[];
+}
+
+const tab = (path: string, label: string, permissions?: string[], module?: CompanyModule, match?: string[]): NavTab => ({ path, label, permissions, module, match });
+
 /**
- * Information architecture, per kind of account. The seven roles of the cahier do not see the same product:
- * what appears is the intersection of the account's area and the user's permissions, so a director gets
- * dashboards and reports, an auditor a read-only trail, a provider its own workflow.
+ * Information architecture, per kind of account: a few sections named after the work (G-01), each with its pages as
+ * tabs. What appears is the intersection of the account's area, the modules the company uses (G-02) and the user's
+ * permissions. Settings live under the gear at the foot of the navigation.
  */
-const NAVIGATION: Record<Exclude<Audience, 'none'>, NavGroup[]> = {
+const NAVIGATION: Record<Exclude<Audience, 'none'>, GroupDef[]> = {
   industrial: [
-    { label: 'nav.groups.overview', items: [{ path: '/dashboard', label: 'nav.dashboard', icon: 'insights', permissions: ['dashboard.view'] }] },
     {
-      label: 'nav.groups.operations',
-      items: [
-        { path: '/lots', label: 'nav.lots', icon: 'inventory_2', permissions: ['lots.view'] },
-        { path: '/stock', label: 'nav.stock', icon: 'warehouse', permissions: ['stock.view'] },
-        { path: '/pickups', label: 'nav.pickups', icon: 'local_shipping', permissions: ['pickups.view'] },
-        { path: '/providers', label: 'nav.providers', icon: 'handshake', permissions: ['providers.view'] },
-      ],
-    },
-    {
-      label: 'nav.groups.compliance',
-      items: [
-        { path: '/compliance/register', label: 'nav.register', icon: 'menu_book', permissions: ['documents.view'] },
-        { path: '/compliance/manifests', label: 'nav.manifests', icon: 'assignment_late', permissions: ['documents.view'] },
-        { path: '/compliance/authorizations', label: 'nav.authorizations', icon: 'verified', permissions: ['waste_types.view'] },
-        { path: '/compliance/declarations', label: 'nav.declarations', icon: 'fact_check', permissions: ['declarations.prepare'] },
-        { path: '/compliance/documents', label: 'nav.documents', icon: 'folder_open', permissions: ['documents.view'] },
-        { path: '/reports', label: 'nav.reports', icon: 'summarize', permissions: ['reports.view'] },
-      ],
-    },
-    {
-      label: 'nav.groups.reference',
-      items: [
-        { path: '/sites', label: 'nav.sites', icon: 'factory', permissions: ['sites.view'] },
-        { path: '/waste-types', label: 'nav.wasteTypes', icon: 'category', permissions: ['waste_types.view'] },
+      label: '',
+      sections: [
+        { label: 'nav.home', icon: 'space_dashboard', tabs: [tab('/dashboard', 'nav.dashboard', ['dashboard.view']), tab('/onboarding', 'onboarding.title')] },
+        { label: 'nav.waste', icon: 'inventory_2', tabs: [tab('/lots', 'nav.tabs.lots', ['lots.view']), tab('/stock', 'nav.stock', ['stock.view']), tab('/sites', 'nav.tabs.sitesZones', ['sites.view'])] },
+        {
+          label: 'nav.pickups',
+          icon: 'local_shipping',
+          tabs: [
+            tab('/pickups', 'nav.tabs.requests', ['pickups.view']),
+            tab('/providers', 'nav.providers', ['providers.view']),
+            tab('/contracts', 'nav.contracts', ['contracts.view'], 'contracts'),
+            tab('/marketplace', 'nav.marketplace', ['marketplace.view'], 'marketplace'),
+          ],
+        },
+        {
+          label: 'nav.compliance',
+          icon: 'verified_user',
+          tabs: [
+            tab('/compliance', 'nav.tabs.complianceOverview', ['documents.view']),
+            tab('/compliance/register', 'nav.tabs.register', ['documents.view']),
+            tab('/compliance/manifests', 'nav.tabs.manifests', ['documents.view']),
+            tab('/compliance/documents', 'nav.documents', ['documents.view']),
+            tab('/compliance/declarations', 'nav.tabs.declarations', ['declarations.prepare']),
+            tab('/compliance/authorizations', 'nav.authorizations', ['waste_types.view'], 'authorizations'),
+          ],
+        },
+        { label: 'nav.reports', icon: 'summarize', tabs: [tab('/reports', 'nav.reports', ['reports.view'])] },
       ],
     },
     // Production comes after the waste it explains: where a waste comes from, what it was made of, for whom. The
     // statistics that speak about waste lead; reference data follow, money comes last.
     {
       label: 'nav.groups.production',
-      items: [
-        { path: '/production/stats', label: 'nav.productionStats', icon: 'query_stats', permissions: ['production.stats.view'] },
-        { path: '/production/manufacturing-orders', label: 'nav.manufacturingOrders', icon: 'precision_manufacturing', permissions: ['production.view'] },
-        { path: '/production/orders', label: 'nav.orders', icon: 'receipt_long', permissions: ['production.view'] },
-        { path: '/production/catalog', label: 'nav.productionCatalog', icon: 'checkroom', permissions: ['production.view'] },
-        { path: '/production/lots', label: 'nav.productionLots', icon: 'inventory_2', permissions: ['production.view'] },
-        { path: '/production/partners', label: 'nav.productionPartners', icon: 'groups', permissions: ['production.view'] },
-        { path: '/production/finance', label: 'nav.productionFinance', icon: 'payments', permissions: ['production.finance.view'] },
-        { path: '/production/import', label: 'nav.productionImport', icon: 'upload_file', permissions: ['production.manage'] },
+      sections: [
+        {
+          label: 'nav.manufacturing',
+          icon: 'precision_manufacturing',
+          tabs: [
+            tab('/production/manufacturing-orders', 'nav.tabs.manufacturingOrders', ['production.view'], 'production'),
+            tab('/production/orders', 'nav.orders', ['production.view'], 'production'),
+            tab('/production/lots', 'nav.tabs.productionLots', ['production.view'], 'production'),
+          ],
+        },
+        {
+          label: 'nav.productionReference',
+          icon: 'checkroom',
+          tabs: [
+            tab('/production/catalog', 'nav.productionCatalog', ['production.view'], 'production'),
+            tab('/production/partners', 'nav.productionPartners', ['production.view'], 'production'),
+          ],
+        },
+        {
+          label: 'nav.productionAnalysis',
+          icon: 'query_stats',
+          tabs: [
+            tab('/production/stats', 'nav.productionStats', ['production.stats.view'], 'production'),
+            tab('/production/finance', 'nav.productionFinance', ['production.finance.view'], 'production_finance'),
+          ],
+        },
       ],
     },
-    {
-      label: 'nav.groups.admin',
-      items: [
-        { path: '/admin/users', label: 'nav.users', icon: 'group', permissions: ['users.view'] },
-        { path: '/admin/subscription', label: 'nav.subscription', icon: 'credit_card', permissions: ['subscription.view'] },
-        { path: '/admin/audit', label: 'nav.audit', icon: 'history', permissions: ['audit.view'] },
-        { path: '/admin/company', label: 'nav.company', icon: 'business', permissions: ['company.update'] },
-      ],
-    },
-    { label: 'nav.groups.workshop', items: [{ path: '/m', label: 'nav.workshop', icon: 'qr_code_scanner', permissions: ['app.mobile.access'] }] },
   ],
   provider: [
     {
-      label: 'nav.groups.provider',
-      items: [
-        { path: '/provider/pickups', label: 'nav.providerPickups', icon: 'local_shipping', permissions: ['provider.pickups.view'] },
-        { path: '/provider/manifests', label: 'nav.manifests', icon: 'assignment_late', permissions: ['provider.manifests.sign', 'provider.pickups.view'] },
-        { path: '/provider/documents', label: 'nav.documents', icon: 'folder_open', permissions: ['provider.pickups.view'] },
-      ],
-    },
-    {
-      label: 'nav.groups.providerAccount',
-      items: [
-        { path: '/provider/profile', label: 'nav.providerProfile', icon: 'storefront', permissions: ['provider.profile.manage'] },
-        { path: '/provider/accreditations', label: 'nav.accreditations', icon: 'verified', permissions: ['provider.accreditations.manage'] },
-        { path: '/admin/users', label: 'nav.users', icon: 'group', permissions: ['users.view'] },
+      label: '',
+      sections: [
+        { label: 'nav.providerPickups', icon: 'local_shipping', tabs: [tab('/provider/pickups', 'nav.providerPickups', ['provider.pickups.view'])] },
+        { label: 'nav.marketplace', icon: 'storefront', tabs: [tab('/provider/marketplace', 'nav.marketplace', ['provider.marketplace.view'])] },
+        { label: 'nav.contracts', icon: 'handshake', tabs: [tab('/provider/contracts', 'nav.contracts', ['provider.contracts.view'])] },
+        {
+          label: 'nav.documents',
+          icon: 'folder_open',
+          tabs: [tab('/provider/manifests', 'nav.tabs.manifests', ['provider.manifests.sign', 'provider.pickups.view']), tab('/provider/documents', 'nav.tabs.allDocuments', ['provider.pickups.view'])],
+        },
+        {
+          label: 'nav.providerSpace',
+          icon: 'domain',
+          tabs: [tab('/provider/profile', 'nav.tabs.providerProfile', ['provider.profile.manage']), tab('/provider/accreditations', 'nav.accreditations', ['provider.accreditations.manage'])],
+        },
       ],
     },
   ],
   // Diva Software operating the SaaS: its own vocabulary and order, nothing of a client workspace.
   platform: [
-    { label: 'nav.groups.platform', items: [{ path: '/platform/overview', label: 'nav.platformOverview', icon: 'space_dashboard', permissions: ['platform.companies.review'] }] },
+    { label: 'nav.groups.platform', sections: [{ label: 'nav.platformOverview', icon: 'space_dashboard', tabs: [tab('/platform/overview', 'nav.platformOverview', ['platform.companies.review'])] }] },
     {
       label: 'nav.groups.platformCustomers',
-      items: [
-        { path: '/platform/companies', label: 'nav.platformCompanies', icon: 'domain', permissions: ['platform.companies.review'] },
-        { path: '/platform/accreditations', label: 'nav.platformAccreditations', icon: 'verified', permissions: ['platform.providers.review'] },
+      sections: [
+        { label: 'nav.platformCompanies', icon: 'domain', tabs: [tab('/platform/companies', 'nav.platformCompanies', ['platform.companies.review'])] },
+        { label: 'nav.platformAccreditations', icon: 'verified', tabs: [tab('/platform/accreditations', 'nav.platformAccreditations', ['platform.providers.review'])] },
+        { label: 'nav.platformRegistry', icon: 'travel_explore', tabs: [tab('/platform/registry', 'nav.platformRegistry', ['platform.providers.review', 'platform.support.view'])] },
       ],
     },
     {
       label: 'nav.groups.platformBilling',
-      items: [
-        { path: '/platform/plans', label: 'nav.platformPlans', icon: 'sell', permissions: ['platform.plans.manage'] },
-        { path: '/platform/invoices', label: 'nav.platformInvoices', icon: 'receipt_long', permissions: ['platform.invoices.manage'] },
-        { path: '/platform/payments', label: 'nav.platformPayments', icon: 'account_balance', permissions: ['platform.payments.validate'] },
+      sections: [
+        { label: 'nav.platformPlans', icon: 'sell', tabs: [tab('/platform/plans', 'nav.platformPlans', ['platform.plans.manage'])] },
+        { label: 'nav.platformInvoices', icon: 'receipt_long', tabs: [tab('/platform/invoices', 'nav.platformInvoices', ['platform.invoices.manage'])] },
+        { label: 'nav.platformPayments', icon: 'account_balance', tabs: [tab('/platform/payments', 'nav.platformPayments', ['platform.payments.validate'])] },
       ],
     },
     {
       label: 'nav.groups.platformReference',
-      items: [
-        { path: '/platform/catalog', label: 'nav.platformCatalog', icon: 'category', permissions: ['platform.catalog.manage'] },
-        { path: '/platform/roles', label: 'nav.platformRoles', icon: 'admin_panel_settings', permissions: ['platform.roles.manage'] },
+      sections: [
+        { label: 'nav.platformCatalog', icon: 'category', tabs: [tab('/platform/catalog', 'nav.platformCatalog', ['platform.catalog.manage'])] },
+        { label: 'nav.platformRoles', icon: 'admin_panel_settings', tabs: [tab('/platform/roles', 'nav.platformRoles', ['platform.roles.manage'])] },
       ],
     },
-    { label: 'nav.groups.platformMonitoring', items: [{ path: '/platform/activity', label: 'nav.platformActivity', icon: 'history', permissions: ['platform.support.view'] }] },
+    { label: 'nav.groups.platformMonitoring', sections: [{ label: 'nav.platformActivity', icon: 'history', tabs: [tab('/platform/activity', 'nav.platformActivity', ['platform.support.view'])] }] },
   ],
 };
+
+/** The settings of a company (CO-02, G-05): one page under the gear, each card leading to its screen. */
+export const SETTINGS_PATHS = ['/settings', '/sites', '/waste-types', '/admin', '/production/import'];
+
+function allowedTab(session: Session, item: NavTab): boolean {
+  if (item.module && !session.uses(item.module)) {
+    return false;
+  }
+
+  return !item.permissions || item.permissions.some((permission) => session.can(permission) || session.canPlatform(permission));
+}
 
 export function navigationFor(session: Session): NavGroup[] {
   const audience = session.audience();
   if (audience === 'none') {
     return [];
   }
-  const allowed = (item: NavItem): boolean => !item.permissions || item.permissions.some((permission) => session.can(permission) || session.canPlatform(permission));
 
-  return NAVIGATION[audience].map((group) => ({ ...group, items: group.items.filter(allowed) })).filter((group) => group.items.length > 0);
+  return NAVIGATION[audience]
+    .map((group) => ({
+      label: group.label,
+      items: group.sections
+        .map((section) => {
+          // The onboarding tab only exists while the start-up guide is open; it never leads the section.
+          const tabs = section.tabs.filter((candidate) => allowedTab(session, candidate) && candidate.path !== '/onboarding');
+          return { label: section.label, icon: section.icon, tabs, match: section.match, path: tabs[0]?.path ?? '' };
+        })
+        .filter((item) => item.tabs.length > 0),
+    }))
+    .filter((group) => group.items.length > 0);
+}
+
+function within(url: string, path: string): boolean {
+  return url === path || url.startsWith(`${path}/`);
+}
+
+/** The section and tab of an address, in the words of the navigation. The most specific tab wins. */
+export function placeOf(groups: NavGroup[], url: string): { item: NavItem; tab: NavTab | null } | null {
+  let best: { item: NavItem; tab: NavTab | null; length: number } | null = null;
+  for (const group of groups) {
+    for (const item of group.items) {
+      for (const candidate of item.tabs) {
+        for (const path of [candidate.path, ...(candidate.match ?? [])]) {
+          if (within(url, path) && (!best || path.length > best.length)) {
+            best = { item, tab: candidate, length: path.length };
+          }
+        }
+      }
+    }
+  }
+
+  return best ? { item: best.item, tab: best.tab } : null;
 }

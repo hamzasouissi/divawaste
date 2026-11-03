@@ -9,7 +9,7 @@ import { InputText } from 'primeng/inputtext';
 import { SelectButton } from 'primeng/selectbutton';
 
 import { Api, ApiError } from '../../core/api/api';
-import { Localized } from '../../core/api/models';
+import { COMPANY_INDUSTRIES, CompanyIndustry, Localized } from '../../core/api/models';
 import { Toast } from '../../core/feedback/toast';
 import { LocalizedPipe } from '../../core/format/pipes';
 import { StateComponent } from '../../ui/state';
@@ -17,6 +17,7 @@ import { CheckboxComponent } from '../../ui/checkbox';
 import { DateComponent } from '../../ui/date';
 import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
+import { MoreComponent } from '../../ui/more';
 import { SELECT } from '../../ui/select';
 
 interface RegistrationOptions {
@@ -27,12 +28,15 @@ interface RegistrationOptions {
   legal_documents: { type: string; version: string; title: string; content_html: string }[];
 }
 
-const PROVIDER_ROLES = ['collector', 'transporter', 'recycler', 'eliminator'] as const;
+const PROVIDER_ROLES = ['collector', 'transporter', 'recycler', 'sorter'] as const;
 
 /** Field name shown in front of a refusal of the server, so the summary says where to look. */
+/** An example of the tax id of each country, as people write it on their documents. */
+const TAX_EXAMPLES: Partial<Record<string, string>> = { TN: '1234567/A/M/000', MA: '12345678', DZ: '000116001234567', FR: '732 829 320', SN: '0012345 2G3' };
+
 const FIELD_LABELS: Record<string, string> = {
   'company.legal_name': 'fields.legalName', 'company.tax_id': 'fields.taxId', 'company.country': 'fields.country', 'company.city': 'fields.city',
-  'company.phone': 'fields.phone', 'company.activities': 'auth.register.activities', 'contact.first_name': 'fields.firstName',
+  'company.phone': 'fields.phone', 'company.industry': 'auth.register.industry', 'company.activities': 'auth.register.activities', 'contact.first_name': 'fields.firstName',
   'contact.last_name': 'fields.lastName', 'contact.email': 'auth.email', 'contact.phone': 'fields.phone', 'contact.password': 'auth.password',
   plan: 'auth.register.plan', 'provider.roles': 'providers.roles', 'provider.service_area': 'providers.serviceArea',
   'provider.accreditations.*.type': 'providers.accreditationType', 'provider.accreditations.*.reference_number': 'providers.reference',
@@ -42,13 +46,12 @@ const FIELD_LABELS: Record<string, string> = {
 
 /**
  * M0-01 / M0-03 / M0-05 / M0-10: one form for both kinds of account. A provider attaches its accreditations
- * (PDF); an industrial declares its textile activities and chooses a formula. The account is usable once the
+ * (PDF); an industrial says its sector and chooses a formula. The account is usable once the
  * email is confirmed and the platform has approved it.
  */
 @Component({
   imports: [
-    ReactiveFormsModule, RouterLink, TranslocoDirective, LocalizedPipe, StateComponent, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT, CheckboxComponent, DateComponent, SelectButton,
-  ],
+    ReactiveFormsModule, RouterLink, TranslocoDirective, LocalizedPipe, StateComponent, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT, CheckboxComponent, DateComponent, SelectButton, MoreComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -65,7 +68,14 @@ const FIELD_LABELS: Record<string, string> = {
 
         <dw-state [loading]="options() === null && !loadError()" [error]="loadError()" (retry)="load()">
           @if (options(); as opts) {
-            <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+            <form [formGroup]="form" (ngSubmit)="step() === 2 ? submit() : next()" novalidate>
+              <!-- A-01: three short steps instead of one long page. -->
+              <ol class="wizard">
+                @for (label of stepLabels(); track label; let i = $index) {
+                  <li [class.on]="step() === i" [class.done]="step() > i"><span class="n">@if (step() > i) { <dw-icon>check</dw-icon> } @else { {{ i + 1 }} }</span>{{ t(label) }}</li>
+                }
+              </ol>
+              @if (step() === 0) {
               <p-selectbutton formControlName="company_type" class="type" [allowEmpty]="false" optionLabel="label" optionValue="value" [ariaLabelledBy]="'account-type'"
                 [options]="[{ value: 'industrial', label: t('auth.register.industrial') }, { value: 'provider', label: t('auth.register.provider') }]" />
               <p class="dw-muted hint">{{ t(provider() ? 'auth.register.providerHint' : 'auth.register.industrialHint') }}</p>
@@ -82,21 +92,35 @@ const FIELD_LABELS: Record<string, string> = {
                   </dw-select>
                 </dw-field>
                 <dw-field [label]="taxLabel() | dwLocalized: t('fields.taxId')">
-                  <input pInputText formControlName="tax_id" required />
+                  <input pInputText formControlName="tax_id" required [placeholder]="taxExample() ?? ''" />
+                  <!-- A-02: the shape the tax id has in the chosen country. -->
+                  @if (taxExample(); as example) { <small dwHint>{{ t('auth.register.taxIdFormat', { example }) }}</small> }
                   @if (error('company.tax_id'); as message) { <small dwError>{{ message }}</small> }
                 </dw-field>
                 <dw-field [label]="t('fields.city')"><input pInputText formControlName="city" autocomplete="address-level2" /></dw-field>
                 <dw-field [label]="t('fields.phone')"><input pInputText type="tel" formControlName="phone" autocomplete="tel" /></dw-field>
                 @if (!provider()) {
-                  <dw-field class="dw-span-2" [label]="t('auth.register.activities')">
-                    <dw-select formControlName="activities" multiple required>
-                      @for (activity of opts.activities; track activity.code) { <dw-option [value]="activity.code" [label]="activity.name | dwLocalized" /> }
+                  <!-- What the factory makes: the setup's zone types and waste catalogue follow it (it can be changed there). -->
+                  <dw-field class="dw-span-2" [label]="t('auth.register.industry')">
+                    <dw-select formControlName="industry" required [placeholder]="t('auth.register.industryPlaceholder')">
+                      @for (sector of industries; track sector) { <dw-option [value]="sector" [label]="t('onboarding.industries.' + sector)" /> }
                     </dw-select>
-                    @if (error('company.activities'); as message) { <small dwError>{{ message }}</small> }
+                    <small dwHint>{{ t('auth.register.industryHint') }}</small>
+                    @if (error('company.industry'); as message) { <small dwError>{{ message }}</small> }
                   </dw-field>
+                  @if (industry() === 'textile') {
+                    <dw-field class="dw-span-2" [label]="t('auth.register.activities')">
+                      <dw-select formControlName="activities" multiple>
+                        @for (activity of opts.activities; track activity.code) { <dw-option [value]="activity.code" [label]="activity.name | dwLocalized" /> }
+                      </dw-select>
+                      @if (error('company.activities'); as message) { <small dwError>{{ message }}</small> }
+                    </dw-field>
+                  }
                 }
               </div>
 
+              }
+              @if (step() === 1) {
               <div class="dw-form" formGroupName="contact">
                 <h2 class="dw-h2 dw-form-section">{{ t('auth.register.contact') }}</h2>
                 <dw-field [label]="t('fields.firstName')"><input pInputText formControlName="first_name" autocomplete="given-name" required /></dw-field>
@@ -113,6 +137,8 @@ const FIELD_LABELS: Record<string, string> = {
                 </dw-field>
               </div>
 
+              }
+              @if (step() === 2) {
               @if (provider()) {
                 <div class="dw-form" formGroupName="provider">
                   <h2 class="dw-h2 dw-form-section">{{ t('auth.register.providerActivity') }}</h2>
@@ -123,8 +149,8 @@ const FIELD_LABELS: Record<string, string> = {
                   </dw-field>
                   <dw-field [label]="t('providers.serviceArea')"><input pInputText formControlName="service_area" /></dw-field>
 
-                  <h2 class="dw-h2 dw-form-section">{{ t('auth.register.accreditations') }}</h2>
-                  <div class="dw-span-2 dw-stack-sm" formArrayName="accreditations">
+                  <dw-more [label]="t('auth.register.accreditationsNow')" [summary]="t('auth.register.accreditationsLater')" [grid]="false" [open]="accreditations.length > 0">
+                  <div class="dw-stack-sm" formArrayName="accreditations">
                     @for (group of accreditations.controls; track group; let index = $index) {
                       <div class="accreditation" [formGroupName]="index">
                         <dw-field [label]="t('providers.accreditationType')">
@@ -145,7 +171,7 @@ const FIELD_LABELS: Record<string, string> = {
                             <span>{{ files()[index]?.name || t('providers.accreditationFile') }}</span>
                           </label>
                           @if (accreditations.length > 1) {
-                            <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="removeAccreditation(index)" [attr.aria-label]="t('common.remove')"><dw-icon>delete</dw-icon></button>
+                            <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="removeAccreditation(index)" [attr.aria-label]="t('common.remove')" [title]="t('common.remove')"><dw-icon>delete</dw-icon></button>
                           }
                         </div>
                         @if (fileErrors()[index]; as message) { <p class="field-error" role="alert">{{ message }}</p> }
@@ -153,6 +179,7 @@ const FIELD_LABELS: Record<string, string> = {
                     }
                     <button pButton severity="secondary" outlined type="button" (click)="addAccreditation()" class="add"><dw-icon>add</dw-icon>{{ t('auth.register.addAccreditation') }}</button>
                   </div>
+                  </dw-more>
                 </div>
               } @else {
                 <div class="dw-form">
@@ -184,8 +211,16 @@ const FIELD_LABELS: Record<string, string> = {
                 </div>
               }
 
+              }
+
               <div class="dw-form-actions">
-                <button pButton type="submit" class="submit" [disabled]="busy() || !form.controls.accept.value">{{ busy() ? t('common.wait') : t('auth.register.submit') }}</button>
+                @if (step() > 0) { <button pButton text type="button" (click)="step.set(step() - 1)"><dw-icon>arrow_back</dw-icon>{{ t('common.back') }}</button> }
+                <span class="dw-spacer"></span>
+                @if (step() < 2) {
+                  <button pButton type="submit" class="submit">{{ t('common.next') }}<dw-icon>arrow_forward</dw-icon></button>
+                } @else {
+                  <button pButton type="submit" class="submit" [disabled]="busy() || !form.controls.accept.value">{{ busy() ? t('common.wait') : t('auth.register.submit') }}</button>
+                }
               </div>
             </form>
           }
@@ -196,6 +231,11 @@ const FIELD_LABELS: Record<string, string> = {
   styles: `
     .lead { margin-block: 4px var(--dw-4); }
     .type { margin-block-end: var(--dw-2); }
+    .wizard { list-style: none; display: flex; gap: 6px; margin: 0 0 18px; padding: 0; flex-wrap: wrap; }
+    .wizard li { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; font-size: 13px; font-weight: 560; color: var(--dw-ink-3); }
+    .wizard li.on { background: var(--dw-primary-soft); color: var(--dw-primary); font-weight: 650; }
+    .wizard .n { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--dw-surface-3); font-size: 12px; font-weight: 700; }
+    .wizard .n dw-icon { font-size: 14px; } .wizard li.on .n { background: var(--dw-primary); color: #fff; } .wizard li.done .n { background: var(--dw-primary-line); color: var(--dw-primary-strong); }
     .hint { font-size: 13px; }
     .accreditation { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--dw-1) var(--dw-4); padding: var(--dw-3); border: 1px solid var(--dw-line); border-radius: var(--dw-radius); }
     .file { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--dw-2); }
@@ -225,7 +265,25 @@ export class RegisterPage {
   protected readonly loadError = signal<unknown>(null);
   protected readonly busy = signal(false);
   protected readonly done = signal(false);
-  protected readonly files = signal<(File | null)[]>([null]);
+  protected readonly files = signal<(File | null)[]>([]);
+  protected readonly step = signal(0);
+  /** A provider has no plan to choose: its third step is its activity. */
+  protected readonly stepLabels = computed(() => ['auth.register.steps.company', 'auth.register.steps.you', this.provider() ? 'auth.register.steps.activity' : 'auth.register.steps.plan']);
+
+  /** The fields of the current step must be right before going on; the server checks everything again at the end. */
+  protected next(): void {
+    const company = this.form.controls.company.controls;
+    const provider = this.form.controls.company_type.value === 'provider';
+    const invalid = this.step() === 0
+      ? [company.legal_name, company.country, company.tax_id, company.city, company.phone].some((control) => control.invalid) || (!provider && !company.industry.value)
+      : this.form.controls.contact.invalid;
+    if (invalid) {
+      (this.step() === 0 ? this.form.controls.company : this.form.controls.contact).markAllAsTouched();
+      this.toast.info('common.formInvalid');
+      return;
+    }
+    this.step.update((step) => step + 1);
+  }
   protected readonly fileErrors = signal<Record<number, string>>({});
   private readonly serverErrors = signal<Record<string, string[]>>({});
   /** What stops the registration, in words: nothing is refused without saying why. */
@@ -240,6 +298,7 @@ export class RegisterPage {
       tax_id: ['', [Validators.required, Validators.maxLength(50)]],
       city: [''],
       phone: [''],
+      industry: this.fb.control<CompanyIndustry | null>(null),
       activities: this.fb.control<string[]>([]),
     }),
     contact: this.fb.group({
@@ -253,14 +312,17 @@ export class RegisterPage {
     provider: this.fb.group({
       roles: this.fb.control<string[]>([]),
       service_area: [''],
-      accreditations: this.fb.array([this.accreditationGroup()]),
+      accreditations: this.fb.array<FormGroup>([]),
     }),
     accept: [false],
   });
 
   private readonly type = signal<'industrial' | 'provider'>('industrial');
   private readonly country = signal('TN');
+  protected readonly industries = COMPANY_INDUSTRIES;
+  protected readonly industry = signal<CompanyIndustry | null>(null);
   protected readonly provider = computed(() => this.type() === 'provider');
+  protected readonly taxExample = computed(() => TAX_EXAMPLES[this.country() ?? ''] ?? null);
   protected readonly taxLabel = computed(() => this.options()?.countries.find((country) => country.iso2 === this.country())?.tax_id_label ?? null);
   protected readonly accreditationTypes = computed(() => (this.options()?.accreditation_types ?? []).filter((type) => type.country === this.country()));
   protected readonly legalDocuments = computed(() => (this.options()?.legal_documents ?? []).filter((doc) => doc.type === 'privacy' || doc.type === (this.provider() ? 'provider_terms' : 'terms')));
@@ -272,12 +334,13 @@ export class RegisterPage {
       // The fields of the other account type leave the page, and their "required" rule with them. Their controls
       // must be checked again, otherwise they stay marked invalid and block a form whose visible fields are all filled.
       setTimeout(() => {
-        this.form.controls.company.controls.activities.updateValueAndValidity();
+        this.form.controls.company.controls.industry.updateValueAndValidity();
         this.form.controls.provider.controls.roles.updateValueAndValidity();
         this.form.controls.plan.updateValueAndValidity();
       });
     });
     this.form.controls.company.controls.country.valueChanges.subscribe((value) => this.country.set(value));
+    this.form.controls.company.controls.industry.valueChanges.subscribe((value) => this.industry.set(value));
     this.load();
   }
 
@@ -320,12 +383,12 @@ export class RegisterPage {
     const missingFiles = provider ? this.files().map((file, index) => (file ? null : index)).filter((index): index is number => index !== null) : [];
     const company = this.form.controls.company.controls;
     const missing = [
-      // Only the fields this kind of account fills in: activities belong to manufacturers and are checked below.
+      // Only the fields this kind of account fills in: the sector belongs to manufacturers and is checked below.
       company.legal_name.invalid || company.country.invalid || company.tax_id.invalid || company.city.invalid || company.phone.invalid || this.form.controls.contact.invalid ? 'fields' : null,
       provider && value.provider.roles.length === 0 ? 'roles' : null,
       provider && this.accreditations.invalid ? 'accreditations' : null,
       missingFiles.length > 0 ? 'files' : null,
-      !provider && value.company.activities.length === 0 ? 'activities' : null,
+      !provider && !value.company.industry ? 'industry' : null,
       !value.accept ? 'accept' : null,
     ].filter((key): key is string => key !== null);
     if (missing.length > 0) {
@@ -339,12 +402,14 @@ export class RegisterPage {
 
     const payload: Record<string, unknown> = {
       company_type: value.company_type,
-      company: { ...value.company, activities: provider ? [] : value.company.activities },
+      company: provider
+        ? { ...value.company, industry: undefined, activities: [] }
+        : { ...value.company, activities: value.company.industry === 'textile' ? value.company.activities : [] },
       contact: value.contact,
       plan: provider ? null : value.plan,
       accept_terms: value.accept,
       accept_privacy: value.accept,
-      ...(provider ? { provider: { roles: value.provider.roles, service_area: value.provider.service_area, accreditations: value.provider.accreditations } } : {}),
+      ...(provider ? { provider: { roles: value.provider.roles, service_area: value.provider.service_area, ...(this.accreditations.length > 0 ? { accreditations: value.provider.accreditations } : {}) } } : {}),
     };
 
     this.busy.set(true);

@@ -1,5 +1,7 @@
 # Domain map: backend facts to frontend concepts
 
+> **Status 2026-10-22.** Written in Phase 1–2 (2026-10-02/04), before the API was completed. Where it differs from the code, the code wins; current verified knowledge: [platform-intelligence](../platform-intelligence/README.md). Kept as history.
+
 ## Evidence convention
 
 **BACKEND FACT** means stated in the checked-in verified handoff, with source/runtime verification identified where performed. **FRONTEND ARCHITECTURAL DECISION** is a client boundary, not backend behavior. The sibling backend checkout is available; notification and login contracts were source/runtime reverified during Phase 2. Other contracts remain handoff-sourced until implementation verifies them.

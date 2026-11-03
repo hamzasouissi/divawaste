@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Guide 3 — Avec ERP, avec production</title>
+<style>
+  @page { size: A4; margin: 0; }
+  :root { --green: #0f5a4f; --green-2: #16796a; --soft: #e8f3f0; --ink: #16222b; --ink-2: #45525c; --line: #d9e2e0; --red: #c62f32; --amber: #9a5b00; --amber-soft: #fff4dc; --blue-soft: #eef3fb; --blue: #2f5ea8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", Inter, Arial, sans-serif; color: var(--ink); font-size: 11.4pt; line-height: 1.48; }
+  .page { width: 210mm; height: 297mm; overflow: hidden; padding: 15mm 17mm 14mm; page-break-after: always; position: relative; }
+  .page:last-child { page-break-after: auto; }
+  .foot { position: absolute; bottom: 8mm; left: 17mm; right: 17mm; display: flex; justify-content: space-between; font-size: 8.5pt; color: #7b8790; border-top: 1px solid var(--line); padding-top: 3mm; }
+
+  .cover { background: linear-gradient(160deg, #0b1c1f 0%, #0f3a35 60%, #16796a 100%); color: #fff; display: flex; flex-direction: column; padding: 22mm 20mm; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15pt; }
+  .brand .logo { width: 34px; height: 34px; border-radius: 9px; background: #2a8f7e; display: grid; place-items: center; font-weight: 800; }
+  .cover .kicker { margin-top: 30mm; font-size: 11pt; letter-spacing: .14em; text-transform: uppercase; color: #9fd8cc; font-weight: 700; }
+  .cover h1 { font-size: 29pt; line-height: 1.12; margin: 4mm 0 5mm; font-weight: 750; }
+  .cover .sub { font-size: 13.5pt; color: #d4ece6; max-width: 150mm; }
+  .robot-cover { position: absolute; right: 20mm; top: 18mm; width: 30mm; height: 30mm; }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8mm; }
+  .tag { padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 10.5pt; }
+  .need { margin-top: auto; background: rgba(255,255,255,.08); border-radius: 14px; padding: 7mm 8mm; }
+  .need h3 { margin: 0 0 3mm; font-size: 12pt; color: #9fd8cc; text-transform: uppercase; letter-spacing: .08em; }
+  .need ul { margin: 0; padding-left: 18px; columns: 2; column-gap: 10mm; }
+  .need li { margin-bottom: 1.5mm; break-inside: avoid; }
+
+  h2.part { font-size: 19pt; margin: 0 0 2mm; color: var(--green); }
+  h2.part small { display: block; font-size: 10.5pt; color: var(--ink-2); font-weight: 500; letter-spacing: .02em; }
+  .lead { color: var(--ink-2); margin: 0 0 5mm; }
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3.5mm; margin: 3mm 0 5mm; }
+  .map div { border: 1px solid var(--line); border-radius: 12px; padding: 3.5mm 5mm; }
+  .map div.extra { border-style: dashed; background: #fafcfc; }
+  .map b { display: block; color: var(--green); font-size: 11pt; } .map span { color: var(--ink-2); font-size: 10pt; }
+  .num { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: var(--green); color: #fff; font-size: 9.5pt; font-weight: 700; margin-right: 6px; }
+  .map .num { color: #fff; }
+  .extra .num { background: #7b8f8b; }
+
+  .step { margin-bottom: 6mm; }
+  .step h3 { display: flex; align-items: center; gap: 8px; font-size: 14pt; margin: 0 0 2.5mm; }
+  .step h3 .n { flex: none; display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 9px; background: var(--green); color: #fff; font-size: 11.5pt; }
+  .step.extra h3 .n { background: #7b8f8b; }
+  ol.do, ul.do { margin: 0 0 3mm; padding-left: 22px; } ol.do li, ul.do li { margin-bottom: 1.2mm; }
+  .shot { margin: 2mm 0 3mm; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; box-shadow: 0 3px 10px rgba(16, 40, 40, .08); }
+  .shot img { display: block; width: 100%; }
+  .shot.half { width: 72%; margin-left: auto; margin-right: auto; }
+  .shot.mid { width: 60%; margin-left: auto; margin-right: auto; }
+  .shot.small { width: 48%; margin-left: auto; margin-right: auto; }
+  .cap { font-size: 9pt; color: #6c7880; margin: -1.5mm 0 3mm; text-align: center; }
+  .box { border-radius: 10px; padding: 3mm 4.5mm; margin: 2mm 0 3mm; font-size: 10.5pt; }
+  .see { background: var(--soft); border-left: 4px solid var(--green); }
+  .see b:first-child { color: var(--green); }
+  .tip { background: #f3f6f8; border-left: 4px solid #8796a0; }
+  .warn { background: var(--amber-soft); border-left: 4px solid var(--amber); }
+  .info { background: var(--blue-soft); border-left: 4px solid var(--blue); }
+  .info b:first-child { color: var(--blue); }
+  .ring { color: var(--red); font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 10.2pt; margin: 2mm 0 3mm; }
+  th, td { text-align: left; padding: 2mm 3mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f3f6f6; font-size: 9.3pt; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  td.ans { font-weight: 700; color: var(--green); white-space: nowrap; }
+  table.xl { font-family: Calibri, "Segoe UI", Arial, sans-serif; font-size: 9.8pt; border: 1px solid #b7c4c1; }
+  table.xl th { background: #e6efe9; color: #1f3b33; text-transform: none; letter-spacing: 0; font-size: 9.8pt; border-right: 1px solid #c9d4d1; }
+  table.xl td { border-right: 1px solid #e0e6e4; padding: 1.4mm 2.5mm; }
+  .check td:first-child { width: 9mm; font-size: 13pt; color: var(--green); }
+  .check td { padding: 1.6mm 3mm; font-size: 9.8pt; }
+  .remarks { border: 1px dashed #b9c6c4; border-radius: 10px; height: 34mm; margin-top: 3mm; padding: 3mm 4mm; color: #9aa6ad; font-size: 10pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; align-items: start; }
+  .who { display: flex; gap: 4mm; align-items: center; }
+  .who svg { flex: none; width: 16mm; height: 16mm; }
+  .badge { display: inline-block; font-size: 8.5pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: #7b8f8b; border-radius: 6px; padding: 1px 7px; vertical-align: middle; margin-left: 6px; }
+</style>
+</head>
+<body>
+
+<!-- the assistant's face, as in the application -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="dg" x1="4" y1="2" x2="36" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1c8a7c"/><stop offset="0.55" stop-color="#0f5c56"/><stop offset="1" stop-color="#0b3f3b"/></linearGradient>
+    <linearGradient id="ds" x1="10" y1="11" x2="30" y2="31" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#bfeee1"/></linearGradient>
+    <symbol id="robot" viewBox="0 0 40 40">
+      <rect x="2" y="2" width="36" height="36" rx="12" fill="url(#dg)"/>
+      <clipPath id="tile"><rect x="2" y="2" width="36" height="36" rx="12"/></clipPath>
+      <rect x="11.5" y="31" width="17" height="10" rx="4.5" fill="#bfeee1" opacity="0.85" clip-path="url(#tile)"/>
+      <line x1="20" y1="7.8" x2="20" y2="11.5" stroke="#bfeee1" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="20" cy="6.6" r="2.1" fill="#7ff5d9"/>
+      <rect x="7" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="29.6" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="9.5" y="11" width="21" height="19.5" rx="6.5" fill="url(#ds)"/>
+      <rect x="12.3" y="14.6" width="15.4" height="10" rx="4.6" fill="#0b3f3b"/>
+      <rect x="15" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <rect x="21.7" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <path d="M17.6 27 Q20 28.5 22.4 27" fill="none" stroke="#0f5c56" stroke-width="1.3" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ============================================================ COVER -->
+<section class="page cover">
+  <div class="brand"><span class="logo">D</span> DivaWaste</div>
+  <svg class="robot-cover"><use href="#robot"/></svg>
+  <div class="kicker">Guide 3 · Pas à pas</div>
+  <h1>Avec un ERP,<br>avec suivi de production</h1>
+  <div class="sub">Pour une usine dont l'<b>ERP</b> (Sage, Odoo, SAP…) tient déjà les matières, les articles et les ordres de fabrication : DivaWaste les <b>reprend</b> au lieu de vous les faire saisir.</div>
+  <div class="tags"><span class="tag">⏱ 30 minutes</span><span class="tag">🧶 Exemple : bonneterie</span><span class="tag">🤖 L'assistant virtuel vous guide</span></div>
+  <div class="need">
+    <h3>Avant de commencer, ayez sous la main</h3>
+    <ul>
+      <li>Tout ce que demande le <b>Guide 1</b></li>
+      <li>Des <b>exports Excel ou CSV</b> de l'ERP : matières, articles, OF</li>
+      <li>Si possible, l'<b>adresse https</b> où l'ERP publie ses exports</li>
+      <li>La personne qui <b>relie l'ERP</b> (service informatique, éditeur)</li>
+      <li>Le <b>registre des déchets</b>, avec le n° d'OF de chaque lot</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ OVERVIEW -->
+<section class="page">
+  <h2 class="part">Le chemin en un coup d'œil</h2>
+  <p class="lead">Le compte et la mise en route sont ceux des Guides 1 et 2 : ils sont résumés ici. Ce guide détaille comment les données de l'ERP <b>arrivent</b> dans DivaWaste, du plus simple au plus automatique. Exemple : <b>Bonneterie Cap Bon</b> (Nabeul), polos et t-shirts.</p>
+  <div class="map">
+    <div><b><span class="num">A</span>Créer le compte</b><span>Comme le Guide 1.</span></div>
+    <div><b><span class="num">1</span>Votre façon de travailler</b><span>« ERP » → <b>Oui</b>, « Production » → <b>Oui</b>.</span></div>
+    <div><b><span class="num">2–4</span>Site, déchets, prestataire</b><span>Comme les Guides 1 et 2.</span></div>
+    <div><b><span class="num">E1</span>Importer les exports</b><span>Matières, articles, puis OF : un fichier à la fois.</span></div>
+    <div><b><span class="num">E2</span>Les colonnes, une seule fois</b><span>DivaWaste les retient pour les fois suivantes.</span></div>
+    <div><b><span class="num">E3</span>Les déchets avec leur OF</b><span>Le registre des déchets, chaque lot à son OF.</span></div>
+    <div><b><span class="num">E4</span>Chaque nuit, tout seul</b><span>DivaWaste lit l'export de l'ERP vers 4 h.</span></div>
+    <div><b><span class="num">E5</span>En direct, par l'API</b><span>Une clé d'accès pour l'ERP.</span></div>
+    <div><b><span class="num">E6</span>Ce qui change ensuite</b><span>Les données de l'ERP se modifient dans l'ERP.</span></div>
+    <div><b><span class="num">✓</span>Fiche de test</b><span>Cochez ce qui marche, notez ce qui gêne.</span></div>
+  </div>
+  <div class="box info"><b>Trois chemins, un seul à choisir.</b> <b>Le fichier</b> (E1–E3) : vous exportez, vous importez, quand vous voulez. <b>Chaque nuit</b> (E4) : l'ERP publie l'export à une adresse, DivaWaste le lit seul. <b>L'API</b> (E5) : l'ERP envoie ses données au fil de l'eau. Commencez par le fichier : il fixe les colonnes que les deux autres réutilisent.</div>
+  <div class="foot"><span>DivaWaste · Guide 3 — Avec ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ A + 1-4 -->
+<section class="page">
+  <h2 class="part">A–4. Le compte et la mise en route <small>Détail pas à pas : Guide 1 ; production : Guide 2</small></h2>
+  <ol class="do"><li><b>Créer un compte</b> › <b>Industriel</b> › société, <b>Secteur d'activité</b>, vous, formule. Confirmez l'email ; Diva Software valide la société.</li>
+    <li><b>Accueil › Mise en route</b>, étape 1 : répondez <b>Oui</b> à « Avez-vous un ERP ? » <b>et</b> à « Suivez-vous la production ? ». <b>Enregistrer mes réponses</b>.</li></ol>
+  <div class="shot half"><img src="img4/12-questions.jpg"></div>
+  <ol class="do" start="3"><li>Le site (ici <b>Usine de Nabeul</b>, avec les zones <b>Tricotage</b> et <b>Confection</b>), les types de déchets (Déchets de fil, Rebuts de confection, Cartons), le prestataire : comme le Guide 1.</li></ol>
+  <div class="box see"><b>✔ Vous devez voir</b> le menu <b>Production</b> (Fabrication, Référentiel, Analyse), et en bas de la Mise en route, <b>trois</b> façons de faire arriver les données :</div>
+  <div class="shot half"><img src="img4/29-data-ways.jpg"></div>
+  <div class="foot"><span>DivaWaste · Guide 3 — Avec ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ E1 -->
+<section class="page">
+  <h2 class="part">E. Les données de l'ERP</h2>
+  <div class="step">
+    <h3><span class="n">E1</span>Importer les exports, dans l'ordre</h3>
+    <p><b>Accueil › Mise en route</b> › « <b>Importer un fichier Excel ou CSV</b> ». La page dit d'abord <b>ce que contient le fichier</b> :</p>
+    <div class="shot half"><img src="img4/70-prod-import.jpg"></div>
+    <table>
+      <tr><th>Ordre</th><th>Fichier de l'ERP</th><th>À choisir</th></tr>
+      <tr><td>1</td><td>Les matières premières (référence, unité, grammage, laize)</td><td class="ans">Matières premières</td></tr>
+      <tr><td>2</td><td>Les articles (référence, matière, consommation par pièce)</td><td class="ans">Articles</td></tr>
+      <tr><td>3</td><td>Les ordres de fabrication (une ligne par étape)</td><td class="ans">Ordres de fabrication</td></tr>
+      <tr><td>+</td><td>Clients, commandes, lots reçus, dépenses, factures (facultatif)</td><td>leur case</td></tr>
+    </table>
+    <div class="box tip"><b>Pourquoi cet ordre ?</b> Un article cite sa matière ; un OF cite son article. Ce qui est cité doit exister avant. Pas d'export ? <b>Télécharger un modèle vide</b> donne un fichier avec les bonnes colonnes.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 3 — Avec ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <p><b>1 — Les matières premières.</b> Choisissez la case <b>Matières premières</b>, puis le fichier (ici <i>erp-1-matieres.xlsx</i>, exporté de l'ERP).</p>
+    <table class="xl">
+      <tr><th>Référence interne</th><th>Désignation</th><th>Unité</th><th>Catégorie</th><th>Grammage</th><th>Laize</th></tr>
+      <tr><td>JER-180</td><td>Jersey coton 180 g</td><td>m</td><td>Tissu</td><td>180</td><td>160</td></tr>
+      <tr><td>FIL-COT30</td><td>Fil coton 30/1</td><td>kg</td><td>Fil</td><td></td><td></td></tr>
+    </table>
+    <p><b>2. Où se trouve chaque information ?</b> DivaWaste propose une colonne pour chaque information. Ici, il n'a pas reconnu « Référence interne » : <b>Référence *</b> affichait « Absente du fichier ». Ouvrez la liste et choisissez la colonne <b>Référence interne</b>. Une information marquée <b>*</b> est obligatoire.</p>
+    <div class="shot"><img src="img4/71-map.jpg"></div>
+    <p><b>Vérifier sans importer</b>, puis <b>Importer</b> : « Sur 2 ligne(s) : 2 créée(s) ». Recommencez avec le fichier des <b>Articles</b> (même chose pour sa colonne Référence).</p>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 3 — Avec ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <p><b>3 — Les ordres de fabrication.</b> Une ligne par étape de l'OF, avec les pièces réalisées et la matière consommée à cette étape :</p>
+    <table class="xl">
+      <tr><th>N° OF</th><th>Produit</th><th>Qté prévue</th><th>Qté produite</th><th>Début</th><th>Opération</th><th>Usine</th><th>Pièces réalisées</th><th>Composant</th><th>Qté consommée</th></tr>
+      <tr><td>OF-24117</td><td>POLO-200</td><td>800</td><td>760</td><td>20/10/2026</td><td>Tricotage</td><td>Usine de Nabeul</td><td>760</td><td>JER-180</td><td>735</td></tr>
+      <tr><td>OF-24118</td><td>TS-100</td><td>1200</td><td>1150</td><td>22/10/2026</td><td>Confection</td><td>Usine de Nabeul</td><td>1150</td><td>JER-180</td><td>700</td></tr>
+    </table>
+    <p>Ici, deux colonnes sont à choisir à la main : <b>Article *</b> ← « Produit », et <b>Matière consommée</b> ← « Composant ». Le reste est reconnu (N° OF, Qté prévue, Opération = Étape, Usine = Site…).</p>
+    <div class="shot half"><img src="img4/73-map.jpg"></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 3 — Avec ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <p><b>Une ligne en erreur ?</b> Elle est écartée et expliquée, avec son numéro de ligne ; les autres sont importées. Exemple réel pendant le test : l'étape « Tricotage » n'existait pas encore (elle a été ajoutée depuis) :</p>
+    <div class="shot"><img src="img4/73-done.jpg"></div>
+    <p>Corrigez le fichier (ou faites corriger DivaWaste) et <b>réimportez le même fichier</b> : ce qui est déjà importé n'est pas doublé.</p>
+    <div class="shot"><img src="img4/74-done.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> « 1 créée(s), 0 mise(s) à jour, <b>1 sans changement</b> » : OF-24117 est créé, OF-24118 (déjà là) n'est pas recréé. Si une quantité a changé dans l'ERP, la ligne est « mise à jour ».</div>
+  </div>
+  <div class="step">
+    <h3><span class="n">E2</span>Les colonnes, une seule fois</h3>
+    <p>Au fichier suivant du même genre, DivaWaste retrouve les colonnes choisies la dernière fois, par leur titre. Il l'écrit en vert :</p>
+    <div class="shot"><img src="img4/74-map.jpg"></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 3 — Avec ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ E3 -->
+<section class="page">
+  <div class="step">
+    <h3><span class="n">E3</span>Les déchets, chacun avec son OF</h3>
+    <p>Le registre des déchets s'importe par <b>Déchets › Lots › Importer</b> (Guide 1, partie D). Avec une colonne <b>N° d'OF</b>, chaque lot est rattaché à son ordre de fabrication :</p>
+    <table class="xl">
+      <tr><th>Date</th><th>Site</th><th>Zone</th><th>Type de déchet</th><th>Poids (kg)</th><th>N° d'OF</th><th>Référence</th></tr>
+      <tr><td>23/10/2026</td><td>Usine de Nabeul</td><td>Tricotage</td><td>Déchets de fil</td><td>22</td><td>OF-24117</td><td>DCH-501</td></tr>
+      <tr><td>27/10/2026</td><td>Usine de Nabeul</td><td>Confection</td><td>Rebuts de confection</td><td>15</td><td>OF-24118</td><td>DCH-502</td></tr>
+    </table>
+    <div class="shot"><img src="img4/75-map.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> « 2 créée(s) », puis dans <b>Déchets › Lots</b> : L-2026-000001 (Déchets de fil, NAB · Tricotage, 22 kg, 23/10/2026) et L-2026-000002 (Rebuts de confection, NAB · Confection, 15 kg).</div>
+    <div class="box tip"><b>Sans n° d'OF ?</b> Le lot compte quand même : si sa zone est une étape (Tricotage), son poids est réparti entre les OF présents à cette étape ce jour-là (« Estimé » dans Analyse, Guide 2 P6).</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 3 — Avec ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ E4 -->
+<section class="page">
+  <div class="step">
+    <h3><span class="n">E4</span>Chaque nuit, tout seul</h3>
+    <p>Si l'ERP peut <b>publier un export à une adresse https</b> (une tâche planifiée, un lien de partage), DivaWaste le lit chaque nuit vers 4 h : plus de fichier à envoyer.</p>
+    <ol class="do"><li>D'abord, importez ce même export <b>une fois à la main</b> (E1) : les colonnes choisies seront réutilisées chaque nuit.</li>
+      <li>En bas de la page d'import, <b>Chaque nuit, depuis une adresse</b> : choisissez ce que contient l'export (ici « Ordres de fabrication »), collez l'adresse, cliquez sur <b>Lire chaque nuit</b>.</li></ol>
+    <div class="shot"><img src="img4/80-feed.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> une ligne par export lu chaque nuit, avec un interrupteur (lecture en marche ou arrêtée), <b>Lire maintenant</b>, et la dernière lecture : « Dernière lecture : N créé(s), N mis à jour, N ligne(s) en erreur ».</div>
+    <div class="box warn"><b>Lignes en erreur la nuit ?</b> Elles sont ignorées et signalées dans <b>À traiter</b> (Accueil). « Colonnes devinées d'après les titres » : importez le fichier une fois à la main pour les fixer.</div>
+    <div class="box info"><b>Pendant ce test,</b> l'adresse de l'exemple n'existe pas : elle a été saisie sans être enregistrée. Testez avec l'adresse réelle de votre ERP.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 3 — Avec ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ E5 -->
+<section class="page">
+  <div class="step">
+    <h3><span class="n">E5</span>En direct, par l'API</h3>
+    <p>L'ERP peut aussi <b>envoyer</b> ses OF, commandes et matières à DivaWaste au fil de l'eau. C'est le travail de la personne qui relie l'ERP ; vous lui donnez une <b>clé d'accès</b>.</p>
+    <ol class="do"><li><b>Paramètres › Clés d'accès API</b> (ou Mise en route › « En direct, par l'API »).</li>
+      <li><b>Nom de la clé</b> : à quoi elle sert (« ERP Odoo — Bonneterie Cap Bon »). <b>Créer une clé</b>.</li></ol>
+    <div class="shot"><img src="img4/82-api-key-new.jpg"></div>
+    <ol class="do" start="3"><li>La clé s'affiche <b>une seule fois</b> : cliquez sur <b>Copier</b> et transmettez-la de façon sûre, avec l'adresse de l'API et le lien <b>Documentation de l'API</b> (page d'import).</li></ol>
+    <div class="shot"><img src="img4/83-api-key-created.jpg"></div>
+    <p class="cap">La clé est floutée ici : ne la montrez jamais, ne l'envoyez pas par un canal public.</p>
+    <div class="box see"><b>✔ Vous devez voir</b> la clé dans la liste : nom, créée par, <b>Dernière utilisation</b> (« Jamais » tant que l'ERP ne l'a pas utilisée), <b>Expire le</b> (un an), bouton <b>Révoquer</b>.</div>
+    <div class="box warn"><b>Une clé agit avec vos droits</b>, pour cette société seulement, pendant un an. Révoquez-la dès qu'elle ne sert plus (changement d'ERP, départ du prestataire informatique).</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 3 — Avec ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ E6 -->
+<section class="page">
+  <div class="step">
+    <h3><span class="n">E6</span>Ce qui change ensuite</h3>
+    <p>Avec un ERP, les pages de production rappellent d'où viennent les données :</p>
+    <div class="shot half"><img src="img4/84-of-list.jpg"></div>
+    <div class="box info"><b>« Ces données viennent de votre ERP : modifiez-les dans l'ERP, le prochain import les mettra à jour ici. »</b> Une correction faite seulement dans DivaWaste serait écrasée au prochain import. En cas d'urgence : <b>Corriger ici quand même</b>.</div>
+    <p>Le reste est comme dans le Guide 2 : la page de l'OF, ses déchets, son taux de chute ; <b>Analyse</b> pour tous les OF.</p>
+    <div class="two"><div class="shot"><img src="img4/85-of-detail.jpg"></div><div class="shot"><img src="img4/86-stats.jpg"></div></div>
+    <div class="box see"><b>✔ Vous devez voir</b> OF-24117 : <b>760 / 800</b>, <b>22 kg</b> de déchets, <b>10,4 %</b> de la matière consommée. Analyse : 37 kg mesurés, <b>19,4 g</b> par pièce pour 1 910 pièces.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 3 — Avec ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ TEST -->
+<section class="page">
+  <h2 class="part">Fiche de test</h2>
+  <p class="lead" style="margin-bottom:2mm">Cochez chaque résultat obtenu, notez ce qui a gêné.</p>
+  <table class="check">
+    <tr><th></th><th>Étape</th><th>Résultat attendu</th></tr>
+    <tr><td>☐</td><td>1 Activité</td><td>ERP Oui + Production Oui : menu Production ; trois façons d'arriver (fichier, chaque nuit, API).</td></tr>
+    <tr><td>☐</td><td>E1 Matières</td><td>Une colonne non reconnue se choisit à la main ; « 2 créée(s) ».</td></tr>
+    <tr><td>☐</td><td>E1 OF</td><td>Une ligne en erreur est expliquée avec son n° de ligne ; les autres sont importées.</td></tr>
+    <tr><td>☐</td><td>Réimport</td><td>Le même fichier réimporté : « sans changement », rien n'est doublé.</td></tr>
+    <tr><td>☐</td><td>E2 Colonnes</td><td>« Colonnes retrouvées depuis le dernier import » au fichier suivant.</td></tr>
+    <tr><td>☐</td><td>E3 Déchets</td><td>Les lots importés avec un n° d'OF apparaissent sur la page de cet OF.</td></tr>
+    <tr><td>☐</td><td>E4 Chaque nuit</td><td>L'export ajouté apparaît avec son interrupteur et « Lire maintenant » ; la lecture donne un résultat.</td></tr>
+    <tr><td>☐</td><td>E5 Clé API</td><td>La clé s'affiche une fois ; « Révoquer » la rend inutilisable.</td></tr>
+    <tr><td>☐</td><td>E6 ERP</td><td>Le bandeau « Ces données viennent de votre ERP » sur les pages de production.</td></tr>
+    <tr><td>☐</td><td>Assistant</td><td>Sa carte et son bouton mènent au bon endroit.</td></tr>
+  </table>
+  <div class="remarks" style="height:60mm">Mes remarques…</div>
+  <div class="foot"><span>DivaWaste · Guide 3 — Avec ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<script>
+  document.querySelectorAll('.page').forEach((page, i) => { const pg = page.querySelector('.pg'); if (pg) pg.textContent = String(i + 1); });
+</script>
+</body>
+</html>

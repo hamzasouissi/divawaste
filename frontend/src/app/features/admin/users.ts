@@ -11,6 +11,7 @@ import { AutoFocus } from 'primeng/autofocus';
 import { Api } from '../../core/api/api';
 import { AccessSite, Invitation, Member, RoleDefinition } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
+import { ActivatedRoute } from '@angular/router';
 import { Toast } from '../../core/feedback/toast';
 import { DatePipe, LocalizedPipe, TermPipe } from '../../core/format/pipes';
 import { Confirm } from '../../ui/confirm';
@@ -21,6 +22,7 @@ import { SearchComponent } from '../../ui/search';
 import { StateComponent } from '../../ui/state';
 import { CheckboxComponent } from '../../ui/checkbox';
 import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
+import { SegmentedComponent } from '../../ui/more';
 import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
 import { MenuAction, MenuComponent } from '../../ui/menu';
@@ -65,7 +67,7 @@ interface RolesDialogData {
                 @for (site of data.sites; track site.ulid) { <dw-option [value]="site.ulid" [label]="site.name" /> }
               </dw-select>
             </dw-field>
-            <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="remove(index)" [attr.aria-label]="t('common.remove')"><dw-icon>delete</dw-icon></button>
+            <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="remove(index)" [attr.aria-label]="t('common.remove')" [title]="t('common.remove')"><dw-icon>delete</dw-icon></button>
           </div>
         }
         <button pButton text type="button" (click)="add()"><dw-icon>add</dw-icon>{{ t('admin.users.addAssignment') }}</button>
@@ -136,6 +138,7 @@ export class MemberRolesDialog {
               <dw-select formControlName="role">
                 @for (role of data.roles; track role.name) { <dw-option [value]="role.name" [label]="role.label | dwLocalized: role.name" /> }
               </dw-select>
+              @if (systemRole(); as name) { <small dwHint>{{ t('admin.users.roleHints.' + name) }}</small> }
             </dw-field>
             @if (data.sites.length > 0) {
               <dw-field [label]="t('admin.users.sites')">
@@ -161,6 +164,12 @@ export class MemberRolesDialog {
   styles: '.dw-dialog-body { min-width: min(560px, 80vw); }',
 })
 export class InviteDialog {
+  /** U-02: a standard role is explained in one sentence under the selector. */
+  protected systemRole(): string | null {
+    const name = this.form.controls.role.value;
+    return this.data.roles.find((role) => role.name === name)?.is_system ? name : null;
+  }
+
   protected readonly data = dialogData<{ roles: RoleDefinition[]; sites: AccessSite[] }>();
   private readonly ref = inject(DialogRef);
   private readonly api = inject(Api);
@@ -204,7 +213,7 @@ export class InviteDialog {
  */
 @Component({
   imports: [
-    TermPipe, FormsModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, InputText, ...FIELD, CheckboxComponent, FilterBarComponent, MenuComponent, Tabs, TabList, Tab, TabPanels, TabPanel,
+    TermPipe, FormsModule, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, InputText, ...FIELD, CheckboxComponent, SegmentedComponent, FilterBarComponent, MenuComponent, Tabs, TabList, Tab, TabPanels, TabPanel,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -214,17 +223,34 @@ export class InviteDialog {
       </dw-page-header>
 
       <div class="dw-panel">
-        <p-tabs [value]="0" (valueChange)="$event === 1 && loadInvitations()">
+        <p-tabs [value]="0">
           <p-tablist>
             <p-tab [value]="0">{{ t('admin.users.members') }}</p-tab>
-            <p-tab [value]="1">{{ t('admin.users.invitations') }}</p-tab>
             <p-tab [value]="2">{{ t('admin.users.roles') }}</p-tab>
           </p-tablist>
           <p-tabpanels>
             <p-tabpanel [value]="0">
+              <!-- U-01: who was invited and has not joined yet, above the members, with what can be done. -->
+              @if (pending().length > 0) {
+                <div class="pending">
+                  <h3 class="dw-label">{{ t('admin.users.pendingInvitations', { count: pending().length }) }}</h3>
+                  @for (i of pending(); track i.ulid) {
+                    <div class="invite-row">
+                      <span class="ico"><dw-icon>mail</dw-icon></span>
+                      <span class="who"><strong>{{ i.email }}</strong><span class="dw-faint">{{ roleLabel(i.role) | dwLocalized: i.role }} · {{ t('admin.users.expires', { date: (i.expires_at | dwDate) }) }}</span></span>
+                      <dw-status kind="invitation" [value]="i.status" />
+                      @if (canInvite) {
+                        <button pButton severity="secondary" outlined size="small" type="button" [disabled]="busy()" (click)="resend(i)">{{ t('admin.users.resend') }}</button>
+                        <button pButton text size="small" type="button" [disabled]="busy()" (click)="revoke(i)">{{ t('admin.users.revoke') }}</button>
+                      }
+                    </div>
+                  }
+                </div>
+              }
               <dw-filter-bar [active]="members.activeCount()" (cleared)="members.resetFilter()"><dw-search [placeholder]="t('common.search')" [query]="members.filter().search ?? ''" (queryChange)="members.setFilter({ search: $event })" /></dw-filter-bar>
               <dw-data-table [columns]="memberColumns" [rows]="members.rows()" [loading]="members.loading()" [error]="members.error()" [total]="members.total()"
                 [pageIndex]="members.page() - 1" [pageSize]="members.perPage()" emptyIcon="group" [emptyTitle]="t('common.noResult')"
+                [clickable]="canManage" (rowClick)="editRoles($event)"
                 (page)="members.setPage($event.pageIndex + 1, $event.pageSize)" (retry)="members.reload()">
                 <ng-template dwCell="name" let-m>
                   <strong>{{ m.first_name }} {{ m.last_name }}</strong><div class="dw-faint">{{ m.email }}</div>
@@ -239,29 +265,13 @@ export class InviteDialog {
                 <ng-template dwCell="status" let-m><dw-status kind="member" [value]="m.status" /></ng-template>
                 <ng-template dwCell="actions" let-m>
                   @if (canManage) {
-                    <button pButton text rounded severity="secondary" size="small" class="dw-icon-btn" type="button" (click)="menu.open($event, memberActions(m))" [attr.aria-label]="t('common.actions') + ' — ' + m.first_name + ' ' + m.last_name" aria-haspopup="menu"><dw-icon>more_horiz</dw-icon></button>
+                    <button pButton text rounded severity="secondary" size="small" class="dw-icon-btn" type="button" (click)="$event.stopPropagation(); menu.open($event, memberActions(m))" [attr.aria-label]="t('common.actions') + ' — ' + m.first_name + ' ' + m.last_name" aria-haspopup="menu" [title]="t('common.actions') + ' — ' + m.first_name + ' ' + m.last_name"><dw-icon>more_horiz</dw-icon></button>
                   }
                 </ng-template>
               </dw-data-table>
             </p-tabpanel>
   
-            <p-tabpanel [value]="1">
-              <dw-data-table [columns]="invitationColumns" [rows]="invitations()" [loading]="invitationsLoading()" [error]="invitationsError()" emptyIcon="mail"
-                [emptyTitle]="t('common.empty')" (retry)="loadInvitations()">
-                <ng-template dwCell="who" let-i><strong>{{ i.email }}</strong><div class="dw-faint">{{ i.first_name }} {{ i.last_name }}</div></ng-template>
-                <ng-template dwCell="role" let-i>{{ roleLabel(i.role) | dwLocalized: i.role }}</ng-template>
-                <ng-template dwCell="expires" let-i>{{ i.expires_at | dwDate: 'datetime' }}<div class="dw-faint">{{ t('admin.users.sent', { count: i.send_count }) }}</div></ng-template>
-                <ng-template dwCell="status" let-i><dw-status kind="invitation" [value]="i.status" /></ng-template>
-                <ng-template dwCell="actions" let-i>
-                  @if (canInvite && i.status !== 'accepted') {
-                    <div class="dw-row-tight">
-                      <button pButton severity="secondary" outlined type="button" [disabled]="busy()" (click)="resend(i)">{{ t('admin.users.resend') }}</button>
-                      <button pButton text type="button" [disabled]="busy()" (click)="revoke(i)">{{ t('admin.users.revoke') }}</button>
-                    </div>
-                  }
-                </ng-template>
-              </dw-data-table>
-            </p-tabpanel>
+
   
             <p-tabpanel [value]="2">
               <dw-state [loading]="!payload() && !rolesError()" [error]="rolesError()" (retry)="loadRoles()">
@@ -279,12 +289,14 @@ export class InviteDialog {
   
                     <div class="role-detail">
                       @if (creating()) {
-                        <div class="dw-form">
-                          <dw-field [label]="t('admin.users.roleName')"><input pInputText [ngModel]="draftName()" (ngModelChange)="draftName.set($event)" pattern="[a-z][a-z0-9_]*" maxlength="60" /></dw-field>
-                          <dw-field [label]="t('admin.users.roleLabel')"><input pInputText [ngModel]="draftLabel()" (ngModelChange)="draftLabel.set($event)" maxlength="100" /></dw-field>
-                        </div>
+                        <!-- The identifier follows the name given; it is shown, not asked. -->
+                        <dw-field class="label" [label]="t('admin.users.roleLabel')">
+                          <input pInputText [ngModel]="draftLabel()" (ngModelChange)="nameRole($event)" maxlength="100" />
+                          @if (draftName()) { <small dwHint>{{ t('admin.users.roleNameIs', { name: draftName() }) }}</small> }
+                        </dw-field>
                       } @else if (selected(); as role) {
                         @if (role.is_system) {
+                          <p class="role-says">{{ t('admin.users.roleHints.' + role.name) }}</p>
                           <p class="dw-muted">{{ t('admin.users.systemHint') }}</p>
                         } @else if (canRoles) {
                           <dw-field class="label" [label]="t('admin.users.roleLabel')"><input pInputText [ngModel]="draftLabel()" (ngModelChange)="draftLabel.set($event)" maxlength="100" /></dw-field>
@@ -292,19 +304,36 @@ export class InviteDialog {
                       }
   
                       <h3 class="dw-label">{{ t('admin.users.permissions') }}</h3>
-                      <div class="modules">
+                      <!-- U-02: one choice per area (none, see, manage); the single permissions stay one click away. -->
+                      <div class="areas">
                         @for (group of modules(); track group.module) {
-                          <fieldset>
-                            <legend>{{ group.module | dwTerm: 'terms.modules' }}</legend>
-                            @for (permission of group.permissions; track permission.name) {
-                              <dw-checkbox [checked]="draft().has(permission.name)" [disabled]="!editable()" (checkedChange)="toggle(permission.name, $event)">
-                                {{ permission.name | dwTerm: 'permissions' }}
-                              </dw-checkbox>
+                          @let current = level(group);
+                          <div class="area" [class.open]="opened().has(group.module)">
+                            <div class="area-row">
+                              <span class="area-name">{{ group.module | dwTerm: 'terms.modules' }}</span>
+                              @if (editable()) {
+                                <dw-segmented [options]="levelOptions(group, t)" [value]="current" (valueChange)="setLevel(group, $event)" [ariaLabel]="group.module | dwTerm: 'terms.modules'" />
+                              } @else {
+                                <span class="level" [class]="current">{{ t('admin.users.levels.' + current) }}</span>
+                              }
+                              <button type="button" class="detail" (click)="toggleOpen(group.module)" [attr.aria-expanded]="opened().has(group.module)">
+                                {{ current === 'custom' ? t('admin.users.levels.customCount', { count: countIn(group), total: group.permissions.length }) : t('admin.users.detail') }}
+                                <dw-icon aria-hidden="true">expand_more</dw-icon>
+                              </button>
+                            </div>
+                            @if (opened().has(group.module)) {
+                              <div class="area-perms">
+                                @for (permission of group.permissions; track permission.name) {
+                                  <dw-checkbox [checked]="draft().has(permission.name)" [disabled]="!editable()" (checkedChange)="toggle(permission.name, $event)">
+                                    {{ permission.name | dwTerm: 'permissions' }}
+                                  </dw-checkbox>
+                                }
+                              </div>
                             }
-                          </fieldset>
+                          </div>
                         }
                       </div>
-  
+
                       @if (editable()) {
                         <div class="dw-form-actions">
                           @if (!creating()) { <button pButton text type="button" [disabled]="busy()" (click)="deleteRole()">{{ t('common.delete') }}</button> }
@@ -323,6 +352,11 @@ export class InviteDialog {
     </ng-container>
   `,
   styles: `
+    .pending { display: grid; gap: 6px; padding: 14px 16px; border-block-end: 1px solid var(--dw-line-soft); background: var(--dw-surface-2); }
+    .invite-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 0; }
+    .invite-row .ico { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--dw-warning-soft); color: var(--dw-warning); }
+    .invite-row .who { display: flex; flex-direction: column; flex: 1; min-width: 180px; font-size: 13px; }
+    .role-says { margin: 0 0 8px; padding: 12px 14px; border-radius: 10px; background: var(--dw-primary-soft); font-size: 13.5px; }
     .chip { display: inline-block; margin: 1px 6px 1px 0; padding: 1px 8px; border-radius: 999px; background: var(--dw-neutral-soft); font-size: 12px; white-space: nowrap; }
     .roles { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 420px; }
     .role-list { display: flex; flex-direction: column; border-inline-end: 1px solid var(--dw-line-soft); padding: var(--dw-2); gap: 2px; }
@@ -333,9 +367,18 @@ export class InviteDialog {
     .role-list .new { flex-direction: row; align-items: center; gap: 6px; color: var(--dw-primary); }
     .role-detail { padding: var(--dw-4); display: grid; gap: var(--dw-3); align-content: start; }
     .role-detail .label { max-width: 360px; }
-    .modules { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--dw-3); }
-    fieldset { border: 1px solid var(--dw-line-soft); border-radius: var(--dw-radius); padding: 4px 8px 8px; margin: 0; display: grid; }
-    legend { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dw-ink-2); padding-inline: 4px; }
+    .areas { display: grid; border: 1px solid var(--dw-line-soft); border-radius: var(--dw-radius-lg); overflow: hidden; }
+    .area + .area { border-block-start: 1px solid var(--dw-line-soft); }
+    .area-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 14px; min-height: 48px; }
+    .area-name { flex: 1; min-width: 160px; font-weight: 600; font-size: 13.5px; }
+    .area.open { background: var(--dw-surface-2); }
+    .detail { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 2px; font-size: 12.5px; color: var(--dw-ink-3); border-radius: 6px; padding: 2px 4px; }
+    .detail:hover { color: var(--dw-ink); } .detail:focus-visible { outline: 2px solid var(--dw-focus); }
+    .detail dw-icon { font-size: 18px; transition: transform 160ms var(--dw-ease); } .area.open .detail dw-icon { transform: rotate(180deg); }
+    .area-perms { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 2px 16px; padding: 0 14px 12px; animation: dw-rise 160ms var(--dw-ease); }
+    .level { font-size: 12.5px; padding: 2px 10px; border-radius: 999px; background: var(--dw-neutral-soft); color: var(--dw-ink-2); }
+    .level.manage { background: var(--dw-primary-soft); color: var(--dw-primary-strong); }
+    .level.none { color: var(--dw-ink-3); }
     @media (max-width: 900px) { .roles { grid-template-columns: minmax(0, 1fr); } .role-list { border-inline-end: 0; border-block-end: 1px solid var(--dw-line-soft); } }
   `,
 })
@@ -347,6 +390,7 @@ export class UsersPage {
   private readonly dialog = inject(Dialogs);
 
   protected readonly canInvite = this.session.can('users.invite');
+  private inviteAsked = !!inject(ActivatedRoute).snapshot.queryParamMap.get('invite');
   protected readonly canManage = this.session.can('users.manage');
   protected readonly canRoles = this.session.can('roles.manage');
   protected readonly busy = signal(false);
@@ -374,6 +418,7 @@ export class UsersPage {
   }
 
   protected readonly invitations = signal<Invitation[]>([]);
+  protected readonly pending = computed(() => this.invitations().filter((invitation) => invitation.status === 'pending' || invitation.status === 'expired'));
   protected readonly invitationsLoading = signal(false);
   protected readonly invitationsError = signal<unknown>(null);
   protected readonly invitationColumns: Column<Invitation>[] = [
@@ -403,8 +448,82 @@ export class UsersPage {
     return [...groups.entries()].map(([module, permissions]) => ({ module, permissions }));
   });
 
+  /** Areas whose single permissions are shown. */
+  protected readonly opened = signal<Set<string>>(new Set());
+
+  /** "Voir" is every permission of the area that only reads (…view); "Gérer" is all of them. */
+  private static reads(permission: Permission): boolean {
+    return permission.name.endsWith('.view');
+  }
+
+  protected level(group: { permissions: Permission[] }): 'none' | 'view' | 'manage' | 'custom' {
+    const held = group.permissions.filter((permission) => this.draft().has(permission.name));
+    if (held.length === 0) {
+      return 'none';
+    }
+    if (held.length === group.permissions.length) {
+      return 'manage';
+    }
+    const reads = group.permissions.filter(UsersPage.reads);
+    return reads.length > 0 && held.length === reads.length && held.every(UsersPage.reads) ? 'view' : 'custom';
+  }
+
+  protected countIn(group: { permissions: Permission[] }): number {
+    return group.permissions.filter((permission) => this.draft().has(permission.name)).length;
+  }
+
+  protected levelOptions(group: { permissions: Permission[] }, t: (key: string) => string): { value: string; label: string }[] {
+    const reads = group.permissions.filter(UsersPage.reads).length;
+    const options = [{ value: 'none', label: t('admin.users.levels.none') }];
+    // "Voir" only where it differs from both ends: an area that has reads and other permissions.
+    if (reads > 0 && reads < group.permissions.length) {
+      options.push({ value: 'view', label: t('admin.users.levels.view') });
+    }
+    options.push({ value: 'manage', label: t(reads === group.permissions.length ? 'admin.users.levels.view' : 'admin.users.levels.manage') });
+    if (this.level(group) === 'custom') {
+      options.push({ value: 'custom', label: t('admin.users.levels.custom') });
+    }
+
+    return options;
+  }
+
+  protected setLevel(group: { module: string; permissions: Permission[] }, level: string | null): void {
+    if (level === 'custom' || level === null) {
+      this.toggleOpen(group.module, true);
+      return;
+    }
+    this.draft.update((current) => {
+      const next = new Set(current);
+      for (const permission of group.permissions) {
+        if (level === 'manage' || (level === 'view' && UsersPage.reads(permission))) {
+          next.add(permission.name);
+        } else {
+          next.delete(permission.name);
+        }
+      }
+
+      return next;
+    });
+  }
+
+  protected toggleOpen(module: string, open?: boolean): void {
+    this.opened.update((current) => {
+      const next = new Set(current);
+      if (open ?? !next.has(module)) {
+        next.add(module);
+      } else {
+        next.delete(module);
+      }
+
+      return next;
+    });
+  }
+
   constructor() {
     this.loadRoles();
+    if (this.canInvite || this.session.can('users.view')) {
+      this.loadInvitations();
+    }
   }
 
   protected roleLabel(name: string): RoleDefinition['label'] {
@@ -419,6 +538,11 @@ export class UsersPage {
         const current = payload.roles.find((role) => role.name === this.selectedName()) ?? payload.roles[0];
         if (current && !this.creating()) {
           this.select(current);
+        }
+        // Arrived from the start-up guide: the invitation opens at once.
+        if (this.inviteAsked && this.canInvite) {
+          this.inviteAsked = false;
+          void this.invite();
         }
       },
       error: (error: unknown) => this.rolesError.set(error),
@@ -480,6 +604,12 @@ export class UsersPage {
     this.selectedName.set(role.name);
     this.draft.set(new Set(role.permissions));
     this.draftLabel.set(role.label?.['fr'] ?? role.name);
+  }
+
+  protected nameRole(label: string): void {
+    this.draftLabel.set(label);
+    const slug = label.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 50);
+    this.draftName.set(slug === '' ? '' : /^[a-z]/.test(slug) ? slug : `role_${slug}`);
   }
 
   protected startCreate(): void {

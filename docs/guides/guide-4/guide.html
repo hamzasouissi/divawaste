@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Guide 4 — Référence</title>
+<style>
+  @page { size: A4; margin: 0; }
+  :root { --green: #0f5a4f; --green-2: #16796a; --soft: #e8f3f0; --ink: #16222b; --ink-2: #45525c; --line: #d9e2e0; --red: #c62f32; --amber: #9a5b00; --amber-soft: #fff4dc; --blue-soft: #eef3fb; --blue: #2f5ea8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", Inter, Arial, sans-serif; color: var(--ink); font-size: 11.4pt; line-height: 1.48; }
+  .page { width: 210mm; height: 297mm; overflow: hidden; padding: 15mm 17mm 14mm; page-break-after: always; position: relative; }
+  .page:last-child { page-break-after: auto; }
+  .foot { position: absolute; bottom: 8mm; left: 17mm; right: 17mm; display: flex; justify-content: space-between; font-size: 8.5pt; color: #7b8790; border-top: 1px solid var(--line); padding-top: 3mm; }
+
+  .cover { background: linear-gradient(160deg, #0b1c1f 0%, #0f3a35 60%, #16796a 100%); color: #fff; display: flex; flex-direction: column; padding: 22mm 20mm; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15pt; }
+  .brand .logo { width: 34px; height: 34px; border-radius: 9px; background: #2a8f7e; display: grid; place-items: center; font-weight: 800; }
+  .cover .kicker { margin-top: 30mm; font-size: 11pt; letter-spacing: .14em; text-transform: uppercase; color: #9fd8cc; font-weight: 700; }
+  .cover h1 { font-size: 29pt; line-height: 1.12; margin: 4mm 0 5mm; font-weight: 750; }
+  .cover .sub { font-size: 13.5pt; color: #d4ece6; max-width: 150mm; }
+  .robot-cover { position: absolute; right: 20mm; top: 18mm; width: 30mm; height: 30mm; }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8mm; }
+  .tag { padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 10.5pt; }
+  .need { margin-top: auto; background: rgba(255,255,255,.08); border-radius: 14px; padding: 7mm 8mm; }
+  .need h3 { margin: 0 0 3mm; font-size: 12pt; color: #9fd8cc; text-transform: uppercase; letter-spacing: .08em; }
+  .need ul { margin: 0; padding-left: 18px; columns: 2; column-gap: 10mm; }
+  .need li { margin-bottom: 1.5mm; break-inside: avoid; }
+
+  h2.part { font-size: 19pt; margin: 0 0 2mm; color: var(--green); }
+  h2.part small { display: block; font-size: 10.5pt; color: var(--ink-2); font-weight: 500; letter-spacing: .02em; }
+  .lead { color: var(--ink-2); margin: 0 0 5mm; }
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3.5mm; margin: 3mm 0 5mm; }
+  .map div { border: 1px solid var(--line); border-radius: 12px; padding: 3.5mm 5mm; }
+  .map div.extra { border-style: dashed; background: #fafcfc; }
+  .map b { display: block; color: var(--green); font-size: 11pt; } .map span { color: var(--ink-2); font-size: 10pt; }
+  .num { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: var(--green); color: #fff; font-size: 9.5pt; font-weight: 700; margin-right: 6px; }
+  .map .num { color: #fff; }
+  .extra .num { background: #7b8f8b; }
+
+  .step { margin-bottom: 6mm; }
+  .step h3 { display: flex; align-items: center; gap: 8px; font-size: 14pt; margin: 0 0 2.5mm; }
+  .step h3 .n { flex: none; display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 9px; background: var(--green); color: #fff; font-size: 11.5pt; }
+  .step.extra h3 .n { background: #7b8f8b; }
+  ol.do, ul.do { margin: 0 0 3mm; padding-left: 22px; } ol.do li, ul.do li { margin-bottom: 1.2mm; }
+  .shot { margin: 2mm 0 3mm; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; box-shadow: 0 3px 10px rgba(16, 40, 40, .08); }
+  .shot img { display: block; width: 100%; }
+  .shot.half { width: 72%; margin-left: auto; margin-right: auto; }
+  .shot.mid { width: 60%; margin-left: auto; margin-right: auto; }
+  .shot.small { width: 48%; margin-left: auto; margin-right: auto; }
+  .cap { font-size: 9pt; color: #6c7880; margin: -1.5mm 0 3mm; text-align: center; }
+  .box { border-radius: 10px; padding: 3mm 4.5mm; margin: 2mm 0 3mm; font-size: 10.5pt; }
+  .see { background: var(--soft); border-left: 4px solid var(--green); }
+  .see b:first-child { color: var(--green); }
+  .tip { background: #f3f6f8; border-left: 4px solid #8796a0; }
+  .warn { background: var(--amber-soft); border-left: 4px solid var(--amber); }
+  .info { background: var(--blue-soft); border-left: 4px solid var(--blue); }
+  .info b:first-child { color: var(--blue); }
+  .ring { color: var(--red); font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 10.2pt; margin: 2mm 0 3mm; }
+  th, td { text-align: left; padding: 2mm 3mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f3f6f6; font-size: 9.3pt; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  td.ans { font-weight: 700; color: var(--green); white-space: nowrap; }
+  table.xl { font-family: Calibri, "Segoe UI", Arial, sans-serif; font-size: 9.8pt; border: 1px solid #b7c4c1; }
+  table.xl th { background: #e6efe9; color: #1f3b33; text-transform: none; letter-spacing: 0; font-size: 9.8pt; border-right: 1px solid #c9d4d1; }
+  table.xl td { border-right: 1px solid #e0e6e4; padding: 1.4mm 2.5mm; }
+  .check td:first-child { width: 9mm; font-size: 13pt; color: var(--green); }
+  .check td { padding: 1.6mm 3mm; font-size: 9.8pt; }
+  .remarks { border: 1px dashed #b9c6c4; border-radius: 10px; height: 34mm; margin-top: 3mm; padding: 3mm 4mm; color: #9aa6ad; font-size: 10pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; align-items: start; }
+  .who { display: flex; gap: 4mm; align-items: center; }
+  .who svg { flex: none; width: 16mm; height: 16mm; }
+  .badge { display: inline-block; font-size: 8.5pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: #7b8f8b; border-radius: 6px; padding: 1px 7px; vertical-align: middle; margin-left: 6px; }
+</style>
+</head>
+<body>
+
+<!-- the assistant's face, as in the application -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="dg" x1="4" y1="2" x2="36" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1c8a7c"/><stop offset="0.55" stop-color="#0f5c56"/><stop offset="1" stop-color="#0b3f3b"/></linearGradient>
+    <linearGradient id="ds" x1="10" y1="11" x2="30" y2="31" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#bfeee1"/></linearGradient>
+    <symbol id="robot" viewBox="0 0 40 40">
+      <rect x="2" y="2" width="36" height="36" rx="12" fill="url(#dg)"/>
+      <clipPath id="tile"><rect x="2" y="2" width="36" height="36" rx="12"/></clipPath>
+      <rect x="11.5" y="31" width="17" height="10" rx="4.5" fill="#bfeee1" opacity="0.85" clip-path="url(#tile)"/>
+      <line x1="20" y1="7.8" x2="20" y2="11.5" stroke="#bfeee1" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="20" cy="6.6" r="2.1" fill="#7ff5d9"/>
+      <rect x="7" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="29.6" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="9.5" y="11" width="21" height="19.5" rx="6.5" fill="url(#ds)"/>
+      <rect x="12.3" y="14.6" width="15.4" height="10" rx="4.6" fill="#0b3f3b"/>
+      <rect x="15" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <rect x="21.7" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <path d="M17.6 27 Q20 28.5 22.4 27" fill="none" stroke="#0f5c56" stroke-width="1.3" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ============================================================ COVER -->
+<section class="page cover">
+  <div class="brand"><span class="logo">D</span> DivaWaste</div>
+  <svg class="robot-cover"><use href="#robot"/></svg>
+  <div class="kicker">Guide 4 · Référence</div>
+  <h1>Déchets, autorisations,<br>cycle d'un lot, Accueil</h1>
+  <div class="sub">Les gestes communs à toutes les entreprises, avec ou sans ERP, avec ou sans production : à garder sous la main après la mise en route.</div>
+  <div class="tags"><span class="tag">📘 À consulter au besoin</span><span class="tag">🧵 Exemple : Confection Nour</span><span class="tag">🤖 L'assistant virtuel vous guide</span></div>
+  <div class="need">
+    <h3>Ce guide contient</h3>
+    <ul>
+      <li><b>R1</b> — Ajouter et modifier un type de déchet</li>
+      <li><b>R2</b> — Les autorisations de sortie (douane)</li>
+      <li><b>R3</b> — Le cycle de vie d'un lot, avec un prestataire <b>qui a un compte</b></li>
+      <li><b>R4</b> — Le même cycle avec un prestataire <b>sans compte</b></li>
+      <li><b>R5</b> — L'Accueil : chaque valeur et ce qu'elle veut dire</li>
+      <li>Une <b>fiche de test</b></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ R1 -->
+<section class="page">
+  <h2 class="part">R1. Ajouter et modifier un type de déchet</h2>
+  <p class="lead">Le <b>type</b> dit ce qu'est un déchet : son nom, sa famille, son <b>code déchet</b> réglementaire (celui des bordereaux et de la déclaration annuelle), s'il est dangereux, et comment on le mesure. Chaque lot porte un type.</p>
+  <div class="step">
+    <h3><span class="n">1</span>Le plus simple : activer un type du catalogue</h3>
+    <p><b>Paramètres › Types de déchets</b>, onglet <b>Catalogue de référence</b>, bouton <b>Activer</b> (Guide 1, étape 3). Tout est déjà rempli, code déchet compris.</p>
+    <h3 style="margin-top:4mm"><span class="n">2</span>Rien ne correspond : un type personnalisé</h3>
+    <ol class="do"><li>Dans le catalogue, cliquez sur <b>Rien ne correspond ? Créer un type personnalisé</b>.</li></ol>
+    <div class="shot half"><img src="img5/11-catalog-custom.jpg"></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <ol class="do" start="2"><li>Remplissez :</li></ol>
+    <table>
+      <tr><th>Champ</th><th>Exemple</th><th>À savoir</th></tr>
+      <tr><td><b>Code *</b></td><td>COUPONS</td><td>Un nom court, sans espaces, propre à votre société.</td></tr>
+      <tr><td><b>Famille *</b></td><td>Produits textiles</td><td>Fibres et fils, Produits textiles, Emballages, Produits chimiques et boues, Huiles, Métaux, Plastiques, Bois, Autres.</td></tr>
+      <tr><td><b>Nom *</b></td><td>Coupons de tissu</td><td>Le nom vu par tous (lots, enlèvements, Accueil).</td></tr>
+      <tr><td><b>Code déchet</b></td><td>04 02 22</td><td>Le code de la nomenclature. Une <b>*</b> à la fin du code = déchet dangereux.</td></tr>
+      <tr><td><b>Dangereux</b></td><td>non</td><td>Coché, le code déchet devient obligatoire : sans lui, aucun bordereau.</td></tr>
+      <tr><td><b>Unité de suivi *</b></td><td>Kilogramme</td><td>kg, tonne, m³, litre ou pièce : l'unité des lots et des écarts.</td></tr>
+    </table>
+    <div class="shot mid"><img src="img5/12-type-new.jpg"></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <ol class="do" start="3"><li><b>Plus de détails</b> (facultatif) : <b>Mode de mesure</b> (Pesé, Compté, Mesuré en volume, Estimé), <b>Filière habituelle</b> (Réutilisation, Recyclage, Valorisation énergétique, Incinération, Autre traitement, Enfouissement), conditionnement, couleur, grammage, composition par défaut.</li>
+      <li>Si ce déchet ne sort que <b>sous autorisation de la douane</b> : cochez <b>« Ce déchet ne sort du site que sous autorisation »</b>. La case n'apparaît que si le module <b>Autorisations de sortie</b> est allumé (R2).</li>
+      <li><b>Enregistrer</b>.</li></ol>
+    <div class="shot mid"><img src="img5/13-type-more.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> dans <b>Mes types</b> la ligne <b>COUPONS · Coupons de tissu</b>, avec l'étiquette <b>Sous autorisation</b>, 04 02 22, Réutilisation, « Actif ».</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">3</span>Modifier un type</h3>
+    <ol class="do"><li>Onglet <b>Mes types</b> : cliquez sur le <b>nom</b> du type (ici Chutes de coupe). La fenêtre <b>Modifier le type</b> s'ouvre.</li></ol>
+    <div class="shot small"><img src="img5/15a-types-row.jpg"></div>
+    <div class="shot small"><img src="img5/15-type-edit.jpg"></div>
+    <div class="box warn"><b>Ce qui ne change plus.</b> Le <b>code</b>, la <b>famille</b>, le <b>code déchet</b> et la <b>dangerosité</b> sont figés après la création : les lots et les documents réglementaires s'y réfèrent. Seuls le nom, l'unité, la mesure, la filière, le conditionnement, la composition et « sous autorisation » se modifient. Pour un autre code : créez un nouveau type et désactivez l'ancien.</div>
+    <div class="box tip"><b>Désactiver</b> (en bout de ligne) retire le type des nouveaux lots sans rien effacer. « Afficher les types désactivés » les retrouve. <b>Type dangereux sans code</b> ? Un bandeau « Code réglementaire manquant » propose <b>Compléter le code</b> : choisi une fois, il ne change plus.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ R2 -->
+<section class="page">
+  <h2 class="part">R2. Les autorisations de sortie (douane)</h2>
+  <p class="lead">Pour une entreprise sous régime douanier (totalement exportatrice…), certains déchets ne sortent du site qu'avec une <b>déclaration signée par la douane</b> : un type de déchet, une période, une quantité. DivaWaste tient le compte de ce qui est sorti et <b>bloque</b> un enlèvement qui dépasserait l'autorisation.</p>
+  <div class="step">
+    <h3><span class="n">1</span>Allumer le module</h3>
+    <p>Réponse <b>Oui</b> à « Certains déchets sortent-ils sous autorisation de la douane ? » (mise en route), ou <b>Paramètres › Modules et fonctionnement › Autorisations de sortie</b>.</p>
+    <div class="shot half"><img src="img5/02-module-auth-on.jpg"></div>
+    <h3><span class="n">2</span>Marquer les types concernés</h3>
+    <p>Sur chaque type concerné, cochez <b>« Ce déchet ne sort du site que sous autorisation »</b> (R1). Il porte alors l'étiquette <b>Sous autorisation</b>.</p>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">3</span>Saisir l'autorisation reçue</h3>
+    <ol class="do"><li><b>Conformité › Autorisations</b>, bouton <b>Nouvelle autorisation</b>.</li>
+      <li><b>Commencez par le document</b> : <b>Joindre le document signé</b> (PDF, JPG ou PNG). L'assistant le lit et remplit le formulaire : ici le type, la référence, les deux dates et 2 000 kg. <b>Vérifiez chaque valeur.</b></li></ol>
+    <div class="two"><div class="shot"><img src="img5/21-auth-form.jpg"></div><div class="shot"><img src="img5/22-auth-read.jpg"></div></div>
+    <p class="cap">À gauche : le formulaire vide. À droite : rempli par l'assistant d'après le PDF.</p>
+    <table>
+      <tr><th>Champ</th><th>À savoir</th></tr>
+      <tr><td><b>Type de déchet *</b></td><td>Seuls les types « sous autorisation » sont proposés.</td></tr>
+      <tr><td><b>Référence *</b>, <b>Valable du / Jusqu'au *</b></td><td>Comme sur la déclaration. Hors de la période, l'autorisation ne couvre rien.</td></tr>
+      <tr><td><b>Quantité autorisée</b></td><td>Comme le document l'écrit : <b>poids maximal</b>, <b>nombre maximal de lots</b>, ou <b>par conditionnement</b> (« 300 sacs », « 40 balles »). Au moins une. Chaque quantité est une limite vérifiée à part.</td></tr>
+      <tr><td><b>Alerte à (% utilisé)</b></td><td>80 % par défaut : vous êtes prévenu avant d'atteindre la limite.</td></tr>
+      <tr><td><b>Date du document</b></td><td>La date de la déclaration (ici, à saisir : l'assistant ne l'a pas lue).</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <ol class="do" start="3"><li><b>Enregistrer</b>.</li></ol>
+    <div class="shot small"><img src="img5/23-auth-list.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> DS-2026-0147 · Coupons de tissu · 1 nov. → 31 déc. 2026 · <b>2 t</b> · Utilisation <b>0 kg / 2 t</b> · « Respecté » · <b>En vigueur</b>.</div>
+    <h3 style="margin-top:3mm"><span class="n">4</span>Ce qui se passe ensuite</h3>
+    <ul class="do"><li><b>À la demande d'enlèvement</b>, DivaWaste affiche ce que l'enlèvement consommera : « Coupons de tissu — couvert par l'autorisation DS-2026-0147 : 300 kg / 2 t, 15 %, Respecté, Reste 1,7 t » (R3).</li>
+      <li><b>Sans autorisation en vigueur</b>, ou si une limite serait dépassée ou ne peut être vérifiée (lot non pesé), la demande est <b>bloquée</b>.</li>
+      <li><b>États</b> : En vigueur, À venir, Terminée, Retirée (décochez « En vigueur » pour la retirer).</li>
+      <li>Une fois utilisée, le type, la période et les quantités ne se modifient plus : saisissez une nouvelle autorisation.</li></ul>
+    <div class="shot small"><img src="img5/62-auth-used.jpg"></div>
+    <p class="cap">Après l'enlèvement de R3 : 300 kg / 2 t utilisés, 15 %, reste 1,7 t.</p>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ R3 -->
+<section class="page">
+  <h2 class="part">R3. Le cycle de vie d'un lot <small>Avec un prestataire qui a un compte (Recyclage du Sahel)</small></h2>
+  <table>
+    <tr><th>Étape du lot</th><th>Ce qui la fait passer</th><th>Qui</th></tr>
+    <tr><td><b>Créé</b></td><td>Nouveau lot (ou import, ou téléphone de l'atelier)</td><td>Vous</td></tr>
+    <tr><td><b>Stocké</b></td><td>Rangé dans une zone de stockage</td><td>Vous</td></tr>
+    <tr><td><b>En attente d'enlèvement</b></td><td>Mis dans une demande d'enlèvement</td><td>Vous</td></tr>
+    <tr><td><b>Enlevé</b></td><td>Chargement enregistré : le lot a quitté le site</td><td>Vous</td></tr>
+    <tr><td><b>Traité</b></td><td>Réception et traitement déclarés</td><td>Le prestataire</td></tr>
+    <tr><td><b>Clôturé</b></td><td>Enlèvement clôturé : plus rien ne change</td><td>Vous</td></tr>
+  </table>
+  <div class="step">
+    <h3><span class="n">1</span>Le lot</h3>
+    <p><b>Déchets › Lots › Nouveau lot</b> : zone, type (ici Coupons de tissu), poids (300 kg). <b>Créer</b>.</p>
+    <div class="shot half"><img src="img5/33-lot-page.jpg"></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">2</span>La demande d'enlèvement <span class="badge" style="background:var(--green)">Vous</span></h3>
+    <ol class="do"><li>Sur le lot : <b>Demander un enlèvement</b> (ou <b>Enlèvements › Demandes › Nouvelle demande</b>).</li>
+      <li>Cochez les lots, choisissez le <b>destinataire</b> (« Sous contrat » s'il y en a un), la <b>Date souhaitée</b> (calendrier). Plus de détails : transporteur (le destinataire par défaut), filière prévue.</li>
+      <li>Lisez les encadrés : l'autorisation consommée (R2), le contrat appliqué. <b>Envoyer la demande</b>.</li></ol>
+    <div class="shot half"><img src="img5/34-pickup-new.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> <b>ENL-2026-0001 « Demandé »</b>, et l'étape : « Recyclage du Sahel doit confirmer la date ».</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">3</span>La confirmation <span class="badge">Prestataire</span></h3>
+    <p>Le prestataire voit la demande dans <b>Demandes d'enlèvement</b> et répond : <b>Confirmer le 5 nov. 2026</b>, <b>Proposer une autre date</b> ou <b>Refuser</b>.</p>
+    <div class="shot half"><img src="img5/42-provider-pickup.jpg"></div>
+    <h3 style="margin-top:3mm"><span class="n">4</span>Le bordereau, puis le chargement <span class="badge" style="background:var(--green)">Vous</span></h3>
+    <ol class="do"><li><b>Établir les bordereaux de suivi</b> : un bordereau par déchet (ici BSD-2026-0001), pré-rempli.</li>
+      <li>Le jour J, <b>Enregistrer le chargement</b> : cochez les lots qui partent et vérifiez leur poids (<b>Tout chargé comme déclaré</b>). Un lot non coché retourne en stock.</li></ol>
+    <div class="two"><div class="shot"><img src="img5/44-client-confirmed.jpg"></div><div class="shot"><img src="img5/46-collect.jpg"></div></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">5</span>Signer le bordereau <span class="badge" style="background:var(--green)">Vous</span> <span class="badge">Prestataire</span></h3>
+    <p><b>Conformité › Bordereaux</b> : chaque partie signe. <b>Électronique</b> (avec son mot de passe) ou <b>À la main</b> (sur le bordereau imprimé). Ici : vous comme <b>producteur</b>, puis Recyclage du Sahel comme <b>transporteur</b> et <b>destinataire</b>.</p>
+    <div class="two"><div class="shot"><img src="img5/48-manifest.jpg"></div><div class="shot"><img src="img5/49-sign.jpg"></div></div>
+    <h3 style="margin-top:3mm"><span class="n">6</span>Réception et traitement <span class="badge">Prestataire</span></h3>
+    <ol class="do"><li><b>Enregistrer la réception</b> : le poids reçu de chaque lot (ici 296 kg pour 300 kg partis : écart −1,3 %, dans la tolérance).</li>
+      <li><b>Déclarer le traitement</b> : la filière réelle (ici Réutilisation).</li></ol>
+    <div class="two"><div class="shot"><img src="img5/52-receive.jpg"></div><div class="shot"><img src="img5/54-treat.jpg"></div></div>
+    <div class="box warn"><b>Un écart au-delà de la tolérance</b> du déchet est signalé : « À vous : traiter l'écart de poids à la réception » (bouton <b>Traiter l'écart</b>).</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">7</span>Clôturer <span class="badge" style="background:var(--green)">Vous</span></h3>
+    <p>Bouton <b>Clôturer</b>, puis confirmez : les lots passent au statut « Clôturé » ; poids, filières et prix ne changent plus.</p>
+    <div class="two"><div class="shot"><img src="img5/59-close-dialog.jpg"></div><div class="shot"><img src="img5/60-closed.jpg"></div></div>
+    <div class="box see"><b>✔ Vous devez voir</b> « Enlèvement clôturé » et <b>Documents complets</b> : « Tous les bordereaux sont signés par toutes les parties et archivés ». Sur le lot : les six étapes cochées, « Cycle terminé, de la production au traitement », et l'historique (qui, quand, par quel moyen).</div>
+    <div class="shot half"><img src="img5/61-lot-closed.jpg"></div>
+    <div class="box tip"><b>Clôturer ne complète pas les documents.</b> Si un bordereau n'est pas signé par tous, la page le dit : « Clôturer l'enlèvement ne complète pas ses documents ».</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ R4 -->
+<section class="page">
+  <h2 class="part">R4. Le même cycle, prestataire sans compte <small>Collecte Ben Ali (collecteur)</small></h2>
+  <p class="lead">Un prestataire sans compte ne voit rien dans DivaWaste : <b>vous enregistrez vous-même</b> ses réponses et ses étapes, et il signe le bordereau <b>à la main</b>.</p>
+  <table>
+    <tr><th>Étape</th><th>Avec compte (R3)</th><th>Sans compte (R4)</th></tr>
+    <tr><td>Confirmer la date</td><td>Le prestataire</td><td><b>Vous</b>, quand il vous a répondu</td></tr>
+    <tr><td>Bordereau, chargement</td><td>Vous</td><td>Vous</td></tr>
+    <tr><td>Signatures transporteur et destinataire</td><td>En ligne, par le prestataire</td><td><b>À la main</b> ; vous saisissez qui et quand, puis le scan</td></tr>
+    <tr><td>Réception, traitement</td><td>Le prestataire</td><td><b>Vous</b>, d'après son bon</td></tr>
+    <tr><td>Clôturer</td><td>Vous</td><td>Vous</td></tr>
+  </table>
+  <div class="shot half"><img src="img5/71-ext-requested.jpg"></div>
+  <p class="cap">« Collecte Ben Ali n'a pas de compte : enregistrez vous-même sa réponse, la réception et le traitement des lots. »</p>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <ol class="do"><li><b>Confirmer le 4 nov. 2026</b> (sa réponse), <b>Établir les bordereaux</b>, <b>Enregistrer le chargement</b> — comme en R3.</li>
+      <li><b>Enregistrer la réception</b> (<b>Tout reçu comme parti</b> : 40 kg) et <b>Déclarer le traitement</b> (Recyclage) : vous les saisissez d'après le bon du collecteur.</li>
+      <li><b>Le bordereau</b> : imprimez-le (<b>Ouvrir le PDF</b>), faites-le signer, puis <b>Enregistrer la signature</b> pour le transporteur et le destinataire : <b>Nom du signataire</b>, <b>Date de signature</b>, votre mot de passe.</li></ol>
+    <div class="two"><div class="shot"><img src="img5/73-ext-receive.jpg"></div><div class="shot"><img src="img5/76-ext-sign-hand.jpg"></div></div>
+    <ol class="do" start="4"><li>Quand toutes les signatures sont saisies : <b>Joindre l'exemplaire signé</b> (le scan, PDF, JPG ou PNG). Il devient le document archivé.</li>
+      <li><b>Clôturer</b>.</li></ol>
+    <div class="two"><div class="shot"><img src="img5/79-ext-scan.jpg"></div><div class="shot"><img src="img5/78-ext-closed.jpg"></div></div>
+    <div class="box see"><b>✔ Vous devez voir</b> BSD-2026-0002 « Signé », « Signé à la main par Ali Ben Ali », <b>Voir l'exemplaire signé</b> ; l'enlèvement « Clôturé », <b>Documents complets</b>.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ R5 -->
+<section class="page">
+  <h2 class="part">R5. L'Accueil : chaque valeur</h2>
+  <div class="shot half"><img src="img5/90-home-top.jpg"></div>
+  <table>
+    <tr><th>Bloc</th><th>Ce que c'est</th></tr>
+    <tr><td><b>Boutons du haut</b></td><td>Les gestes du quotidien : <b>Nouveau lot</b>, <b>Nouvelle demande</b> (d'enlèvement), <b>Mettre en vente</b> (si la Bourse est allumée).</td></tr>
+    <tr><td><b>Carte de l'assistant</b></td><td>Le point le plus urgent, avec un bouton pour y aller (« Plus tard » la masque).</td></tr>
+    <tr><td><b>À traiter</b></td><td>Tout ce qui attend une action, chacun avec sa flèche : agrément d'un prestataire qui expire, limite de stock atteinte ou bientôt atteinte, zone pleine ou non vérifiable, lots non rangés depuis plus d'un jour, écart à la réception, demande sans réponse, ligne d'import en erreur…</td></tr>
+    <tr><td><b>Sur la période</b></td><td>Les chiffres ci-dessous, pour la période choisie (3 derniers mois par défaut, ou des dates).</td></tr>
+  </table>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="shot half"><img src="img5/91-home-kpis.jpg"></div>
+  <table>
+    <tr><th>Valeur</th><th>Ici</th><th>Comment elle est calculée</th></tr>
+    <tr><td><b>Déchets générés</b></td><td class="ans">573,5 kg</td><td>Poids des lots créés sur la période (les lots issus d'un fractionnement ou d'un regroupement ne comptent pas deux fois). Sous le chiffre : le nombre de lots, et ceux non pesés.</td></tr>
+    <tr><td><b>Stock sur site</b></td><td class="ans">233,5 kg</td><td>Ce qui est encore sur vos sites <b>à cet instant</b> (lots pas encore partis), quelle que soit la période.</td></tr>
+    <tr><td><b>Taux de valorisation</b></td><td class="ans">100 %</td><td>Part des déchets évacués dont la filière déclarée est une valorisation (réutilisation, recyclage, valorisation énergétique). Ici 336 kg valorisés sur 336 kg.</td></tr>
+    <tr><td><b>Part enfouie</b></td><td class="ans">0 %</td><td>Part des déchets évacués partis en enfouissement.</td></tr>
+    <tr><td><b>Déchets par pièce produite</b></td><td class="ans">—</td><td>Déchets générés ÷ pièces produites saisies (Analyse › Statistiques › Pièces produites). Vide tant qu'aucune n'est saisie.</td></tr>
+    <tr><td><b>Déchets dangereux</b></td><td class="ans">0 kg</td><td>Part des déchets générés dont le type est dangereux.</td></tr>
+    <tr><td><b>Déchets évacués</b></td><td class="ans">336 kg</td><td>Lots partis sur la période, au <b>poids reçu</b> quand le prestataire l'a saisi (296 + 40), sinon au poids de départ.</td></tr>
+    <tr><td><b>Bilan économique net</b></td><td class="ans">0,000 DT</td><td>Recettes − coûts des enlèvements de la période (prix saisis ou prix du contrat). Ici : aucun prix pour ces déchets.</td></tr>
+  </table>
+  <div class="box info"><b>Taux et part enfouie</b> ne comptent que les déchets dont la filière a été <b>déclarée</b> ; la part sans filière est indiquée à part (« dont … sans filière déclarée »), jamais devinée.</div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="shot half"><img src="img5/92-home-charts.jpg"></div>
+  <table>
+    <tr><th>Graphique ou tableau</th><th>Ce qu'il montre</th></tr>
+    <tr><td><b>Évolution mensuelle</b></td><td>Par mois : les déchets générés (barres) et évacués (ligne).</td></tr>
+    <tr><td><b>Répartition par filière</b></td><td>Les déchets évacués selon leur filière déclarée (réutilisation, recyclage…).</td></tr>
+    <tr><td><b>Tonnage par site</b></td><td>Par site : lots, quantité, part du total.</td></tr>
+    <tr><td><b>Tonnage par type de déchet</b></td><td>Les types qui pèsent le plus.</td></tr>
+    <tr><td><b>Origine des déchets en production</b></td><td>Avec le suivi de production (Guides 2 et 3) : les OF qui ont produit le plus de déchets, par pièce et en taux de chute.</td></tr>
+  </table>
+  <div class="box tip"><b>Un chiffre étonne ?</b> Changez la période, ou demandez à l'assistant (« d'où vient mon taux de valorisation ? »). Les mêmes chiffres, en PDF ou Excel : menu <b>Rapports</b>.</div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ TEST -->
+<section class="page">
+  <h2 class="part">Fiche de test</h2>
+  <p class="lead" style="margin-bottom:2mm">Cochez chaque résultat obtenu, notez ce qui a gêné.</p>
+  <table class="check">
+    <tr><th></th><th>Partie</th><th>Résultat attendu</th></tr>
+    <tr><td>☐</td><td>R1 Nouveau type</td><td>Le type personnalisé s'enregistre ; « Dangereux » rend le code obligatoire.</td></tr>
+    <tr><td>☐</td><td>R1 Modifier</td><td>Code, famille, code déchet, dangerosité ne se modifient pas ; le reste oui.</td></tr>
+    <tr><td>☐</td><td>R2 Module</td><td>Sans le module, la case « sous autorisation » et la page Autorisations n'apparaissent pas.</td></tr>
+    <tr><td>☐</td><td>R2 Document</td><td>Le PDF joint : l'assistant remplit le formulaire ; « Vérifiez ces valeurs ».</td></tr>
+    <tr><td>☐</td><td>R2 Blocage</td><td>Une demande au-delà de la quantité autorisée est bloquée.</td></tr>
+    <tr><td>☐</td><td>R3 Cycle</td><td>Demandé → Confirmé → Chargé → Reçu → Clôturé ; le lot finit « Clôturé » avec son historique.</td></tr>
+    <tr><td>☐</td><td>R3 Bordereau</td><td>Trois signatures en ligne ; « Documents complets ».</td></tr>
+    <tr><td>☐</td><td>R4 Sans compte</td><td>Vous confirmez, recevez, déclarez ; signatures à la main + scan ; « Documents complets ».</td></tr>
+    <tr><td>☐</td><td>R5 Accueil</td><td>Générés, stock, évacués et taux correspondent aux lots et enlèvements de la période.</td></tr>
+  </table>
+  <div class="remarks" style="height:62mm">Mes remarques…</div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<script>
+  document.querySelectorAll('.page').forEach((page, i) => { const pg = page.querySelector('.pg'); if (pg) pg.textContent = String(i + 1); });
+</script>
+</body>
+</html>

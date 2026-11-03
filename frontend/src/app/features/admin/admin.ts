@@ -59,7 +59,7 @@ interface AuditFilter {
           <ng-template dwCell="event" let-e>{{ e.event | dwTerm: 'terms.events' }}</ng-template>
           <ng-template dwCell="entity" let-e>{{ e.entity | dwTerm: 'terms.entities' }}</ng-template>
           <ng-template dwCell="changes" let-e>
-            @if (changes(e).length > 0) { <span class="keys"><strong>{{ changes(e).length }}</strong> · {{ summary(e) }}</span> } @else { — }
+            @if (changes(e).length > 0) { <span class="keys"><strong>{{ changes(e).length }}</strong> · @for (key of summary(e); track key; let last = $last) {<span>{{ key | dwTerm: 'terms.fields' }}@if (!last) {, }</span>}</span> } @else { — }
           </ng-template>
         </dw-data-table>
       </div>
@@ -100,7 +100,8 @@ export class AuditPage {
 
   protected readonly events = ['created', 'updated', 'deleted', 'restored'];
   protected readonly entities = ['waste_lots', 'pickups', 'sites', 'zones', 'waste_types', 'stock_thresholds', 'documents', 'hazardous_waste_manifests', 'annual_declarations', 'users', 'companies',
-    'provider_accreditations', 'provider_partnerships', 'company_subscriptions', 'invoices', 'payments'];
+    'provider_accreditations', 'provider_partnerships', 'company_subscriptions', 'invoices', 'payments', 'contracts', 'external_partners', 'waste_authorizations',
+    'marketplace_listings', 'user_invitations'];
   protected readonly list = new ListStore<AuditEntry, AuditFilter>((query) => this.api.list<AuditEntry>('audit-logs', query));
   protected readonly selected = signal<AuditEntry | null>(null);
   protected readonly track = (entry: AuditEntry): string => `${entry.occurred_at}${entry.entity}${entry.object}${entry.event}`;
@@ -121,8 +122,9 @@ export class AuditPage {
     return [...keys].map((key) => ({ key, before: show(entry.old_values?.[key]), after: show(entry.new_values?.[key]) }));
   }
 
-  protected summary(entry: AuditEntry): string {
-    return this.changes(entry).map((change) => change.key.replace(/_/g, ' ')).join(', ');
+  /** The fields a person would name, in the words of the interface: the technical identifiers are left to the details. */
+  protected summary(entry: AuditEntry): string[] {
+    return this.changes(entry).map((change) => change.key).filter((key) => key !== 'id' && key !== 'ulid');
   }
 }
 
@@ -427,12 +429,7 @@ export class SubscriptionPage {
                   <dw-field [label]="t('admin.company.billingEmail')">
                     <input pInputText type="email" formControlName="billing_email" />
                   </dw-field>
-                  @if (industrial) {
-                    <dw-field class="dw-span-2" [label]="t('admin.company.varianceThreshold')">
-                      <input pInputText inputmode="decimal" formControlName="weight_variance_threshold_pct" />
-                      <small dwHint>{{ t('admin.company.varianceHint') }}</small>
-                    </dw-field>
-                  }
+
                 </div>
                 <div class="dw-form-actions"><button pButton type="submit" [disabled]="busy()">{{ t('common.save') }}</button></div>
               </div>
@@ -497,7 +494,8 @@ export class CompanyPage {
     try {
       const value = this.form.getRawValue();
       const body = Object.fromEntries(Object.entries(value).map(([key, text]) => [key, text.trim() === '' ? null : text.trim()]));
-      body['weight_variance_threshold_pct'] = this.industrial && value.weight_variance_threshold_pct ? value.weight_variance_threshold_pct.replace(',', '.') : null;
+      // The weight-gap limit is set in Paramètres › Réception et écarts.
+      delete body['weight_variance_threshold_pct'];
       this.show(await firstValueFrom(this.api.put<Company>('company', body)));
       await this.session.reload();
       this.toast.success('common.saved');

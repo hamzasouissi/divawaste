@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -16,13 +16,13 @@ import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
 import { LimitText } from '../../core/format/limit-text';
 import { CodePipe, DatePipe, KgPipe, LocalizedPipe, NumberPipe } from '../../core/format/pipes';
-import { Confirm } from '../../ui/confirm';
 import { KpiComponent, PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
 import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
 import { FIELD } from '../../ui/field';
 import { HelpComponent } from '../../ui/help';
 import { IconComponent } from '../../ui/icon';
+import { MoreComponent } from '../../ui/more';
 import { MenuAction, MenuComponent } from '../../ui/menu';
 import { SELECT } from '../../ui/select';
 import { ZoneFillComponent } from '../../ui/zone-fill';
@@ -61,7 +61,7 @@ interface LimitDialogData {
 }
 
 @Component({
-  imports: [ReactiveFormsModule, TranslocoDirective, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS, ToggleSwitch, LocalizedPipe],
+  imports: [ReactiveFormsModule, TranslocoDirective, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS, ToggleSwitch, LocalizedPipe, MoreComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -90,12 +90,14 @@ interface LimitDialogData {
               </dw-field>
             }
             @if (!data.limit) {
+              @if (units().length > 1) {
               <dw-field [label]="t('stock.measuredIn')">
                 <dw-select formControlName="unit" required>
                   @for (unit of units(); track unit) { <dw-option [value]="unit" [label]="t('stock.unit.' + unit)" /> }
                 </dw-select>
                 <small dwHint>{{ t(typeChosen() ? 'stock.unitHint' : 'stock.unitHintAnyType') }}</small>
               </dw-field>
+              }
               @if (inPackages()) {
                 <dw-field [label]="t('stock.packagingCounted')">
                   <dw-select formControlName="packaging_type" required>
@@ -109,10 +111,12 @@ interface LimitDialogData {
               <input pInputText formControlName="max_quantity" inputmode="decimal" required />
               <small dwHint>{{ t(inPackages() ? 'stock.maxHintPackages' : 'stock.maxHint') }}</small>
             </dw-field>
-            <dw-field [label]="t('stock.warningPct')">
-              <input pInputText type="number" formControlName="warning_pct" min="1" max="100" required />
-              <small dwHint>{{ t('stock.warningHint') }}</small>
-            </dw-field>
+            <dw-more [summary]="t('stock.warnAt', { pct: form.controls.warning_pct.value })">
+              <dw-field [label]="t('stock.warningPct')">
+                <input pInputText type="number" formControlName="warning_pct" min="1" max="100" required />
+                <small dwHint>{{ t('stock.warningHint') }}</small>
+              </dw-field>
+            </dw-more>
             @if (data.limit) { <div class="dw-switch dw-span-2"><p-toggleswitch formControlName="is_active" inputId="threshold-active" /><label for="threshold-active">{{ t('common.active') }}</label></div> }
           </div>
           @if (preview(t); as sentence) { <p class="preview" role="status">{{ sentence }}</p> }
@@ -260,7 +264,6 @@ export class ThresholdDialog {
             @for (item of sites; track item.ulid) { <dw-option [value]="item.ulid" [label]="item.name" /> }
           </dw-select>
         }
-        <button pButton severity="secondary" outlined type="button" (click)="load()"><dw-icon>refresh</dw-icon>{{ t('common.refresh') }}</button>
         @if (session.can('pickups.request')) {
           <a pButton routerLink="/pickups/new"><dw-icon>local_shipping</dw-icon>{{ t('stock.requestPickup') }}</a>
         }
@@ -304,7 +307,12 @@ export class ThresholdDialog {
                           <dw-zone-fill [fill]="zone.fill" />
                           @if (zone.fill.constraints.length === 0) {
                             <span class="none"><dw-icon aria-hidden="true">info</dw-icon>{{ t('stock.noCapacity') }}</span>
-                            @if (session.can('zones.manage', group.site)) { <a class="define" [routerLink]="['/sites', group.site]">{{ t('stock.defineCapacity') }}</a> }
+                          }
+                          <span class="dw-spacer"></span>
+                          <!-- ST-01: one kind of limit is set here; ST-03: a full zone leads straight to a pickup of its lots. -->
+                          @if (session.can('stock.thresholds.manage', group.site)) { <button type="button" class="define" (click)="defineForZone(group.site, zone.zone)">{{ t('stock.setZoneLimit') }}</button> }
+                          @if (full(zone) && session.can('pickups.request', group.site)) {
+                            <a pButton size="small" [routerLink]="['/pickups/new']" [queryParams]="{ site: group.site, zone: zone.zone }"><dw-icon>local_shipping</dw-icon>{{ t('stock.emptyZone') }}</a>
                           }
                         </div>
                         <div class="scroll">
@@ -380,7 +388,7 @@ export class ThresholdDialog {
                           <td>@if (!threshold.is_active) { <dw-status kind="member" value="suspended" [label]="t('common.inactive')" tone="neutral" /> } @else { <dw-status kind="limit" [value]="current(threshold.ulid)?.constraint?.outcome ?? 'respected'" /> }</td>
                           <td class="dw-num">
                             @if (session.can('stock.thresholds.manage', threshold.site)) {
-                              <button pButton text rounded severity="secondary" size="small" class="dw-icon-btn" type="button" (click)="menu.open($event, thresholdActions(threshold))" [attr.aria-label]="t('common.actions')" aria-haspopup="menu"><dw-icon>more_horiz</dw-icon></button>
+                              <button pButton text rounded severity="secondary" size="small" class="dw-icon-btn" type="button" (click)="menu.open($event, thresholdActions(threshold))" [attr.aria-label]="t('common.actions')" aria-haspopup="menu" [title]="t('common.actions')"><dw-icon>more_horiz</dw-icon></button>
                             }
                           </td>
                         </tr>
@@ -432,7 +440,21 @@ export class StockPage {
   protected readonly session = inject(Session);
   private readonly api = inject(Api);
   private readonly dialog = inject(Dialogs);
-  private readonly confirm = inject(Confirm);
+  /** ST-04: the stock refreshes itself — when the page comes back into view, and every minute while it is open. */
+  private readonly refresh = (() => {
+    const onVisible = (): void => {
+      if (document.visibilityState === 'visible') {
+        this.load(true);
+      }
+    };
+    const timer = setInterval(() => document.visibilityState === 'visible' && this.load(true), 60_000);
+    document.addEventListener('visibilitychange', onVisible);
+    inject(DestroyRef).onDestroy(() => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    });
+    return true;
+  })();
   private readonly toast = inject(Toast);
 
   protected readonly sites = this.session.sitesFor('stock.view');
@@ -472,8 +494,11 @@ export class StockPage {
     this.load();
   }
 
-  protected load(): void {
-    this.loading.set(true);
+  /** `quiet`: an automatic refresh keeps the figures on screen while it asks. */
+  protected load(quiet = false): void {
+    if (!quiet) {
+      this.loading.set(true);
+    }
     this.error.set(null);
     forkJoin({
       stock: this.api.raw<StockResponse>('stock', { filter: { site: this.site() || null } }),
@@ -549,6 +574,17 @@ export class StockPage {
       .afterClosed().subscribe((saved) => saved && this.load());
   }
 
+  /** A new limit on one zone, every waste type in it. */
+  protected defineForZone(site: string, zone: string): void {
+    this.dialog.open<ThresholdDialog, LimitDialogData, boolean>(ThresholdDialog, { data: { limit: null, prefill: { site, zone, waste_type: '' } } })
+      .afterClosed().subscribe((saved) => saved && this.load());
+  }
+
+  /** The zone is over its room or one of its limits. */
+  protected full(zone: { fill: { outcome?: string | null }; rows: StockRow[] }): boolean {
+    return zone.fill.outcome === 'exceeded' || zone.rows.some((row) => this.limitsFor(row).some((applied) => applied.outcome === 'exceeded'));
+  }
+
   /** A new limit for exactly this line: this zone and this waste type. */
   protected define(row: StockRow): void {
     this.dialog.open<ThresholdDialog, LimitDialogData, boolean>(ThresholdDialog, { data: { limit: null, prefill: { site: row.site, zone: row.zone, waste_type: row.waste_type } } })
@@ -566,13 +602,21 @@ export class StockPage {
     this.dialog.open<ThresholdDialog, LimitDialogData, boolean>(ThresholdDialog, { data: { limit: threshold } }).afterClosed().subscribe((saved) => saved && this.load());
   }
 
+  /** G-09: deleted at once; "Annuler" puts the same limit back. */
   protected async removeThreshold(threshold: StockThreshold): Promise<void> {
-    if (!(await this.confirm.ask({ title: `${this.toast.text('common.delete')} — ${threshold.site_name}`, danger: true }))) {
-      return;
-    }
     try {
       await firstValueFrom(this.api.delete(`stock-thresholds/${threshold.ulid}`));
-      this.toast.success('stock.thresholdDeleted');
+      this.toast.undoable('stock.thresholdDeleted', () => void this.restoreThreshold(threshold));
+      this.load();
+    } catch (error) {
+      this.toast.error(error);
+    }
+  }
+
+  private async restoreThreshold(threshold: StockThreshold): Promise<void> {
+    const { site, zone, waste_type, max_quantity, unit, packaging_type, warning_pct } = threshold;
+    try {
+      await firstValueFrom(this.api.post('stock-thresholds', { site, zone, waste_type, max_quantity, unit, packaging_type, warning_pct }));
       this.load();
     } catch (error) {
       this.toast.error(error);

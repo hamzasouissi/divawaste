@@ -7,13 +7,13 @@ import { firstValueFrom, map } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 
+import { Locale } from '../../core/i18n/i18n';
 import { Api } from '../../core/api/api';
 import { Localized, Site, Zone } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
 import { CodePipe, KgPipe, LocalizedPipe, NumberPipe } from '../../core/format/pipes';
-import { Confirm } from '../../ui/confirm';
 import { Column, TABLE } from '../../ui/data-table';
 import { ListStore } from '../../ui/list-store';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
@@ -23,6 +23,7 @@ import { CheckboxComponent } from '../../ui/checkbox';
 import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
 import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
+import { MoreComponent, SegmentedComponent } from '../../ui/more';
 import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
 import { ZoneFillComponent } from '../../ui/zone-fill';
@@ -34,7 +35,7 @@ const DECIMAL = Validators.pattern(/^\d+([.,]\d{1,3})?$/);
 const num = (value: string): string | null => (value.trim() === '' ? null : value.replace(',', '.'));
 
 @Component({
-  imports: [...DIALOG, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS],
+  imports: [...DIALOG, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS, LocalizedPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -56,6 +57,22 @@ const num = (value: string): string | null => (value.trim() === '' ? null : valu
             <dw-field [label]="t('fields.postalCode')"><input pInputText formControlName="postal_code" /></dw-field>
             <dw-field [label]="t('sites.regulatoryId')"><input pInputText formControlName="regulatory_identifier" /></dw-field>
           </div>
+          <!-- S-02: a new site comes with its usual zones, created in the same step. -->
+          @if (!data) {
+            <div class="zones-pick">
+              <span class="dw-field-label">{{ t('sites.zonesToCreate') }}</span>
+              <div class="chips">
+                <!-- Every site gets its waste storage area from the API: shown as given, never created twice. -->
+                <span class="chip on fixed" [title]="t('sites.storageAlways')"><dw-icon aria-hidden="true">check</dw-icon>{{ t('sites.storageZone') }}</span>
+                @for (type of vocabulary()?.zone_types ?? []; track type.code) {
+                  @if (!type.is_waste_storage) {
+                    <button type="button" class="chip" [class.on]="zoneTypes().includes(type.code)" [attr.aria-pressed]="zoneTypes().includes(type.code)" (click)="toggleZone(type.code)">{{ type.name | dwLocalized }}</button>
+                  }
+                }
+              </div>
+              <small class="dw-faint">{{ t('sites.zonesToCreateHint') }}</small>
+            </div>
+          }
           <p class="dw-muted note">{{ t('sites.siteLimitNote') }}</p>
         </div>
         <div class="dw-dialog-foot">
@@ -65,9 +82,22 @@ const num = (value: string): string | null => (value.trim() === '' ? null : valu
       </form>
     </ng-container>
   `,
-  styles: '.dw-dialog-body { inline-size: min(560px, 90vw); } .note { margin: var(--dw-3) 0 0; font-size: 13px; }',
+  styles: `.dw-dialog-body { inline-size: min(560px, 90vw); } .note { margin: var(--dw-3) 0 0; font-size: 13px; }
+    .zones-pick { display: grid; gap: 8px; margin-block-start: 16px; padding-block-start: 14px; border-block-start: 1px solid var(--dw-line-soft); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { all: unset; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--dw-line-strong); font-size: 13px; font-weight: 560; cursor: pointer; }
+    .chip.on { background: var(--dw-primary); border-color: var(--dw-primary); color: #fff; } .chip:focus-visible { outline: 2px solid var(--dw-focus); outline-offset: 2px; }
+    .chip.fixed { cursor: default; display: inline-flex; align-items: center; gap: 4px; opacity: 0.85; } .chip.fixed dw-icon { font-size: 15px; }`,
 })
 export class SiteDialog {
+  protected readonly zoneTypes = signal<string[]>(['cutting']);
+  protected readonly vocabulary = toSignal(inject(ReferenceData).vocabulary());
+  private readonly locale = inject(Locale);
+
+  protected toggleZone(code: string): void {
+    this.zoneTypes.update((codes) => (codes.includes(code) ? codes.filter((item) => item !== code) : [...codes, code]));
+  }
+
   protected readonly data = dialogData<Site | null>();
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
@@ -97,6 +127,17 @@ export class SiteDialog {
     const body = { ...value, country: this.session.company()?.country };
     try {
       const site = await firstValueFrom(this.data ? this.api.put<Site>(`sites/${this.data.ulid}`, body) : this.api.post<Site>('sites', body));
+      if (!this.data) {
+        // One zone per type chosen, named after its type; each can be refined on the site's page.
+        const names = new Map((this.vocabulary()?.zone_types ?? []).map((type) => [type.code, type.name]));
+        const storage = new Set((this.vocabulary()?.zone_types ?? []).filter((type) => type.is_waste_storage).map((type) => type.code));
+        for (const [index, code] of this.zoneTypes().filter((code) => !storage.has(code)).entries()) {
+          const name = names.get(code);
+          await firstValueFrom(this.api.post(`sites/${site.ulid}/zones`, {
+            code: `${code.slice(0, 3).toUpperCase()}${index + 1}`, name: name ? this.locale.pick(name, code) : code, zone_type: code, space_method: 'packaging',
+          })).catch((error: unknown) => this.toast.error(error));
+        }
+      }
       // A new site changes what the user may do (company-wide roles cover it at once).
       await this.session.reload();
       this.toast.success('sites.saved');
@@ -117,7 +158,7 @@ interface ZoneDialogData {
 }
 
 @Component({
-  imports: [...DIALOG, LocalizedPipe, ButtonDirective, InputText, ...FIELD, ...SELECT, ...COLOR, ...DIALOG_PARTS, IconComponent],
+  imports: [...DIALOG, LocalizedPipe, ButtonDirective, InputText, ...FIELD, ...SELECT, ...COLOR, ...DIALOG_PARTS, IconComponent, MoreComponent, SegmentedComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -138,12 +179,10 @@ interface ZoneDialogData {
 
             <section class="dw-span-2 part">
               <h3 class="dw-h3">{{ t('sites.capacity') }}</h3>
-              <dw-field [label]="t('sites.spaceMethod')">
-                <dw-select formControlName="space_method">
-                  <dw-option value="packaging" [label]="t('sites.spaceMethods.packaging')" />
-                  <dw-option value="volume" [label]="t('sites.spaceMethods.volume')" />
-                </dw-select>
-              </dw-field>
+              <!-- S-01: one way to measure the room of the zone, then only its input. -->
+              <div class="method"><span class="dw-field-label">{{ t('sites.spaceMethod') }}</span>
+                <dw-segmented [options]="[{ value: 'packaging', label: t('sites.spaceMethods.packaging') }, { value: 'volume', label: t('sites.spaceMethods.volume') }]"
+                  [value]="form.controls.space_method.value" (valueChange)="form.controls.space_method.setValue($any($event)); form.controls.space_method.markAsDirty()" [ariaLabel]="t('sites.spaceMethod')" /></div>
               @if (byVolume()) {
                 <p class="dw-muted">{{ t('sites.volumeHint') }}</p>
                 <dw-field [label]="t('sites.capacityM3')"><input pInputText formControlName="capacity_m3" inputmode="decimal" /></dw-field>
@@ -159,16 +198,18 @@ interface ZoneDialogData {
                     }
                   </dw-select>
                   <input pInputText type="number" formControlName="max_count" min="1" max="100000" [attr.aria-label]="t('sites.maxLots')" [placeholder]="t('sites.maxLots')" />
-                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="capacities.removeAt(i)" [attr.aria-label]="t('common.remove')"><dw-icon>close</dw-icon></button>
+                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="capacities.removeAt(i)" [attr.aria-label]="t('common.remove')" [title]="t('common.remove')"><dw-icon>close</dw-icon></button>
                 </div>
               }
               <button pButton text type="button" class="add" (click)="addCapacity()"><dw-icon>add</dw-icon>{{ t('sites.addCapacity') }}</button>
               @if (sharedRoom(); as room) { <p class="shared" role="status">{{ t('sites.sharedRoom', room) }}</p> }
               }
             </section>
+            <dw-more [summary]="t('sites.zoneMoreSummary', { pct: form.controls.capacity_alert_pct.value })">
             <dw-field [label]="t('sites.capacityKgLimit')"><input pInputText formControlName="capacity_kg" inputmode="decimal" /></dw-field>
             <dw-field [label]="t('sites.alertPct')"><input pInputText type="number" formControlName="capacity_alert_pct" min="1" max="100" /></dw-field>
 
+            <!-- S-03: reserving a zone is an advanced setting. -->
             <section class="dw-span-2 part">
               <h3 class="dw-h3">{{ t('sites.reservedFor') }}</h3>
               <p class="dw-muted">{{ t('sites.reservedHint') }}</p>
@@ -183,6 +224,7 @@ interface ZoneDialogData {
                 @for (color of vocabulary()?.color_families ?? []; track color.code) { <dw-option [value]="color.code" [label]="(color.name | dwLocalized) | dwColorName: color.pantone_reference" [swatch]="color.hex_color" /> }
               </dw-select>
             </dw-field>
+            </dw-more>
           </div>
         </div>
         <div class="dw-dialog-foot">
@@ -194,7 +236,7 @@ interface ZoneDialogData {
   `,
   styles: `
     .dw-dialog-body { inline-size: min(640px, 82vw); }
-    .part { display: grid; gap: var(--dw-2); margin-block-start: var(--dw-2); }
+    .part { display: grid; gap: var(--dw-2); margin-block-start: var(--dw-2); } .method { display: grid; gap: 6px; justify-items: start; }
     .part p { margin: 0; font-size: 13px; }
     .line { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: var(--dw-2); align-items: center; }
     .add { justify-self: start; }
@@ -396,7 +438,7 @@ export class PackagingVolumesDialog {
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('sites.title')" [subtitle]="t('sites.subtitle')">
         @if (canManage) {
-          <button pButton severity="secondary" outlined type="button" (click)="volumes()"><dw-icon>deployed_code</dw-icon>{{ t('sites.packagingVolumes') }}</button>
+          <button pButton severity="secondary" outlined type="button" (click)="volumes()"><dw-icon>view_in_ar</dw-icon>{{ t('sites.packagingVolumes') }}</button>
           <button pButton type="button" (click)="create()"><dw-icon>add</dw-icon>{{ t('sites.new') }}</button>
         }
       </dw-page-header>
@@ -560,7 +602,6 @@ export class SiteDetailPage implements OnInit {
   private readonly api = inject(Api);
   private readonly session = inject(Session);
   private readonly dialog = inject(Dialogs);
-  private readonly confirm = inject(Confirm);
   private readonly toast = inject(Toast);
   private readonly reference = inject(ReferenceData);
 
@@ -638,10 +679,18 @@ export class SiteDetailPage implements OnInit {
     if (!site) {
       return;
     }
-    if (site.is_active && !(await this.confirm.ask({ title: this.toast.text('sites.closeConfirm', { name: site.name }), message: this.toast.text('sites.closeHint'), danger: true }))) {
-      return;
+    // G-09: a site closes at once (nothing is deleted); "Annuler" reopens it.
+    const closing = site.is_active;
+    await this.run(this.api.post(`sites/${site.ulid}/${closing ? 'deactivate' : 'activate'}`));
+    await this.session.reload();
+    if (closing) {
+      this.toast.clear();
+      this.toast.undoable('sites.closed', () => void this.reopen(site.ulid), { name: site.name });
     }
-    await this.run(this.api.post(`sites/${site.ulid}/${site.is_active ? 'deactivate' : 'activate'}`));
+  }
+
+  private async reopen(ulid: string): Promise<void> {
+    await this.run(this.api.post(`sites/${ulid}/activate`));
     await this.session.reload();
   }
 

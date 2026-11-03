@@ -416,7 +416,7 @@ export class ColorDialog {
                 <span class="dw-faint">{{ origin(color) }}@if (!color.is_active) { · {{ t('colors.withdrawn') }} }</span>
               </div>
               @if (color.is_custom && canManage) {
-                <button pButton text rounded severity="secondary" size="small" class="dw-icon-btn more" type="button" (click)="menu.open($event, actions(color))" [attr.aria-label]="t('common.actions')"><dw-icon>more_vert</dw-icon></button>
+                <button pButton text rounded severity="secondary" size="small" class="dw-icon-btn more" type="button" (click)="menu.open($event, actions(color))" [attr.aria-label]="t('common.actions')" [title]="t('common.actions')"><dw-icon>more_vert</dw-icon></button>
               }
             </li>
           }

@@ -64,8 +64,8 @@ const WIDTHS = ['62%', '78%', '48%', '70%', '56%', '84%', '40%'];
               @if (selectable()) {
                 <th scope="col" class="check"><p-tableHeaderCheckbox [ariaLabel]="t('common.selectAll')" /></th>
               }
-              @for (column of columns(); track column.key) {
-                <th scope="col" [style.width]="column.width" [class]="'a-' + (column.align ?? 'start')" [class.sorted]="column.sort && sorted(column.sort)" [attr.data-hide]="column.hideBelow"
+              @for (column of columns(); track column.key; let last = $last) {
+                <th scope="col" [style.width]="column.width" [class]="'a-' + (column.align ?? 'start')" [class.pin]="last && (column.key === 'status' || column.key === 'actions')" [class.sorted]="column.sort && sorted(column.sort)" [attr.data-hide]="column.hideBelow"
                   [attr.aria-sort]="column.sort ? ariaSort(column.sort) : null">
                   @if (column.sort) {
                     <button type="button" class="sort" (click)="toggleSort(column.sort)">
@@ -95,8 +95,8 @@ const WIDTHS = ['62%', '78%', '48%', '70%', '56%', '84%', '40%'];
                     @if (allowed(row)) { <p-tableCheckbox [value]="row" /> }
                   </td>
                 }
-                @for (column of columns(); track column.key) {
-                  <td [class]="'a-' + (column.align ?? 'start')" [class.wrap]="column.wrap" [attr.data-hide]="column.hideBelow">
+                @for (column of columns(); track column.key; let last = $last) {
+                  <td [class]="'a-' + (column.align ?? 'start')" [class.wrap]="column.wrap" [class.pin]="last && (column.key === 'status' || column.key === 'actions')" [attr.data-hide]="column.hideBelow">
                     @if (templates()[column.key]; as template) {
                       <ng-container [ngTemplateOutlet]="template" [ngTemplateOutletContext]="{ $implicit: row }" />
                     } @else {
@@ -145,6 +145,10 @@ const WIDTHS = ['62%', '78%', '48%', '70%', '56%', '84%', '40%'];
     th.check, td.check { width: 40px; padding-inline-end: 0; }
     td { white-space: nowrap; }
     td.wrap { white-space: normal; min-width: 220px; }
+    /* A table wider than its panel scrolls, but its last column (the status, or the row's actions) stays in sight at the right edge. */
+    th.pin, td.pin { position: sticky; inset-inline-end: 0; z-index: 1; box-shadow: -10px 0 10px -10px rgba(16, 40, 36, 0.28); }
+    td.pin { background: var(--dw-surface); }
+    tr:hover td.pin { background: #f2f8f7; }
     .a-end { text-align: end; font-variant-numeric: tabular-nums; }
     .a-center { text-align: center; }
     th.a-end .sort { flex-direction: row-reverse; }

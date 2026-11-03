@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Guide 9 — Le suivi au quotidien</title>
+<style>
+  @page { size: A4; margin: 0; }
+  :root { --green: #0f5a4f; --green-2: #16796a; --soft: #e8f3f0; --ink: #16222b; --ink-2: #45525c; --line: #d9e2e0; --red: #c62f32; --amber: #9a5b00; --amber-soft: #fff4dc; --blue-soft: #eef3fb; --blue: #2f5ea8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", Inter, Arial, sans-serif; color: var(--ink); font-size: 11.4pt; line-height: 1.48; }
+  .page { width: 210mm; height: 297mm; overflow: hidden; padding: 15mm 17mm 14mm; page-break-after: always; position: relative; }
+  .page:last-child { page-break-after: auto; }
+  .foot { position: absolute; bottom: 8mm; left: 17mm; right: 17mm; display: flex; justify-content: space-between; font-size: 8.5pt; color: #7b8790; border-top: 1px solid var(--line); padding-top: 3mm; }
+
+  .cover { background: linear-gradient(160deg, #0b1c1f 0%, #0f3a35 60%, #16796a 100%); color: #fff; display: flex; flex-direction: column; padding: 22mm 20mm; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15pt; }
+  .brand .logo { width: 34px; height: 34px; border-radius: 9px; background: #2a8f7e; display: grid; place-items: center; font-weight: 800; }
+  .cover .kicker { margin-top: 30mm; font-size: 11pt; letter-spacing: .14em; text-transform: uppercase; color: #9fd8cc; font-weight: 700; }
+  .cover h1 { font-size: 29pt; line-height: 1.12; margin: 4mm 0 5mm; font-weight: 750; }
+  .cover .sub { font-size: 13.5pt; color: #d4ece6; max-width: 150mm; }
+  .robot-cover { position: absolute; right: 20mm; top: 18mm; width: 30mm; height: 30mm; }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8mm; }
+  .tag { padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 10.5pt; }
+  .need { margin-top: auto; background: rgba(255,255,255,.08); border-radius: 14px; padding: 7mm 8mm; }
+  .need h3 { margin: 0 0 3mm; font-size: 12pt; color: #9fd8cc; text-transform: uppercase; letter-spacing: .08em; }
+  .need ul { margin: 0; padding-left: 18px; columns: 2; column-gap: 10mm; }
+  .need li { margin-bottom: 1.5mm; break-inside: avoid; }
+
+  h2.part { font-size: 19pt; margin: 0 0 2mm; color: var(--green); }
+  h2.part small { display: block; font-size: 10.5pt; color: var(--ink-2); font-weight: 500; letter-spacing: .02em; }
+  .lead { color: var(--ink-2); margin: 0 0 5mm; }
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3.5mm; margin: 3mm 0 5mm; }
+  .map div { border: 1px solid var(--line); border-radius: 12px; padding: 3.5mm 5mm; }
+  .map div.extra { border-style: dashed; background: #fafcfc; }
+  .map b { display: block; color: var(--green); font-size: 11pt; } .map span { color: var(--ink-2); font-size: 10pt; }
+  .num { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: var(--green); color: #fff; font-size: 9.5pt; font-weight: 700; margin-right: 6px; }
+  .map .num { color: #fff; }
+  .extra .num { background: #7b8f8b; }
+
+  .step { margin-bottom: 6mm; }
+  .step h3 { display: flex; align-items: center; gap: 8px; font-size: 14pt; margin: 0 0 2.5mm; }
+  .step h3 .n { flex: none; display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 9px; background: var(--green); color: #fff; font-size: 11.5pt; }
+  .step.extra h3 .n { background: #7b8f8b; }
+  ol.do, ul.do { margin: 0 0 3mm; padding-left: 22px; } ol.do li, ul.do li { margin-bottom: 1.2mm; }
+  .shot { margin: 2mm 0 3mm; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; box-shadow: 0 3px 10px rgba(16, 40, 40, .08); }
+  .shot img { display: block; width: 100%; }
+  .shot.half { width: 72%; margin-left: auto; margin-right: auto; }
+  .shot.mid { width: 60%; margin-left: auto; margin-right: auto; }
+  .shot.small { width: 48%; margin-left: auto; margin-right: auto; }
+  .cap { font-size: 9pt; color: #6c7880; margin: -1.5mm 0 3mm; text-align: center; }
+  .box { border-radius: 10px; padding: 3mm 4.5mm; margin: 2mm 0 3mm; font-size: 10.5pt; }
+  .see { background: var(--soft); border-left: 4px solid var(--green); }
+  .see b:first-child { color: var(--green); }
+  .tip { background: #f3f6f8; border-left: 4px solid #8796a0; }
+  .warn { background: var(--amber-soft); border-left: 4px solid var(--amber); }
+  .info { background: var(--blue-soft); border-left: 4px solid var(--blue); }
+  .info b:first-child { color: var(--blue); }
+  .ring { color: var(--red); font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 10.2pt; margin: 2mm 0 3mm; }
+  th, td { text-align: left; padding: 2mm 3mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f3f6f6; font-size: 9.3pt; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  td.ans { font-weight: 700; color: var(--green); white-space: nowrap; }
+  table.xl { font-family: Calibri, "Segoe UI", Arial, sans-serif; font-size: 9.8pt; border: 1px solid #b7c4c1; }
+  table.xl th { background: #e6efe9; color: #1f3b33; text-transform: none; letter-spacing: 0; font-size: 9.8pt; border-right: 1px solid #c9d4d1; }
+  table.xl td { border-right: 1px solid #e0e6e4; padding: 1.4mm 2.5mm; }
+  .check td:first-child { width: 9mm; font-size: 13pt; color: var(--green); }
+  .check td { padding: 1.6mm 3mm; font-size: 9.8pt; }
+  .remarks { border: 1px dashed #b9c6c4; border-radius: 10px; height: 34mm; margin-top: 3mm; padding: 3mm 4mm; color: #9aa6ad; font-size: 10pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; align-items: start; }
+  .who { display: flex; gap: 4mm; align-items: center; }
+  .who svg { flex: none; width: 16mm; height: 16mm; }
+  .badge { display: inline-block; font-size: 8.5pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: #7b8f8b; border-radius: 6px; padding: 1px 7px; vertical-align: middle; margin-left: 6px; }
+  .phones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; margin: 2mm 0 3mm; }
+  .phones .shot { margin: 0; } .phones .cap { margin: 1.5mm 0 0; }
+  .phones.four { grid-template-columns: repeat(4, 1fr); gap: 4mm; }
+  .crop img { height: 100mm; object-fit: cover; object-position: top; }
+  .crop.short img { height: 80mm; }
+</style>
+</head>
+<body>
+
+<!-- the assistant's face, as in the application -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="dg" x1="4" y1="2" x2="36" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1c8a7c"/><stop offset="0.55" stop-color="#0f5c56"/><stop offset="1" stop-color="#0b3f3b"/></linearGradient>
+    <linearGradient id="ds" x1="10" y1="11" x2="30" y2="31" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#bfeee1"/></linearGradient>
+    <symbol id="robot" viewBox="0 0 40 40">
+      <rect x="2" y="2" width="36" height="36" rx="12" fill="url(#dg)"/>
+      <clipPath id="tile"><rect x="2" y="2" width="36" height="36" rx="12"/></clipPath>
+      <rect x="11.5" y="31" width="17" height="10" rx="4.5" fill="#bfeee1" opacity="0.85" clip-path="url(#tile)"/>
+      <line x1="20" y1="7.8" x2="20" y2="11.5" stroke="#bfeee1" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="20" cy="6.6" r="2.1" fill="#7ff5d9"/>
+      <rect x="7" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="29.6" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="9.5" y="11" width="21" height="19.5" rx="6.5" fill="url(#ds)"/>
+      <rect x="12.3" y="14.6" width="15.4" height="10" rx="4.6" fill="#0b3f3b"/>
+      <rect x="15" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <rect x="21.7" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <path d="M17.6 27 Q20 28.5 22.4 27" fill="none" stroke="#0f5c56" stroke-width="1.3" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ============================================================ COVER -->
+<section class="page cover">
+  <div class="brand"><span class="logo">D</span> DivaWaste</div>
+  <svg class="robot-cover"><use href="#robot"/></svg>
+  <div class="kicker">Guide 9 · Au quotidien</div>
+  <h1>Le suivi au quotidien :<br>stock, contrats, conformité</h1>
+  <div class="sub">Une fois la société en route, ce que l'on ouvre chaque semaine : le <b>stock</b> et ses limites, les <b>enlèvements</b>, les <b>contrats</b> avec les prestataires, la <b>conformité</b> (registre, bordereaux, documents, déclaration annuelle), les <b>rapports</b>, le <b>journal d'audit</b> et l'<b>abonnement</b>.</div>
+  <div class="tags"><span class="tag">⏱ 25 minutes</span><span class="tag">🏭 Exemple : Textile du Cap Bon</span><span class="tag">👤 Administrateur ou Responsable environnement</span></div>
+  <div class="need">
+    <h3>Avant de commencer, ayez sous la main</h3>
+    <ul>
+      <li>Une société <b>déjà en route</b> (Guides 1 à 3) avec des lots</li>
+      <li>Les <b>conditions</b> convenues avec vos prestataires (prix, rythme)</li>
+      <li>Votre <b>mot de passe</b> (il sert à signer les bordereaux)</li>
+      <li>La <b>capacité</b> de vos aires de stockage</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ OVERVIEW -->
+<section class="page">
+  <h2 class="part">Le chemin en un coup d'œil</h2>
+  <div class="map">
+    <div><b><span class="num">A</span>Le stock et ses limites</b><span>Ce qui est sur site, par zone et par déchet ; être prévenu avant d'être plein.</span></div>
+    <div><b><span class="num">B</span>Les enlèvements</b><span>Qui doit agir, et les écarts de poids à la réception.</span></div>
+    <div><b><span class="num">C</span>Les contrats</b><span>Prix, frais, rythme des enlèvements ; leur suivi et leur bilan.</span></div>
+    <div><b><span class="num">D</span>La conformité</b><span>Ce qui manque, registre, bordereaux et signature, documents, déclaration annuelle.</span></div>
+    <div><b><span class="num">E</span>Les rapports</b><span>RSE, registre, bilan économique : à la demande ou chaque mois.</span></div>
+    <div><b><span class="num">F</span>Journal, abonnement, recherche</b><span>Qui a fait quoi ; votre formule et vos factures ; tout retrouver en une case.</span></div>
+    <div><b><span class="num">✓</span>Fiche de test</b><span>Cochez ce qui marche, notez ce qui gêne.</span></div>
+  </div>
+  <div class="box info"><b>Le point de départ, chaque matin : l'Accueil.</b> Sa liste <b>À traiter</b> réunit tout ce qui attend une décision (bordereaux à signer, écarts, lots sans poids, contrats en retard…) et chaque ligne ouvre la page qui la règle. Le détail de chaque valeur de l'Accueil est au Guide 4, R5.</div>
+  <div class="box tip"><b>Comment lire ce guide.</b> L'élément à cliquer est <span class="ring">entouré en rouge</span> ; l'encadré vert dit <b>ce que vous devez voir</b>. Les chiffres sont ceux de la société d'exemple.</div>
+  <div class="foot"><span>DivaWaste · Guide 9 — Le suivi au quotidien</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ A -->
+<section class="page">
+  <h2 class="part">A. Le stock et ses limites</h2>
+  <div class="step">
+    <h3><span class="n">A1</span>Lire le stock</h3>
+    <p><b>Déchets › Stock</b>. Calculé en temps réel à partir des lots présents sur site (créés ou stockés, pas encore partis).</p>
+    <div class="shot half"><img src="img9/01-stock.jpg"></div>
+    <table>
+      <tr><th style="width:30%">Valeur</th><th>Ce qu'elle veut dire</th></tr>
+      <tr><td><b>Stock total</b></td><td>Le poids de tous les lots sur site. « + 1 lot(s) non pesé(s), non compris » : ces lots existent mais ne sont pas dans le total.</td></tr>
+      <tr><td><b>dont en attente d'enlèvement</b></td><td>La part déjà mise dans une demande d'enlèvement.</td></tr>
+      <tr><td><b>Limite dépassée / bientôt atteinte</b></td><td>Combien de limites sont au-dessus de leur maximum, ou au-dessus de leur seuil d'alerte (90 % par défaut).</td></tr>
+      <tr><td><b>Non vérifiable</b></td><td>Une limite qu'on ne peut pas juger, parce que des lots n'ont pas de poids (ou pas de nombre de colis). Pesez-les.</td></tr>
+    </table>
+    <p>Dessous, <b>site par site</b> puis <b>zone par zone</b> : le poids, la charge de chaque aire de stockage (« 154 kg / 2 t · 8 % · Respecté »), et pour chaque déchet le nombre de lots, le poids, la part en attente et le <b>lot le plus ancien</b>.</p>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 9 — Le suivi au quotidien</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">A2</span>Fixer une limite</h3>
+    <ol class="do"><li>Sur la ligne du site (« Tout le site »), d'une zone, ou d'un déchet : <b>Définir</b> ou <b>Fixer une limite</b>.</li>
+      <li>Ce que la limite surveille : un <b>site</b>, éventuellement une <b>zone</b> et un <b>type de déchet</b>.</li>
+      <li><b>Limite exprimée en</b> kilogrammes, pièces, volume (m³) ou nombre de colis, puis la <b>limite</b> à ne pas dépasser.</li>
+      <li><b>Plus de détails</b> : le seuil d'alerte (90 % par défaut). <b>Enregistrer</b>.</li></ol>
+    <div class="shot half"><img src="img9/02-stock-limit.jpg"></div>
+    <div class="box see"><b>Vous devez voir</b> la limite sur sa ligne, avec une barre et un état : <b>Respecté</b>, <b>Bientôt atteinte</b>, <b>Dépassée</b> ou <b>Non vérifiable</b>. Au passage du seuil, une notification part (Guide 7, E3) et l'Accueil l'affiche.</div>
+    <div class="box tip"><b>Plusieurs limites sur le même stock</b> sont possibles : un poids pour l'aire entière et un nombre de sacs pour les chutes, par exemple. Chacune est évaluée à part.</div>
+    <div class="box info"><b>Demander un enlèvement</b> (en haut à droite) ouvre la demande avec le site choisi : c'est le geste naturel quand une limite approche.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 9 — Le suivi au quotidien</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ B -->
+<section class="page">
+  <h2 class="part">B. Les enlèvements</h2>
+  <p><b>Enlèvements › Demandes</b>. Le cycle complet d'un enlèvement (demande, confirmation, chargement, réception, traitement) est au Guide 4, R3–R4 ; ici, comment suivre la liste.</p>
+  <div class="shot half"><img src="img9/03-pickups.jpg"></div>
+  <table>
+    <tr><th style="width:24%">Onglet</th><th>Ce qu'il montre</th></tr>
+    <tr><td><b>À faire</b></td><td>Ce qui attend <b>vous</b> : brouillons à envoyer, enlèvements confirmés à charger, réceptions dont l'écart est à traiter.</td></tr>
+    <tr><td><b>Chez le prestataire</b></td><td>Ce qui attend le prestataire : demandes sans réponse, lots en route vers lui.</td></tr>
+    <tr><td><b>Terminés</b></td><td>Clôturés, refusés, annulés.</td></tr>
+    <tr><td><b>Tous</b></td><td>Tout, avec les filtres : statut, site, <b>Avec écart à la réception</b>, <b>Documents en attente</b>.</td></tr>
+  </table>
+  <div class="box info"><b>Écarts à la réception par type de déchet</b> (en bas de la page) : pour chaque déchet, le nombre de lots reçus, combien étaient dans la tolérance, combien sont <b>à justifier</b>, demandent un <b>accord</b>, ou n'ont pas de <b>référence</b> de poids. « Écarts répétés » signale un déchet dont la pesée mérite d'être revue. Les tolérances se règlent dans Paramètres › Réception et écarts.</div>
+  <div class="box tip"><b>Les lots non pesés</b> sont écrits sous le poids : « 60,5 kg + 1 lot(s) non pesé(s) ». Le total ne les compte pas : pesez-les avant le départ pour un prix et un écart justes.</div>
+  <div class="foot"><span>DivaWaste · Guide 9 — Le suivi au quotidien</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ C -->
+<section class="page">
+  <h2 class="part">C. Les contrats</h2>
+  <p><b>Enlèvements › Contrats</b> : ce que vous avez convenu avec un destinataire ou un transporteur. Un contrat fixe les prix et le rythme ; chaque enlèvement vers ce prestataire le suit tout seul.</p>
+  <div class="step">
+    <h3><span class="n">C1</span>Nouveau contrat — 1. Qui et quand</h3>
+    <ol class="do"><li><b>Nouveau contrat</b>. <b>Objet</b> (« Reprise des cartons d'emballage »), <b>Rôle du prestataire</b> (destinataire ou transporteur), <b>Prestataire</b> (avec compte, ou « Sans compte »).</li>
+      <li><b>Début</b> (dans le calendrier) et <b>Fin</b> — sans fin, le contrat court jusqu'à sa résiliation. <b>Plus de détails</b> : votre référence, le site, des remarques. <b>Suivant</b>.</li></ol>
+    <div class="two"><div class="shot"><img src="img9/05-contract-step1.jpg"></div><div class="shot"><img src="img9/05-contract-step2.jpg"></div></div>
+  </div>
+  <div class="step">
+    <h3><span class="n">C2</span>2. Les enlèvements</h3>
+    <ol class="do"><li>Le <b>rythme</b> : À la demande, Chaque semaine, Toutes les deux semaines (les jours choisis), Chaque mois, Chaque trimestre (un nombre d'enlèvements par période).</li>
+      <li>Combien par période, et le <b>nombre prévu au total</b> (facultatif, pour suivre ce qui reste). La veille et le jour même, s'il n'y a pas de demande, vous êtes prévenu. <b>Suivant</b>.</li></ol>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 9 — Le suivi au quotidien</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">C3</span>3. L'argent</h3>
+    <ol class="do"><li>Comment le contrat est payé : <b>Au poids des déchets</b> (un prix par tonne, par kg ou par lot, par type de déchet), <b>Au forfait</b> (montants fixes : par enlèvement, par mois, une fois), ou <b>Les deux</b>.</li>
+      <li>Chaque prix dit <b>Je reçois</b> (le prestataire vous paie : déchet valorisable) ou <b>Je paie</b>. « Tout autre déchet » s'applique aux déchets sans prix propre.</li>
+      <li><b>Frais en plus</b> (location de benne, pesée…) et <b>Délai de paiement</b>.</li>
+      <li><span class="ring">Enregistrer le brouillon</span> pour relire, ou <b>Enregistrer et mettre en vigueur</b>.</li></ol>
+    <div class="two"><div class="shot"><img src="img9/05-contract-step3.jpg"></div><div class="shot"><img src="img9/07-contract-draft.jpg"></div></div>
+    <div class="box see"><b>Vous devez voir</b> « Brouillon CTR-2026-0002 enregistré » et la fiche du contrat : <b>Brouillon → En vigueur → Terminé</b>, avec « Vérifiez les conditions, puis mettez le contrat en vigueur ». Un brouillon n'agit pas encore sur les enlèvements.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 9 — Le suivi au quotidien</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">C4</span>Suivre un contrat en vigueur</h3>
+    <div class="shot half"><img src="img9/06-contract.jpg"></div>
+    <table>
+      <tr><th style="width:30%">Valeur</th><th>Ce qu'elle veut dire</th></tr>
+      <tr><td><b>Enlèvements faits</b></td><td>« 5 / 24 » : faits sur le nombre prévu ; « Reste 19 ».</td></tr>
+      <tr><td><b>Cette période</b></td><td>« 0 / 2 » : faits ce mois-ci sur ceux prévus par le rythme. En retard, le contrat passe dans « À traiter ».</td></tr>
+      <tr><td><b>Prochain enlèvement prévu</b></td><td>D'après le rythme et les jours choisis ; et la date du dernier.</td></tr>
+      <tr><td><b>Bilan du contrat</b></td><td>Lots facturés + frais par enlèvement + forfaits mensuels ; positif = recette, négatif = coût.</td></tr>
+    </table>
+    <ul class="do"><li><b>Demander le prochain enlèvement</b> : la demande s'ouvre avec ce prestataire.</li>
+      <li><b>Modifier</b> : changer un prix, un frais, le rythme ou la fin. Les frais d'un enlèvement sont enregistrés sur l'enlèvement lui-même quand il se fait.</li>
+      <li><b>Résilier</b> : avec un motif ; le contrat passe à Terminé et n'est plus proposé.</li></ul>
+    <div class="box tip"><b>Fin proche</b> : 30 jours avant la fin, le contrat apparaît dans « À traiter » (« contrat(s) se terminent dans les 30 jours »), et l'assistant propose « Nouveau contrat ».</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 9 — Le suivi au quotidien</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ D -->
+<section class="page">
+  <h2 class="part">D. La conformité</h2>
+  <p>Le menu <b>Conformité</b> a six onglets. Les autorisations de sortie (douane) sont au Guide 4, R2.</p>
+  <div class="two">
+    <div><div class="shot"><img src="img9/10-compliance.jpg"></div><p class="cap"><b>Ce qui manque</b> : la part « conformité » de l'Accueil.</p></div>
+    <div><div class="shot"><img src="img9/11-register.jpg"></div><p class="cap"><b>Registre</b> : chronologique, sans aucune saisie.</p></div>
+  </div>
+  <div class="step">
+    <h3><span class="n">D1</span>Le registre chronologique</h3>
+    <p>Une ligne par lot : date, numéro, site et zone, type, <b>code déchet</b>, poids, statut, <b>sortie</b> (l'enlèvement et sa date), prestataire, <b>filière</b>. Il se remplit tout seul à partir des lots. Choisissez la période, les sites, « Dangereux uniquement », puis <b>Exporter en Excel</b> ou <b>en PDF</b> pour un contrôle.</p>
+    <div class="box warn"><b>Un code déchet vide</b> dans le registre vient du type de déchet : complétez-le dans Paramètres › Types de déchets (Guide 4, R1). Pour un déchet dangereux, c'est obligatoire.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 9 — Le suivi au quotidien</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">D2</span>Les bordereaux de suivi, et leur signature</h3>
+    <p>Un bordereau par déchet enlevé, pré-rempli depuis l'enlèvement. Chacun montre ses trois signatures : <b>Producteur</b> (vous), <b>Transporteur</b>, <b>Destinataire</b>, et l'état de chacune.</p>
+    <div class="two"><div class="shot"><img src="img9/12-manifests.jpg"></div><div class="shot"><img src="img9/13-manifest-sign.jpg"></div></div>
+    <ol class="do"><li><b>Signer</b> sur la ligne. <b>Électronique</b> : votre <b>mot de passe</b> vaut signature (« En signant, vous attestez l'exactitude des informations du bordereau »).</li>
+      <li><b>À la main</b> : le bordereau imprimé (<b>Ouvrir le PDF</b>) a été signé sur papier ; joignez ensuite l'<b>exemplaire signé scanné</b>. Tant qu'il manque, l'Accueil le rappelle (« bordereau(x) signé(s) à la main dont l'exemplaire scanné manque »).</li>
+      <li>Le transporteur et le destinataire signent de leur côté s'ils ont un compte ; sinon, vous enregistrez leur signature à la main (Guide 4, R4).</li></ol>
+    <div class="box see"><b>Vous devez voir</b> la pastille du producteur passer à <b>Signé par …</b>, puis le bordereau passer aux signatures suivantes. Signé par tous, il rejoint les <b>Documents</b>.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 9 — Le suivi au quotidien</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">D3</span>Les documents réglementaires</h3>
+    <p>Certificats de traitement, bordereaux signés, déclarations validées : <b>conservés 10 ans</b> (colonne « Conservé jusqu'au »), filtrables par type et par année, chacun avec <b>Ouvrir</b>. Un bordereau pas encore signé n'a pas de date de conservation.</p>
+    <div class="shot mid"><img src="img9/14-documents.jpg"></div>
+  </div>
+  <div class="step">
+    <h3><span class="n">D4</span>La déclaration annuelle (ANGed)</h3>
+    <ol class="do"><li><b>Déclarations</b> : choisissez le <b>site</b> et l'<b>année</b>, puis <b>Préparer une déclaration</b>. Elle est calculée à partir des lots et des enlèvements de l'année.</li>
+      <li>Relisez : déchets produits (dont dangereux), évacués, stock au 31/12 ; le détail par code déchet et par destinataire et filière.</li>
+      <li>Une correction faite dans les lots depuis ? <b>Recalculer</b>. Juste ? <b>Valider la déclaration</b>, puis <b>Exporter</b>.</li></ol>
+    <div class="shot half"><img src="img9/15-declaration.jpg"></div>
+    <div class="box tip"><b>L'Accueil rappelle</b> les déclarations de l'année passée qui restent à valider, site par site — en avant de janvier à mars.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 9 — Le suivi au quotidien</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ E -->
+<section class="page">
+  <h2 class="part">E. Les rapports</h2>
+  <div class="shot half"><img src="img9/16-reports.jpg"></div>
+  <div class="step">
+    <h3><span class="n">E1</span>Trois rapports prêts</h3>
+    <table>
+      <tr><th style="width:30%">Rapport</th><th>Contenu</th></tr>
+      <tr><td><b>Bilan RSE de l'année</b></td><td>Depuis le 1er janvier, en PDF avec votre logo : déchets produits, valorisés, enfouis, taux de valorisation, déchets par pièce produite.</td></tr>
+      <tr><td><b>Registre du mois dernier</b></td><td>Le registre chronologique en Excel.</td></tr>
+      <tr><td><b>Bilan économique du trimestre</b></td><td>Recettes et coûts des trois derniers mois, en PDF.</td></tr>
+    </table>
+    <p><b>Recevoir chaque mois</b> : le rapport est généré le 1er de chaque mois sur le mois écoulé.</p>
+  </div>
+  <div class="step">
+    <h3><span class="n">E2</span>Un rapport personnalisé</h3>
+    <p>Le <b>rapport</b> (RSE, registre, bilan économique), le <b>format</b> (PDF ou Excel), la <b>langue</b>, la <b>période</b> et les <b>sites</b>, puis <b>Générer un rapport</b>. Il apparaît dans la liste dès qu'il est prêt, téléchargeable jusqu'à sa date « Disponible jusqu'au ». Le logo vient de Paramètres › Société.</p>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 9 — Le suivi au quotidien</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ F -->
+<section class="page">
+  <h2 class="part">F. Journal d'audit, abonnement, recherche</h2>
+  <div class="two">
+    <div><div class="shot"><img src="img9/17-audit-detail.jpg"></div><p class="cap"><b>Journal d'audit</b> : le détail d'une modification, avant / après.</p></div>
+    <div><div class="shot"><img src="img9/18-subscription.jpg"></div><p class="cap"><b>Abonnement</b> : la formule, la demande en cours, les factures.</p></div>
+  </div>
+  <div class="step">
+    <h3><span class="n">F1</span>Le journal d'audit</h3>
+    <p>Paramètres › <b>Journal d'audit</b> : toutes les créations, modifications et suppressions, avec leur auteur et leur origine (application web, application atelier, interface de programmation, traitement automatique). Filtrez par action, objet et dates ; cliquez une ligne pour voir chaque champ <b>avant</b> et <b>après</b>. Personne ne peut le modifier.</p>
+  </div>
+  <div class="step">
+    <h3><span class="n">F2</span>L'abonnement et les factures</h3>
+    <p>Paramètres › <b>Abonnement</b> : la formule actuelle (essai gratuit de 30 jours, par site, par volume), le nombre de sites. <b>Changer de formule</b> : choisissez-la, le nombre de sites, puis <b>Demander une formule</b> ; Diva Software l'active (Guide 10). Sur une facture : <b>Déclarer un virement</b> (date, référence bancaire) ; elle passe à « Virement déclaré » jusqu'au rapprochement par Diva Software.</p>
+  </div>
+  <div class="step">
+    <h3><span class="n">F3</span>Tout retrouver : la recherche</h3>
+    <div class="two" style="grid-template-columns: 1fr 1fr; align-items:center"><div class="shot"><img src="img9/19-search.jpg"></div>
+      <p>La case en haut de chaque page (ou <b>Ctrl K</b>) : un numéro de lot, d'enlèvement, de contrat, d'annonce, de bordereau, un prestataire, un type de déchet, un site. Les résultats s'affichent en tapant ; cliquez-en un pour l'ouvrir.</p></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 9 — Le suivi au quotidien</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ TEST -->
+<section class="page">
+  <h2 class="part">Fiche de test</h2>
+  <table class="check">
+    <tr><td>☐</td><td>Le stock total correspond aux lots sur site ; les lots non pesés sont signalés à part.</td></tr>
+    <tr><td>☐</td><td>Je fixe une limite sur une aire de stockage ; son état (Respecté, Bientôt atteinte…) s'affiche.</td></tr>
+    <tr><td>☐</td><td>Les onglets À faire / Chez le prestataire / Terminés rangent bien les enlèvements.</td></tr>
+    <tr><td>☐</td><td>Je crée un contrat en trois étapes et je l'enregistre en brouillon, puis je le mets en vigueur.</td></tr>
+    <tr><td>☐</td><td>Une demande d'enlèvement vers ce prestataire affiche « Sous contrat » et ses prix.</td></tr>
+    <tr><td>☐</td><td>Le registre s'exporte en Excel et en PDF pour une période.</td></tr>
+    <tr><td>☐</td><td>Je signe un bordereau avec mon mot de passe ; ma signature apparaît.</td></tr>
+    <tr><td>☐</td><td>Je prépare la déclaration d'un site, je la recalcule, je la valide et je l'exporte.</td></tr>
+    <tr><td>☐</td><td>Je génère un rapport RSE en PDF ; j'active l'envoi mensuel du registre.</td></tr>
+    <tr><td>☐</td><td>Le journal d'audit montre l'avant / après d'une modification de lot.</td></tr>
+    <tr><td>☐</td><td>Je demande une formule ; la demande en cours s'affiche dans Abonnement.</td></tr>
+    <tr><td>☐</td><td>Ctrl K puis un numéro d'enlèvement ouvre l'enlèvement.</td></tr>
+  </table>
+  <div class="remarks">Remarques, questions, ce qui gêne :</div>
+  <div class="foot"><span>DivaWaste · Guide 9 — Le suivi au quotidien</span><span class="pg"></span></div>
+</section>
+<script>
+  document.querySelectorAll('.page').forEach((page, i) => { const pg = page.querySelector('.pg'); if (pg) pg.textContent = String(i + 1); });
+</script>
+</body>
+</html>

@@ -11,6 +11,7 @@ import { Textarea } from 'primeng/textarea';
 import { Api, openBlob } from '../../core/api/api';
 import { WasteAuthorization } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
+import { Davi } from '../../core/davi/davi';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
 import { CodePipe, DatePipe, KgPipe, LocalizedPipe } from '../../core/format/pipes';
@@ -32,6 +33,13 @@ const DECIMAL = Validators.pattern(/^\d+([.,]\d{1,3})?$/);
  * form the document uses — a weight, a number of lots, lots per packaging. Once pickups draw on it, only the
  * reference, the notes, the alert level and the withdrawal can still change (the API refuses the rest).
  */
+/** What DAVI read in a permit (davi/read-permit): each value with the words it came from. */
+interface PermitReading {
+  read: boolean;
+  reason?: 'scanned' | 'unreadable' | 'not_pdf';
+  fields: Record<string, { value: string; evidence: string; label?: string }>;
+}
+
 @Component({
   imports: [ReactiveFormsModule, TranslocoDirective, LocalizedPipe, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, ...DIALOG_PARTS, IconComponent, DateComponent, CheckboxComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -42,6 +50,26 @@ const DECIMAL = Validators.pattern(/^\d+([.,]\d{1,3})?$/);
         <div class="dw-dialog-body">
           @if (data?.in_use) { <p class="dw-muted note">{{ t('authorizations.frozen') }}</p> }
           <div class="dw-form">
+            <!-- AU-02: the signed declaration comes first; DAVI reads it and fills the empty fields below, to be checked here. -->
+            <label class="dw-span-2 file first">
+              <input type="file" accept="application/pdf,image/jpeg,image/png" (change)="pick($event)" />
+              <dw-icon aria-hidden="true">upload_file</dw-icon>
+              <span><strong>{{ file()?.name || t(data?.has_file ? 'authorizations.replaceFile' : 'authorizations.file') }}</strong>@if (!file() && !data?.has_file) { <small class="dw-faint">{{ t(davi.available() ? 'authorizations.fileFirstDavi' : 'authorizations.fileFirst') }}</small> }</span>
+            </label>
+            @if (reading()) {
+              <p class="dw-span-2 davi-read" role="status"><dw-icon aria-hidden="true">auto_awesome</dw-icon>{{ t('davi.permit.reading') }}</p>
+            } @else if (read(); as r) {
+              <div class="dw-span-2 davi-read" [class.none]="r.filled.length === 0" role="status">
+                <dw-icon aria-hidden="true">auto_awesome</dw-icon>
+                <div>
+                  <strong>{{ t(r.filled.length > 0 ? 'davi.permit.filled' : 'davi.permit.' + (r.reason ?? 'nothing'), { count: r.filled.length }) }}</strong>
+                  @if (r.filled.length > 0) {
+                    <ul>@for (item of r.filled; track item.field) { <li><span class="what">{{ t('davi.permit.fields.' + item.field) }}</span> <span class="dw-faint">« {{ item.evidence }} »</span></li> }</ul>
+                    <small class="dw-faint">{{ t('davi.permit.check') }}</small>
+                  }
+                </div>
+              </div>
+            }
             <dw-field [label]="t('fields.wasteType')">
               <dw-select formControlName="waste_type" required>
                 @for (type of types(); track type.ulid) { <dw-option [value]="type.ulid" [label]="type.name" /> }
@@ -67,7 +95,7 @@ const DECIMAL = Validators.pattern(/^\d+([.,]\d{1,3})?$/);
                     }
                   </dw-select>
                   <input pInputText type="number" formControlName="max_count" min="1" [attr.aria-label]="t('sites.maxLots')" [placeholder]="t('sites.maxLots')" />
-                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" [disabled]="form.disabled || limits.disabled" (click)="limits.removeAt(i)" [attr.aria-label]="t('common.remove')"><dw-icon>close</dw-icon></button>
+                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" [disabled]="form.disabled || limits.disabled" (click)="limits.removeAt(i)" [attr.aria-label]="t('common.remove')" [title]="t('common.remove')"><dw-icon>close</dw-icon></button>
                 </div>
               }
               @if (!data?.in_use) { <button pButton text type="button" class="add" (click)="addLimit()"><dw-icon>add</dw-icon>{{ t('sites.addCapacity') }}</button> }
@@ -81,10 +109,6 @@ const DECIMAL = Validators.pattern(/^\d+([.,]\d{1,3})?$/);
             <dw-field [label]="t('authorizations.alertPct')"><input pInputText type="number" formControlName="alert_pct" min="1" max="100" /></dw-field>
             <dw-field [label]="t('authorizations.issuedOn')"><dw-date formControlName="issued_on" /></dw-field>
             <dw-field class="dw-span-2" [label]="t('fields.notes')"><textarea pTextarea formControlName="notes" rows="2" maxlength="1000"></textarea></dw-field>
-            <label class="dw-span-2 file">
-              <input type="file" accept="application/pdf,image/jpeg,image/png" (change)="pick($event)" />
-              <dw-icon aria-hidden="true">upload_file</dw-icon><span>{{ file()?.name || t(data?.has_file ? 'authorizations.replaceFile' : 'authorizations.file') }}</span>
-            </label>
             @if (data) { <dw-checkbox class="dw-span-2" formControlName="is_active">{{ t('authorizations.active') }}</dw-checkbox> }
           </div>
         </div>
@@ -96,6 +120,10 @@ const DECIMAL = Validators.pattern(/^\d+([.,]\d{1,3})?$/);
     </ng-container>
   `,
   styles: `
+    .davi-read { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--dw-primary-soft); font-size: 13px; }
+    .davi-read > dw-icon { font-size: 18px; color: var(--dw-primary); margin-block-start: 1px; } .davi-read.none { background: var(--dw-surface-2); }
+    .davi-read ul { margin: 4px 0; padding-inline-start: 16px; display: grid; gap: 2px; } .davi-read .what { font-weight: 600; }
+    .file.first { padding: 16px; border: 1.5px dashed var(--dw-primary-line); border-radius: 12px; background: var(--dw-primary-soft); } .file.first span { display: flex; flex-direction: column; gap: 2px; }
     .dw-dialog-body { inline-size: min(640px, 82vw); }
     .note { margin: 0 0 var(--dw-3); font-size: 13px; }
     .part { display: grid; gap: var(--dw-2); } .part p { margin: 0; font-size: 13px; }
@@ -163,8 +191,47 @@ export class AuthorizationDialog {
     return this.limits.controls.some((line, i) => i !== index && line.getRawValue().packaging_type === code);
   }
 
+  protected readonly davi = inject(Davi);
+  protected readonly reading = signal(false);
+  protected readonly read = signal<{ filled: { field: string; evidence: string }[]; reason?: string } | null>(null);
+
   protected pick(event: Event): void {
-    this.file.set((event.target as HTMLInputElement).files?.[0] ?? null);
+    const file = (event.target as HTMLInputElement).files?.[0] ?? null;
+    this.file.set(file);
+    this.read.set(null);
+    if (file && file.type === 'application/pdf' && this.davi.available() && !this.data?.in_use) {
+      void this.readWithDavi(file);
+    }
+  }
+
+  /** AU-02: DAVI reads the permit; only empty fields are filled, each with the words of the document it came from. */
+  private async readWithDavi(file: File): Promise<void> {
+    this.reading.set(true);
+    try {
+      const upload = new FormData();
+      upload.append('file', file);
+      const found = (await firstValueFrom(this.http.post<{ data: PermitReading }>('/api/v1/davi/read-permit', upload))).data;
+      if (!found.read) {
+        this.read.set({ filled: [], reason: found.reason ?? 'nothing' });
+        return;
+      }
+      const filled: { field: string; evidence: string }[] = [];
+      for (const [field, item] of Object.entries(found.fields)) {
+        const control = this.form.get(field);
+        const known = field !== 'waste_type' || this.types().some((type) => type.ulid === item.value);
+        if (control && !control.value && known) {
+          control.setValue(field === 'max_lots' ? Number(item.value) : item.value);
+          control.markAsDirty();
+          filled.push({ field, evidence: item.evidence });
+        }
+      }
+      this.read.set({ filled });
+    } catch {
+      // DAVI away: the form is filled by hand, as before.
+      this.read.set(null);
+    } finally {
+      this.reading.set(false);
+    }
   }
 
   protected async submit(): Promise<void> {

@@ -49,7 +49,12 @@
     "collapseNavigation": "Collapse navigation",
     "expandNavigation": "Expand navigation",
     "or": "or",
-    "and": "and"
+    "and": "and",
+    "clearSelection": "Clear selection",
+    "moreDetails": "More details",
+    "moreActions": "More actions",
+    "next": "Next",
+    "undo": "Undo"
   },
   "paginator": {
     "perPage": "Rows per page",
@@ -116,7 +121,12 @@
     "logout": "Sign out",
     "backOffice": "Back office",
     "operator": "Platform operator",
-    "platformSpace": "Platform administration"
+    "platformSpace": "Platform administration",
+    "erpNote": "These data come from your ERP: change them in the ERP, the next import will update them here.",
+    "erpUnlocked": "Correction open: what you change here will be replaced if the ERP sends the same data again.",
+    "erpUnlock": "Correct here anyway",
+    "erpLock": "End the correction",
+    "guides": "User guides"
   },
   "nav": {
     "groups": {
@@ -144,7 +154,7 @@
     "manifests": "Tracking slips",
     "declarations": "Annual declarations",
     "documents": "Documents",
-    "reports": "Reports and exports",
+    "reports": "Reports",
     "sites": "Sites and zones",
     "wasteTypes": "Waste types",
     "users": "Users and roles",
@@ -167,15 +177,39 @@
     "authorizations": "Authorisations",
     "manufacturingOrders": "Manufacturing orders",
     "orders": "Orders",
-    "productionCatalog": "Materials and articles",
+    "productionCatalog": "Raw materials and articles",
     "productionPartners": "Clients and suppliers",
     "productionImport": "Import",
     "productionStats": "Statistics",
     "productionFinance": "Costs and gains",
-    "productionLots": "Received and produced lots"
+    "productionLots": "Received and produced lots",
+    "marketplace": "Bourse",
+    "contracts": "Contracts",
+    "home": "Home",
+    "waste": "Waste",
+    "compliance": "Compliance",
+    "manufacturing": "Manufacturing",
+    "productionReference": "Reference data",
+    "productionAnalysis": "Analysis",
+    "providerSpace": "My company",
+    "settings": "Settings",
+    "tabs": {
+      "lots": "Lots",
+      "requests": "Requests",
+      "complianceOverview": "What is missing",
+      "register": "Register",
+      "manifests": "Tracking slips",
+      "declarations": "Declarations",
+      "manufacturingOrders": "Manufacturing orders",
+      "productionLots": "Received and produced lots",
+      "providerProfile": "Profile and accepted waste",
+      "allDocuments": "All documents",
+      "sitesZones": "Sites and zones"
+    },
+    "platformRegistry": "ANGed list"
   },
   "auth": {
-    "pitch": "Trace, recover and declare your textile waste.",
+    "pitch": "Trace, recover and declare your industrial waste.",
     "point1": "Every lot followed by QR code, from the workstation to its final destination",
     "point2": "Register, tracking slips and ANGed declaration generated automatically",
     "point3": "Recovery rate and financial balance in real time",
@@ -206,13 +240,16 @@
       "title": "Create an account",
       "lead": "Already registered?",
       "accountType": "Account type",
-      "industrial": "Textile manufacturer",
+      "industrial": "Manufacturer (factory, workshop, farm)",
       "provider": "Provider (collector, recycler, transporter)",
-      "industrialHint": "You produce textile waste and want to trace, recover and declare it.",
+      "industrialHint": "You produce waste and want to trace, recover and declare it.",
       "providerHint": "You collect, transport or treat waste. Access is free; your accreditations are checked by the platform.",
       "company": "Company",
       "contact": "Main contact (account administrator)",
-      "activities": "Textile activities",
+      "activities": "Your textile trades (optional)",
+      "industry": "Industry",
+      "industryPlaceholder": "Choose your industry",
+      "industryHint": "The zones and waste types offered follow your industry. You can change it during setup.",
       "plan": "Plan",
       "planHint": "Every plan starts with a 30-day free trial, with no payment.",
       "providerActivity": "Activity",
@@ -228,14 +265,24 @@
         "roles": "Choose at least one provider role.",
         "accreditations": "Complete each accreditation: type, number, start date and expiry date.",
         "files": "Attach the PDF file of each accreditation.",
-        "activities": "Choose at least one textile activity.",
+        "industry": "Choose your industry.",
         "accept": "You must accept the documents to create the account."
+      },
+      "taxIdFormat": "Expected format, for example: {{example}}",
+      "accreditationsNow": "Add your accreditations now (optional)",
+      "accreditationsLater": "You can also upload them after sign-up, from your space.",
+      "steps": {
+        "company": "Your company",
+        "you": "You",
+        "plan": "Plan and terms",
+        "activity": "Activity and terms"
       }
     },
     "verify": {
       "pending": "Confirming your address…",
       "doneTitle": "Email address confirmed",
       "doneBody": "Your registration has been passed to Diva Software for review. You will receive an email as soon as it is processed.",
+      "doneApproved": "Your account is active: you can sign in right away.",
       "failedTitle": "Invalid or expired link",
       "failedBody": "This confirmation link is no longer valid (it lasts 24 hours). Sign in to receive a new one."
     },
@@ -405,6 +452,28 @@
       "incomplete": "Slip missing",
       "pending": "Signatures pending",
       "complete": "Documents complete"
+    },
+    "listing": {
+      "draft": "Draft",
+      "published": "Published",
+      "sold": "Sold",
+      "expired": "Expired",
+      "cancelled": "Withdrawn"
+    },
+    "negotiation": {
+      "awaiting_seller": "Waiting for the seller",
+      "awaiting_buyer": "Waiting for the buyer",
+      "accepted": "Deal made",
+      "refused": "Refused",
+      "withdrawn": "Withdrawn",
+      "closed": "Closed"
+    },
+    "contract": {
+      "draft": "Draft",
+      "upcoming": "Upcoming",
+      "active": "In force",
+      "expired": "Expired",
+      "terminated": "Terminated"
     }
   },
   "channels": {
@@ -467,7 +536,7 @@
     "INVALID_COMPANY_TRANSITION": "A decision has already been made for this company.",
     "ACCREDITATION_ALREADY_REVIEWED": "This accreditation already has that status.",
     "DEVICE_REVOKED": "This device was revoked by an administrator.",
-    "COLOR_IN_USE": "This colour is used by lots, waste types, materials or zones. Withdraw it from the list instead.",
+    "COLOR_IN_USE": "This colour is used by lots, waste types, raw materials or zones. Withdraw it from the list instead.",
     "RECEIVED_LOT_IN_USE": "The number of a received lot cannot change once an order or a waste lot names it.",
     "AUTHORIZATION_EXCEEDED": "The authorisation does not cover this pickup: one of its limits would be exceeded. Each limit is detailed on the Authorisations page.",
     "AUTHORIZATION_UNVERIFIABLE": "The authorisation cannot be verified: some lots have no measured weight. Weigh them, then try again.",
@@ -484,7 +553,31 @@
     "AWAITING_RECEIVER": "The receiver has not set the date yet: the transporter confirms after it.",
     "NOT_THE_TRANSPORTER": "This pickup has no transporter other than its receiver.",
     "TRANSPORTER_REQUIRED": "This receiver does not come and fetch the waste: choose a transporter.",
-    "PARTNER_ROLE_MISMATCH": "This provider cannot hold that role: a company that only transports is never the receiver, and the transporter must be recorded as one."
+    "PARTNER_ROLE_MISMATCH": "This provider cannot hold that role: a company that only transports is never the receiver, and the transporter must be recorded as one.",
+    "LOT_LISTED": "This lot is offered on the bourse: withdraw the listing, or wait for its deal.",
+    "LISTING_LOTS_INVALID": "The lots of a listing must exist and be on its site.",
+    "LISTING_MIXED_WASTE": "A listing offers one waste type: make one listing per type.",
+    "LISTING_CLOSED": "This listing is closed: it can no longer be changed.",
+    "LISTING_LOTS_FIXED": "The lots of a published listing no longer change: withdraw it and publish another one.",
+    "LISTING_NOT_DRAFT": "This listing is already published or closed.",
+    "LISTING_CLOSING_PASSED": "The closing date is past: choose another one, or none.",
+    "LISTING_NOT_OPEN": "This listing no longer accepts offers.",
+    "NEGOTIATION_OPEN": "You are already negotiating this listing: answer in your negotiation.",
+    "NEGOTIATION_ENDED": "This negotiation has ended.",
+    "PROPOSAL_NOT_YOUR_TURN": "The last proposal is yours: it waits for the answer of the other side.",
+    "PROPOSAL_SUPERSEDED": "A new proposal arrived in the meantime: read it before answering.",
+    "PROPOSAL_EXPIRED": "This proposal is no longer valid: answer with a proposal of your own.",
+    "PROPOSAL_OUTDATED": "The lots changed since this proposal: it cannot be accepted as it is.",
+    "BUYER_NOT_ELIGIBLE": "This buyer may not take this waste today: a valid accreditation and the waste among its accepted wastes are required.",
+    "NOT_THE_BUYER": "Only the buyer withdraws its offer; the seller refuses it.",
+    "PICKUP_DATE_TOO_EARLY": "The lots cannot be collected yet on that date.",
+    "LOT_COMPOSITION_FROZEN": "This lot has left the site: its pickup and its tracking slip keep the composition it left with.",
+    "CONTRACT_TERMINATED": "This contract is terminated: it can no longer be changed.",
+    "CONTRACT_NOT_DRAFT": "This contract is already in force or terminated.",
+    "CONTRACT_NOT_ACTIVE": "This contract is not in force.",
+    "CONTRACT_OVERLAP": "Another contract already covers this provider, in this role and on this site, on some of these dates: terminate it or change the dates.",
+    "CONTRACT_PRICE_TWICE": "A waste type has one price per contract (and one \"any other waste\" line at most).",
+    "CONTRACT_PACE_DAYS": "With chosen days there is one pickup per chosen day: the number of pickups must be the number of days."
   },
   "notifications": {
     "title": "Notifications",
@@ -536,7 +629,17 @@
       "pickup.transport_requested": "Transport to confirm (transporter)",
       "pickup.awaiting_transporter": "Pickup waiting for the transporter",
       "pickup.transport_confirmed": "Transport confirmed by the transporter",
-      "pickup.transport_refused": "Transport refused by the transporter"
+      "pickup.transport_refused": "Transport refused by the transporter",
+      "marketplace.listing_published": "New listing for your waste",
+      "marketplace.offer_received": "Offer received on a listing",
+      "marketplace.counter_offer": "Counter-offer received",
+      "marketplace.offer_accepted": "Deal made",
+      "marketplace.offer_refused": "Proposal refused",
+      "marketplace.offer_withdrawn": "Offer withdrawn",
+      "marketplace.listing_closed": "Listing closed",
+      "contract.activated": "Contract put in force",
+      "contract.ending_soon": "Contract ending soon",
+      "contract.terminated": "Contract terminated"
     },
     "types": {
       "stock.threshold_warning": {
@@ -706,16 +809,73 @@
       "pickup.transport_refused": {
         "title": "Transport of pickup {{number}} refused",
         "body": "{{transporter}}: {{reason}}. The lots go back to stock."
+      },
+      "marketplace.listing_published": {
+        "title": "New listing on the bourse — {{title}}",
+        "body": "Listing {{number}} ({{waste_type}}) matches the waste you accept."
+      },
+      "marketplace.offer_received": {
+        "title": "New offer — {{number}}",
+        "body": "{{buyer}} made an offer on \"{{title}}\"."
+      },
+      "marketplace.counter_offer": {
+        "title": "Counter-offer — {{number}}",
+        "body": "A proposal waits for your answer on \"{{title}}\"."
+      },
+      "marketplace.offer_accepted": {
+        "title": "Deal made — {{number}}",
+        "body": "The deal on \"{{title}}\" is made; a pickup is prepared at the agreed price."
+      },
+      "marketplace.offer_refused": {
+        "title": "Proposal refused — {{number}}",
+        "body": "The negotiation on \"{{title}}\" was refused."
+      },
+      "marketplace.offer_withdrawn": {
+        "title": "Offer withdrawn — {{number}}",
+        "body": "{{buyer}} withdrew its offer on \"{{title}}\"."
+      },
+      "marketplace.listing_closed": {
+        "title": "Listing closed — {{number}}",
+        "body": "\"{{title}}\" is closed: {{reason}}."
+      },
+      "contract.activated": {
+        "title": "Contract {{number}} in force",
+        "body": "{{company}} put contract \"{{title}}\" in force."
+      },
+      "contract.ending_soon": {
+        "title": "Contract {{number}} ends soon",
+        "body": "Contract \"{{title}}\" with {{company}} ends on {{date}}."
+      },
+      "contract.terminated": {
+        "title": "Contract {{number}} terminated",
+        "body": "{{company}} ended contract \"{{title}}\" on {{date}}."
+      },
+      "contract.pickup_due": {
+        "title": "Pickup due {{when}}: contract {{number}}",
+        "body": "Contract \"{{title}}\" with {{partner}} plans a pickup on {{date}} and none is requested: prepare the request."
       }
     },
-    "mailOnRequest": "Email only if you ask for it: by default, stock and capacity alerts are emailed to the people who manage the limits or the zones of the site. You always see them here."
+    "mailOnRequest": "Email only if you ask for it: by default, stock and capacity alerts are emailed to the people who manage the limits or the zones of the site. You always see them here.",
+    "more": "+{{count}}",
+    "byType": "Settings per notification type",
+    "areaCount": "{{count}} notification type(s)",
+    "areas": {
+      "pickups": "Pickups",
+      "stock": "Stock and capacity",
+      "compliance": "Compliance and accreditations",
+      "marketplace": "Bourse",
+      "contracts": "Contracts",
+      "reports": "Reports",
+      "billing": "Subscription and invoices",
+      "other": "Other"
+    }
   },
   "onboarding": {
     "bannerTitle": "Finish setting up.",
     "bannerBody": "{{done}} of {{total}} step(s) done.",
     "resume": "Resume",
     "title": "Getting started",
-    "lead": "Four steps to make your workspace operational. Each one can be skipped and resumed later.",
+    "lead": "A few steps to make your workspace operational. Each one can be skipped and resumed later.",
     "done": "Done",
     "skipped": "Skipped",
     "todo": "To do",
@@ -743,7 +903,46 @@
         "title": "Your providers",
         "body": "Choose in the directory the collectors and recyclers you work with.",
         "count": "{{count}} partner(s)"
+      },
+      "profile": {
+        "title": "How you work",
+        "body": "Five questions so that only what you use is shown. You can change everything in Settings.",
+        "count": ""
       }
+    },
+    "saveAnswers": "Save my answers",
+    "questions": {
+      "erp": "Do you have an ERP (Sage, Odoo, SAP…)?",
+      "production": "Do you follow production (manufacturing orders, raw materials)?",
+      "hazardous": "Do you produce hazardous waste?",
+      "customs": "Does some waste leave only under a customs permit?",
+      "marketplace": "Do you want to sell lots to providers?"
+    },
+    "industryQuestion": "Which industry are you in?",
+    "industries": {
+      "textile": "Textile and clothing",
+      "agriculture": "Agriculture and livestock",
+      "food": "Food processing",
+      "metal": "Metal and mechanical",
+      "plastics": "Plastics and rubber",
+      "chemicals": "Chemicals and cosmetics",
+      "construction": "Construction",
+      "other": "Other industry"
+    },
+    "data": {
+      "title": "How do your data come in?",
+      "lead": "Your production data are typed in DivaWaste, or imported from an Excel sheet you already keep:",
+      "leadAny": "Your production data can be typed by hand, or arrive by themselves:",
+      "manual": "Type them in DivaWaste",
+      "manualHint": "Your manufacturing orders (MO), articles and materials, at the office or from the workshop phone.",
+      "fileHintSheet": "Download the template and fill it, or start from your Excel sheet, then import it.",
+      "leadErp": "Your ERP already holds your data: connect it to DivaWaste, the simplest way for you.",
+      "file": "Import an Excel or CSV file",
+      "fileHint": "Download the template, fill it or export it from your ERP, then import it.",
+      "nightly": "Every night, from your ERP",
+      "nightlyHint": "Your ERP leaves an export at an address: DivaWaste reads it every night around 4 am.",
+      "api": "Live, through the API",
+      "apiHint": "Your ERP sends its data to DivaWaste with an access key, as it goes."
     }
   },
   "dashboard": {
@@ -788,7 +987,9 @@
     },
     "production": "Origin of the waste in production",
     "productionHint": "The manufacturing orders that produced the most waste over the period.",
-    "seeAll": "See all"
+    "seeAll": "See all",
+    "greeting": "Hello {{name}}",
+    "period": "Over the period"
   },
   "lots": {
     "title": "Waste lots",
@@ -826,7 +1027,7 @@
     "createTitle": "New lot",
     "created": "Lot {{number}} created.",
     "stored": "Lot put in stock.",
-    "weighed": "Weight updated.",
+    "weighed": "Weighed",
     "splitDone": "Lot split into {{count}} lots.",
     "groupDone": "Lots grouped into {{number}}.",
     "splitHint": "The original lot is closed and replaced by the new lots, each with its own label.",
@@ -846,7 +1047,8 @@
       "split_from": "Comes from a split",
       "grouped_into": "Grouped",
       "grouped_from": "Comes from a grouping",
-      "packages_corrected": "Number of packages changed"
+      "packages_corrected": "Number of packages changed",
+      "composition_changed": "Composition changed"
     },
     "by": "by {{actor}}",
     "previousWeight": "previous weight {{kg}} kg",
@@ -858,11 +1060,11 @@
     "production": "Origin in production",
     "productionOrder": "Manufacturing order",
     "noProductionOrder": "No manufacturing order",
-    "productionOrderHint": "Optional. The stage is deduced from the zone, the material from the order.",
+    "productionOrderHint": "Optional. The stage is deduced from the zone, the raw material from the order.",
     "rawMaterial": "Raw material",
     "materialOfOrder": "The one of the order",
     "editOrigin": "Origin",
-    "originHint": "Where this lot comes from in production. Leave empty what you do not know: the stage is deduced from the zone, the material from the order.",
+    "originHint": "Where this lot comes from in production. Leave empty what you do not know: the stage is deduced from the zone, the raw material from the order.",
     "stepOfZone": "The one of the zone",
     "quantityIn": "Quantity ({{unit}})",
     "countedHint": "This waste is declared by quantity, not by weight.",
@@ -899,7 +1101,75 @@
     "groupPackages": "Number of packages of the grouped lot",
     "groupPackagesHint": "Count the result: three lots put in one bale are one package. Left empty: 1, as a default.",
     "packagesChange": "{{from}} → {{to}} package(s)",
-    "afterDeparture": "after departure"
+    "afterDeparture": "after departure",
+    "compositionComplete": "Complete to 100 %",
+    "compositionUnknown": "Composition not given",
+    "compositionDefault": "If nothing is entered, the lot takes the composition of its type: {{label}}.",
+    "compositionHint": "Add the materials if you know them (label, supplier sheet, what the workshop knows). Otherwise leave it empty.",
+    "compositionUseType": "Start from the type",
+    "editComposition": "Composition",
+    "compositionAdd": "Enter",
+    "compositionEditHint": "What the lot is made of, material by material, totalling 100 %. No need to follow raw materials or production: say what you know of the lot. A pickup that has not left follows the new composition; it is printed on the tracking slip.",
+    "compositionSource": {
+      "entered": "Entered on the lot",
+      "raw_material": "Taken from the raw material",
+      "waste_type": "Default of the waste type — to be checked",
+      "grouping": "Average of the grouped lots",
+      "split": "Kept from the lot it was split from"
+    },
+    "where": "Site and zone",
+    "weightBasisLabel": "How do you know this weight?",
+    "estimated": "Estimated",
+    "fromType": "The waste type's",
+    "printOnCreate": "Print the label",
+    "createAnother": "Create and add another",
+    "defaults": {
+      "packaging": "Packaging: {{name}}",
+      "composition": "Composition: {{label}}",
+      "none": "Packaging, colour, composition, notes"
+    },
+    "views": {
+      "label": "Lots shown",
+      "onsite": "On site",
+      "gone": "Gone",
+      "all": "All"
+    },
+    "selection": "{{count}} lot(s) selected",
+    "selectedLabel": "lot(s) selected",
+    "differentSites": "Lots from several sites: choose lots of one site",
+    "cannotGroup": "Only lots of the same site, type and hazard can be grouped.",
+    "cannotGroupShort": "Cannot be grouped",
+    "printLabels": "Print the labels",
+    "moveSelected": "Change zone ({{count}} lots)",
+    "movedCount": "{{count}} lot(s) moved.",
+    "factsWhat": "What",
+    "factsWhere": "Where",
+    "factsTrace": "Traceability",
+    "splitRemaining": "{{kg}} kg left to share",
+    "splitOver": "{{kg}} kg too much",
+    "splitBalanced": "it adds up",
+    "requestPickup": "Request a pickup",
+    "next": {
+      "created": "Store it, weigh it if it is not weighed, or request its pickup",
+      "stored": "In stock: it waits for a pickup request or a sale",
+      "awaiting_pickup": "It will leave with the requested pickup",
+      "collected": "Gone: the receiver will receive and treat it",
+      "treated": "Treated: it will be closed with its pickup",
+      "closed": "Cycle complete, from production to treatment"
+    },
+    "partWhat": "The waste",
+    "partHowMuch": "The quantity",
+    "basisWeighed": "Weighed on a scale",
+    "basisEstimated": "Estimated by eye",
+    "importButton": "Import",
+    "import": {
+      "title": "Import lots",
+      "subtitle": "From a register kept in Excel or an export of your ERP, one line per lot.",
+      "step1": "1. Your file",
+      "lead": "One line per lot. The site and the waste type are needed; the weight, date, zone, packaging and your reference are optional. Without a zone, the lot goes to the storage area of its site. A line whose reference was already imported is not created twice.",
+      "daviTip": "Simpler: drop this file on the virtual assistant. It checks every line and asks for your agreement before importing.",
+      "seeLots": "See the lots"
+    }
   },
   "stock": {
     "title": "Waste stock",
@@ -932,7 +1202,7 @@
     "defineLimit": "Define",
     "waiting": "Awaiting pickup",
     "usage": "Usage",
-    "warnAt": "alert at {{pct}} %",
+    "warnAt": "Warn at {{pct}} % of the limit",
     "limitsHint": "A limit is a maximum quantity — in t, kg, m³, l or packages — for a whole site, a zone or a waste type. You are alerted as it gets close, then again if it is exceeded.",
     "limitIntro": "Choose what the limit watches (a site, a zone, a waste type) and in which unit: weight, pieces, volume or number of packages. The same stock may have several limits, for example a weight and a number of bags; each is evaluated separately.",
     "maxHint": "Quantity not to exceed, in the unit chosen.",
@@ -977,7 +1247,9 @@
     "limitPreviewAll": "{{where}}: alert when the stock, all waste together, exceeds {{max}} {{unit}}, and from {{pct}} % of that limit. No lot is refused.",
     "limitOutside": "{{count}} other lot(s) of the scope, loose or in another packaging than {{packaging}}: not concerned by this limit.",
     "wholeSite": "Whole site",
-    "noSiteLimit": "No limit on the whole site"
+    "noSiteLimit": "No limit on the whole site",
+    "setZoneLimit": "Set a limit",
+    "emptyZone": "Pick up the zone's lots"
   },
   "sites": {
     "title": "Sites and zones",
@@ -1048,7 +1320,13 @@
     "siteLimitLink": "Set a limit on the site",
     "siteLoadLots": "on the site ({{count}} lot(s))",
     "sharedRoom": "One room, shared: the zone holds {{lines}}, or a mix — for instance {{half}}. Each package takes its share.",
-    "orMix": "or a mix (shared room)"
+    "orMix": "or a mix (shared room)",
+    "zonesToCreate": "Zones to create with the site",
+    "zonesToCreateHint": "Each zone chosen is created with the name of its type; adjust them afterwards on the site's page.",
+    "zoneMoreSummary": "Maximum load, alert at {{pct}} %, zone reserved for some waste",
+    "closed": "Site “{{name}}” closed: it stays in the history and is no longer offered for new lots.",
+    "storageZone": "Waste storage area",
+    "storageAlways": "Created with every site: that is where lots are stored."
   },
   "wasteTypes": {
     "title": "Waste types",
@@ -1097,7 +1375,15 @@
       "title": "Regulatory code — {{name}}",
       "completeHint": "This hazardous type was created without a code. The code chosen is saved once and does not change; lots of this type without one receive it, and their slips can be issued. Existing slips are not changed.",
       "activateHint": "This catalogue waste is hazardous and has no code of your country: choose it to activate the type."
-    }
+    },
+    "add": "Add a type",
+    "missingCodes": "{{count}} hazardous waste type(s) without a waste code: their slips cannot be issued.",
+    "completeAll": "Complete the codes",
+    "searchCatalog": "Search the catalogue: name or waste code",
+    "nothingFits": "Nothing fits? Create a custom type",
+    "moreSummary": "Measurement, channel, packaging, default composition",
+    "allSectors": "Show other industries' wastes",
+    "mySector": "Only my industry"
   },
   "pickups": {
     "title": "Pickups",
@@ -1144,13 +1430,23 @@
         "unverifiable": "authorisation {{reference}} is limited in weight and these lots have no measured weight: {{lots}}. Weigh them before requesting the pickup.",
         "blocked": "Request blocked — limit(s) concerned: {{limits}}."
       },
-      "transporterConfirms": "This transporter has an account: it confirms the date after the receiver."
+      "transporterConfirms": "This transporter has an account: it confirms the date after the receiver.",
+      "underContract": "Under contract",
+      "showOthers": "Show the other providers ({{count}}) who cannot take this pickup",
+      "hideOthers": "Hide the unavailable providers",
+      "transportBy": "Transport: {{name}}",
+      "contract": {
+        "ok": "This pickup will follow contract {{number}}: its prices and fees will apply.",
+        "ended": "Contract {{number}} with this provider ended on {{date}}: this pickup will follow no contract (neither its prices nor its fees).",
+        "terminated": "Contract {{number}} with this provider was terminated (end {{date}}): this pickup will follow no contract.",
+        "upcoming": "Contract {{number}} only starts on {{date}}: on this pickup date it will not apply yet."
+      }
     },
     "actions": {
       "submit": "Send the request",
       "cancel": "Cancel the pickup",
       "collect": "Record the loading",
-      "acknowledge": "Acknowledge the variance",
+      "acknowledge": "Handle the gap",
       "price": "Enter the prices",
       "complete": "Close",
       "confirm": "Confirm a date",
@@ -1159,9 +1455,12 @@
       "treat": "Declare the treatment",
       "manifest": "Issue the tracking slips",
       "certificate": "Upload a certificate",
-      "authorize": "Accept the gap",
+      "authorize": "Handle the gap",
       "confirmTransport": "Confirm the transport",
-      "refuseTransport": "Refuse the transport"
+      "refuseTransport": "Refuse the transport",
+      "confirmOn": "Confirm {{date}}",
+      "otherDate": "Propose another date",
+      "fixPrices": "Correct the prices"
     },
     "cancelReason": "Reason for the cancellation",
     "refuseReason": "Reason for the refusal",
@@ -1260,7 +1559,55 @@
     "awaitingTransporter": "{{receiver}} confirmed for {{date}}. The pickup will be confirmed once {{transporter}} confirms the transport.",
     "refusedByTransporter": "Transport refused by {{transporter}}: {{reason}}. The lots went back to stock; request the pickup with another transporter.",
     "transporterConfirmedOn": "confirmed on {{date}}",
-    "waitingTransporter": "Waiting for the transporter"
+    "waitingTransporter": "Waiting for the transporter",
+    "receiveAsDeparted": "All received as it left",
+    "collectAsDeclared": "All loaded as declared",
+    "sameChannel": "Same channel for every lot:",
+    "steps": {
+      "label": "Steps of the pickup",
+      "draft": "Draft",
+      "requested": "Requested",
+      "confirmed": "Date confirmed",
+      "collected": "Loaded",
+      "received": "Received",
+      "completed": "Closed",
+      "next": {
+        "draft": "Your turn: send the request to the provider",
+        "confirm": "{{receiver}} must confirm the date",
+        "confirmMine": "Your turn: confirm the requested date",
+        "confirmTransport": "{{transporter}} must confirm the transport",
+        "confirmTransportMine": "Your turn: confirm the transport",
+        "loading": "Pickup planned on {{date}}: record the loading when the lots leave",
+        "loadingProvider": "Pickup planned on {{date}}",
+        "receive": "{{receiver}} must record the reception",
+        "receiveMine": "Your turn: record the reception",
+        "variance": "Your turn: handle the weight gap at reception",
+        "varianceProvider": "The client is examining the weight gap at reception",
+        "treat": "{{receiver}} must declare the treatment",
+        "treatMine": "Your turn: declare the treatment",
+        "close": "Your turn: close the pickup",
+        "closeProvider": "The client will close the pickup",
+        "completed": "Pickup closed",
+        "refused": "Refused by {{receiver}}",
+        "refusedByTransporter": "Transport refused by {{transporter}}",
+        "cancelled": "Pickup cancelled"
+      }
+    },
+    "tabs": {
+      "label": "Pickups shown",
+      "company": {
+        "todo": "To do",
+        "waiting": "With the provider",
+        "done": "Done",
+        "all": "All"
+      },
+      "provider": {
+        "todo": "To handle",
+        "waiting": "Planned",
+        "done": "Done",
+        "all": "All"
+      }
+    }
   },
   "providers": {
     "title": "Providers",
@@ -1270,7 +1617,7 @@
       "collector": "Collector",
       "transporter": "Transporter",
       "recycler": "Recycler",
-      "eliminator": "Disposal operator"
+      "sorter": "Sorter"
     },
     "serviceArea": "Service area",
     "contact": "Contact",
@@ -1311,7 +1658,21 @@
     "wholeFamily": "Whole family",
     "addsToFamily": "Adds to the family requirement",
     "addsToFamilyOn": "Lots of this type also count in the requirement of their family.",
-    "addsToFamilyOff": "For lots of this type, this line replaces the family line."
+    "addsToFamilyOff": "For lots of this type, this line replaces the family line.",
+    "tabs": {
+      "mine": "My providers",
+      "directory": "Directory"
+    },
+    "platformPartners": "Partners on the platform",
+    "makeContract": "Make a contract",
+    "sentence": {
+      "min": "At least",
+      "perPickup": "per pickup,",
+      "anyPackaging": "any packaging",
+      "inPackaging": "in {{name}}"
+    },
+    "viewContract": "View contract {{number}}",
+    "anotherContract": "New contract"
   },
   "compliance": {
     "register": {
@@ -1363,7 +1724,8 @@
       "copyTitle": "Signed copy of slip {{number}}",
       "copyHint": "Every party has signed, at least one by hand. Attach the scan of the slip carrying the signatures: it closes the slip and becomes the archived document.",
       "copyFile": "Choose the file (PDF, JPG or PNG)",
-      "copyAttached": "Signed copy attached. Slip closed."
+      "copyAttached": "Signed copy attached. Slip closed.",
+      "viewSigned": "View the signed copy"
     },
     "declarations": {
       "title": "Annual declarations",
@@ -1402,6 +1764,12 @@
       "uploadedBy": "Uploaded by",
       "emptyTitle": "No document",
       "emptyHint": "Documents appear here as soon as a certificate is uploaded or a tracking slip is signed."
+    },
+    "overview": {
+      "title": "Compliance",
+      "subtitle": "What is missing to be in order. The register, slips, documents and declarations are in the tabs.",
+      "missing": "What is missing",
+      "clear": "Slips signed, documents complete, waste codes filled in: nothing is missing."
     }
   },
   "reports": {
@@ -1425,7 +1793,25 @@
     "month": "Month",
     "pieces": "Pieces produced",
     "productionSaved": "Production saved.",
-    "language": "Language"
+    "language": "Language",
+    "custom": "Custom report",
+    "presets": {
+      "rseYear": {
+        "title": "CSR summary of the year",
+        "hint": "Since 1 January, as a PDF with your logo"
+      },
+      "registerMonth": {
+        "title": "Last month's register",
+        "hint": "The chronological register, in Excel"
+      },
+      "balanceQuarter": {
+        "title": "Economic balance of the quarter",
+        "hint": "Revenue and costs of the last three months, as a PDF"
+      }
+    },
+    "monthly": "Receive it every month (on the 1st, for the past month)",
+    "monthlyOn": "This report will be generated on the 1st of every month.",
+    "monthlyOff": "Monthly report stopped."
   },
   "admin": {
     "users": {
@@ -1456,14 +1842,35 @@
       "invited": "Invitation sent.",
       "rolesSaved": "Roles updated.",
       "newRole": "New role",
-      "roleName": "Identifier (lowercase letters, digits, _)",
       "roleLabel": "Label",
       "systemRole": "Standard role",
       "customRole": "Company role",
       "systemHint": "Standard roles are maintained by Diva Software. Create a company role for a specific need.",
       "permissions": "Permissions",
       "roleSaved": "Role saved.",
-      "roleDeleted": "Role deleted."
+      "roleDeleted": "Role deleted.",
+      "pendingInvitations": "Pending invitations ({{count}})",
+      "expires": "expires on {{date}}",
+      "roleHints": {
+        "client_admin": "Do everything in the company: team, sites, reference data, subscription and every operation.",
+        "environment_manager": "Manage waste end to end: lots, stock, pickups, providers, compliance and reports.",
+        "workshop_operator": "Create, weigh and store lots, and load pickups, on their sites.",
+        "management_viewer": "Read the dashboard, reports and figures, without changing anything.",
+        "auditor": "Read the register, slips, documents and audit log, without changing anything.",
+        "provider_admin": "Manage the profile, accreditations and team, and answer pickup requests.",
+        "provider_operator": "Answer pickup requests, record receptions and upload certificates.",
+        "super_admin": "Administer the platform.",
+        "platform_support": "Help the platform's customers."
+      },
+      "detail": "Detail",
+      "levels": {
+        "none": "None",
+        "view": "View",
+        "manage": "Manage",
+        "custom": "Custom",
+        "customCount": "{{count}} of {{total}}"
+      },
+      "roleNameIs": "Identifier: {{name}}"
     },
     "audit": {
       "title": "Audit log",
@@ -1576,7 +1983,11 @@
       "published": "Profile published in the directory",
       "unpublished": "Profile not published (awaiting approval)",
       "addWaste": "Add an accepted waste",
-      "saved": "Profile saved."
+      "saved": "Profile saved.",
+      "familiesHint": "Click the waste families you take; then, if needed, name a type, a channel or what you ask per pickup.",
+      "requirements": "What you ask per pickup",
+      "hasRequirement": "Minimum or packaging asked",
+      "noRequirement": "No requirement"
     },
     "accreditations": {
       "title": "My accreditations",
@@ -1649,7 +2060,11 @@
       "noHistory": "No decision recorded.",
       "country": "Country",
       "planRequested": "Plan requested",
-      "inactiveSite": "Closed"
+      "inactiveSite": "Closed",
+      "tabs": {
+        "overview": "Overview",
+        "activity": "Sites, team and accreditations"
+      }
     },
     "accreditations": {
       "title": "Accreditations to review",
@@ -2022,7 +2437,19 @@
       "subscription_plans": "Plan",
       "certificates": "Certificate",
       "stored_files": "File",
-      "waste_tolerance_rules": "Tolerance rule"
+      "waste_tolerance_rules": "Tolerance rule",
+      "waste_authorizations": "Exit authorisation",
+      "production_clients": "Client",
+      "production_suppliers": "Supplier",
+      "raw_materials": "Raw material",
+      "articles": "Article",
+      "customer_orders": "Order",
+      "production_orders": "Manufacturing order",
+      "external_partners": "Provider without an account",
+      "contracts": "Contract",
+      "marketplace_listings": "Exchange listing",
+      "user_invitations": "Invitation",
+      "marketplace_negotiations": "Exchange negotiation"
     },
     "events": {
       "created": "Creation",
@@ -2087,7 +2514,276 @@
       "net_weight_kg": "Net weight (kg)",
       "zone_id": "Zone",
       "site_id": "Site",
-      "email": "Email"
+      "email": "Email",
+      "id": "Identifier",
+      "ulid": "Identifier",
+      "city": "City",
+      "phone": "Phone",
+      "tax_id": "Tax ID",
+      "timezone": "Time zone",
+      "country_id": "Country",
+      "legal_name": "Legal name",
+      "approved_at": "Approved on",
+      "company_type": "Company type",
+      "submitted_at": "Submitted on",
+      "address_line1": "Address",
+      "currency_code": "Currency",
+      "default_locale": "Language",
+      "user_id": "User",
+      "joined_at": "Joined on",
+      "company_id": "Company",
+      "role_id": "Role",
+      "is_sorter": "Sorter",
+      "description": "Description",
+      "is_recycler": "Recycler",
+      "is_collector": "Collector",
+      "is_published": "Published",
+      "published_at": "Published on",
+      "service_area": "Service area",
+      "public_contact_name": "Public contact",
+      "public_contact_email": "Public e-mail",
+      "public_contact_phone": "Public phone",
+      "expires_on": "Expires on",
+      "valid_from": "Valid from",
+      "reviewed_at": "Reviewed on",
+      "review_status": "Review",
+      "stored_file_id": "File",
+      "reference_number": "Reference",
+      "issuing_authority": "Issuing authority",
+      "accreditation_type_id": "Accreditation type",
+      "primary_contact_user_id": "Main contact",
+      "starts_at": "Start",
+      "is_current": "Current",
+      "trial_ends_at": "Trial ends",
+      "price_snapshot": "Price kept",
+      "trial_starts_at": "Trial starts",
+      "created_by_user_id": "Created by",
+      "subscription_plan_id": "Plan",
+      "site_kind": "Site kind",
+      "activated_at": "Activated on",
+      "zone_type_id": "Zone type",
+      "is_waste_storage": "Waste storage",
+      "capacity_alert_pct": "Capacity alert (%)",
+      "is_hazardous": "Hazardous",
+      "density_kg_m3": "Density (kg/m³)",
+      "unit_weight_kg": "Unit weight (kg)",
+      "default_unit_id": "Unit",
+      "waste_family_id": "Waste family",
+      "extra_attributes": "Other information",
+      "measurement_method": "Measurement",
+      "default_composition": "Default composition",
+      "default_grammage_gsm": "Default grammage (g/m²)",
+      "waste_catalog_item_id": "Catalogue waste",
+      "requires_authorization": "Requires authorisation",
+      "default_color_family_id": "Default colour",
+      "regulatory_waste_code_id": "Waste code",
+      "default_packaging_type_id": "Default packaging",
+      "default_treatment_channel_id": "Usual treatment",
+      "notes": "Notes",
+      "unit_id": "Unit",
+      "quantity": "Quantity",
+      "lot_number": "Lot number",
+      "color_label": "Colour",
+      "origin_type": "Origin",
+      "generated_at": "Generated on",
+      "grammage_gsm": "Grammage (g/m²)",
+      "weight_basis": "Weight basis",
+      "package_count": "Package count",
+      "waste_type_id": "Waste type",
+      "tare_weight_kg": "Tare (kg)",
+      "color_family_id": "Colour",
+      "gross_weight_kg": "Gross weight (kg)",
+      "raw_material_id": "Raw material",
+      "created_device_id": "Device",
+      "packaging_type_id": "Packaging",
+      "production_step_id": "Production step",
+      "production_order_id": "Manufacturing order",
+      "raw_material_batch_id": "Raw material lot",
+      "package_count_confirmed": "Package count confirmed",
+      "started_at": "Started on",
+      "provider_company_id": "Provider",
+      "settings": "Settings",
+      "is_transporter": "Transporter",
+      "max_kg": "Limit (kg)",
+      "alert_pct": "Alert (%)",
+      "issued_on": "Issued on",
+      "reference": "Reference",
+      "valid_until": "Valid until",
+      "contact_name": "Contact",
+      "country_code": "Country",
+      "width_cm": "Width (cm)",
+      "composition": "Composition",
+      "production_supplier_id": "Supplier",
+      "family": "Family",
+      "production_client_id": "Client",
+      "due_on": "Due on",
+      "ordered_on": "Ordered on",
+      "order_number": "Order number",
+      "article_id": "Article",
+      "started_on": "Started on",
+      "finished_on": "Finished on",
+      "quantity_planned": "Planned quantity",
+      "customer_order_id": "Order",
+      "quantity_produced": "Quantity produced",
+      "postal_code": "Postal code",
+      "covers_hazardous": "Covers hazardous",
+      "accreditation_reference": "Accreditation reference",
+      "accreditation_expires_on": "Accreditation expires",
+      "unit_code": "Unit",
+      "measure_key": "Measure",
+      "warning_pct": "Warning threshold (%)",
+      "max_quantity": "Maximum quantity",
+      "title": "Title",
+      "ends_on": "End",
+      "weekdays": "Weekdays",
+      "frequency": "Frequency",
+      "starts_on": "Start",
+      "party_role": "Provider role",
+      "pickup_fee": "Pickup fee",
+      "contract_number": "Contract number",
+      "planned_pickups": "Planned pickups",
+      "payment_terms_days": "Payment terms (days)",
+      "pickups_per_period": "Pickups per period",
+      "external_partner_id": "Provider without an account",
+      "pickup_fee_direction": "Pickup fee direction",
+      "monthly_fee_direction": "Monthly fee direction",
+      "contract_id": "Contract",
+      "pickup_number": "Pickup number",
+      "requested_date": "Requested date",
+      "variance_flagged": "Variance flagged",
+      "external_provider_id": "Receiver without an account",
+      "transport_contract_id": "Transport contract",
+      "transporter_company_id": "Transporter",
+      "external_transporter_id": "Transporter without an account",
+      "awaiting_pickup_at": "Awaiting pickup on",
+      "updated_by_user_id": "Updated by",
+      "requested_by_user_id": "Requested by",
+      "confirmed_at": "Confirmed on",
+      "confirmed_date": "Confirmed date",
+      "confirmed_by_user_id": "Confirmed by",
+      "collected_at": "Collected on",
+      "departure_weight_kg": "Departure weight (kg)",
+      "collected_by_user_id": "Loaded by",
+      "departure_weight_source": "Departure weight source",
+      "received_at": "Received on",
+      "tolerance_status": "Variance",
+      "received_weight_kg": "Received weight (kg)",
+      "weight_variance_kg": "Weight variance (kg)",
+      "received_by_user_id": "Received by",
+      "weight_variance_pct": "Weight variance (%)",
+      "variance_threshold_pct": "Accepted variance (%)",
+      "contract_fees_amount": "Contract fees",
+      "treated_at": "Treated on",
+      "pickup_id": "Pickup",
+      "legal_hold": "Legal hold",
+      "document_type": "Document type",
+      "is_regulatory": "Regulatory",
+      "shared_with_company_id": "Shared with",
+      "uploaded_by_company_id": "Uploaded by",
+      "document_id": "Document",
+      "manifest_number": "Slip number",
+      "producer_snapshot": "Producer",
+      "receiver_snapshot": "Receiver",
+      "declared_weight_kg": "Declared weight (kg)",
+      "receiver_company_id": "Receiver",
+      "transporter_snapshot": "Transporter",
+      "checksum_sha256": "File fingerprint",
+      "source_snapshot": "Source",
+      "issued_at": "Issued on",
+      "retention_until": "Kept until",
+      "variance_comment": "Variance comment",
+      "variance_decision": "Variance decision",
+      "variance_acknowledged_at": "Variance handled on",
+      "variance_acknowledged_by_user_id": "Variance handled by",
+      "closed_at": "Closed on",
+      "closed_reason": "Closing reason",
+      "completed_at": "Completed on",
+      "completed_by_user_id": "Completed by",
+      "basis": "Basis",
+      "direction": "Direction",
+      "blocking_pct": "Blocking threshold (%)",
+      "treatment_channel_id": "Treatment",
+      "source": "Source",
+      "period_month": "Month",
+      "pieces_produced": "Pieces produced",
+      "entered_by_user_id": "Entered by",
+      "ends_at": "End",
+      "payment_method": "Payment method",
+      "sites_quantity": "Number of sites",
+      "billing_interval": "Billing interval",
+      "replaced_by_subscription_id": "Replaced by",
+      "due_date": "Due date",
+      "period_end": "Period end",
+      "tax_amount": "VAT",
+      "amount_paid": "Amount paid",
+      "invoice_type": "Invoice type",
+      "period_start": "Period start",
+      "total_amount": "Total amount",
+      "subtotal_amount": "Subtotal",
+      "stamp_duty_amount": "Stamp duty",
+      "company_subscription_id": "Subscription",
+      "issue_date": "Issue date",
+      "buyer_snapshot": "Billed client",
+      "invoice_number": "Invoice number",
+      "seller_snapshot": "Seller",
+      "issued_by_user_id": "Issued by",
+      "current_period_end": "Current period end",
+      "current_period_start": "Current period start",
+      "amount": "Amount",
+      "method": "Method",
+      "invoice_id": "Invoice",
+      "bank_reference": "Bank reference",
+      "declared_paid_on": "Declared paid on",
+      "declared_by_user_id": "Declared by",
+      "suspended_at": "Suspended on",
+      "suspension_reason": "Suspension reason",
+      "suspended_by_user_id": "Suspended by",
+      "rejected_at": "Rejected on",
+      "rejection_reason": "Rejection reason",
+      "rejected_by_user_id": "Rejected by",
+      "trade_name": "Trade name",
+      "billing_email": "Billing e-mail",
+      "approved_by_user_id": "Approved by",
+      "vat_number": "VAT number",
+      "region": "Region",
+      "regulatory_identifier": "Regulatory identifier",
+      "space_method": "Space measure",
+      "onboarding_state": "Getting started",
+      "stored_at": "Stored on",
+      "closes_at": "Offers close",
+      "show_seller": "Seller shown",
+      "available_from": "Available from",
+      "listing_number": "Listing number",
+      "asking_direction": "Asking price direction",
+      "asking_unit_price": "Asking price",
+      "asking_pricing_mode": "Pricing mode",
+      "monthly_fee": "Monthly fee",
+      "cancellation_reason": "Cancellation reason",
+      "message": "Message",
+      "site_ids": "Sites",
+      "last_name": "Last name",
+      "expires_at": "Expires on",
+      "first_name": "First name",
+      "send_count": "Times sent",
+      "last_sent_at": "Last sent",
+      "pending_flag": "Pending",
+      "invited_by_user_id": "Invited by",
+      "logo_stored_file_id": "Logo",
+      "capacity_kg": "Capacity (kg)",
+      "capacity_m3": "Capacity (m³)",
+      "category": "Category",
+      "max_lots": "Maximum lots",
+      "shared_packaging_allowance": "Shared packaging allowance",
+      "ended_at": "Ended on",
+      "refused_by": "Refused by",
+      "end_message": "Closing message",
+      "marketplace_listing_id": "Listing",
+      "accepted_at": "Accepted on",
+      "commission_pct": "Commission (%)",
+      "accepted_by_user_id": "Accepted by",
+      "accepted_proposal_id": "Accepted proposal",
+      "accepted_negotiation_id": "Accepted negotiation",
+      "marketplace_negotiation_id": "Negotiation"
     }
   },
   "permissions": {
@@ -2164,11 +2860,19 @@
     "production.stats.view": "View production statistics",
     "production.finance.view": "See production prices, costs and gains",
     "pickups.authorize_variance": "Accept a gap above the blocking limit",
-    "pickups.override_provider_requirements": "Send a request despite a blocking requirement of the receiver (minimum, packaging), with a reason"
+    "pickups.override_provider_requirements": "Send a request despite a blocking requirement of the receiver (minimum, packaging), with a reason",
+    "marketplace.view": "See the listings of the bourse and their offers",
+    "marketplace.manage": "Prepare, publish, withdraw a listing; make counter-offers",
+    "marketplace.accept": "Accept or refuse an offer (commits the company)",
+    "provider.marketplace.view": "See the listings of the bourse",
+    "provider.marketplace.offer": "Make, negotiate, accept or withdraw offers",
+    "contracts.view": "See the contracts with providers",
+    "contracts.manage": "Write, put in force and terminate contracts",
+    "provider.contracts.view": "See the contracts made with our clients"
   },
   "colors": {
     "title": "Colours",
-    "hint": "The colours offered on lots, waste types, materials and zones. Default colours are shared by everyone; yours are visible to your company only.",
+    "hint": "The colours offered on lots, waste types, raw materials and zones. Default colours are shared by everyone; yours are visible to your company only.",
     "new": "Add a colour",
     "edit": "Edit colour",
     "default": "Default",
@@ -2192,7 +2896,7 @@
     "withdrawn": "withdrawn",
     "lockedHint": "This colour comes from the catalogue: its reference and tint cannot be changed. You can rename it.",
     "deleteTitle": "Delete \"{{name}}\"?",
-    "deleteMessage": "A colour already used by a lot, a waste type, a material or a zone cannot be deleted: withdraw it from the list instead.",
+    "deleteMessage": "A colour already used by a lot, a waste type, a raw material or a zone cannot be deleted: withdraw it from the list instead.",
     "disclaimer": "The tints shown are unverified screen approximations: they do not replace a physical colour guide. PANTONE® is a trademark of Pantone LLC, not affiliated with DivaWaste.",
     "collections": {
       "coated": "Coated (C)",
@@ -2273,7 +2977,24 @@
     "Lots reçus et fabriqués": "Received and produced lots",
     "Coûts et gains": "Costs and gains",
     "Commande": "Order",
-    "Ordre de fabrication": "Manufacturing order"
+    "Ordre de fabrication": "Manufacturing order",
+    "Matières premières et articles": "Raw materials and articles",
+    "Annonce": "Listing",
+    "Bourse": "Exchange",
+    "Clés d’accès API": "API access keys",
+    "Conditionnements": "Packaging",
+    "Conformité": "Compliance",
+    "Contrat": "Contract",
+    "Contrats": "Contracts",
+    "Couleurs": "Colours",
+    "Entraîner l'assistant": "Train the assistant",
+    "Importer des lots": "Import lots",
+    "Journal d'audit": "Audit log",
+    "Modules": "Modules",
+    "Paramètres": "Settings",
+    "Réception et écarts": "Reception and variances",
+    "DivaWaste": "DivaWaste",
+    "Liste ANGed": "ANGed list"
   },
   "partners": {
     "title": "Partners without an account",
@@ -2324,7 +3045,9 @@
       "count": "{{count}} requirement(s) per pickup, entered by your company",
       "toReviewCount": "{{count}} to review",
       "internalNoteLinked": "These requirements were entered by your company, from a contract or an exchange, when the partner had no account. It has not confirmed them, and every pickup request says so. Every addition, change or removal is kept in the audit log with its author."
-    }
+    },
+    "contactDetails": "Contact details",
+    "contactSummary": "Tax id, address, contact, notes"
   },
   "authorizations": {
     "title": "Waste exit authorisations",
@@ -2361,7 +3084,9 @@
     "shared": "The document states one quantity shared by these packagings (\"40 bales or 100 bags\")",
     "sharedOn": "One limit: each packaging uses its share and the shares add up (20 bales of 40 and 50 bags of 100 use it all).",
     "sharedOff": "One limit per packaging: each is checked separately, and exceeding a single one blocks the request. Tick the box only if the document says so.",
-    "sharedTag": "shared quantity"
+    "sharedTag": "shared quantity",
+    "fileFirst": "Start with the declaration signed by customs: the reference, dates and quantities are on it.",
+    "fileFirstDavi": "Attach the document first: the assistant reads it and fills the form, you check it."
   },
   "production": {
     "reference": "Reference",
@@ -2388,21 +3113,21 @@
       "empty": "No supplier"
     },
     "catalog": {
-      "title": "Materials and articles",
-      "subtitle": "The raw materials consumed and the articles made. The composition and colour of a material are carried by the waste that comes from it."
+      "title": "Raw materials and articles",
+      "subtitle": "The raw materials consumed and the articles made. The composition and colour of a raw material are carried by the waste that comes from it."
     },
     "materials": {
       "title": "Raw materials",
       "one": "Raw material",
-      "new": "New material",
-      "edit": "Edit the material",
+      "new": "New raw material",
+      "edit": "Edit the raw material",
       "empty": "No raw material",
       "unit": "Unit",
       "colorLabel": "Colourway or Pantone reference",
       "addFibre": "Add a fibre",
       "total": "The total must be 100 % (currently {{total}} %).",
       "batches": "Received batches",
-      "batchesHint": "Each delivery of the material. A waste or a consumption can then point to the exact batch.",
+      "batchesHint": "Each delivery of the raw material. A waste or a consumption can then point to the exact batch.",
       "batchNumber": "Batch no.",
       "receivedOn": "Received on",
       "width": "Width (cm)",
@@ -2416,9 +3141,9 @@
       "empty": "No article",
       "family": "Family",
       "consumption": "Consumption per piece",
-      "consumptionHint": "What one piece should consume of each material. Used to compare planned and actual on a manufacturing order.",
+      "consumptionHint": "What one piece should consume of each raw material. Used to compare planned and actual on a manufacturing order.",
       "perPiece": "Per piece",
-      "addMaterial": "Add a material"
+      "addMaterial": "Add a raw material"
     },
     "orders": {
       "title": "Orders",
@@ -2467,7 +3192,7 @@
       "step": "Stage",
       "piecesDone": "Pieces done",
       "addStep": "Add a stage",
-      "consumption": "Materials consumed",
+      "consumption": "Raw materials consumed",
       "expected": "planned",
       "consumed": "consumed",
       "anyBatch": "Batch not stated",
@@ -2478,9 +3203,11 @@
       "fromLots": "sum of {{count}} produced lot(s)",
       "typed": "entered on the order",
       "wasteKpi": "Waste",
-      "wasteRate": "{{pct}} % of the material consumed",
+      "wasteRate": "{{pct}} % of the raw material consumed",
       "wasteLots": "{{count}} waste lot(s)",
-      "producedHint": "As soon as the order has produced lots, this quantity is their sum."
+      "producedHint": "As soon as the order has produced lots, this quantity is their sum.",
+      "tabMake": "Steps and consumption",
+      "tabMoney": "Costs and gain"
     },
     "ofStatus": {
       "planned": "Planned",
@@ -2517,29 +3244,59 @@
         "clients": "Clients",
         "suppliers": "Suppliers",
         "received_lots": "Received lots",
-        "consumptions": "Materials consumed",
+        "consumptions": "Raw materials consumed",
         "produced_lots": "Produced lots",
         "expenses": "Production expenses",
-        "invoices": "Customer invoices"
+        "invoices": "Customer invoices",
+        "waste_lots": "Waste lots"
       },
       "hints": {
         "manufacturing_orders": "Order, article, quantities, stages per site, consumptions. Creates the client, the order and the article when needed.",
         "orders": "One line per article ordered. Creates the client and the article when needed.",
-        "articles": "Reference, client, and the consumption per piece of each material.",
+        "articles": "Reference, client, and the consumption per piece of each raw material.",
         "materials": "Reference, category, default supplier, unit.",
         "clients": "Name, code, contact.",
         "suppliers": "Name, code, contact.",
-        "received_lots": "Material, lot number, supplier of the delivery, quantity, price. The material must exist.",
-        "consumptions": "Order, material, quantity and received lot (or empty = lot not specified). The order, the material and the lot must exist.",
+        "received_lots": "Raw material, lot number, supplier of the delivery, quantity, price. The raw material must exist.",
+        "consumptions": "Order, raw material, quantity and received lot (or empty = lot not specified). The order, the raw material and the lot must exist.",
         "produced_lots": "Lot number, order, quantity, date, status. The order must exist.",
         "expenses": "Order, supporting document, description, amount, category.",
-        "invoices": "Invoice number, customer order, amount, invoice or credit note."
+        "invoices": "Invoice number, customer order, amount, invoice or credit note.",
+        "waste_lots": "A register of lots: site, waste, weight, date"
       },
-      "expected": "expected: {{example}}"
+      "expected": "expected: {{example}}",
+      "erpTitle": "ERP connection and import",
+      "byFile": "By file",
+      "byFileHint": "An Excel or CSV export of your ERP: the columns chosen once are found again next time.",
+      "byApi": "Through the API",
+      "byApiHint": "Your ERP can send its manufacturing orders, orders and materials straight to DivaWaste.",
+      "apiDocs": "API documentation",
+      "remembered": "Columns found again from the last import of this kind of file.",
+      "feeds": {
+        "title": "Every night, from an address",
+        "hint": "Your ERP publishes an export at an https address: DivaWaste reads it every night, no file to send.",
+        "lead": "Each export is read around 4 am with the columns chosen at your last import of that kind of file. Lines in error are skipped and reported under \"Needs attention\".",
+        "address": "Address of the export (https://…)",
+        "add": "Read every night",
+        "runNow": "Read now",
+        "nightly": "Read every night",
+        "never": "Not read yet",
+        "lastResult": "Last read: {{created}} created, {{updated}} updated, {{errors}} line(s) in error",
+        "guessed": "Columns guessed from the headings: import this file once by hand to fix them.",
+        "removed": "Automatic import removed.",
+        "errors": {
+          "address": "Address refused: it must use https and lead to a public server.",
+          "download": "The address could not be read (server unreachable or error response).",
+          "too_large": "The file is larger than 10 MB.",
+          "unreadable": "The file received is not a readable table (Excel or CSV).",
+          "columns": "A required column is missing: import this file once by hand to choose the columns.",
+          "rights": "The person who set up this import no longer has the rights it needs: set it up again."
+        }
+      }
     },
     "stats": {
       "title": "Production statistics",
-      "subtitle": "Where the waste of the period comes from: by manufacturing order, client, article, stage, material and supplier.",
+      "subtitle": "Where the waste of the period comes from: by manufacturing order, client, article, stage, raw material and supplier.",
       "export": "Export (Excel)",
       "waste": "Waste generated",
       "measured": "Measured",
@@ -2554,16 +3311,16 @@
       "lots": "Lots",
       "total": "Total",
       "rate": "Waste rate",
-      "rateHint": "Share of the consumed material that became waste. Calculated when the consumption of the order is known in kg, or in metres with the width and weight of the material.",
+      "rateHint": "Share of the consumed raw material that became waste. Calculated when the consumption of the order is known in kg, or in metres with the width and weight of the raw material.",
       "balance": "Balance",
       "empty": "No attributed waste over the period.",
-      "method": "Method: \"measured\" = the lot names its manufacturing order. \"Estimated\" (≈, hatched) = the lot only says its stage; its weight is shared between the orders at that stage, on that site, that day, in proportion to the pieces done. \"Not attributed\" = the lot says nothing, or no order was at its stage. Only created lots are counted (not those from a split or a grouping). Click an order or a material to see its lots.",
+      "method": "Method: \"measured\" = the lot names its manufacturing order. \"Estimated\" (≈, hatched) = the lot only says its stage; its weight is shared between the orders at that stage, on that site, that day, in proportion to the pieces done. \"Not attributed\" = the lot says nothing, or no order was at its stage. Only created lots are counted (not those from a split or a grouping). Click an order or a raw material to see its lots.",
       "sections": {
         "by_order": "Orders",
         "by_client": "Clients",
         "by_article": "Articles",
         "by_step": "Stages",
-        "by_material": "Materials",
+        "by_material": "Raw materials",
         "by_supplier": "Suppliers"
       },
       "monthly": "Monthly trend"
@@ -2577,13 +3334,13 @@
       "no_order": "the order is not attached to a customer order",
       "no_price": "selling price missing on the order",
       "no_production": "quantity produced not entered",
-      "unknown_material_cost": "cost of some materials unknown",
-      "no_consumption": "material consumption not entered",
+      "unknown_material_cost": "cost of some raw materials unknown",
+      "no_consumption": "raw material consumption not entered",
       "expense_currency": "an expense is in another currency",
       "order_currency": "the order is in another currency"
     },
     "costReason": {
-      "no_price": "Neither this lot nor any other lot of this material has a price.",
+      "no_price": "Neither this lot nor any other lot of this raw material has a price.",
       "currency": "The price of this lot is in another currency than the company’s."
     },
     "producedStatus": {
@@ -2605,7 +3362,7 @@
     },
     "lots": {
       "title": "Received lots and produced lots",
-      "subtitle": "The materials received from your suppliers, and the goods made for your clients. Waste lots are in Operations."
+      "subtitle": "The raw materials received from your suppliers, and the goods made for your clients. Waste lots are in Operations."
     },
     "material": {
       "overview": "Overview",
@@ -2623,11 +3380,11 @@
       "averagePrice": "Average price per {{unit}}",
       "unpriced": "{{count}} lot(s) without a price",
       "purchased": "{{amount}} purchased",
-      "waste": "Waste from this material",
+      "waste": "Waste from this raw material",
       "wasteLots": "{{count}} waste lot(s)",
-      "historyIntro": "Where this material was consumed: the last 200 consumptions, with the order and the received lot they come from.",
-      "historyEmpty": "No order has consumed this material yet.",
-      "pricesIntro": "The cost of each delivery, delivery included. The same material can have a different price by supplier and date.",
+      "historyIntro": "Where this raw material was consumed: the last 200 consumptions, with the order and the received lot they come from.",
+      "historyEmpty": "No order has consumed this raw material yet.",
+      "pricesIntro": "The cost of each delivery, delivery included. The same raw material can have a different price by supplier and date.",
       "pricesEmpty": "No received lot has a price.",
       "versusAverage": "Gap to average price",
       "weightedAverage": "Average price weighted by quantities"
@@ -2640,7 +3397,7 @@
       "number": "Received lot number",
       "receivedOn": "Received on",
       "supplier": "Supplier",
-      "supplierHint": "The one of this delivery. It can differ from the default supplier of the material.",
+      "supplierHint": "The one of this delivery. It can differ from the default supplier of the raw material.",
       "supplierReference": "Supplier’s lot number",
       "quantity": "Quantity received ({{unit}})",
       "deliveryNote": "Delivery note",
@@ -2652,9 +3409,9 @@
       "deliveryCostHint": "Transport, customs… spread over the quantity of the lot.",
       "taxRate": "VAT (%)",
       "invoice": "Supplier invoice",
-      "intro": "Each delivery of the material, with its supplier and its price. This is not a stock: \"consumed\" is what orders declared taking from the lot.",
+      "intro": "Each delivery of the raw material, with its supplier and its price. This is not a stock: \"consumed\" is what orders declared taking from the lot.",
       "empty": "No received lot",
-      "emptyHint": "Add a received lot from the page of a material, or import them.",
+      "emptyHint": "Add a received lot from the page of a raw material, or import them.",
       "received": "Received",
       "consumed": "Consumed by orders",
       "unitCost": "Unit cost",
@@ -2662,25 +3419,25 @@
       "consumedValue": "Consumed value",
       "documents": "Delivery note / invoice",
       "overConsumed": "Orders declare having consumed more than the lot held: check the quantities.",
-      "search": "Lot number, reference or material",
+      "search": "Lot number, reference or raw material",
       "price": "Price",
       "withPrice": "With a price",
       "withoutPrice": "Without a price"
     },
     "consumed": {
-      "title": "Materials consumed",
+      "title": "Raw materials consumed",
       "edit": "Edit consumption",
-      "editHint": "One line per material and received lot: 12 kg of lot A and 8 kg of lot B are two lines. If you do not know which lot the material came from, leave \"Lot not specified\".",
+      "editHint": "One line per raw material and received lot: 12 kg of lot A and 8 kg of lot B are two lines. If you do not know which lot the raw material came from, leave \"Lot not specified\".",
       "none": "No consumption entered.",
-      "intro": "Order → material consumed → received lot → supplier. Planned comes from the consumption per piece of the article.",
-      "empty": "No material planned or consumed for this order.",
+      "intro": "Order → raw material consumed → received lot → supplier. Planned comes from the consumption per piece of the article.",
+      "empty": "No raw material planned or consumed for this order.",
       "planned": "Planned",
       "actual": "Consumed",
       "variance": "Variance",
       "where": "Stage · site",
       "notYet": "Nothing consumed yet.",
-      "materialsHint": "material(s) planned or consumed",
-      "averageHint": "Lot not specified: valued at the average price of the lots of this material.",
+      "materialsHint": "raw material(s) planned or consumed",
+      "averageHint": "Lot not specified: valued at the average price of the lots of this raw material.",
       "unallocated": "{{quantity}} {{unit}} with no lot specified; the origin of {{known}} {{unit}} is known."
     },
     "produced": {
@@ -2708,7 +3465,7 @@
       "intro": "The waste attached to this order. These are ordinary waste lots: register, pickups and tracking slips apply as always.",
       "empty": "No waste lot names this order.",
       "hidden": "{{count}} lot(s), {{kg}}: you are not allowed to read waste lots.",
-      "source": "Material · received lot",
+      "source": "Raw material · received lot",
       "ofOnly": "Order only",
       "total": "{{count}} lot(s) generated",
       "noRate": "Waste rate not calculable"
@@ -2723,7 +3480,8 @@
       "payee": "Supplier / payee",
       "reference": "Supporting document",
       "referenceHint": "Invoice, quote or receipt number.",
-      "deleteTitle": "Delete the expense \"{{description}}\"?"
+      "deleteTitle": "Delete the expense \"{{description}}\"?",
+      "deleted": "Expense “{{description}}” deleted."
     },
     "invoices": {
       "title": "Invoices and credit notes",
@@ -2748,14 +3506,14 @@
       "revenue": "Revenue",
       "amount": "Amount",
       "value": "Value",
-      "plannedMaterial": "Planned material cost",
-      "plannedMaterialHint": "Planned consumption × average price of each material",
-      "materialKnown": "Actual material cost",
+      "plannedMaterial": "Planned raw material cost",
+      "plannedMaterialHint": "Planned consumption × average price of each raw material",
+      "materialKnown": "Actual raw material cost",
       "materialKnownHint": "Quantity consumed × cost of the received lot",
-      "materialEstimated": "Estimated material cost",
-      "materialEstimatedHint": "Lots not specified, at the average price of the material",
+      "materialEstimated": "Estimated raw material cost",
+      "materialEstimatedHint": "Lots not specified, at the average price of the raw material",
       "materialUnknown": "{{count}} consumption(s) without a price",
-      "materialUnknownHint": "No lot of the material has a price: cost unknown, not zero",
+      "materialUnknownHint": "No lot of the raw material has a price: cost unknown, not zero",
       "totalCost": "Recorded production cost",
       "unitCost": "Cost per piece",
       "perPiece": "{{amount}} per piece",
@@ -2779,9 +3537,9 @@
       "uninvoicedHint": "Order value − invoiced",
       "gain": "Recorded gain",
       "margin": "margin {{pct}} %",
-      "gainFormula": "Value of production − recorded production costs (materials + other expenses). Gross margin on entered costs: this is not an accounting result.",
+      "gainFormula": "Value of production − recorded production costs (raw materials + other expenses). Gross margin on entered costs: this is not an accounting result.",
       "gainMissing": "Missing:",
-      "gainEstimated": "Part of the material cost is estimated at the average price (lots not specified)."
+      "gainEstimated": "Part of the raw material cost is estimated at the average price (lots not specified)."
     },
     "report": {
       "title": "Costs and gains",
@@ -2789,14 +3547,14 @@
       "export": "Export (Excel)",
       "byOrder": "By order",
       "byClient": "By client",
-      "byMaterial": "By material",
+      "byMaterial": "By raw material",
       "bySupplier": "By supplier",
-      "material": "Materials",
+      "material": "Raw materials",
       "produced": "Pieces produced",
       "empty": "No order in this period.",
       "noClient": "No client",
       "noLot": "Lot not specified",
-      "costSplit": "materials {{material}} · expenses {{expenses}}",
+      "costSplit": "raw materials {{material}} · expenses {{expenses}}",
       "invoicedHint": "Recorded invoices, credit notes deducted",
       "gainHint": "computed for {{counted}} of {{total}} order(s)",
       "missingTitle": "Some gains cannot be calculated",
@@ -2809,11 +3567,11 @@
       "unpricedLines": "{{count}} without a price",
       "materialIntro": "Planned against consumed, for the orders of the period that declared a consumption.",
       "supplierIntro": "A consumption goes to the supplier of the received lot it comes from. Without a lot, the supplier is unknown.",
-      "method": "Method: actual material cost = quantity consumed × cost of the received lot (price paid, delivery cost spread). Lot not specified = weighted average price of the material, counted as \"estimated\". A gain is added up only for the orders where it can be calculated. An order belongs to the period by its end date, else its start date, else its creation date. Amounts exclude tax."
+      "method": "Method: actual raw material cost = quantity consumed × cost of the received lot (price paid, delivery cost spread). Lot not specified = weighted average price of the raw material, counted as \"estimated\". A gain is added up only for the orders where it can be calculated. An order belongs to the period by its end date, else its start date, else its creation date. Amounts exclude tax."
     }
   },
   "help": {
-    "show": "Help on this page",
+    "show": "How does it work?",
     "hide": "Hide",
     "stock": {
       "title": "How to read the stock",
@@ -2865,7 +3623,7 @@
     },
     "productionCatalog": {
       "title": "Raw materials and articles",
-      "text": "A raw material carries its composition and colour: the waste that comes from it takes them automatically.\nFill in the width and weight of a fabric to get the waste rate of your manufacturing orders.\nAn article says what one piece should consume of each material: the basis of the planned / actual comparison."
+      "text": "A raw material carries its composition and colour: the waste that comes from it takes them automatically.\nFill in the width and weight of a fabric to get the waste rate of your manufacturing orders.\nAn article says what one piece should consume of each raw material: the basis of the planned / actual comparison."
     },
     "productionOrders": {
       "title": "Orders",
@@ -2890,6 +3648,18 @@
     "productionFinance": {
       "title": "How to read costs and gains",
       "text": "Actual material cost: quantity consumed × cost of the received lot it comes from. A lot used by several orders is shared by what each one consumed.\nEstimated material cost: when the lot is not specified, the quantity is valued at the average price of the material — and counted apart.\nValue of production: pieces made × price agreed on the order. It is not what was invoiced.\nRecorded gain: value of production − recorded costs (materials + other expenses). It is computed only when everything is known; otherwise what is missing is listed.\nThis is not an accounting result: no overheads, no labour unless entered as an expense. Amounts exclude tax."
+    },
+    "marketplace": {
+      "title": "How the bourse works",
+      "text": "A listing gathers lots in stock of one site and one waste type. From the draft on, these lots are reserved.\nPublished, it is seen only by providers that accept this waste and hold a valid accreditation. Your name stays hidden unless you choose to show it.\nEach buyer negotiates with you in private: it never sees the other buyers' offers. You accept, refuse or make a counter-offer.\nThe price may be a revenue (the buyer pays) or a cost (you pay the buyer), per tonne, per kilogram or flat.\nAccepting creates a draft pickup to that buyer; the agreed price is applied at reception, on the received weight."
+    },
+    "marketplaceBuyer": {
+      "title": "How the bourse works",
+      "text": "You see the listings of the waste you accept, as long as your accreditation is valid.\nThe seller stays anonymous until the deal, unless it chooses to show its name.\nOnly the seller sees your offer. Each side answers the other's last proposal: accept, counter-offer or refuse.\nOnce the deal is made, the seller sends you a pickup request as usual, at the agreed price."
+    },
+    "contracts": {
+      "title": "How contracts work",
+      "text": "A contract binds your company to a receiver (collector, recycler, sorter) or a transporter, of the platform or without an account.\nIt sets the prices per waste type (revenue or cost, per tonne, per kilogram or per lot), the fee per pickup and the monthly fee.\nIt also sets the pace of pickups: what is done, what remains and an overdue pickup are followed.\nIn force, it applies by itself to the pickups of that provider for that site between its dates: its prices at reception, its fees added.\nA provider has one contract in force at a time for one role and one site."
     }
   },
   "units": {
@@ -2990,7 +3760,8 @@
       "fallback": "Any other case",
       "history": "A changed rule applies to the next receptions. Receptions already recorded keep the rule applied to them, and every change is in the audit trail.",
       "deleteTitle": "Delete this rule?",
-      "deleteHint": "The next receptions will fall back on the more general rule. Decisions already taken do not change."
+      "deleteHint": "The next receptions will fall back on the more general rule. Decisions already taken do not change.",
+      "deleted": "Rule deleted: the next receptions follow the more general rule."
     },
     "byType": {
       "title": "Gaps at reception by waste type",
@@ -3095,5 +3866,724 @@
     "explainHint": "The provider will read this reason. The loading stays recorded as it happened.",
     "explainReason": "Why did these lots leave this way?",
     "explained": "Explanation recorded."
+  },
+  "marketplace": {
+    "title": "Bourse",
+    "subtitle": "Offer your lots to the providers accredited for this waste. Each buyer negotiates with you in private; the deal becomes a pickup at the agreed price.",
+    "sellLot": "Put up for sale",
+    "lotReserved": "This lot is reserved for the listing: it cannot go into another pickup, nor be split or grouped while the listing is open.",
+    "newListing": "Put up for sale",
+    "editListing": "Edit listing {{number}}",
+    "lotsToSell": "Lots offered",
+    "noLotInStock": "No lot of this type in stock on this site.",
+    "pickedLots": "{{count}} lot(s) selected",
+    "listingTitle": "Title",
+    "titlePlaceholder": "By default: the waste type and the number of lots",
+    "description": "Description",
+    "descriptionPlaceholder": "Condition, sorting, packaging, site access, loading constraints…",
+    "askingPrice": "Asking price",
+    "setAskingPrice": "Give an asking price (otherwise buyers propose)",
+    "direction": "Who pays?",
+    "directions": {
+      "revenue": "the buyer pays",
+      "cost": "we pay the buyer"
+    },
+    "pricingMode": "Price",
+    "modes": {
+      "per_tonne": "per tonne",
+      "per_kg": "per kilogram",
+      "flat": "flat amount for the whole"
+    },
+    "per": {
+      "per_tonne": " / t",
+      "per_kg": " / kg",
+      "flat": " (flat)"
+    },
+    "unitPrice": "Amount ({{currency}})",
+    "conditions": "Conditions",
+    "availableFrom": "Can be collected from",
+    "closesAt": "Offers close on",
+    "closesAtHint": "Without a date, the listing stays open until you sell or withdraw it.",
+    "showSeller": "Show our company name to buyers",
+    "anonymousHint": "Buyers do not see your company name, only the region of the site. It is revealed to the buyer whose offer is accepted.",
+    "shownHint": "Buyers see your company name.",
+    "saveDraft": "Save draft",
+    "draftSaved": "Draft {{number}} saved.",
+    "estimateRevenue": "About {{amount}} received, on {{weight}} known.",
+    "estimateCost": "About {{amount}} paid to the buyer, on {{weight}} known.",
+    "estimateRevenueTaker": "That is about {{amount}} to pay the seller, on {{weight}} known.",
+    "estimateCostTaker": "That is about {{amount}} received from the seller, on {{weight}} known.",
+    "unweighedLeftOut": "{{count}} unweighed lot(s) are not counted: the price is applied to the received weight.",
+    "noWeightYet": "No lot is weighed: the amount will be computed on the received weight.",
+    "pickupDate": "Preferred pickup date",
+    "validUntil": "Valid until",
+    "validUntilHint": "7 days by default, never after closing.",
+    "message": "Message",
+    "send": "Send",
+    "sent": "Proposal sent.",
+    "yourTurn": "Your turn to answer",
+    "waitingBuyer": "Waiting for the buyer's answer",
+    "waitingSeller": "Waiting for the seller's answer",
+    "dealDone": "Deal made",
+    "dealPickup": "Pickup prepared:",
+    "commission": "Platform commission: {{pct}} %",
+    "closedReasons": {
+      "sold_to_another": "The lots went to another buyer.",
+      "listing_cancelled": "The seller withdrew the listing.",
+      "listing_expired": "The closing date of the listing passed."
+    },
+    "withdrawnBy": "The offer was withdrawn.",
+    "refusedByYou": "You refused.",
+    "refusedByOther": "The other side refused.",
+    "you": "You",
+    "seller": "The seller",
+    "buyer": "{{name}}",
+    "amountRevenue": "≈ {{amount}} for the seller",
+    "amountCost": "≈ {{amount}} paid by the seller",
+    "amountPartial": "on the weighed lots",
+    "pickupOn": "Pickup on {{date}}",
+    "expired": "Expired",
+    "validUntilDate": "Valid until {{date}}",
+    "outdated": "Lots changed since",
+    "accept": "Accept",
+    "counter": "Counter-offer",
+    "refuse": "Refuse",
+    "withdraw": "Withdraw my offer",
+    "outdatedHint": "The lots changed since this proposal (weight, packages or composition): answer with a new proposal.",
+    "expiredHint": "This proposal is no longer valid: answer with a proposal of your own.",
+    "acceptTitle": "Accept this proposal?",
+    "acceptSellerMessage": "The deal commits your company. The lots go to this buyer, the other negotiations close, and a draft pickup is prepared at the agreed price: you then send it.",
+    "acceptBuyerMessage": "The deal commits your company: you take these lots at the agreed price. The seller will send you the pickup request.",
+    "accepted": "Deal made.",
+    "counterTitle": "Counter-offer — {{number}}",
+    "refuseTitle": "Refuse and end the negotiation?",
+    "refuseReason": "Reason (shown to the other side)",
+    "refused": "Negotiation refused.",
+    "withdrawTitle": "Withdraw your offer?",
+    "withdrawMessage": "The negotiation ends. You may make a new offer while the listing is open.",
+    "withdrawn": "Offer withdrawn.",
+    "offer": "What is offered",
+    "notWeighed": "Not weighed",
+    "plusUnweighed": "+ {{count}} unweighed lot(s), not counted",
+    "lots": "Lots",
+    "compositionPerLot": "See lot by lot",
+    "forTheWhole": "≈ {{amount}} for the weighed whole",
+    "noAskingPrice": "None: buyers propose",
+    "now": "Now",
+    "noClosing": "None",
+    "lotsOfListing": "Lots of the listing",
+    "emptyTitle": "No listing",
+    "emptyHint": "Put lots in stock up for sale: the providers that accept this waste can make an offer.",
+    "number": "No.",
+    "unweighedShort": "unweighed",
+    "openPrice": "Open price",
+    "toAnswer": "{{count}} to answer",
+    "offers": "Offers",
+    "cancelListing": "Withdraw listing",
+    "publish": "Publish",
+    "draftHint": "Draft: only you see it. The lots are already reserved. Publish the listing to show it to providers.",
+    "soldHint": "Sold. The pickup prepared at the agreed price:",
+    "cancelledBecause": "Withdrawn: {{reason}}",
+    "offersCount": "Offers ({{count}})",
+    "noOfferYet": "No offer yet. The providers concerned were told.",
+    "noOffer": "No offer.",
+    "negotiationWith": "Negotiation with {{name}}",
+    "publishTitle": "Publish the listing?",
+    "publishMessage": "Providers that accept this waste and hold a valid accreditation will see it and be told. The lots can no longer be changed.",
+    "published": "Listing published.",
+    "cancelTitle": "Withdraw the listing?",
+    "cancelReason": "Reason",
+    "cancelled": "Listing withdrawn: the lots are back in stock.",
+    "catalogTitle": "Bourse",
+    "catalogSubtitle": "Lots offered by industrial companies, for the waste you accept. Make an offer; the seller answers in private.",
+    "searchPlaceholder": "Title or number",
+    "mineOnly": "My negotiations",
+    "catalogEmptyTitle": "No listing for your waste",
+    "catalogEmptyHint": "Listings appear here for the waste you accept (your profile), as long as your accreditation is valid.",
+    "anonymousSeller": "Anonymous seller",
+    "myOffer": "My offer",
+    "myNegotiation": "My negotiation",
+    "newOffer": "Make a new offer",
+    "makeOffer": "Make an offer",
+    "offerHint": "Only the seller sees your offer. It may accept it, refuse it or make you a counter-offer.",
+    "offerAsking": "Offer the asking price",
+    "offerOther": "Offer a price",
+    "offerTitle": "Offer — {{number}}",
+    "dealOfListing": "Deal of the bourse ({{number}})",
+    "dealAppliedAtReception": "Price applied automatically at reception, on the received weight.",
+    "askedPrice": "Asked price",
+    "next": {
+      "draft": "Publish the listing to show it to accredited providers",
+      "published": "Providers make offers: answer in the negotiations",
+      "sold": "Sold: the pickup follows the deal",
+      "expired": "Closed without a deal: the lots are back in stock",
+      "cancelled": "Withdrawn: the lots are back in stock"
+    }
+  },
+  "contracts": {
+    "title": "Contracts",
+    "subtitle": "What you agreed with your receivers and transporters: prices per waste type, fees, number and pace of pickups, duration.",
+    "providerSubtitle": "The contracts your clients made with you: prices, fees, pace of pickups.",
+    "new": "New contract",
+    "edit": "Edit contract {{number}}",
+    "titleField": "Purpose of the contract",
+    "titlePlaceholder": "E.g.: Collection and recycling of cutting scraps",
+    "role": "Role of the provider",
+    "roles": {
+      "receiver": "Receiver (collection, recycling, sorting)",
+      "transporter": "Transporter"
+    },
+    "party": "Provider",
+    "reference": "Contract reference",
+    "startsOn": "Start",
+    "endsOn": "End",
+    "endsOnHint": "Without a date, the contract runs until it is terminated.",
+    "schedule": "Pickups",
+    "frequency": "Pace",
+    "frequencies": {
+      "on_demand": "On demand",
+      "weekly": "Every week",
+      "biweekly": "Every two weeks",
+      "monthly": "Every month",
+      "quarterly": "Every quarter"
+    },
+    "perPeriod": "Pickups per period",
+    "weekdays": "Planned days",
+    "days": {
+      "mon": "Monday",
+      "tue": "Tuesday",
+      "wed": "Wednesday",
+      "thu": "Thursday",
+      "fri": "Friday",
+      "sat": "Saturday",
+      "sun": "Sunday"
+    },
+    "plannedPickups": "Number of pickups planned in all",
+    "plannedHint": "Optional: used to follow what remains to be done.",
+    "prices": "Prices per waste type",
+    "anyWaste": "Any other waste",
+    "directions": {
+      "revenue": "the provider pays us",
+      "cost": "we pay the provider"
+    },
+    "perLot": "per lot",
+    "lot": "lot",
+    "addPrice": "Add a price",
+    "fees": "Fees",
+    "pickupFee": "Fee per pickup ({{currency}})",
+    "monthlyFee": "Monthly fee ({{currency}})",
+    "feeWho": "Who pays?",
+    "paymentTerms": "Payment terms (days)",
+    "saveDraft": "Save draft",
+    "draftSaved": "Draft {{number}} saved.",
+    "emptyTitle": "No contract",
+    "emptyHint": "Record the contracts signed with your providers: their prices then apply to pickups by themselves.",
+    "providerEmptyHint": "The contracts your clients record with you appear here.",
+    "number": "No.",
+    "period": "Duration",
+    "pickupsDone": "Pickups done",
+    "openEnded": "open-ended",
+    "timesPerPeriod": "{{count}} times",
+    "late": "Pickup overdue",
+    "nextDue": "Next on {{date}}",
+    "activate": "Put in force",
+    "activateTitle": "Put the contract in force?",
+    "activateMessage": "Pickups requested from this provider, for this site and between these dates, will follow this contract: its prices apply at reception and its fees are added. A provider of the platform becomes a partner and is told.",
+    "activated": "Contract in force.",
+    "terminate": "Terminate",
+    "terminateTitle": "Terminate the contract?",
+    "terminateReason": "Reason for termination",
+    "terminated": "Contract terminated: pickups requested after today no longer follow it.",
+    "draftHint": "Draft: it applies to no pickup until it is put in force.",
+    "lateHint": "The pickup due on {{date}} did not take place and none is requested: plan it.",
+    "remaining": "{{count}} left",
+    "thisPeriod": "This period",
+    "since": "since {{date}}",
+    "nextDueLabel": "Next pickup due",
+    "lastPickup": "Last on {{date}}",
+    "noPickupYet": "No pickup yet",
+    "balance": "Contract balance",
+    "balanceHint": "Priced lots + fees per pickup + monthly fees; positive = revenue, negative = cost.",
+    "balanceProviderHint": "From your client's side: positive = it receives, negative = it pays.",
+    "terms": "Terms",
+    "pickupFeeLabel": "Fee per pickup",
+    "monthlyFeeLabel": "Monthly fee",
+    "days30": "{{days}} days",
+    "terminatedBecause": "Reason for termination",
+    "noPrice": "No price: lots are priced by hand.",
+    "pickupsUnder": "Pickups of the contract ({{count}})",
+    "pickupsHint": "A pickup follows the contract when it is requested from this provider, for this site, between its dates.",
+    "ofPickup": "Contract",
+    "feesOfPickup": "Contract fees",
+    "appliedAtReception": "Contract prices and fees applied at reception.",
+    "steps": {
+      "who": "Who and when",
+      "pickups": "Pickups",
+      "money": "Money"
+    },
+    "moreSummary": "Reference, site, notes",
+    "pricesHint": "One price per waste type; “any other waste” covers the rest. I receive: the provider pays you.",
+    "perPickupFee": "Flat fee per pickup",
+    "perMonthFee": "Monthly flat fee",
+    "saveAndActivate": "Save and put in force",
+    "requestNext": "Request the next pickup",
+    "ended": "Ended",
+    "next": {
+      "draft": "Check the terms, then put the contract in force",
+      "upcoming": "In force from its start date",
+      "active": "This provider's pickups follow this contract",
+      "expired": "Reached its end",
+      "terminated": "Terminated: it no longer applies"
+    },
+    "weekdaysHint": "The next pickup falls on one of these days; the day before and on the day, if nothing is requested, you are told. No day chosen: any day.",
+    "charges": "Other charges",
+    "chargesHint": "Everything the contract plans beside the prices: skip rental, weighing, file fee, bonus… As many lines as needed.",
+    "chargeLabel": "Charge name (e.g. skip rental)",
+    "chargeBasis": "When",
+    "addCharge": "Add a charge",
+    "bases": {
+      "per_pickup": "per pickup",
+      "per_tonne": "per tonne received",
+      "per_month": "per month",
+      "once": "once"
+    },
+    "frequencyQuestion": "At what pace do pickups take place?",
+    "frequencyHints": {
+      "on_demand": "When you ask",
+      "weekly": "On the chosen days, every week",
+      "biweekly": "On the chosen days, every other week",
+      "monthly": "A number of pickups per month",
+      "quarterly": "A number of pickups per quarter"
+    },
+    "daysWeekly": "Which days of the week?",
+    "daysBiweekly": "Which days, every other week?",
+    "paceWeekly": "{{count}} pickup(s) a week, one per chosen day.",
+    "paceBiweekly": "{{count}} pickup(s) every two weeks, one per chosen day.",
+    "paceNoDay": "Choose at least one day.",
+    "perMonth": "How many pickups per month?",
+    "perQuarter": "How many pickups per quarter?",
+    "regime": "Payment regime",
+    "regimeQuestion": "How is this contract paid?",
+    "regimes": {
+      "weight": "By the weight of the waste",
+      "flat": "Flat amounts",
+      "both": "Both"
+    },
+    "regimeHints": {
+      "weight": "A price per kg, per tonne or per lot, per waste type, applied at reception",
+      "flat": "Fixed amounts: per pickup, per month, per tonne or once",
+      "both": "Prices per waste type, plus fixed amounts"
+    },
+    "chargesFlat": "The flat amounts",
+    "chargesFlatHint": "Each line: what it is, the amount, who pays whom, and when (per pickup, per tonne received, per month, once).",
+    "chargesExtra": "Extra charges (optional)",
+    "chargesExtraHint": "Skip rental, weighing, file fee… Leave empty if there are none.",
+    "flatNeedsAmount": "A flat regime needs at least one amount.",
+    "paymentTermsHint": "Number of days to pay after the invoice."
+  },
+  "search": {
+    "placeholder": "Search a lot, a pickup, a contract…",
+    "label": "Search",
+    "empty": "No result for “{{query}}”.",
+    "kinds": {
+      "lot": "Lot",
+      "pickup": "Pickup",
+      "contract": "Contract",
+      "listing": "Listing",
+      "manifest": "Slip",
+      "provider": "Provider",
+      "partner": "Partner",
+      "waste_type": "Waste type",
+      "site": "Site"
+    }
+  },
+  "attention": {
+    "clearTitle": "All in order",
+    "clear": "Nothing is waiting for a decision right now.",
+    "slips_to_sign": "{{count}} tracking slip(s) to sign",
+    "signed_copies": "{{count}} slip(s) signed by hand whose scanned copy is missing",
+    "documents_outstanding": "{{count}} pickup(s) gone whose documents are not complete",
+    "missing_codes": "{{count}} hazardous waste type(s) without a waste code",
+    "declarations_due": "{{count}} {{year}} annual declaration(s) to validate",
+    "permits_expired": "{{count}} exit permit(s) expired but still in force",
+    "permits_expiring": "{{count}} exit permit(s) expire within 30 days",
+    "variances": "{{count}} pickup(s) with a reception gap to handle",
+    "awaiting_provider": "{{count}} pickup request(s) awaiting the provider's answer",
+    "drafts": "{{count}} pickup request(s) in draft, never sent",
+    "accreditation_expired": "{{provider}}'s accreditation expired: it can no longer be chosen",
+    "accreditation_expiring": "{{provider}}'s accreditation expires in {{days}} day(s)",
+    "contracts_late": "{{count}} contract(s) behind their pickup pace",
+    "contracts_ending": "{{count}} contract(s) end within 30 days",
+    "erp_feeds_failed": "{{count}} automatic ERP import(s) failed last night",
+    "types_without_permit": "{{count}} waste type(s) without a customs permit in force: their lots cannot leave",
+    "pickups_date_passed": "{{count}} confirmed pickup(s) whose date has passed with nothing loaded",
+    "lots_unweighed_in_pickup": "{{count}} lot(s) without a weight in a planned pickup: price, limit and gap cannot be computed",
+    "lots_unweighed_long": "{{count}} lot(s) on site without a weight for more than 7 days",
+    "lots_packages_unconfirmed": "{{count}} lot(s) whose package count was never checked",
+    "lots_not_stored": "{{count}} lot(s) created more than a day ago and never stored in a zone",
+    "setup_sites_without_zones": "{{count}} site(s) without a zone: no lot can be created there",
+    "setup_no_waste_types": "No waste type activated: start by choosing your types",
+    "setup_no_stock_limit": "No stock limit: set one to be warned before the storage is full",
+    "marketplace_offers": "{{count}} offer(s) on your exchange listings await your answer",
+    "provider_requests": "{{count}} pickup request(s) to accept or refuse",
+    "provider_to_receive": "{{count}} pickup(s) on the way: to receive on arrival",
+    "provider_to_treat": "{{count}} received pickup(s) whose treatment remains to be declared",
+    "provider_offers": "{{count}} exchange negotiation(s) where the seller answered you",
+    "own_accreditation_expired": "One of your accreditations has expired: industrials can no longer choose you for those wastes",
+    "own_accreditation_expiring": "One of your accreditations expires in {{days}} day(s): upload the renewal",
+    "own_accreditation_pending": "{{count}} accreditation(s) being checked by Diva Software",
+    "platform_signups": "{{count}} sign-up(s) to approve",
+    "platform_accreditations": "{{count}} provider accreditation(s) to check",
+    "platform_payments": "{{count}} declared transfer(s) to match with the bank statement",
+    "platform_plan_requests": "{{count}} plan(s) requested by clients, to activate"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Your company, your team and the reference lists of your activity.",
+    "groups": {
+      "company": "Your company",
+      "reference": "Reference data",
+      "data": "Data"
+    },
+    "cards": {
+      "company": {
+        "title": "Company",
+        "hint": "Contact details and the logo printed on reports"
+      },
+      "modules": {
+        "title": "Modules and way of working",
+        "hint": "What you use in DivaWaste, with or without an ERP"
+      },
+      "users": {
+        "title": "Users and roles",
+        "hint": "Invite the team, give a role per site"
+      },
+      "subscription": {
+        "title": "Subscription",
+        "hint": "Plan, invoices and payments"
+      },
+      "audit": {
+        "title": "Audit log",
+        "hint": "Who created, changed or deleted what"
+      },
+      "sites": {
+        "title": "Sites and zones",
+        "hint": "Workshops and storage zones, and their capacity"
+      },
+      "wasteTypes": {
+        "title": "Waste types",
+        "hint": "The waste you produce and its code"
+      },
+      "reception": {
+        "title": "Reception and gaps",
+        "hint": "Weight gap accepted between departure and reception"
+      },
+      "packaging": {
+        "title": "Packaging",
+        "hint": "Volume of a bag, a bale, a big bag once stored"
+      },
+      "colors": {
+        "title": "Colours",
+        "hint": "Your colours and Pantone references"
+      },
+      "erp": {
+        "title": "ERP connection and import",
+        "hint": "Import your orders, manufacturing orders and materials from your ERP or a file"
+      },
+      "apiKeys": {
+        "title": "API access keys",
+        "hint": "Connect your ERP or your tools to DivaWaste"
+      }
+    },
+    "modules": {
+      "title": "Modules and way of working",
+      "subtitle": "Choose what you use: the rest disappears from menus and forms. Nothing is deleted; you can turn it back on at any time.",
+      "howTitle": "How do you work?",
+      "withErp": "With an ERP",
+      "withErpHint": "Your manufacturing orders, customer orders and materials come from your ERP: DivaWaste imports and shows them.",
+      "withoutErp": "Without an ERP",
+      "withoutErpHint": "You enter data in DivaWaste, at the office or on the workshop phone.",
+      "listTitle": "Modules",
+      "saved": "Modules saved.",
+      "items": {
+        "production": {
+          "title": "Production",
+          "hint": "Manufacturing orders, customer orders, raw materials: where each waste comes from"
+        },
+        "production_finance": {
+          "title": "Costs and revenue",
+          "hint": "Purchase prices, expenses and revenue of manufacturing orders (needs Production)"
+        },
+        "marketplace": {
+          "title": "Bourse",
+          "hint": "Offer your lots to accredited providers"
+        },
+        "contracts": {
+          "title": "Contracts",
+          "hint": "Prices, fees and pace agreed with your providers"
+        },
+        "authorizations": {
+          "title": "Exit permits",
+          "hint": "Waste that leaves only under a customs permit"
+        },
+        "colors": {
+          "title": "Pantone colours",
+          "hint": "Colours and Pantone references on lots, zones and materials"
+        },
+        "workshop": {
+          "title": "Workshop app",
+          "hint": "Create and scan lots from a phone"
+        }
+      }
+    },
+    "reception": {
+      "title": "Reception and gaps",
+      "subtitle": "The weight gap accepted between departure and reception, by default and per waste type.",
+      "defaultTitle": "Gap accepted by default"
+    },
+    "packaging": {
+      "volume": "Volume of one stored package",
+      "unknown": "Not set"
+    }
+  },
+  "price": {
+    "who": "Who pays?",
+    "amount": "Amount",
+    "per": "Per",
+    "receive": "I receive",
+    "pay": "I pay",
+    "payMine": "I pay",
+    "receiveMine": "I receive",
+    "modes": {
+      "per_tonne": "per tonne",
+      "per_kg": "per kg",
+      "flat": "flat"
+    }
+  },
+  "davi": {
+    "name": "Virtual assistant",
+    "short": "Assistant",
+    "tagline": "Your DivaWaste assistant",
+    "open": "Open the virtual assistant",
+    "askHere": "Ask the assistant",
+    "hello": "Hello, what can I do for you?",
+    "helloHint": "Ask in your own words, or say what you want done: I prepare it, you confirm.",
+    "focus": {
+      "lot": "I am talking about lot {{number}}, shown on screen.",
+      "pickup": "I am talking about pickup {{number}}, shown on screen."
+    },
+    "newConversation": "New conversation",
+    "thinking": "The assistant is thinking…",
+    "preview": "Action to confirm",
+    "done": "Done",
+    "yes": "Confirm",
+    "no": "Cancel",
+    "sources": "From {{count}} verified source(s)",
+    "chart": "Chart of the figures",
+    "send": "Send",
+    "placeholder": "Ask a question or say what you want done…",
+    "placeholderPending": "Confirm above, or ask something else…",
+    "fine": "The assistant acts with your rights and does nothing without your confirmation.",
+    "permit": {
+      "reading": "The assistant is reading the document…",
+      "filled": "The assistant filled {{count}} field(s) from the document:",
+      "check": "Check these values before saving.",
+      "nothing": "The assistant found no value to take from this document.",
+      "scanned": "Scanned document: the assistant only reads the text of PDFs. Enter the values below.",
+      "unreadable": "The assistant could not open this document.",
+      "not_pdf": "The assistant only reads PDF documents.",
+      "fields": {
+        "reference": "Reference",
+        "valid_from": "Valid from",
+        "valid_until": "Valid until",
+        "issued_on": "Issued on",
+        "max_kg": "Maximum quantity",
+        "max_lots": "Number of lots",
+        "waste_type": "Waste type"
+      }
+    },
+    "canDo": "I can do it for you",
+    "canAsk": "You can ask me",
+    "bigText": "Larger text",
+    "showMe": "Show me the “{{button}}” button",
+    "hint": {
+      "label": "The assistant guides you",
+      "later": "Later",
+      "help": "How does this page work?",
+      "helpHide": "Hide the explanation",
+      "steps": "Getting started: {{done}} step(s) of {{total}}",
+      "state": {
+        "done": "Done",
+        "skipped": "Skipped",
+        "current": "Current step",
+        "todo": "To do"
+      },
+      "notShown": "The “{{button}}” button is not visible on this page: ask the assistant, it will guide you."
+    },
+    "onPage": "On the page: {{page}}",
+    "helloName": "Hello {{name}}, what can I do for you?",
+    "nowHere": "Right now",
+    "retry": "Try again",
+    "toConfirm": "To confirm",
+    "wasProposed": "Proposed",
+    "irreversible": "This action cannot be undone afterwards.",
+    "change": "Change",
+    "openThing": "Open {{number}}",
+    "moreDetail": "More details",
+    "lessDetail": "Fewer details",
+    "working": {
+      "reading": "Reading your question…",
+      "searching": "Searching DivaWaste and your data…",
+      "thinking": "Preparing the answer…",
+      "almost": "One more moment, almost there…"
+    },
+    "new": "New",
+    "history": "Conversations",
+    "forget": "Delete the conversation",
+    "noHistory": "Your conversations with the assistant will appear here.",
+    "messagesCount": "{{count}} message(s)",
+    "import": {
+      "attach": "Import lots from an Excel or CSV file",
+      "tip": "A register of lots in Excel? Drop the file here, click the paper clip or paste its rows: I check it, then import once you agree.",
+      "pasted": "Rows pasted from a spreadsheet",
+      "kind": "I read Excel (.xlsx, .xls) and CSV files. Save your file in one of these formats, then give it to me again.",
+      "missing": "I did not find this column in your file: {{fields}}. Choose it on the import page: your file is already there.",
+      "choose": "Choose the columns",
+      "already": "These {{count}} lots are already in DivaWaste: there is nothing new to create.",
+      "alreadyOne": "This lot is already in DivaWaste: there is nothing new to create.",
+      "nothing": "No line of this file can become a lot yet. Here is why:",
+      "nothingOne": "No line of this file can become a lot yet. Here is why:",
+      "preview": "I can create {{count}} lots from your file ({{total}} lines read). Nothing is saved until you confirm.",
+      "previewOne": "I can create 1 lot from your file ({{total}} lines read). Nothing is saved until you confirm.",
+      "unchanged": "{{count}} lines are already in DivaWaste: I leave them as they are.",
+      "unchangedOne": "1 line is already in DivaWaste: I leave it as it is.",
+      "skipped": "{{count}} lines have a problem: I set them aside (details below).",
+      "skippedOne": "1 line has a problem: I set it aside (details below).",
+      "label": "Import {{count}} lots",
+      "labelOne": "Import 1 lot",
+      "cancelled": "All right, I import nothing.",
+      "done": "Done: {{count}} lots created, each with its number and label.",
+      "doneOne": "Done: 1 lot created, with its number and label.",
+      "notDone": "{{count}} lines were not imported (details below).",
+      "notDoneOne": "1 line was not imported (details below).",
+      "seeLots": "See the lots",
+      "toPage": "I am opening the import page with your file: choose the columns, check, then import.",
+      "columns": "Columns read",
+      "problems": "Lines set aside",
+      "line": "Line {{line}}:",
+      "drop": "Drop your file of lots",
+      "dropHint": "Excel or CSV. I check every line before asking for your agreement."
+    },
+    "train": "Train the assistant (the question game)",
+    "good": "Good answer",
+    "bad": "Answer to review",
+    "rated": "Thanks, noted.",
+    "remarkPlaceholder": "What was wrong? What did you expect?",
+    "remarkSend": "Send"
+  },
+  "apiKeys": {
+    "title": "API access keys",
+    "subtitle": "So that your ERP or your tools send their data to DivaWaste directly.",
+    "howTitle": "How it works",
+    "how1": "Create a key below and give it to whoever connects your ERP.",
+    "how2": "Each request carries the header",
+    "how3": "at the API address:",
+    "rights": "A key acts with your rights, for this company only, for a year. Revoke it as soon as it is no longer used.",
+    "name": "Key name",
+    "namePlaceholder": "e.g. Divatex ERP",
+    "create": "Create a key",
+    "owner": "Created by",
+    "lastUsed": "Last used",
+    "expires": "Expires on",
+    "never": "Never",
+    "revoke": "Revoke",
+    "none": "No key yet.",
+    "createdTitle": "Key “{{name}}” created",
+    "copy": "Copy",
+    "copied": "Key copied.",
+    "copyByHand": "Select the key and copy it.",
+    "onlyOnce": "Copy it now: it will never be shown again.",
+    "revokeConfirm": "Revoke the key “{{name}}”?",
+    "revokeHint": "Whatever uses it will no longer send data."
+  },
+  "daviTrain": {
+    "title": "Train the assistant",
+    "subtitle": "A mission, your question in your own words, the assistant's answer, your verdict. Every question goes into its next training.",
+    "scores": "Your scores",
+    "points": "points",
+    "questions": "questions asked",
+    "found": "mistakes found",
+    "rate": "right answers",
+    "streak": "days in a row",
+    "kind": "Mission type",
+    "kinds": {
+      "all": "Random",
+      "where": "Pages and buttons",
+      "action": "Actions",
+      "knowledge": "Knowledge",
+      "lookup": "Data"
+    },
+    "played": "{{count}} question(s) already",
+    "placeholder": "Your question to the assistant, as it comes to you…",
+    "ask": "Ask the assistant",
+    "working": "The assistant is thinking…",
+    "prepared": "Action prepared: {{action}} (never confirmed here)",
+    "expected": "What the mission expected",
+    "judged": {
+      "right": "The assistant seems to have found it",
+      "wrong": "The assistant seems to be wrong"
+    },
+    "right": "The assistant answered well",
+    "wrong": "The assistant got it wrong",
+    "other": "I asked something else",
+    "remark": "A remark? (optional: what is missing, what is in the way…)",
+    "savedRight": "Noted: +1 point.",
+    "savedWrong": "Mistake found: +3 points. That is exactly what the assistant needs.",
+    "savedOther": "Noted, without counting this question.",
+    "again": "Ask it another way",
+    "next": "Next mission",
+    "skip": "Skip this mission",
+    "none": "No more missions of this type for now.",
+    "fine": "Your questions stay on this server; the assistant runs nothing here.",
+    "back": "Back to the dashboard"
+  },
+  "registry": {
+    "open": "ANGed list",
+    "title": "Authorised operators (ANGed list)",
+    "intro": "The companies ANGed publishes as authorised to collect, carry, recycle or treat waste in Tunisia. This is the agency's word: DivaWaste does not check it.",
+    "pickIntro": "Choose a company from the lists ANGed publishes: its details and authorisation fill in the partner. Check them with the partner: the list may be out of date.",
+    "platformSubtitle": "The lists ANGed publishes: the authorised collectors, carriers and recyclers the platform can invite.",
+    "search": "Search",
+    "searchHint": "Name, waste, town, authorisation number, phone…",
+    "list": "List",
+    "allLists": "All lists",
+    "role": "Activity",
+    "anyRole": "Any",
+    "governorate": "Governorate",
+    "allGovernorates": "All",
+    "hazardousOnly": "Hazardous waste only (ministry authorisations)",
+    "source": "{{total}} entries of the ANGed lists (hazardous waste: authorisations; non-hazardous: specifications).",
+    "readOn": "Read on anged.nat.tn on {{date}}.",
+    "notLoaded": "The ANGed lists are not loaded on this server yet (php artisan registry:import-anged).",
+    "none": "No entry matches.",
+    "hazardous": "Hazardous waste",
+    "expired": "Authorisation expired",
+    "authorization": "Authorisation no. {{number}}",
+    "until": "until {{date}}",
+    "tonnage": "{{value}} t/year",
+    "page": "Page {{page}} of {{pages}} · {{total}} entries",
+    "use": "Use",
+    "addAsPartner": "Add as partner",
+    "fill": "Fill in from the ANGed list",
+    "fillHint": "The partner may be in ANGed's lists: its details and authorisation are there.",
+    "filledFrom": "Filled in from the ANGed list “{{list}}”: check the details with the partner.",
+    "noteFrom": "ANGed list: {{list}}",
+    "roles": {
+      "collector": "Collection",
+      "transporter": "Transport",
+      "recycler": "Recycling / treatment",
+      "sorter": "Sorting",
+      "storer": "Storage"
+    }
   }
 }

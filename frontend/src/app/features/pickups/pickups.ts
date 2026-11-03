@@ -1,14 +1,14 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, map, of } from 'rxjs';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { ButtonDirective } from 'primeng/button';
 
 import { Api } from '../../core/api/api';
 import { Pickup, PickupStatus } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
-import { DatePipe, KgPipe, KnownWeightPipe } from '../../core/format/pipes';
+import { DatePipe, KgPipe } from '../../core/format/pipes';
 import { Column, TABLE } from '../../ui/data-table';
 import { ListStore } from '../../ui/list-store';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
@@ -19,6 +19,7 @@ import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
 import { HelpComponent } from '../../ui/help';
 import { ToleranceSummary } from './tolerance';
+import { SegmentedComponent } from '../../ui/more';
 
 interface PickupFilter {
   status?: PickupStatus[];
@@ -36,20 +37,22 @@ interface PickupFilter {
 @Component({
   imports: [
     HelpComponent, ToleranceSummary,
-    RouterLink, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, DatePipe, KgPipe, KnownWeightPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent,
+    RouterLink, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, DatePipe, KgPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent, SegmentedComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t(provider ? 'provider.pickups.title' : 'pickups.title')" [subtitle]="t(provider ? 'provider.pickups.subtitle' : 'pickups.subtitle')">
+        <!-- P-01: the list opens on what waits for the reader; the others are a click away. -->
+        <dw-segmented [options]="tabOptions(t)" [value]="tab()" (valueChange)="setTab($any($event))" [ariaLabel]="t('pickups.tabs.label')" />
         @if (!provider && canRequest) { <a pButton routerLink="/pickups/new"><dw-icon>add</dw-icon>{{ t('pickups.new') }}</a> }
       </dw-page-header>
       <dw-help topic="pickups" />
 
       <div class="dw-panel">
-        <dw-filter-bar [active]="list.activeCount()" (cleared)="list.resetFilter()">
+        <dw-filter-bar [active]="list.activeCount() - (tab() !== 'all' && tab() !== 'custom' ? 1 : 0)" (cleared)="setTab('todo')">
           <dw-search [placeholder]="t('pickups.number')" [query]="list.filter().search ?? ''" (queryChange)="list.setFilter({ search: $event })" />
-          <dw-select [placeholder]="t('fields.status')" multiple [value]="list.filter().status ?? []" (valueChange)="list.setFilter({ status: $event })">
+          <dw-select [placeholder]="t('fields.status')" multiple [value]="tab() === 'custom' ? (list.filter().status ?? []) : []" (valueChange)="list.setFilter({ status: $event }); tab.set($event.length ? 'custom' : 'all')">
             @for (status of statuses; track status) { <dw-option [value]="status" [label]="t('status.pickup.' + status)" /> }
           </dw-select>
           @if (!provider && sites.length > 1) {
@@ -73,8 +76,9 @@ interface PickupFilter {
           <ng-template dwCell="date" let-pickup>{{ pickup.confirmed_date ?? pickup.requested_date | dwDate }}</ng-template>
           <ng-template dwCell="lots" let-pickup>{{ pickup.lots_count }}</ng-template>
           <ng-template dwCell="weight" let-pickup>
-            @if (pickup.received_at) { {{ pickup.received_weight_kg | dwKgKnown: pickup.received_unweighed_lots }} }
-            @else if (pickup.collected_at) { {{ pickup.departure_weight_kg | dwKgKnown: pickup.departure_unweighed_lots }} }
+            <!-- the lots nobody weighed go under the total, so the column stays narrow enough for the status beside it -->
+            @if (pickup.received_at) { {{ pickup.received_weight_kg | dwKg }} @if (pickup.received_unweighed_lots) { <small class="unweighed">+ {{ t('lots.unweighedCount', { count: pickup.received_unweighed_lots }) }}</small> } }
+            @else if (pickup.collected_at) { {{ pickup.departure_weight_kg | dwKg }} @if (pickup.departure_unweighed_lots) { <small class="unweighed">+ {{ t('lots.unweighedCount', { count: pickup.departure_unweighed_lots }) }}</small> } }
             @else { {{ pickup.declared_weight_kg | dwKg }} }
           </ng-template>
           <ng-template dwCell="status" let-pickup>
@@ -92,6 +96,7 @@ interface PickupFilter {
     </ng-container>
   `,
   styles: `
+    .unweighed { display: block; font-size: 11.5px; line-height: 15px; color: var(--dw-warning); }
     .flag { font-size: 16px; width: 16px; height: 16px; color: var(--dw-danger); vertical-align: -3px; margin-inline-start: 6px; }
   `,
 })
@@ -105,7 +110,41 @@ export class PickupsPage {
   protected readonly canRequest = this.session.can('pickups.request');
   // A provider never receives drafts, so it is not offered that filter.
   protected readonly statuses: PickupStatus[] = [...(this.provider ? [] : (['draft'] as PickupStatus[])), 'requested', 'confirmed', 'collected', 'received', 'completed', 'refused', 'cancelled'];
-  protected readonly list = new ListStore<Pickup, PickupFilter>((query) => this.api.list<Pickup>('pickups', query));
+  private readonly params = inject(ActivatedRoute).snapshot.queryParamMap;
+  /** Who must act: on the reader's side, on the other side, or nobody any more. */
+  private readonly tabs: Record<'todo' | 'waiting' | 'done', PickupStatus[]> = this.provider
+    ? { todo: ['requested', 'collected', 'received'], waiting: ['confirmed'], done: ['completed', 'refused', 'cancelled'] }
+    : { todo: ['draft', 'confirmed', 'received'], waiting: ['requested', 'collected'], done: ['completed', 'refused', 'cancelled'] };
+  /** Links from "À traiter" open the right view: ?status=draft, ?variance=1, ?documents=1, ?tab=provider. */
+  private readonly initial = ((): { tab: 'todo' | 'waiting' | 'done' | 'all' | 'custom'; filter: PickupFilter } => {
+    const status = this.params.get('status') as PickupStatus | null;
+    if (status) {
+      return { tab: 'custom', filter: { status: [status] } };
+    }
+    if (this.params.get('variance')) {
+      return { tab: 'all', filter: { variance_flagged: true } };
+    }
+    if (this.params.get('documents')) {
+      return { tab: 'all', filter: { documents_outstanding: true } };
+    }
+    const tab = this.params.get('tab') === 'provider' ? 'waiting' : 'todo';
+    return { tab, filter: { status: this.tabs[tab] } };
+  })();
+  protected readonly tab = signal(this.initial.tab);
+  protected readonly list = new ListStore<Pickup, PickupFilter>((query) => this.api.list<Pickup>('pickups', query), { filter: this.initial.filter });
+
+  protected tabOptions(t: (key: string) => string): { value: string; label: string }[] {
+    const side = this.provider ? 'provider' : 'company';
+    return ['todo', 'waiting', 'done', 'all'].map((value) => ({ value, label: t(`pickups.tabs.${side}.${value}`) }));
+  }
+
+  protected setTab(tab: 'todo' | 'waiting' | 'done' | 'all'): void {
+    this.tab.set(tab);
+    if (this.list.activeCount() > 1) {
+      this.list.resetFilter();
+    }
+    this.list.setFilter({ status: tab === 'all' ? [] : this.tabs[tab] });
+  }
 
   /** Receptions judged against a tolerance, per waste type. Shown under the list when there are any; a failure to load it never hides the list. */
   protected readonly summary = toSignal(
@@ -121,8 +160,8 @@ export class PickupsPage {
     { key: 'date', header: 'pickups.date', sort: 'requested_date' },
     { key: 'lots', header: 'pickups.lots', align: 'end', hideBelow: 640 },
     { key: 'weight', header: 'fields.weight', align: 'end' },
+    { key: 'documents', header: 'pickups.compliance.column', hideBelow: 1360 },
     { key: 'status', header: 'fields.status' },
-    { key: 'documents', header: 'pickups.compliance.column', hideBelow: 720 },
   ];
 
   protected open(pickup: Pickup): void {

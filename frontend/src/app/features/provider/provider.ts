@@ -21,6 +21,7 @@ import { CheckboxComponent } from '../../ui/checkbox';
 import { DateComponent } from '../../ui/date';
 import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
+import { MoreComponent } from '../../ui/more';
 import { SELECT } from '../../ui/select';
 
 interface AcceptedWaste {
@@ -55,8 +56,7 @@ interface Profile {
 /** What industrials read in the directory: activities, contact, and which waste goes to which channel. */
 @Component({
   imports: [
-    FormsModule, ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, LocalizedPipe, IconComponent, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, CheckboxComponent,
-  ],
+    FormsModule, ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, LocalizedPipe, IconComponent, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, CheckboxComponent, MoreComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -93,6 +93,16 @@ interface Profile {
                 <h2 class="dw-h2 dw-spacer">{{ t('providers.accepted') }}</h2>
                 <button pButton severity="secondary" outlined type="button" (click)="addWaste()"><dw-icon>add</dw-icon>{{ t('provider.profile.addWaste') }}</button>
               </header>
+              <!-- PP-01: the families taken, as chips; the details of each line only when needed. -->
+              <div class="dw-panel-body families">
+                <p class="dw-faint">{{ t('provider.profile.familiesHint') }}</p>
+                <div class="chips">
+                  @for (family of vocabulary()?.waste_families ?? []; track family.code) {
+                    <button type="button" class="chip" [class.on]="hasFamily(family.code)" [attr.aria-pressed]="hasFamily(family.code)" (click)="toggleFamily(family.code)">
+                      @if (hasFamily(family.code)) { <dw-icon>check</dw-icon> }{{ family.name | dwLocalized }}</button>
+                  }
+                </div>
+              </div>
               <div class="dw-panel-body wastes dw-rows">
                 @for (waste of wastes(); track $index; let index = $index) {
                   <div class="waste">
@@ -112,6 +122,8 @@ interface Profile {
                         @for (channel of vocabulary()?.treatment_channels ?? []; track channel.code) { <dw-option [value]="channel.code" [label]="channel.name | dwLocalized" /> }
                       </dw-select>
                     </dw-field>
+                    <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="removeWaste(index)" [attr.aria-label]="t('common.remove')" [title]="t('common.remove')"><dw-icon>delete</dw-icon></button>
+                    <dw-more class="ask" [label]="t('provider.profile.requirements')" [summary]="asks(waste) ? t('provider.profile.hasRequirement') : t('provider.profile.noRequirement')" [open]="asks(waste)">
                     <dw-field class="min" [label]="t('providers.minQuantity')">
                       <input pInputText inputmode="decimal" [ngModel]="waste.min_quantity" (ngModelChange)="patchWaste(index, { min_quantity: $event })" [ngModelOptions]="{ standalone: true }" />
                     </dw-field>
@@ -138,7 +150,6 @@ interface Profile {
                     <dw-field class="notes" [label]="t('fields.notes')">
                       <input pInputText maxlength="500" [ngModel]="waste.notes" (ngModelChange)="patchWaste(index, { notes: $event })" [ngModelOptions]="{ standalone: true }" />
                     </dw-field>
-                    <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="removeWaste(index)" [attr.aria-label]="t('common.remove')"><dw-icon>delete</dw-icon></button>
                     @if (asks(waste)) {
                       <div class="consequence">
                         <dw-checkbox [checked]="waste.is_blocking" (checkedChange)="patchWaste(index, { is_blocking: $event })">{{ t('providers.blocking') }}</dw-checkbox>
@@ -151,6 +162,7 @@ interface Profile {
                         <span class="dw-faint">{{ t(waste.adds_to_family ? 'providers.addsToFamilyOn' : 'providers.addsToFamilyOff') }}</span>
                       </div>
                     }
+                    </dw-more>
                   </div>
                 } @empty {
                   <p class="dw-faint">{{ t('common.none') }}</p>
@@ -167,8 +179,13 @@ interface Profile {
     .roles { margin-block: var(--dw-2) var(--dw-4); }
     .wastes { display: grid; gap: var(--dw-1); }
     /* Four columns: with the waste type a line holds seven fields, and a unit or a family must be read in full. */
-    .waste { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--dw-2); align-items: end; padding-block-end: var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); }
-    .waste .notes { grid-column: 1 / span 3; } .waste > button { justify-self: end; }
+    .waste { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: var(--dw-2); align-items: end; padding-block-end: var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); }
+    .waste .ask { grid-column: 1 / -1; } .waste > button { justify-self: end; }
+    .families { display: grid; gap: 10px; padding-block-end: 4px; } .families p { margin: 0; font-size: 13px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { all: unset; display: inline-flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: 999px; border: 1px solid var(--dw-line-strong); font-size: 13px; font-weight: 560; cursor: pointer; transition: background-color 140ms, border-color 140ms; }
+    .chip:hover { border-color: var(--dw-primary-line); } .chip.on { background: var(--dw-primary); border-color: var(--dw-primary); color: #fff; }
+    .chip dw-icon { font-size: 15px; } .chip:focus-visible { outline: 2px solid var(--dw-focus); outline-offset: 2px; }
     .waste:last-child { border-block-end: 0; } .consequence { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--dw-1) var(--dw-3); align-items: center; font-size: 13px; }
     @media (max-width: 900px) { .waste { grid-template-columns: 1fr 1fr; } .waste .notes { grid-column: 1 / -1; } }
     /* On a phone each field takes the width: a waste family or a unit is read in full, not cut off. */
@@ -179,7 +196,7 @@ export class ProviderProfilePage {
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
 
-  protected readonly roleOptions = ['collector', 'transporter', 'recycler', 'eliminator'];
+  protected readonly roleOptions = ['collector', 'transporter', 'recycler', 'sorter'];
   protected readonly vocabulary = toSignal(inject(ReferenceData).vocabulary());
   protected readonly profile = signal<Profile | null>(null);
   protected readonly error = signal<unknown>(null);
@@ -204,6 +221,19 @@ export class ProviderProfilePage {
 
   protected toggleRole(role: string, checked: boolean): void {
     this.roles.update((roles) => (checked ? [...roles, role] : roles.filter((item) => item !== role)));
+  }
+
+  protected hasFamily(family: string): boolean {
+    return this.wastes().some((row) => row.family === family);
+  }
+
+  /** A chip adds the whole family, to be recycled; taken off, every line of that family goes. */
+  protected toggleFamily(family: string): void {
+    if (this.hasFamily(family)) {
+      this.wastes.update((rows) => rows.filter((row) => row.family !== family));
+    } else {
+      this.wastes.update((rows) => [...rows, { channel: 'recycling', family, catalog_item: '', adds_to_family: false, min_quantity: '', min_unit: 'kg', min_packaging_type: '', required_packaging_type: '', is_blocking: false, notes: '' }]);
+    }
   }
 
   protected addWaste(): void {
@@ -341,6 +371,8 @@ interface AccreditationType {
                     @if (row.rejection_reason) { <div class="reason">{{ row.rejection_reason }}</div> }
                   </div>
                   @if (row.expired) { <dw-status kind="accreditation" value="expired" /> } @else { <dw-status kind="accreditation" [value]="row.review_status ?? 'pending'" /> }
+                  <!-- PP-02: an agrément that ends within 30 days says so. -->
+                  @if (!row.expired && daysLeft(row.expires_on) <= 30) { <dw-status kind="accreditation" value="expiring" [label]="t('providers.daysLeft', { days: daysLeft(row.expires_on) })" /> }
                   <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="open(row)" [attr.aria-label]="t('providers.viewFile')" [title]="t('providers.viewFile')"><dw-icon>description</dw-icon></button>
                   <button pButton text type="button" [disabled]="busy()" (click)="withdraw(row)">{{ t('provider.accreditations.withdraw') }}</button>
                 </li>
@@ -359,6 +391,11 @@ interface AccreditationType {
   `,
 })
 export class ProviderAccreditationsPage {
+  /** Whole days until the agrément ends (negative once it has). */
+  protected daysLeft(date: string): number {
+    return Math.ceil((new Date(`${date}T23:59:59`).getTime() - Date.now()) / 86_400_000);
+  }
+
   private readonly api = inject(Api);
   private readonly http = inject(HttpClient);
   private readonly session = inject(Session);

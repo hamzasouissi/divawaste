@@ -16,6 +16,7 @@ import { KpiComponent, PageHeaderComponent, StatusComponent } from '../../ui/pag
 import { Period, PeriodFilterComponent, presetPeriod } from '../../ui/period';
 import { StateComponent } from '../../ui/state';
 import { HelpComponent } from '../../ui/help';
+import { ProducedPiecesComponent } from '../reports/produced-pieces';
 
 interface StatRow {
   key: string;
@@ -111,8 +112,7 @@ export class OriginLotsDialog {
   imports: [
     HelpComponent,
     TranslocoDirective, PageHeaderComponent, KpiComponent, StateComponent, PeriodFilterComponent, ButtonDirective, IconComponent, KgPipe, NumberPipe, MoneyPipe, LocalizedPipe, DatePipe,
-    Tabs, TabList, Tab, TabPanels, TabPanel,
-  ],
+    Tabs, TabList, Tab, TabPanels, TabPanel, ProducedPiecesComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -204,6 +204,8 @@ export class OriginLotsDialog {
           </div>
         }
       </dw-state>
+      <!-- R-02: the pieces produced, which "waste per piece" is computed from, live with production. -->
+      <div class="pieces"><dw-produced-pieces /></div>
     </ng-container>
   `,
   styles: `

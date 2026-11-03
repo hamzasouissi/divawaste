@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Guide 8 — Application atelier</title>
+<style>
+  @page { size: A4; margin: 0; }
+  :root { --green: #0f5a4f; --green-2: #16796a; --soft: #e8f3f0; --ink: #16222b; --ink-2: #45525c; --line: #d9e2e0; --red: #c62f32; --amber: #9a5b00; --amber-soft: #fff4dc; --blue-soft: #eef3fb; --blue: #2f5ea8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", Inter, Arial, sans-serif; color: var(--ink); font-size: 11.4pt; line-height: 1.48; }
+  .page { width: 210mm; height: 297mm; overflow: hidden; padding: 15mm 17mm 14mm; page-break-after: always; position: relative; }
+  .page:last-child { page-break-after: auto; }
+  .foot { position: absolute; bottom: 8mm; left: 17mm; right: 17mm; display: flex; justify-content: space-between; font-size: 8.5pt; color: #7b8790; border-top: 1px solid var(--line); padding-top: 3mm; }
+
+  .cover { background: linear-gradient(160deg, #0b1c1f 0%, #0f3a35 60%, #16796a 100%); color: #fff; display: flex; flex-direction: column; padding: 22mm 20mm; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15pt; }
+  .brand .logo { width: 34px; height: 34px; border-radius: 9px; background: #2a8f7e; display: grid; place-items: center; font-weight: 800; }
+  .cover .kicker { margin-top: 30mm; font-size: 11pt; letter-spacing: .14em; text-transform: uppercase; color: #9fd8cc; font-weight: 700; }
+  .cover h1 { font-size: 29pt; line-height: 1.12; margin: 4mm 0 5mm; font-weight: 750; }
+  .cover .sub { font-size: 13.5pt; color: #d4ece6; max-width: 150mm; }
+  .robot-cover { position: absolute; right: 20mm; top: 18mm; width: 30mm; height: 30mm; }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8mm; }
+  .tag { padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 10.5pt; }
+  .need { margin-top: auto; background: rgba(255,255,255,.08); border-radius: 14px; padding: 7mm 8mm; }
+  .need h3 { margin: 0 0 3mm; font-size: 12pt; color: #9fd8cc; text-transform: uppercase; letter-spacing: .08em; }
+  .need ul { margin: 0; padding-left: 18px; columns: 2; column-gap: 10mm; }
+  .need li { margin-bottom: 1.5mm; break-inside: avoid; }
+
+  h2.part { font-size: 19pt; margin: 0 0 2mm; color: var(--green); }
+  h2.part small { display: block; font-size: 10.5pt; color: var(--ink-2); font-weight: 500; letter-spacing: .02em; }
+  .lead { color: var(--ink-2); margin: 0 0 5mm; }
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3.5mm; margin: 3mm 0 5mm; }
+  .map div { border: 1px solid var(--line); border-radius: 12px; padding: 3.5mm 5mm; }
+  .map div.extra { border-style: dashed; background: #fafcfc; }
+  .map b { display: block; color: var(--green); font-size: 11pt; } .map span { color: var(--ink-2); font-size: 10pt; }
+  .num { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: var(--green); color: #fff; font-size: 9.5pt; font-weight: 700; margin-right: 6px; }
+  .map .num { color: #fff; }
+  .extra .num { background: #7b8f8b; }
+
+  .step { margin-bottom: 6mm; }
+  .step h3 { display: flex; align-items: center; gap: 8px; font-size: 14pt; margin: 0 0 2.5mm; }
+  .step h3 .n { flex: none; display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 9px; background: var(--green); color: #fff; font-size: 11.5pt; }
+  .step.extra h3 .n { background: #7b8f8b; }
+  ol.do, ul.do { margin: 0 0 3mm; padding-left: 22px; } ol.do li, ul.do li { margin-bottom: 1.2mm; }
+  .shot { margin: 2mm 0 3mm; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; box-shadow: 0 3px 10px rgba(16, 40, 40, .08); }
+  .shot img { display: block; width: 100%; }
+  .shot.half { width: 72%; margin-left: auto; margin-right: auto; }
+  .shot.mid { width: 60%; margin-left: auto; margin-right: auto; }
+  .shot.small { width: 48%; margin-left: auto; margin-right: auto; }
+  .cap { font-size: 9pt; color: #6c7880; margin: -1.5mm 0 3mm; text-align: center; }
+  .box { border-radius: 10px; padding: 3mm 4.5mm; margin: 2mm 0 3mm; font-size: 10.5pt; }
+  .see { background: var(--soft); border-left: 4px solid var(--green); }
+  .see b:first-child { color: var(--green); }
+  .tip { background: #f3f6f8; border-left: 4px solid #8796a0; }
+  .warn { background: var(--amber-soft); border-left: 4px solid var(--amber); }
+  .info { background: var(--blue-soft); border-left: 4px solid var(--blue); }
+  .info b:first-child { color: var(--blue); }
+  .ring { color: var(--red); font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 10.2pt; margin: 2mm 0 3mm; }
+  th, td { text-align: left; padding: 2mm 3mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f3f6f6; font-size: 9.3pt; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  td.ans { font-weight: 700; color: var(--green); white-space: nowrap; }
+  table.xl { font-family: Calibri, "Segoe UI", Arial, sans-serif; font-size: 9.8pt; border: 1px solid #b7c4c1; }
+  table.xl th { background: #e6efe9; color: #1f3b33; text-transform: none; letter-spacing: 0; font-size: 9.8pt; border-right: 1px solid #c9d4d1; }
+  table.xl td { border-right: 1px solid #e0e6e4; padding: 1.4mm 2.5mm; }
+  .check td:first-child { width: 9mm; font-size: 13pt; color: var(--green); }
+  .check td { padding: 1.6mm 3mm; font-size: 9.8pt; }
+  .remarks { border: 1px dashed #b9c6c4; border-radius: 10px; height: 34mm; margin-top: 3mm; padding: 3mm 4mm; color: #9aa6ad; font-size: 10pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; align-items: start; }
+  .who { display: flex; gap: 4mm; align-items: center; }
+  .who svg { flex: none; width: 16mm; height: 16mm; }
+  .badge { display: inline-block; font-size: 8.5pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: #7b8f8b; border-radius: 6px; padding: 1px 7px; vertical-align: middle; margin-left: 6px; }
+  .phones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; margin: 2mm 0 3mm; }
+  .phones .shot { margin: 0; } .phones .cap { margin: 1.5mm 0 0; }
+  .phones.four { grid-template-columns: repeat(4, 1fr); gap: 4mm; }
+  .crop img { height: 100mm; object-fit: cover; object-position: top; }
+  .crop.short img { height: 80mm; }
+</style>
+</head>
+<body>
+
+<!-- the assistant's face, as in the application -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="dg" x1="4" y1="2" x2="36" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1c8a7c"/><stop offset="0.55" stop-color="#0f5c56"/><stop offset="1" stop-color="#0b3f3b"/></linearGradient>
+    <linearGradient id="ds" x1="10" y1="11" x2="30" y2="31" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#bfeee1"/></linearGradient>
+    <symbol id="robot" viewBox="0 0 40 40">
+      <rect x="2" y="2" width="36" height="36" rx="12" fill="url(#dg)"/>
+      <clipPath id="tile"><rect x="2" y="2" width="36" height="36" rx="12"/></clipPath>
+      <rect x="11.5" y="31" width="17" height="10" rx="4.5" fill="#bfeee1" opacity="0.85" clip-path="url(#tile)"/>
+      <line x1="20" y1="7.8" x2="20" y2="11.5" stroke="#bfeee1" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="20" cy="6.6" r="2.1" fill="#7ff5d9"/>
+      <rect x="7" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="29.6" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="9.5" y="11" width="21" height="19.5" rx="6.5" fill="url(#ds)"/>
+      <rect x="12.3" y="14.6" width="15.4" height="10" rx="4.6" fill="#0b3f3b"/>
+      <rect x="15" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <rect x="21.7" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <path d="M17.6 27 Q20 28.5 22.4 27" fill="none" stroke="#0f5c56" stroke-width="1.3" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ============================================================ COVER -->
+<section class="page cover">
+  <div class="brand"><span class="logo">D</span> DivaWaste</div>
+  <svg class="robot-cover"><use href="#robot"/></svg>
+  <div class="kicker">Guide 8 · Pas à pas</div>
+  <h1>L'application atelier,<br>sur téléphone ou tablette</h1>
+  <div class="sub">Pour l'<b>opérateur</b> au poste de travail : créer un lot en quatre touches, le peser, le ranger, imprimer son étiquette, le retrouver en scannant son QR code, et <b>charger un enlèvement</b> le jour où le camion vient. Même sans réseau.</div>
+  <div class="tags"><span class="tag">⏱ 10 minutes</span><span class="tag">📱 Exemple : Youssef, Usine de Nabeul</span><span class="tag">📶 Marche hors ligne</span></div>
+  <div class="need">
+    <h3>Avant de commencer, ayez sous la main</h3>
+    <ul>
+      <li>Un <b>téléphone</b> ou une <b>tablette</b> avec un navigateur (Chrome, Safari)</li>
+      <li>Votre <b>compte</b> (invitation reçue par email, Guide 7)</li>
+      <li>Une <b>balance</b> à côté du poste</li>
+      <li>Une <b>imprimante d'étiquettes</b> si vous en avez une (facultatif)</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ OVERVIEW -->
+<section class="page">
+  <h2 class="part">Le chemin en un coup d'œil</h2>
+  <div class="map">
+    <div><b><span class="num">A</span>Ouvrir l'application</b><span>La même adresse que DivaWaste ; l'opérateur y arrive tout seul.</span></div>
+    <div><b><span class="num">B</span>Créer un lot</b><span>Zone, OF, type de déchet, poids : quatre écrans, de grosses touches.</span></div>
+    <div><b><span class="num">C</span>Retrouver un lot</b><span>Scanner son étiquette, puis le ranger, le repeser, le déplacer.</span></div>
+    <div><b><span class="num">D</span>Charger un enlèvement</b><span>Scanner chaque lot qui monte dans le camion.</span></div>
+    <div><b><span class="num">E</span>Sans réseau</b><span>Tout continue ; l'envoi se fait au retour du réseau.</span></div>
+    <div><b><span class="num">F</span>L'assistant</b><span>« Pèse le lot … à 44 kg » : il prépare, vous confirmez.</span></div>
+    <div><b><span class="num">✓</span>Fiche de test</b><span>Cochez ce qui marche, notez ce qui gêne.</span></div>
+  </div>
+  <div class="box info"><b>Qui l'utilise ?</b> L'<b>Opérateur atelier</b> n'a que cette application. Les autres rôles l'ouvrent par le menu <b>Application atelier</b> (en bas à gauche du bureau), par exemple sur la tablette de l'atelier ; ils reviennent au bureau par <b>Version bureau</b>.</div>
+  <div class="box tip"><b>L'installer comme une application.</b> Sur le téléphone, ouvrez DivaWaste dans le navigateur, puis menu ⋮ › <b>Ajouter à l'écran d'accueil</b> (Android) ou Partager › <b>Sur l'écran d'accueil</b> (iPhone). L'icône DivaWaste s'ouvre alors en plein écran.</div>
+  <div class="box tip"><b>Comment lire ce guide.</b> La touche à toucher est <span class="ring">entourée en rouge</span> ; l'encadré vert dit <b>ce que vous devez voir</b>.</div>
+  <div class="foot"><span>DivaWaste · Guide 8 — Application atelier</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ A -->
+<section class="page">
+  <h2 class="part">A. Ouvrir l'application</h2>
+  <ol class="do"><li>Connectez-vous avec votre email et votre mot de passe : un opérateur arrive directement sur l'<b>accueil de l'atelier</b>.</li>
+    <li>En haut : l'état du réseau (<b>En ligne · Tout est synchronisé</b>), le bouton de l'<b>assistant</b> (le robot) et <b>Mon compte</b>.</li>
+    <li>Quatre grosses touches : <b>Nouveau lot</b>, <b>Scanner</b>, <b>Charger un enlèvement</b>, et votre nom (compte et déconnexion).</li></ol>
+  <div class="phones">
+    <div><div class="shot"><img src="img8/01-home.jpg"></div><p class="cap">L'accueil de l'atelier.</p></div>
+    <div><div class="shot"><img src="img8/15-account.jpg"></div><p class="cap">Mon compte : qui est connecté, la société, la langue, <b>Se déconnecter</b>.</p></div>
+    <div><div class="shot"><img src="img8/14-sync.jpg"></div><p class="cap">La file de synchronisation : ce qui est parti, ce qui attend.</p></div>
+  </div>
+  <div class="box see"><b>Vous ne voyez que vos sites.</b> Youssef est Opérateur atelier à <b>Usine de Nabeul</b> : les zones proposées sont celles de Nabeul, et seuls les enlèvements de Nabeul se chargent ici.</div>
+  <div class="foot"><span>DivaWaste · Guide 8 — Application atelier</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ B -->
+<section class="page">
+  <h2 class="part">B. Créer un lot <small>Quatre écrans, une touche chacun</small></h2>
+  <ol class="do"><li><b>Nouveau lot</b>, puis la <b>zone</b> où se trouve le déchet (Atelier de coupe, Confection…). Les pastilles en haut rappellent ce qui est déjà choisi : touchez-en une pour revenir.</li>
+    <li>L'<b>OF</b> d'où vient le déchet : touchez-le, ou <b>Scanner la fiche de l'OF</b>, ou <b>Sans OF</b>. (Cet écran n'existe que si la production est suivie.)</li>
+    <li>Le <b>type de déchet</b>. Un déchet dangereux porte l'étiquette <b>Dangereux</b>.</li></ol>
+  <div class="phones">
+    <div><div class="shot"><img src="img8/02-zone.jpg"></div><p class="cap">1. La zone.</p></div>
+    <div><div class="shot"><img src="img8/03-step2.jpg"></div><p class="cap">2. L'OF (ou Sans OF).</p></div>
+    <div><div class="shot"><img src="img8/04-type.jpg"></div><p class="cap">3. Le type de déchet.</p></div>
+  </div>
+  <div class="box tip"><b>Les derniers lots créés</b> sur l'appareil restent listés sur l'accueil de l'atelier, avec leur état d'envoi : pratique pour vérifier d'un coup d'œil ce qui vient d'être fait.</div>
+  <div class="foot"><span>DivaWaste · Guide 8 — Application atelier</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <ol class="do" start="4"><li>Le <b>poids net</b> sur le clavier (la virgule pour les décimales : <b>42,5</b>), puis <span class="ring">Créer le lot</span>.<br>Pas de balance sous la main ? <b>Peser plus tard</b> : le lot est créé « à peser » ; la liste des lots le montre, et l'Accueil du bureau le rappelle s'il reste sans poids.</li>
+    <li>Le lot est créé avec son numéro : <b>Imprimer l'étiquette</b> (QR code, numéro, déchet, poids, zone), <b>Créer un autre lot</b> ou revenir à l'<b>Accueil</b>.</li></ol>
+  <div class="phones">
+    <div><div class="shot"><img src="img8/05-weight.jpg"></div><p class="cap">4. Le poids, au clavier.</p></div>
+    <div><div class="shot"><img src="img8/06-created.jpg"></div><p class="cap">Le lot L-2026-000096 est créé.</p></div>
+    <div><div class="box see" style="margin-top:0"><b>Vous devez voir</b> « Lot créé », son numéro, et la ligne « Chutes de coupe — 42,5 kg — Atelier de coupe — OF-2026-014 ». Le lot apparaît aussitôt dans <b>Déchets › Lots</b> du bureau, statut <b>Créé</b>.</div>
+      <div class="box tip"><b>L'étiquette</b> se colle sur le sac ou la balle. Tout ce qui suit (ranger, peser, charger) commence en scannant ce QR code.</div>
+      <div class="box warn"><b>Une erreur de poids ?</b> Pas de panique : <b>Repeser</b> (C) corrige, et l'ancien poids reste dans l'historique du lot.</div></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 8 — Application atelier</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ C -->
+<section class="page">
+  <h2 class="part">C. Retrouver un lot et agir dessus</h2>
+  <ol class="do"><li><b>Scanner</b> : placez le QR code de l'étiquette dans le cadre. La première fois, le navigateur demande l'accès à la caméra : <b>Autoriser</b>.</li>
+    <li>Étiquette abîmée, ou caméra refusée ? <b>Saisir le code à la main</b> : tapez le numéro du lot, puis <span class="ring">Confirmer</span>.</li>
+    <li>La fiche du lot s'ouvre : numéro, statut, déchet, poids, site et zone, et les actions possibles.</li></ol>
+  <div class="phones">
+    <div><div class="shot"><img src="img8/07-scan-manual.jpg"></div><p class="cap">Le code tapé à la main.</p></div>
+    <div><div class="shot"><img src="img8/08-lot.jpg"></div><p class="cap">La fiche du lot, statut Créé.</p></div>
+    <div><div class="shot"><img src="img8/09-stock.jpg"></div><p class="cap"><b>Mettre en stock</b> : statut <b>Stocké</b>.</p></div>
+  </div>
+  <div class="box info"><b>Créé ou Stocké ?</b> <b>Créé</b> : le lot vient d'être fait au poste. <b>Stocké</b> : il est rangé et compte dans le stock du site, prêt à partir. « Mettre en stock » le range dans sa zone actuelle ; pour l'emmener ailleurs, <b>Changer de zone</b>.</div>
+  <div class="foot"><span>DivaWaste · Guide 8 — Application atelier</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <table>
+    <tr><th style="width:26%">Action</th><th>Ce qu'elle fait</th></tr>
+    <tr><td><b>Mettre en stock</b></td><td>Le lot passe de Créé à Stocké, dans sa zone.</td></tr>
+    <tr><td><b>Repeser</b></td><td>Un nouveau poids net (kg), puis <b>Enregistrer</b>. L'écart avec l'ancien poids est gardé dans l'historique.</td></tr>
+    <tr><td><b>Changer de zone</b></td><td>Touchez la nouvelle zone (aire de stockage, quai…). La zone actuelle est grisée.</td></tr>
+    <tr><td><b>Imprimer l'étiquette</b></td><td>Une nouvelle étiquette, si l'ancienne est abîmée ou perdue.</td></tr>
+    <tr><td><b>Scanner</b></td><td>Passer au lot suivant sans revenir à l'accueil.</td></tr>
+  </table>
+  <div class="phones">
+    <div><div class="shot"><img src="img8/10-move.jpg"></div><p class="cap">Changer de zone.</p></div>
+    <div><div class="shot"><img src="img8/11-reweigh.jpg"></div><p class="cap">Repeser.</p></div>
+    <div><div class="box tip" style="margin-top:0"><b>Diviser un lot</b> (une balle en deux) se fait sur le bureau, dans la fiche du lot : <b>Plus d'actions</b>.</div></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 8 — Application atelier</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ D -->
+<section class="page">
+  <h2 class="part">D. Charger un enlèvement <small>Le jour où le camion vient</small></h2>
+  <ol class="do"><li><b>Charger un enlèvement</b> : la liste des enlèvements <b>confirmés</b> de vos sites, avec le prestataire, la date et le nombre de lots.</li>
+    <li>Touchez le bon (ici <b>ENL-2026-0006</b>, Recyclage du Sahel). L'écran montre la caméra et la liste des lots prévus.</li>
+    <li><b>Scannez chaque lot</b> au moment où il monte dans le camion : il se coche, et le compteur avance (« 1 / 3 lots scannés »). Un lot d'un autre enlèvement est refusé : « Ce lot ne fait pas partie de cet enlèvement ».</li>
+    <li><b>Valider le chargement</b>. S'il manque des lots, l'application le dit : « 1 lot(s) non scanné(s) resteront en stock » ; confirmez seulement s'ils restent vraiment.</li></ol>
+  <div class="phones">
+    <div><div class="shot"><img src="img8/12-loading-list.jpg"></div><p class="cap">Les enlèvements à charger.</p></div>
+    <div><div class="shot"><img src="img8/13-loading.jpg"></div><p class="cap">Chaque lot scanné se coche.</p></div>
+    <div><div class="box see" style="margin-top:0"><b>Vous devez voir</b> « Chargement enregistré. » ; sur le bureau, l'enlèvement passe à <b>Enlevé</b>, ses lots partent du stock, et les bordereaux sont prêts à signer (Guide 4, R3).</div>
+  <div class="box warn"><b>Le chargement a besoin du réseau.</b> Les lots, eux, se créent et se pèsent sans réseau (E) ; la validation du chargement, non : faites-la au retour du réseau, la liste des lots scannés reste à l'écran.</div></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 8 — Application atelier</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ E -->
+<section class="page">
+  <h2 class="part">E. Sans réseau <small>L'atelier ne s'arrête pas</small></h2>
+  <ol class="do"><li>Le réseau tombe : la pastille du haut passe à <b>Hors ligne</b> — « Vous pouvez continuer : les lots seront envoyés au retour du réseau ».</li>
+    <li>Créez, pesez, rangez comme d'habitude. Chaque opération attend sur l'appareil ; la pastille compte « <b>n à synchroniser</b> ».</li>
+    <li>Le réseau revient : tout part tout seul, dans l'ordre. Pour forcer : <b>File de synchronisation</b> › <b>Synchroniser</b>.</li></ol>
+  <table>
+    <tr><th style="width:26%">Dans la file</th><th>Ce que ça veut dire</th></tr>
+    <tr><td><b>En attente</b></td><td>Pas encore envoyé : il partira au retour du réseau.</td></tr>
+    <tr><td><b>Synchronisé</b></td><td>Reçu par DivaWaste : visible sur le bureau.</td></tr>
+    <tr><td><b>Conflit</b></td><td>Quelqu'un d'autre a modifié le même lot entre-temps (repesé au bureau, par exemple). Rien n'est écrasé : regardez le lot, puis refaites l'action si elle est toujours juste, ou <b>abandonnez</b>-la.</td></tr>
+    <tr><td><b>Échec</b></td><td>Refusé (un lot déjà parti, un droit retiré…) : la raison est écrite sous l'opération.</td></tr>
+  </table>
+  <div class="box warn"><b>Ne vous déconnectez pas avec des opérations en attente.</b> L'application prévient : elles restent sur l'appareil, à votre nom, et partiront au retour du réseau ; mais un autre opérateur sur le même appareil ne pourra pas les envoyer à votre place.</div>
+  <div class="box tip"><b>Étiquette d'un lot créé hors ligne</b> : elle s'imprime au retour du réseau, quand le lot a son numéro définitif.</div>
+  <div class="foot"><span>DivaWaste · Guide 8 — Application atelier</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ F -->
+<section class="page">
+  <h2 class="part">F. L'assistant, au poste <small>Dites ce que vous voulez faire</small></h2>
+  <ol class="do"><li>Touchez le <span class="ring">robot</span> en haut de l'écran : l'assistant s'ouvre. Il sait quel lot est affiché.</li>
+    <li>Écrivez ou dictez (le micro du clavier) : <b>« pèse le lot L-2026-000095 à 44 kg »</b>.</li>
+    <li>Il prépare l'action et l'affiche <b>À CONFIRMER</b> : quel lot, quel poids, le poids actuel. Touchez <b>Confirmer</b> (ou <b>Modifier</b>, <b>Annuler</b>).</li>
+    <li>« C'est fait » : le lot pèse maintenant 44 kg ; <b>Ouvrir L-2026-000095</b> pour le voir.</li></ol>
+  <div class="phones">
+    <div><div class="shot"><img src="img8/16-assistant-button.jpg"></div><p class="cap">Le robot, en haut.</p></div>
+    <div><div class="shot"><img src="img8/17-assistant-weigh.jpg"></div><p class="cap">L'action, à confirmer.</p></div>
+    <div><div class="shot"><img src="img8/18-assistant-done.jpg"></div><p class="cap">C'est fait.</p></div>
+  </div>
+  <div class="box info"><b>Ce qu'il fait au poste :</b> peser un lot, compter ses colis, le ranger dans une zone, dire où en est un lot ou un enlèvement, expliquer une règle. Il agit <b>avec vos droits</b> et <b>rien sans votre « Confirmer »</b>. Il a besoin du réseau : hors ligne, son bouton disparaît (Guide 6).</div>
+  <div class="foot"><span>DivaWaste · Guide 8 — Application atelier</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ TEST -->
+<section class="page">
+  <h2 class="part">Fiche de test</h2>
+  <table class="check">
+    <tr><td>☐</td><td>L'opérateur se connecte sur le téléphone et arrive sur l'accueil de l'atelier.</td></tr>
+    <tr><td>☐</td><td>Je crée un lot : zone, OF, type, 42,5 au clavier ; il apparaît sur le bureau avec ce poids.</td></tr>
+    <tr><td>☐</td><td>« Peser plus tard » crée un lot « À peser », visible dans la liste des lots du bureau.</td></tr>
+    <tr><td>☐</td><td>L'étiquette s'imprime avec le QR code et le numéro du lot.</td></tr>
+    <tr><td>☐</td><td>Le scan de l'étiquette (ou le code tapé) ouvre la fiche du lot.</td></tr>
+    <tr><td>☐</td><td>Mettre en stock, Repeser, Changer de zone : chaque action se voit sur le bureau.</td></tr>
+    <tr><td>☐</td><td>Je charge un enlèvement en scannant ses lots ; un lot d'un autre enlèvement est refusé.</td></tr>
+    <tr><td>☐</td><td>Valider avec un lot non scanné : l'application prévient, et ce lot reste en stock.</td></tr>
+    <tr><td>☐</td><td>Mode avion : je crée un lot ; « 1 à synchroniser » ; il part au retour du réseau.</td></tr>
+    <tr><td>☐</td><td>Un repesage au bureau pendant que je suis hors ligne donne un « Conflit », sans rien écraser.</td></tr>
+    <tr><td>☐</td><td>« Pèse le lot … à 44 kg » à l'assistant : je confirme, le poids change.</td></tr>
+    <tr><td>☐</td><td>L'application est installée sur l'écran d'accueil et s'ouvre en plein écran.</td></tr>
+  </table>
+  <div class="remarks">Remarques, questions, ce qui gêne :</div>
+  <div class="foot"><span>DivaWaste · Guide 8 — Application atelier</span><span class="pg"></span></div>
+</section>
+<script>
+  document.querySelectorAll('.page').forEach((page, i) => { const pg = page.querySelector('.pg'); if (pg) pg.textContent = String(i + 1); });
+</script>
+</body>
+</html>

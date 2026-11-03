@@ -47,7 +47,7 @@ describe('production: received lots, consumption, produced lots, invoices', () =
         { provide: Api, useValue: api }, { provide: DynamicDialogRef, useValue: ref }, { provide: DynamicDialogConfig, useValue: config },
         { provide: Toast, useValue: { success: vi.fn(), error: vi.fn(), applyValidation: () => false } },
         { provide: TranslocoService, useValue: { translate: (key: string) => key } },
-        { provide: Session, useValue: { can: (permission: string) => permission !== 'production.finance.view' || money, company: () => ({ currency_code: 'TND' }), sitesFor: () => [{ ulid: 'S1', name: 'Nabeul' }] } },
+        { provide: Session, useValue: { can: (permission: string) => permission !== 'production.finance.view' || money, canEditProduction: () => true, uses: () => true, withErp: () => false, company: () => ({ currency_code: 'TND' }), sitesFor: () => [{ ulid: 'S1', name: 'Nabeul' }] } },
         { provide: ProductionLists, useValue: { suppliers: () => of([]), steps: () => of([]), materials: () => of([{ ...material, batches: [batch({}), batch({ ulid: 'B2', batch_number: 'L2' })] }]) } },
         { provide: Dialogs, useValue: { open: vi.fn() } }, { provide: Confirm, useValue: { ask: vi.fn(async () => true) } },
       ],

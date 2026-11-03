@@ -24,6 +24,8 @@
 - **Alternatives considered:** Fake login; store token in local/session storage; retain the obsolete external login link. The first and third are incorrect now; persistent browser storage unnecessarily expands token exposure.
 - **Consequences:** A full page reload requires another login. No logout control is claimed without revocation semantics. Backend remains authoritative for tenant access; `/me` and `/company` bootstrap still follow token issuance.
 
+> **Status 2026-10-22 — superseded by the implementation.** The web uses a Sanctum cookie session (`GET /sanctum/csrf-cookie`, then `auth/login` with `mode: session`, `withCredentials`): `frontend/src/app/core/auth/session.ts`, `core/auth/interceptors.ts`. Bearer tokens remain for scripts and workshop devices.
+
 ## D4 — No list/navigation experience for lots or pickups
 
 - **Decision:** Provide only deep-link/contextual detail and workflow composition for lots/pickups until collection routes exist.
@@ -31,6 +33,8 @@
 - **Reasoning:** A polished invented index would be a fake API requirement, conceal a backend gap, and create rework.
 - **Alternatives considered:** Client-side aggregation from other endpoints; placeholder/mock lists; neither is evidenced.
 - **Consequences:** Navigation labels and empty states must state unavailable discovery honestly; a future list contract is a prerequisite for list pages.
+
+> **Status 2026-10-22 — superseded.** `GET /api/v1/lots` and `GET /api/v1/pickups` exist (server-paginated, filtered) and the list pages `/lots` and `/pickups` are built (`features/industrial.routes.ts`).
 
 ## D5 — Prefer pessimistic lifecycle mutations
 
@@ -56,6 +60,8 @@
 - **Alternatives considered:** Hard-code seeded role matrix; show every action as permitted. The first is stale/incorrectable; the second is noisy but may be used only when no safe discovery alternative exists.
 - **Consequences:** Product/backend must decide a capability endpoint or trusted bootstrap payload before permission-aware navigation is complete.
 
+> **Status 2026-10-22 — superseded.** `GET /api/v1/me/access` returns the effective permissions per site; the session loads it (`core/auth/session.ts`) and navigation and guards use it. The server still decides every request.
+
 ## D8 — Build i18n/RTL and accessible dense workflows into foundations
 
 - **Decision:** Translation ownership, logical CSS, document language/direction, semantic controls, keyboard/focus, and WCAG 2.2 AA target are foundation requirements.
@@ -72,3 +78,4 @@
 - **Alternatives considered:** Initialize all controls to the database default; provide a write-only form; infer types from notification payloads. None establishes the caller's current preference state, and saving guessed values could overwrite overrides.
 - **Consequences:** Ship notification browsing and mark-as-read only. Revisit settings when a read/default-state contract is documented. Backend evidence: `app/Modules/Notifications/Routes/api.php`, `app/Modules/Notifications/Requests/SetNotificationPreferencesRequest.php`; verified with Laravel runtime routes.
 
+> **Status 2026-10-22 — superseded.** `GET /api/v1/me/notification-preferences` exists and the preference editor is built on it (`features/account/account.ts`, `/account/notifications`).

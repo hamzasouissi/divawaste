@@ -55,7 +55,7 @@ export function dialogData<D>(): D {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2><ng-content /></h2>
-    <button *transloco="let t" pButton type="button" text rounded severity="secondary" size="small" class="dw-icon-btn" (click)="ref.close()" [attr.aria-label]="t('common.close')">
+    <button *transloco="let t" pButton type="button" text rounded severity="secondary" size="small" class="dw-icon-btn" (click)="ref.close()" [attr.aria-label]="t('common.close')" [title]="t('common.close')">
       <dw-icon>close</dw-icon>
     </button>
   `,

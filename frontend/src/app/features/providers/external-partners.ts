@@ -8,7 +8,7 @@ import { InputText } from 'primeng/inputtext';
 import { Textarea } from 'primeng/textarea';
 
 import { Api } from '../../core/api/api';
-import { ExternalPartner, LimitResult, PartnerRequirement, RequirementRule, StockLimitUnit, WasteType } from '../../core/api/models';
+import { ExternalPartner, LimitResult, PartnerRequirement, RegistryOperator, RequirementRule, StockLimitUnit, WasteType } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Confirm } from '../../ui/confirm';
 import { ReferenceData } from '../../core/data/reference';
@@ -20,12 +20,17 @@ import { DateComponent } from '../../ui/date';
 import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
 import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
+import { MenuAction, MenuComponent } from '../../ui/menu';
+import { MoreComponent } from '../../ui/more';
 import { StatusComponent } from '../../ui/page';
+import { RouterLink } from '@angular/router';
+import { PartyContracts } from '../contracts/party-contracts';
 import { SELECT } from '../../ui/select';
+import { RegistryDialog } from './registry';
 
 /** A transporter or a receiver that has no account on the platform: the company records it for its own use. */
 @Component({
-  imports: [ReactiveFormsModule, TranslocoDirective, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, ...DIALOG_PARTS, CheckboxComponent, DateComponent],
+  imports: [ReactiveFormsModule, TranslocoDirective, ButtonDirective, InputText, Textarea, ...FIELD, ...SELECT, ...DIALOG_PARTS, CheckboxComponent, DateComponent, MoreComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -33,6 +38,13 @@ import { SELECT } from '../../ui/select';
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <div class="dw-dialog-body">
           <p class="dw-muted intro">{{ t('partners.intro') }}</p>
+          @if (!data) {
+            <p class="registry" role="note">
+              @if (source(); as entry) { <dw-icon aria-hidden="true">fact_check</dw-icon><span>{{ t('registry.filledFrom', { list: entry.list_title }) }}</span> }
+              @else { <dw-icon aria-hidden="true">travel_explore</dw-icon><span>{{ t('registry.fillHint') }}</span> }
+              <button pButton text size="small" type="button" (click)="fromRegistry()">{{ t('registry.fill') }}</button>
+            </p>
+          }
           <div class="dw-form">
             <dw-field class="dw-span-2" [label]="t('partners.legalName')"><input pInputText formControlName="legal_name" maxlength="191" required /></dw-field>
             <dw-field [label]="t('partners.roles')">
@@ -40,21 +52,29 @@ import { SELECT } from '../../ui/select';
                 @for (role of roles; track role) { <dw-option [value]="role" [label]="t('providers.role.' + role)" /> }
               </dw-select>
             </dw-field>
-            <dw-field [label]="t('fields.taxId')"><input pInputText formControlName="tax_id" maxlength="40" /></dw-field>
-            <dw-field class="dw-span-2" [label]="t('fields.address')"><input pInputText formControlName="address_line1" maxlength="191" /></dw-field>
-            <dw-field [label]="t('fields.postalCode')"><input pInputText formControlName="postal_code" maxlength="20" /></dw-field>
-            <dw-field [label]="t('fields.city')"><input pInputText formControlName="city" maxlength="100" /></dw-field>
-            <dw-field [label]="t('providers.contact')"><input pInputText formControlName="contact_name" maxlength="150" /></dw-field>
-            <dw-field [label]="t('fields.phone')"><input pInputText formControlName="phone" maxlength="30" /></dw-field>
-            <dw-field class="dw-span-2" [label]="t('fields.email')"><input pInputText type="email" formControlName="email" maxlength="191" /></dw-field>
-
-            <dw-field [label]="t('partners.accreditation')">
-              <input pInputText formControlName="accreditation_reference" maxlength="100" />
-              <small dwHint>{{ t('partners.accreditationHint') }}</small>
-            </dw-field>
-            <dw-field [label]="t('providers.expiresOn')"><dw-date formControlName="accreditation_expires_on" /></dw-field>
+            <!-- PR-03: a name and what it does are enough to start; the rest is folded. -->
             <dw-checkbox class="dw-span-2" formControlName="covers_hazardous">{{ t('partners.coversHazardous') }}</dw-checkbox>
-            <dw-field class="dw-span-2" [label]="t('fields.notes')"><textarea pTextarea formControlName="notes" rows="2" maxlength="1000"></textarea></dw-field>
+            @if (form.controls.covers_hazardous.value) {
+              <dw-field [label]="t('partners.accreditation')">
+                <input pInputText formControlName="accreditation_reference" maxlength="100" />
+                <small dwHint>{{ t('partners.accreditationHint') }}</small>
+              </dw-field>
+              <dw-field [label]="t('providers.expiresOn')"><dw-date formControlName="accreditation_expires_on" /></dw-field>
+            }
+            <dw-more [label]="t('partners.contactDetails')" [summary]="t('partners.contactSummary')" [open]="!!data">
+              <dw-field [label]="t('fields.taxId')"><input pInputText formControlName="tax_id" maxlength="40" /></dw-field>
+              <dw-field [label]="t('fields.city')"><input pInputText formControlName="city" maxlength="100" /></dw-field>
+              <dw-field class="dw-span-2" [label]="t('fields.address')"><input pInputText formControlName="address_line1" maxlength="191" /></dw-field>
+              <dw-field [label]="t('fields.postalCode')"><input pInputText formControlName="postal_code" maxlength="20" /></dw-field>
+              <dw-field [label]="t('providers.contact')"><input pInputText formControlName="contact_name" maxlength="150" /></dw-field>
+              <dw-field [label]="t('fields.phone')"><input pInputText formControlName="phone" maxlength="30" /></dw-field>
+              <dw-field [label]="t('fields.email')"><input pInputText type="email" formControlName="email" maxlength="191" /></dw-field>
+              @if (!form.controls.covers_hazardous.value) {
+                <dw-field [label]="t('partners.accreditation')"><input pInputText formControlName="accreditation_reference" maxlength="100" /></dw-field>
+                <dw-field [label]="t('providers.expiresOn')"><dw-date formControlName="accreditation_expires_on" /></dw-field>
+              }
+              <dw-field class="dw-span-2" [label]="t('fields.notes')"><textarea pTextarea formControlName="notes" rows="2" maxlength="1000"></textarea></dw-field>
+            </dw-more>
             @if (data) { <dw-checkbox class="dw-span-2" formControlName="is_active">{{ t('partners.inUse') }}</dw-checkbox> }
           </div>
         </div>
@@ -65,15 +85,25 @@ import { SELECT } from '../../ui/select';
       </form>
     </ng-container>
   `,
-  styles: '.dw-dialog-body { inline-size: min(640px, 82vw); } .intro { margin: 0 0 var(--dw-3); font-size: 13px; }',
+  styles: `
+    .dw-dialog-body { inline-size: min(640px, 82vw); } .intro { margin: 0 0 var(--dw-3); font-size: 13px; }
+    .registry { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 8px; margin: 0 0 var(--dw-3); padding: 6px 10px; border-radius: var(--dw-radius); background: var(--dw-surface-2); font-size: 12.5px; }
+    .registry dw-icon { font-size: 18px; color: var(--dw-primary); }
+    @media (max-width: 560px) { .registry { grid-template-columns: auto 1fr; } .registry button { grid-column: 1 / -1; justify-self: start; } }
+  `,
 })
 export class ExternalPartnerDialog {
-  protected readonly data = dialogData<ExternalPartner | null>();
+  /** A partner to edit, or a new one — empty, or filled from an entry of the ANGed lists. */
+  private readonly given = dialogData<ExternalPartner | { from: RegistryOperator } | null>();
+  protected readonly data = this.given && 'ulid' in this.given ? this.given : null;
+  private readonly dialogs = inject(Dialogs);
+  /** The ANGed entry the form was filled from. */
+  protected readonly source = signal<RegistryOperator | null>(null);
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
   private readonly ref = inject(DialogRef);
 
-  protected readonly roles = ['transporter', 'recycler', 'eliminator'] as const;
+  protected readonly roles = ['collector', 'transporter', 'recycler', 'sorter'] as const;
   protected readonly busy = signal(false);
   protected readonly form = inject(FormBuilder).nonNullable.group({
     legal_name: [this.data?.legal_name ?? '', Validators.required],
@@ -91,6 +121,37 @@ export class ExternalPartnerDialog {
     notes: [this.data?.notes ?? ''],
     is_active: [this.data?.is_active ?? true],
   });
+
+  constructor() {
+    if (this.given && 'from' in this.given) {
+      this.fill(this.given.from);
+    }
+  }
+
+  protected fromRegistry(): void {
+    this.dialogs.open<RegistryDialog, { initial: string }, RegistryOperator>(RegistryDialog, { data: { initial: this.form.controls.legal_name.value } })
+      .afterClosed().subscribe((entry) => entry && this.fill(entry));
+  }
+
+  /** What the list says of the operator: its name, what it does, how to reach it, its authorisation. */
+  private fill(entry: RegistryOperator): void {
+    const roles = entry.roles.filter((role) => role !== 'storer');
+    const phone = (entry.phone ?? '').split(/[/,;]/)[0].trim().slice(0, 30);
+    this.form.patchValue({
+      legal_name: entry.legal_name,
+      roles: roles.length > 0 ? roles : this.form.controls.roles.value,
+      contact_name: (entry.contact_name ?? '').slice(0, 150),
+      phone,
+      email: entry.email ?? '',
+      address_line1: (entry.plant_address ?? entry.head_office ?? '').slice(0, 191),
+      city: (entry.governorate ?? '').slice(0, 100),
+      accreditation_reference: entry.authorization_number ? `ANGed ${entry.authorization_number}`.slice(0, 100) : '',
+      accreditation_expires_on: entry.valid_until ?? '',
+      covers_hazardous: entry.hazardous,
+      notes: [this.toast.text('registry.noteFrom', { list: entry.list_title }), entry.waste !== entry.list_title ? entry.waste : null].filter(Boolean).join(' — ').slice(0, 1000),
+    });
+    this.source.set(entry);
+  }
 
   protected async submit(): Promise<void> {
     if (this.form.invalid) {
@@ -189,7 +250,7 @@ interface RequirementRow {
  * Once the partner has an account, each line is looked at again: kept as the company's own requirement, or removed.
  */
 @Component({
-  imports: [FormsModule, TranslocoDirective, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS, CheckboxComponent, IconComponent, LocalizedPipe, CodePipe, DatePipe],
+  imports: [FormsModule, TranslocoDirective, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS, CheckboxComponent, IconComponent, LocalizedPipe, CodePipe, DatePipe, MoreComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -215,61 +276,62 @@ interface RequirementRow {
         <div class="rows">
           @for (row of rows(); track $index; let index = $index) {
             <div class="row" [class.to-review]="row.needs_review">
-              <dw-field [label]="t('providers.family')">
+<!-- PR-02: what it is about, then the requirement as a sentence; the rest folded. -->
+              <div class="what">
+                <dw-field [label]="t('providers.family')">
                 <dw-select [ngModel]="row.family" (ngModelChange)="patch(index, { family: $event, waste_type: '' })" [ngModelOptions]="{ standalone: true }">
                   @for (family of vocabulary()?.waste_families ?? []; track family.code) { <dw-option [value]="family.code" [label]="family.name | dwLocalized" /> }
                 </dw-select>
               </dw-field>
-              <dw-field [label]="t('providers.wasteTypeOptional')">
+                <dw-field [label]="t('providers.wasteTypeOptional')">
                 <dw-select [ngModel]="row.waste_type" (ngModelChange)="patch(index, { waste_type: $event })" [ngModelOptions]="{ standalone: true }">
                   <dw-option value="" [label]="t('providers.wholeFamily')" />
                   @for (type of typesOf(row.family); track type.ulid) { <dw-option [value]="type.ulid" [label]="type.name" /> }
                 </dw-select>
               </dw-field>
-              <dw-field [label]="t('pickups.channel')">
+                <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="remove(index)" [title]="t('common.remove')" [attr.aria-label]="t('common.remove')"><dw-icon>delete</dw-icon></button>
+              </div>
+              <p class="sentence">
+                <span>{{ t('providers.sentence.min') }}</span>
+                <input pInputText class="qty" inputmode="decimal" placeholder="—" [ngModel]="row.min_quantity" (ngModelChange)="patch(index, { min_quantity: $event })" [ngModelOptions]="{ standalone: true }" [attr.aria-label]="t('providers.minQuantity')" />
+                <dw-select class="unit" [ngModel]="row.min_unit" (ngModelChange)="patch(index, { min_unit: $event })" [ngModelOptions]="{ standalone: true }" [ariaLabel]="t('providers.minUnit')">
+                  @for (unit of units; track unit) { <dw-option [value]="unit" [label]="t('stock.unit.' + unit)" /> }
+                </dw-select>
+                @if (row.min_unit === 'package') {
+                  <dw-select class="pack" [ngModel]="row.min_packaging_type" (ngModelChange)="patch(index, { min_packaging_type: $event })" [ngModelOptions]="{ standalone: true }" [ariaLabel]="t('providers.minPackaging')">
+                    @for (packaging of vocabulary()?.packaging_types ?? []; track packaging.code) { <dw-option [value]="packaging.code" [label]="packaging.name | dwLocalized" /> }
+                  </dw-select>
+                }
+                <span>{{ t('providers.sentence.perPickup') }}</span>
+                <dw-select class="pack" [ngModel]="row.required_packaging_type" (ngModelChange)="patch(index, { required_packaging_type: $event })" [ngModelOptions]="{ standalone: true }" [ariaLabel]="t('providers.requiredPackaging')">
+                  <dw-option value="" [label]="t('providers.sentence.anyPackaging')" />
+                  @for (packaging of vocabulary()?.packaging_types ?? []; track packaging.code) { <dw-option [value]="packaging.code" [label]="t('providers.sentence.inPackaging', { name: (packaging.name | dwLocalized) })" /> }
+                </dw-select>
+              </p>
+              <dw-more [summary]="t(row.is_blocking ? 'partners.requirements.blockingOn' : 'partners.requirements.blockingOff')">
+                <dw-field [label]="t('pickups.channel')">
                 <dw-select [ngModel]="row.channel" (ngModelChange)="patch(index, { channel: $event })" [ngModelOptions]="{ standalone: true }">
                   @for (channel of vocabulary()?.treatment_channels ?? []; track channel.code) { <dw-option [value]="channel.code" [label]="channel.name | dwLocalized" /> }
                 </dw-select>
               </dw-field>
-              <dw-field class="min" [label]="t('providers.minQuantity')">
-                <input pInputText inputmode="decimal" [ngModel]="row.min_quantity" (ngModelChange)="patch(index, { min_quantity: $event })" [ngModelOptions]="{ standalone: true }" />
-              </dw-field>
-              <dw-field [label]="t('providers.minUnit')">
-                <dw-select [ngModel]="row.min_unit" (ngModelChange)="patch(index, { min_unit: $event })" [ngModelOptions]="{ standalone: true }">
-                  @for (unit of units; track unit) { <dw-option [value]="unit" [label]="t('stock.unit.' + unit)" /> }
-                </dw-select>
-              </dw-field>
-              <dw-field [label]="t('providers.minPackaging')">
-                @if (row.min_unit === 'package') {
-                  <dw-select [ngModel]="row.min_packaging_type" (ngModelChange)="patch(index, { min_packaging_type: $event })" [ngModelOptions]="{ standalone: true }">
-                    @for (packaging of vocabulary()?.packaging_types ?? []; track packaging.code) { <dw-option [value]="packaging.code" [label]="packaging.name | dwLocalized" /> }
-                  </dw-select>
-                } @else { <input pInputText disabled [placeholder]="t('providers.minPackagingNone')" /> }
-              </dw-field>
-              <dw-field [label]="t('providers.requiredPackaging')">
-                <dw-select [ngModel]="row.required_packaging_type" (ngModelChange)="patch(index, { required_packaging_type: $event })" [ngModelOptions]="{ standalone: true }">
-                  <dw-option value="" [label]="t('providers.anyPackaging')" />
-                  @for (packaging of vocabulary()?.packaging_types ?? []; track packaging.code) { <dw-option [value]="packaging.code" [label]="packaging.name | dwLocalized" /> }
-                </dw-select>
-              </dw-field>
-              <dw-field class="reference" [label]="t('partners.requirements.reference')">
+                <dw-field class="reference" [label]="t('partners.requirements.reference')">
                 <input pInputText maxlength="191" [placeholder]="t('partners.requirements.referenceHint')" [ngModel]="row.contract_reference" (ngModelChange)="patch(index, { contract_reference: $event })" [ngModelOptions]="{ standalone: true }" />
               </dw-field>
-              <dw-field class="notes" [label]="t('fields.notes')">
+                <dw-field class="notes dw-span-2" [label]="t('fields.notes')">
                 <input pInputText maxlength="500" [ngModel]="row.notes" (ngModelChange)="patch(index, { notes: $event })" [ngModelOptions]="{ standalone: true }" />
               </dw-field>
-              <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="remove(index)" [attr.aria-label]="t('common.remove')"><dw-icon>delete</dw-icon></button>
-              <div class="consequence">
+                <div class="consequence dw-span-2">
                 <dw-checkbox [checked]="row.is_blocking" (checkedChange)="patch(index, { is_blocking: $event })">{{ t('partners.requirements.blocking') }}</dw-checkbox>
                 <span class="dw-faint">{{ t(row.is_blocking ? 'partners.requirements.blockingOn' : 'partners.requirements.blockingOff') }}</span>
               </div>
-              @if (row.waste_type) {
-                <div class="consequence">
+                @if (row.waste_type) {
+                <div class="consequence dw-span-2">
                   <dw-checkbox [checked]="row.adds_to_family" (checkedChange)="patch(index, { adds_to_family: $event })">{{ t('providers.addsToFamily') }}</dw-checkbox>
                   <span class="dw-faint">{{ t(row.adds_to_family ? 'providers.addsToFamilyOn' : 'providers.addsToFamilyOff') }}</span>
                 </div>
               }
-              @if (row.needs_review && row.ulid) {
+              </dw-more>
+                            @if (row.needs_review && row.ulid) {
                 <div class="consequence ask">
                   <strong>{{ t('partners.requirements.toReview') }}</strong>
                   <button pButton size="small" severity="secondary" outlined type="button" [disabled]="busy()" (click)="review(row.ulid, 'keep')">{{ t('partners.requirements.keep') }}</button>
@@ -289,17 +351,19 @@ interface RequirementRow {
     </ng-container>
   `,
   styles: `
-    .dw-dialog-body { display: grid; gap: var(--dw-3); inline-size: min(1080px, 94vw); }
+    .dw-dialog-body { display: grid; gap: var(--dw-3); inline-size: min(860px, 94vw); }
+    .what { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+    .sentence { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 0; font-size: 13.5px; color: var(--dw-ink-2); }
+    .sentence .qty { width: 90px; text-align: end; } .sentence .unit { width: 140px; } .sentence .pack { width: 190px; }
     .note { display: flex; gap: 8px; margin: 0; padding: 8px 10px; border-radius: var(--dw-radius); background: var(--dw-surface-2); font-size: 13px; } .note dw-icon { flex: none; font-size: 18px; }
     .note.review { background: var(--dw-primary-soft); } .note p { margin: 0 0 4px; } .note ul { margin: 0; padding-inline-start: 18px; }
     .rows { display: grid; gap: var(--dw-2); }
-    .row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--dw-2); align-items: end; padding-block-end: var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); }
+    .row { display: grid; gap: 4px; padding-block: 14px; border-block-end: 1px solid var(--dw-line-soft); }
     .row.to-review { padding: var(--dw-2); border: 1px solid var(--dw-warning); border-radius: var(--dw-radius); }
-    .row .reference { grid-column: 1 / span 2; } .row .notes { grid-column: 3 / span 1; } .row > button { justify-self: end; }
+
     .consequence { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--dw-1) var(--dw-3); align-items: center; font-size: 13px; }
     .mode { font-size: 12px; font-weight: 600; } .add { justify-self: start; }
-    @media (max-width: 900px) { .row { grid-template-columns: 1fr 1fr; } .row .reference, .row .notes { grid-column: 1 / -1; } }
-    @media (max-width: 560px) { .row { grid-template-columns: 1fr; } }
+    @media (max-width: 560px) { .what { grid-template-columns: 1fr auto; } }
   `,
 })
 export class PartnerRequirementsDialog {
@@ -410,13 +474,14 @@ export class PartnerRequirementsDialog {
  */
 @Component({
   selector: 'dw-external-partners',
-  imports: [TranslocoDirective, ButtonDirective, IconComponent, StatusComponent, DatePipe],
+  imports: [TranslocoDirective, ButtonDirective, IconComponent, StatusComponent, DatePipe, MenuComponent, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <section class="dw-panel">
         <div class="dw-panel-head">
           <div class="dw-spacer"><h2 class="dw-h2">{{ t('partners.title') }}</h2><p class="dw-muted hint">{{ t('partners.subtitle') }}</p></div>
+          <button pButton text type="button" (click)="registry()"><dw-icon>travel_explore</dw-icon>{{ t('registry.open') }}</button>
           @if (canManage) { <button pButton severity="secondary" outlined type="button" (click)="edit(null)"><dw-icon>add</dw-icon>{{ t('partners.new') }}</button> }
         </div>
         @if (rows().length === 0) {
@@ -450,11 +515,18 @@ export class PartnerRequirementsDialog {
                     @if (partner.linked_company; as account) { <dw-status kind="accreditation" value="approved" [label]="t('partners.linkedTo', { name: account.legal_name })" /> }
                     @else { <dw-status kind="member" [value]="partner.is_active ? 'active' : 'suspended'" [label]="t(partner.is_active ? 'partners.inUse' : 'common.inactive')" /> }
                   </td>
-                  <td class="dw-num">
-                    @if (canManage && (partner.roles.includes('recycler') || partner.roles.includes('eliminator'))) { <button pButton text type="button" (click)="requirements(partner)">{{ t('partners.requirements.open') }}</button> }
-                    @if (canManage && !partner.linked_company) {
-                      <button pButton text type="button" (click)="edit(partner)">{{ t('common.edit') }}</button>
-                      @if (!partner.suggested_company) { <button pButton text type="button" (click)="choose(partner)" [title]="t('partners.chooseHint')">{{ t('partners.choose') }}</button> }
+                  <td class="dw-num row-actions">
+                    <!-- One action in sight (a contract, or what the partner asks), the rest under "…". -->
+                    @if (contracts.byParty().get(partner.ulid); as current) {
+                      <a pButton text [routerLink]="['/contracts', current.ulid]"><dw-icon>description</dw-icon>{{ t('providers.viewContract', { number: current.contract_number }) }}</a>
+                    } @else if (canContract(partner)) {
+                      <button pButton text type="button" (click)="makeContract(partner)">{{ t('providers.makeContract') }}</button>
+                    } @else if (canManage && asks(partner)) {
+                      <button pButton text type="button" (click)="requirements(partner)">{{ t('partners.requirements.open') }}</button>
+                    }
+                    @if (actionsOf(partner, t).length > 0) {
+                      <button pButton text rounded severity="secondary" size="small" class="dw-icon-btn" type="button" (click)="menu.open($event, actionsOf(partner, t))"
+                        [attr.aria-label]="t('common.actions') + ' — ' + partner.legal_name" aria-haspopup="menu" [title]="t('common.actions') + ' — ' + partner.legal_name"><dw-icon>more_horiz</dw-icon></button>
                     }
                   </td>
                 </tr>
@@ -463,6 +535,7 @@ export class PartnerRequirementsDialog {
           </table>
         }
       </section>
+      <dw-menu #menu />
     </ng-container>
   `,
   styles: `
@@ -472,6 +545,7 @@ export class PartnerRequirementsDialog {
     .match { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; padding: 4px 8px; border-radius: var(--dw-radius); background: var(--dw-primary-soft); font-size: 12.5px; }
     .match dw-icon { font-size: 16px; color: var(--dw-primary); }
     .late { color: var(--dw-danger); font-weight: 600; }
+    .row-actions { white-space: nowrap; } .row-actions > * { vertical-align: middle; }
   `,
 })
 export class ExternalPartnersComponent {
@@ -482,15 +556,62 @@ export class ExternalPartnersComponent {
 
   /** A partner was tied to its account: the directory below has one more partner of the platform. */
   readonly linked = output<void>();
-  protected readonly canManage = inject(Session).can('providers.partnerships.manage');
+  /** PR-05: make a contract with this partner. */
+  readonly contract = output<{ party: string; role: 'receiver' | 'transporter' }>();
+  protected readonly session = inject(Session);
+  protected readonly canManage = this.session.can('providers.partnerships.manage');
   protected readonly rows = signal<ExternalPartner[]>([]);
+  protected readonly contracts = inject(PartyContracts);
 
   constructor() {
     this.load();
   }
 
+  protected canContract(partner: ExternalPartner): boolean {
+    return !partner.linked_company && partner.is_active && this.session.uses('contracts') && this.session.can('contracts.manage');
+  }
+
+  /** Those who receive the waste (collectors, recyclers, sorters) may ask things of a collection. */
+  protected asks(partner: ExternalPartner): boolean {
+    return partner.roles.some((role) => role !== 'transporter');
+  }
+
+  protected makeContract(partner: ExternalPartner): void {
+    this.contract.emit({ party: 'x:' + partner.ulid, role: partner.roles.length === 1 && partner.roles[0] === 'transporter' ? 'transporter' : 'receiver' });
+  }
+
+  /** What is not the action in sight. */
+  protected actionsOf(partner: ExternalPartner, t: (key: string) => string): MenuAction[] {
+    const actions: MenuAction[] = [];
+    // under contract already: a new one (another role, another site, the next period) stays one click away
+    if (this.contracts.byParty().has(partner.ulid) && this.canContract(partner)) {
+      actions.push({ label: t('providers.anotherContract'), icon: 'add', run: () => this.makeContract(partner) });
+    }
+    if (this.canManage && this.asks(partner) && (this.canContract(partner) || this.contracts.byParty().has(partner.ulid))) {
+      actions.push({ label: t('partners.requirements.open'), icon: 'checklist', run: () => this.requirements(partner) });
+    }
+    if (this.canManage && !partner.linked_company) {
+      actions.push({ label: t('common.edit'), icon: 'edit', run: () => this.edit(partner) });
+      if (!partner.suggested_company) {
+        actions.push({ label: t('partners.choose'), icon: 'link', run: () => this.choose(partner) });
+      }
+    }
+
+    return actions;
+  }
+
   protected expired(partner: ExternalPartner): boolean {
     return partner.accreditation_expires_on !== null && partner.accreditation_expires_on < new Date().toISOString().slice(0, 10);
+  }
+
+  /** The ANGed lists: an entry picked becomes a new partner, its form filled from the list. */
+  protected registry(): void {
+    this.dialog.open<RegistryDialog, { pickLabel: string } | null, RegistryOperator>(RegistryDialog, { data: this.canManage ? { pickLabel: 'registry.addAsPartner' } : null })
+      .afterClosed().subscribe((entry) => {
+        if (entry && this.canManage) {
+          this.dialog.open<ExternalPartnerDialog, { from: RegistryOperator }, ExternalPartner>(ExternalPartnerDialog, { data: { from: entry } }).afterClosed().subscribe((saved) => saved && this.load());
+        }
+      });
   }
 
   protected edit(partner: ExternalPartner | null): void {

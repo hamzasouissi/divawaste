@@ -8,7 +8,7 @@ import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 
 import { Api } from '../../core/api/api';
-import { AppNotification, OnboardingState } from '../../core/api/models';
+import { AppNotification, Company, COMPANY_INDUSTRIES, CompanyIndustry, CompanyProfileKey, OnboardingState } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Locale } from '../../core/i18n/i18n';
 import { Toast } from '../../core/feedback/toast';
@@ -21,6 +21,9 @@ import { CheckboxComponent } from '../../ui/checkbox';
 import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
 import { SELECT } from '../../ui/select';
+import { Dialogs } from '../../ui/dialog';
+import { MoreComponent, SegmentedComponent } from '../../ui/more';
+import { SiteDialog } from '../sites/sites';
 
 @Component({
   imports: [ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, ButtonDirective, InputText, ...FIELD, ...SELECT],
@@ -254,7 +257,7 @@ interface NotificationPage {
 
 /** M7-03: the inbox and, per kind of event, whether it is shown in the application and sent by email. */
 @Component({
-  imports: [TranslocoDirective, PageHeaderComponent, StateComponent, DatePipe, NotificationParamsPipe, IconComponent, ButtonDirective, CheckboxComponent],
+  imports: [TranslocoDirective, PageHeaderComponent, StateComponent, DatePipe, NotificationParamsPipe, IconComponent, ButtonDirective, CheckboxComponent, MoreComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -281,6 +284,20 @@ interface NotificationPage {
 
         <section class="dw-panel">
           <header class="dw-panel-head"><h2 class="dw-h2">{{ t('notifications.preferences') }}</h2></header>
+          <!-- AC-01: one switch per area and channel; the detail by type stays available below. -->
+          <table class="dw-table prefs">
+            <thead><tr><th scope="col"></th><th scope="col">{{ t('notifications.inApp') }}</th><th scope="col">{{ t('notifications.byMail') }}</th></tr></thead>
+            <tbody>
+              @for (area of areas(); track area.key) {
+                <tr>
+                  <th scope="row"><strong>{{ t('notifications.areas.' + area.key) }}</strong><div class="dw-faint">{{ t('notifications.areaCount', { count: area.items.length }) }}</div></th>
+                  <td><dw-checkbox [checked]="every(area.items, 'database')" (checkedChange)="setArea(area.items, 'database', $event)" [ariaLabel]="t('notifications.inApp')" /></td>
+                  <td>@if (mailable(area.items)) { <dw-checkbox [checked]="every(area.items, 'mail')" (checkedChange)="setArea(area.items, 'mail', $event)" [ariaLabel]="t('notifications.byMail')" /> } @else { <span class="dw-faint">—</span> }</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <dw-more class="by-type" [label]="t('notifications.byType')" [grid]="false">
           <table class="dw-table prefs">
             <thead><tr><th scope="col"></th><th scope="col">{{ t('notifications.inApp') }}</th><th scope="col">{{ t('notifications.byMail') }}</th></tr></thead>
             <tbody>
@@ -293,6 +310,7 @@ interface NotificationPage {
               }
             </tbody>
           </table>
+          </dw-more>
           @if (onRequest()) { <p class="dw-faint on-request">* {{ t('notifications.mailOnRequest') }}</p> }
         </section>
       </div>
@@ -332,6 +350,44 @@ export class NotificationsPage {
 
     return this.all().filter((preference) => !hidden.some((prefix) => preference.notification_type.startsWith(prefix)));
   });
+  /** AC-01: the notifications grouped by the part of the product they come from. */
+  protected readonly areas = computed(() => {
+    const areaOf = (type: string): string => {
+      const head = type.split('.')[0];
+      return ({ pickup: 'pickups', stock: 'stock', capacity: 'stock', limit: 'stock', accreditation: 'compliance', document: 'compliance', manifest: 'compliance',
+        declaration: 'compliance', authorization: 'compliance', marketplace: 'marketplace', contract: 'contracts', report: 'reports', production: 'reports',
+        invoice: 'billing', payment: 'billing', subscription: 'billing' } as Record<string, string>)[head] ?? 'other';
+    };
+    const groups = new Map<string, Preference[]>();
+    for (const preference of this.preferences()) {
+      const key = areaOf(preference.notification_type);
+      groups.set(key, [...(groups.get(key) ?? []), preference]);
+    }
+    return [...groups.entries()].map(([key, items]) => ({ key, items }));
+  });
+
+  protected mailable(items: Preference[]): boolean {
+    return items.some((item) => item.mail_available);
+  }
+
+  protected every(items: Preference[], channel: 'database' | 'mail'): boolean {
+    const relevant = channel === 'mail' ? items.filter((item) => item.mail_available) : items;
+    return relevant.length > 0 && relevant.every((item) => item[channel]);
+  }
+
+  protected setArea(items: Preference[], channel: 'database' | 'mail', enabled: boolean): void {
+    const relevant = channel === 'mail' ? items.filter((item) => item.mail_available) : items;
+    const types = new Set(relevant.map((item) => item.notification_type));
+    this.all.update((rows) => rows.map((row) => (types.has(row.notification_type) ? { ...row, [channel]: enabled } : row)));
+    this.api.put('me/notification-preferences', { preferences: relevant.map((item) => ({ notification_type: item.notification_type, channel, is_enabled: enabled })) }).subscribe({
+      next: () => this.toast.success('common.saved'),
+      error: (error: unknown) => {
+        this.all.update((rows) => rows.map((row) => (types.has(row.notification_type) ? { ...row, [channel]: !enabled } : row)));
+        this.toast.error(error);
+      },
+    });
+  }
+
   /** Some emails go only to those who ask for them here (stock and capacity alerts for whoever does not manage the stock). */
   protected readonly onRequest = computed(() => this.preferences().some((preference) => preference.mail_available && preference.mail_by_default === false));
 
@@ -383,15 +439,16 @@ export class NotificationsPage {
 }
 
 const STEP_LINKS: Record<string, { path: string; icon: string }> = {
+  profile: { path: '/settings/modules', icon: 'tune' },
   sites: { path: '/sites', icon: 'factory' },
   waste_types: { path: '/waste-types', icon: 'category' },
   users: { path: '/admin/users', icon: 'group' },
   providers: { path: '/providers', icon: 'handshake' },
 };
 
-/** M0-07: four steps, each done on its real screen. A step can be skipped and resumed; nothing here is a copy of a form. */
+/** M0-07: the start-up steps, each done on its real screen. A step can be skipped and resumed; nothing here is a copy of a form. */
 @Component({
-  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, IconComponent, ButtonDirective],
+  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, IconComponent, ButtonDirective, SegmentedComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -405,19 +462,69 @@ const STEP_LINKS: Record<string, { path: string; icon: string }> = {
                 <div class="dw-spacer">
                   <h2 class="dw-h2">{{ t('onboarding.steps.' + step.key + '.title') }}</h2>
                   <p class="dw-muted">{{ t('onboarding.steps.' + step.key + '.body') }}</p>
-                  <p class="dw-faint">{{ t('onboarding.steps.' + step.key + '.count', { count: step.count }) }}</p>
+                  @if (step.key !== 'profile') { <p class="dw-faint">{{ t('onboarding.steps.' + step.key + '.count', { count: step.count }) }}</p> }
+                  <!-- O-01: five questions that choose what the company uses; answered here, changed later in Paramètres. -->
+                  @if (step.key === 'profile' && !step.done && canEdit) {
+                    <!-- What the company makes first: its zones, waste families and catalogue follow it. -->
+                    <p class="dw-field-label sector-q">{{ t('onboarding.industryQuestion') }}</p>
+                    <div class="sectors" role="radiogroup" [attr.aria-label]="t('onboarding.industryQuestion')">
+                      @for (sector of industries; track sector) {
+                        <button type="button" role="radio" class="sector" [class.on]="industry() === sector" [attr.aria-checked]="industry() === sector" (click)="industry.set(sector)">
+                          <dw-icon aria-hidden="true">{{ sectorIcons[sector] }}</dw-icon><span>{{ t('onboarding.industries.' + sector) }}</span>
+                        </button>
+                      }
+                    </div>
+                    <div class="questions">
+                      @for (question of questions; track question) {
+                        <div class="question"><span>{{ t('onboarding.questions.' + question) }}</span>
+                          <dw-segmented [options]="[{ value: true, label: t('common.yes') }, { value: false, label: t('common.no') }]" [value]="answers()[question]"
+                            (valueChange)="answer(question, !!$event)" [ariaLabel]="t('onboarding.questions.' + question)" /></div>
+                      }
+                      <div class="dw-row-tight">
+                        <button pButton type="button" [disabled]="busy()" (click)="saveAnswers()">{{ t('onboarding.saveAnswers') }}</button>
+                        <button pButton text type="button" [disabled]="busy()" (click)="skip(step.key, !step.skipped)">{{ t(step.skipped ? 'onboarding.resumeStep' : 'onboarding.skip') }}</button>
+                      </div>
+                    </div>
+                  }
                 </div>
                 <dw-status kind="alert" [value]="step.done ? 'ok' : 'warning'" [tone]="step.done ? 'success' : step.skipped ? 'neutral' : 'warning'"
                   [label]="t(step.done ? 'onboarding.done' : step.skipped ? 'onboarding.skipped' : 'onboarding.todo')" />
                 <div class="dw-row-tight">
-                  @if (!step.done && canEdit) {
+                  @if (!step.done && canEdit && step.key !== 'profile') {
                     <button pButton text type="button" [disabled]="busy()" (click)="skip(step.key, !step.skipped)">{{ t(step.skipped ? 'onboarding.resumeStep' : 'onboarding.skip') }}</button>
                   }
-                  <a pButton severity="secondary" outlined [routerLink]="links[step.key].path"><dw-icon>{{ links[step.key].icon }}</dw-icon>{{ t('onboarding.open') }}</a>
+                  <!-- O-02: a site with its zones is created right here; the other steps open their screen. -->
+                  @if (step.key === 'sites' && session.can('sites.manage')) {
+                    <button pButton severity="secondary" outlined type="button" (click)="newSite()"><dw-icon>add</dw-icon>{{ t('sites.new') }}</button>
+                  } @else if (step.key !== 'profile' || step.done) {
+                    <a pButton severity="secondary" outlined [routerLink]="links[step.key].path" [queryParams]="step.key === 'users' ? { invite: 1 } : null"><dw-icon>{{ links[step.key].icon }}</dw-icon>{{ t(step.key === 'profile' ? 'common.edit' : 'onboarding.open') }}</a>
+                  }
                 </div>
               </li>
             }
           </ol>
+          @if (canEdit && (session.withErp() || session.uses('production'))) {
+            <!-- How its production data come in, from the simplest: with an ERP, a file, a nightly export or the API;
+                 without one, typed in DivaWaste or imported from a spreadsheet (the ERP ways would mean nothing). -->
+            <section class="dw-panel data">
+              <h2 class="dw-h2">{{ t('onboarding.data.title') }}</h2>
+              <p class="dw-muted">{{ t(session.noErp() ? 'onboarding.data.lead' : session.withErp() ? 'onboarding.data.leadErp' : 'onboarding.data.leadAny') }}</p>
+              <div class="ways">
+                @if (session.noErp()) {
+                  <a class="way" routerLink="/production/manufacturing-orders"><dw-icon aria-hidden="true">edit_note</dw-icon>
+                    <span><strong>{{ t('onboarding.data.manual') }}</strong><small>{{ t('onboarding.data.manualHint') }}</small></span></a>
+                }
+                <a class="way" routerLink="/production/import"><dw-icon aria-hidden="true">upload_file</dw-icon>
+                  <span><strong>{{ t('onboarding.data.file') }}</strong><small>{{ t(session.noErp() ? 'onboarding.data.fileHintSheet' : 'onboarding.data.fileHint') }}</small></span></a>
+                @if (!session.noErp()) {
+                  <a class="way" routerLink="/production/import" [queryParams]="{ mode: 'feed' }"><dw-icon aria-hidden="true">schedule</dw-icon>
+                    <span><strong>{{ t('onboarding.data.nightly') }}</strong><small>{{ t('onboarding.data.nightlyHint') }}</small></span></a>
+                  <a class="way" routerLink="/settings/api-keys"><dw-icon aria-hidden="true">key</dw-icon>
+                    <span><strong>{{ t('onboarding.data.api') }}</strong><small>{{ t('onboarding.data.apiHint') }}</small></span></a>
+                }
+              </div>
+            </section>
+          }
           <div class="dw-form-actions"><button pButton type="button" [disabled]="busy()" (click)="finish()">{{ t('onboarding.finish') }}</button></div>
         }
       </dw-state>
@@ -429,15 +536,61 @@ const STEP_LINKS: Record<string, { path: string; icon: string }> = {
     .index { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--dw-neutral-soft); font-weight: 600; flex: none; }
     li.done .index { background: var(--dw-success-soft); color: var(--dw-success); }
     .steps .dw-spacer { min-width: 240px; }
+    .steps li:has(.questions) { align-items: flex-start; }
+    .steps li:has(.questions) > dw-status { margin-block-start: 6px; }
+    .questions { display: grid; gap: 10px; margin-block-start: 12px; }
+    .sector-q { margin: 14px 0 6px; }
+    .sectors { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+    .sector { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 11px; font-size: 13.5px; font-weight: 560;
+      box-shadow: inset 0 0 0 1px var(--dw-line); background: var(--dw-surface); }
+    .sector dw-icon { font-size: 20px; color: var(--dw-primary); } .sector:hover { box-shadow: inset 0 0 0 1px var(--dw-primary); }
+    .sector.on { box-shadow: inset 0 0 0 2px var(--dw-primary); background: var(--dw-primary-soft); } .sector:focus-visible { outline: 2px solid var(--dw-focus); outline-offset: 2px; }
+    .data { margin-block-start: var(--dw-4); } .data p { margin: 4px 0 12px; }
+    .ways { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+    .way { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 12px; text-decoration: none; color: var(--dw-ink); box-shadow: inset 0 0 0 1px var(--dw-line); }
+    .way:hover { box-shadow: inset 0 0 0 1.5px var(--dw-primary); background: var(--dw-primary-soft); }
+    .way dw-icon { font-size: 24px; color: var(--dw-primary); } .way span { display: grid; gap: 3px; } .way strong { font-size: 14px; } .way small { font-size: 12.5px; color: var(--dw-ink-3); line-height: 18px; }
+    .question { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 8px 12px; border-radius: 10px; background: var(--dw-surface-2); font-size: 13.5px; }
   `,
 })
 export class OnboardingPage {
   private readonly api = inject(Api);
-  private readonly session = inject(Session);
+  protected readonly session = inject(Session);
   private readonly toast = inject(Toast);
   private readonly router = inject(Router);
 
   protected readonly links = STEP_LINKS;
+  private readonly dialog = inject(Dialogs);
+  protected readonly questions: CompanyProfileKey[] = ['erp', 'production', 'hazardous', 'customs', 'marketplace'];
+  protected readonly industries = COMPANY_INDUSTRIES;
+  protected readonly sectorIcons: Record<CompanyIndustry, string> = { textile: 'checkroom', agriculture: 'agriculture', food: 'restaurant', metal: 'precision_manufacturing',
+    plastics: 'recycling', chemicals: 'science', construction: 'construction', other: 'factory' };
+  protected readonly industry = signal<CompanyIndustry>(this.session.company()?.industry ?? 'textile');
+  // The answers already given, or what the company uses today: a company that never answered keeps every module.
+  protected readonly answers = signal<Record<CompanyProfileKey, boolean>>(this.session.company()?.profile ?? {
+    erp: false, production: this.session.uses('production'), hazardous: false, customs: this.session.uses('authorizations'), marketplace: this.session.uses('marketplace'),
+  });
+
+  protected answer(question: CompanyProfileKey, value: boolean): void {
+    this.answers.update((answers) => ({ ...answers, [question]: value }));
+  }
+
+  protected async saveAnswers(): Promise<void> {
+    this.busy.set(true);
+    try {
+      this.session.setCompany(await firstValueFrom(this.api.put<Company>('company/modules', { profile: this.answers(), industry: this.industry() })));
+      this.toast.success('settings.modules.saved');
+      this.load();
+    } catch (error) {
+      this.toast.error(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  protected newSite(): void {
+    this.dialog.open(SiteDialog).afterClosed().subscribe((site) => site && this.load());
+  }
   protected readonly canEdit = this.session.can('company.update');
   protected readonly state = signal<OnboardingState | null>(null);
   protected readonly error = signal<unknown>(null);

@@ -21,6 +21,19 @@ export class Toast {
     this.messages.add({ severity: 'success', detail: this.transloco.translate(key, params), life: 3500 });
   }
 
+  /**
+   * G-09: something done at once, with a way back: the toast carries an "Annuler" that undoes it. Used instead of a
+   * confirmation for what can be put back.
+   */
+  undoable(key: string, undo: () => void, params?: Record<string, unknown>): void {
+    this.messages.add({ severity: 'success', detail: this.transloco.translate(key, params), life: 7000, data: { undo, label: this.transloco.translate('common.undo') } });
+  }
+
+  /** Closes the toasts (after an undo). */
+  clear(): void {
+    this.messages.clear();
+  }
+
   info(key: string, params?: Record<string, unknown>): void {
     this.messages.add({ severity: 'info', detail: this.transloco.translate(key, params), life: 4500 });
   }

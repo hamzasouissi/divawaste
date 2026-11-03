@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
@@ -21,6 +21,11 @@ import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
 import { ExternalPartnersComponent } from './external-partners';
 import { HelpComponent } from '../../ui/help';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Dialogs } from '../../ui/dialog';
+import { SegmentedComponent } from '../../ui/more';
+import { Contract, ContractDialog } from '../contracts/contracts';
+import { PartyContracts } from '../contracts/party-contracts';
 
 interface DirectoryFilter {
   search: string;
@@ -35,17 +40,22 @@ interface DirectoryFilter {
  */
 @Component({
   imports: [
-    HelpComponent,
-    TranslocoDirective, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, CodePipe, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent, ExternalPartnersComponent,
-  ],
+    HelpComponent, RouterLink,
+    TranslocoDirective, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, CodePipe, DatePipe, LocalizedPipe, IconComponent, ButtonDirective, ...SELECT, CheckboxComponent, FilterBarComponent, ExternalPartnersComponent, SegmentedComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <dw-page-header [title]="t('providers.title')" [subtitle]="t('providers.subtitle')" />
+      <dw-page-header [title]="t('providers.title')" [subtitle]="t('providers.subtitle')">
+        <!-- PR-01: my providers (with and without an account) apart from the directory of everyone else. -->
+        <dw-segmented [options]="[{ value: 'mine', label: t('providers.tabs.mine') }, { value: 'directory', label: t('providers.tabs.directory') }]"
+          [value]="view()" (valueChange)="setView($any($event))" [ariaLabel]="t('providers.title')" />
+      </dw-page-header>
       <dw-help topic="providers" />
 
-      <dw-external-partners (linked)="load()" />
-      <h2 class="dw-h2 directory">{{ t('providers.directory') }}</h2>
+      @if (view() === 'mine') {
+        <dw-external-partners (linked)="load()" (contract)="contract($event)" />
+        <h2 class="dw-h2 directory">{{ t('providers.platformPartners') }}</h2>
+      }
 
       <dw-filter-bar class="dw-panel standalone" [active]="activeFilters()" (cleared)="resetFilter()">
         <dw-search [placeholder]="t('common.search')" [query]="filter().search" (queryChange)="patch({ search: $event })" />
@@ -53,14 +63,13 @@ interface DirectoryFilter {
           <dw-option value="" [label]="t('common.all')" />
           @for (channel of vocabulary()?.treatment_channels ?? []; track channel.code) { <dw-option [value]="channel.code" [label]="channel.name | dwLocalized" /> }
         </dw-select>
-        <dw-checkbox [checked]="filter().partners_only" (checkedChange)="patch({ partners_only: $event })">{{ t('providers.partnersOnly') }}</dw-checkbox>
         <dw-checkbox [checked]="filter().hazardous" (checkedChange)="patch({ hazardous: $event })">{{ t('providers.hazardousOnly') }}</dw-checkbox>
       </dw-filter-bar>
 
       <dw-state [loading]="loading()" [error]="error()" [empty]="rows().length === 0" [keepContent]="rows().length > 0" icon="handshake"
         [emptyTitle]="t('providers.emptyTitle')" [emptyHint]="t('providers.emptyHint')" (retry)="load()">
         <div class="cards">
-          @for (provider of rows(); track provider.ulid) {
+          @for (provider of shown(); track provider.ulid) {
             <article class="dw-panel card">
               <header>
                 <div class="dw-spacer">
@@ -132,6 +141,15 @@ interface DirectoryFilter {
                 <footer>
                   @if (provider.partnership?.status === 'active') {
                     <button pButton text type="button" [disabled]="busy()" (click)="end(provider)">{{ t('providers.endPartner') }}</button>
+                    <!-- PR-05: a contract with this partner, its name and role already chosen; one already there is shown instead. -->
+                    @if (contracts.byParty().get(provider.ulid); as current) {
+                      <a pButton severity="secondary" outlined [routerLink]="['/contracts', current.ulid]"><dw-icon>description</dw-icon>{{ t('providers.viewContract', { number: current.contract_number }) }}</a>
+                      @if (session.can('contracts.manage')) {
+                        <button pButton text type="button" (click)="contract({ party: 'p:' + provider.ulid, role: provider.roles.includes('transporter') && provider.roles.length === 1 ? 'transporter' : 'receiver' })"><dw-icon>add</dw-icon>{{ t('providers.anotherContract') }}</button>
+                      }
+                    } @else if (session.uses('contracts') && session.can('contracts.manage')) {
+                      <button pButton severity="secondary" outlined type="button" (click)="contract({ party: 'p:' + provider.ulid, role: provider.roles.includes('transporter') && provider.roles.length === 1 ? 'transporter' : 'receiver' })"><dw-icon>handshake</dw-icon>{{ t('providers.makeContract') }}</button>
+                    }
                   } @else {
                     <button pButton type="button" [disabled]="busy()" (click)="add(provider)"><dw-icon>add</dw-icon>{{ t('providers.addPartner') }}</button>
                   }
@@ -160,7 +178,10 @@ interface DirectoryFilter {
 })
 export class ProvidersPage {
   private readonly api = inject(Api);
-  private readonly session = inject(Session);
+  protected readonly session = inject(Session);
+  private readonly dialog = inject(Dialogs);
+  private readonly router = inject(Router);
+  protected readonly contracts = inject(PartyContracts);
   private readonly toast = inject(Toast);
   private readonly confirm = inject(Confirm);
   private readonly limitText = inject(LimitText);
@@ -168,15 +189,27 @@ export class ProvidersPage {
 
   protected readonly canManage = this.session.can('providers.partnerships.manage');
   protected readonly vocabulary = toSignal(inject(ReferenceData).vocabulary());
-  protected readonly filter = signal<DirectoryFilter>({ search: '', channel: '', partners_only: false, hazardous: false });
+  protected readonly view = signal<'mine' | 'directory'>('mine');
+  protected readonly filter = signal<DirectoryFilter>({ search: '', channel: '', partners_only: true, hazardous: false });
   protected readonly rows = signal<DirectoryProvider[]>([]);
+  /** The directory shows everyone who is not already a partner. */
+  protected readonly shown = computed(() => (this.view() === 'directory' ? this.rows().filter((provider) => provider.partnership?.status !== 'active') : this.rows()));
   protected readonly loading = signal(true);
   protected readonly busy = signal(false);
   protected readonly error = signal<unknown>(null);
   private request = 0;
 
   constructor() {
-    this.load();
+    // ?view=directory (DAVI's "choose your providers") opens the directory; the list of partners otherwise
+    inject(ActivatedRoute).queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const view = params.get('view') === 'directory' ? 'directory' : 'mine';
+      if (view !== this.view()) {
+        this.view.set(view);
+        this.filter.update((filter) => ({ ...filter, partners_only: view === 'mine' }));
+      }
+      this.load();
+    });
+    this.contracts.load();
   }
 
   /** What the provider asks of a collection, per waste and treatment: a minimum with its unit, a packaging. */
@@ -192,10 +225,25 @@ export class ProvidersPage {
     return provider.channels.map((channel) => this.toast.text(`channels.${channel}`)).join(', ') || '—';
   }
 
-  protected readonly activeFilters = computed(() => Object.values(this.filter()).filter(Boolean).length);
+  protected readonly activeFilters = computed(() => [this.filter().search, this.filter().channel, this.filter().hazardous].filter(Boolean).length);
+
+  protected setView(view: 'mine' | 'directory'): void {
+    this.view.set(view);
+    this.patch({ partners_only: view === 'mine' });
+  }
+
+  protected contract(prefill: { party: string; role: 'receiver' | 'transporter' }): void {
+    this.dialog.open<ContractDialog, { prefill: typeof prefill }, Contract>(ContractDialog, { data: { prefill } }).afterClosed()
+      .subscribe((created) => {
+        if (created) {
+          this.contracts.load();
+          void this.router.navigate(['/contracts', created.ulid]);
+        }
+      });
+  }
 
   protected resetFilter(): void {
-    this.filter.set({ search: '', channel: '', partners_only: false, hazardous: false });
+    this.filter.set({ search: '', channel: '', partners_only: this.view() === 'mine', hazardous: false });
     this.load();
   }
 
@@ -230,10 +278,21 @@ export class ProvidersPage {
     await this.run(() => firstValueFrom(this.api.post('provider-partnerships', { provider: provider.ulid })), 'providers.partnered');
   }
 
+  /** G-09: ended at once; the toast offers to take the partner back. */
   protected async end(provider: DirectoryProvider): Promise<void> {
     const partnership = provider.partnership;
-    if (partnership && (await this.confirm.ask({ title: `${this.toast.text('providers.endPartner')} — ${provider.legal_name}`, danger: true }))) {
-      await this.run(() => firstValueFrom(this.api.put(`provider-partnerships/${partnership.ulid}`, { status: 'ended' })), 'providers.unpartnered');
+    if (!partnership) {
+      return;
+    }
+    this.busy.set(true);
+    try {
+      await firstValueFrom(this.api.put(`provider-partnerships/${partnership.ulid}`, { status: 'ended' }));
+      this.toast.undoable('providers.unpartnered', () => void this.add(provider));
+      this.load();
+    } catch (error) {
+      this.toast.error(error);
+    } finally {
+      this.busy.set(false);
     }
   }
 

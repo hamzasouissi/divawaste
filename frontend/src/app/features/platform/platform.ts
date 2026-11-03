@@ -20,6 +20,7 @@ import { StateComponent } from '../../ui/state';
 import { CheckboxComponent } from '../../ui/checkbox';
 import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
+import { SegmentedComponent } from '../../ui/more';
 import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
 import { PlatformPlan } from './back-office';
@@ -129,8 +130,7 @@ interface CompanyDetail extends Company {
 /** One registration or account: everything needed to decide, and the decision itself. */
 @Component({
   imports: [
-    CountryPipe, TermPipe, ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, LocalizedPipe, MoneyPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT,
-  ],
+    CountryPipe, TermPipe, ReactiveFormsModule, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, LocalizedPipe, MoneyPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT, SegmentedComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -146,8 +146,11 @@ interface CompanyDetail extends Company {
             @if (canSuspend && c.status === 'suspended') { <button pButton type="button" [disabled]="busy()" (click)="decide('reactivate')">{{ t('platform.companies.reactivate') }}</button> }
           </dw-page-header>
 
-          <div class="dw-split">
+          <!-- PL-01: the company in four tabs instead of one long page. -->
+          <dw-segmented class="tabs" [options]="tabOptions(t, c)" [value]="tab()" (valueChange)="tab.set($any($event))" [ariaLabel]="c.legal_name" />
+          <div [class.dw-split]="tab() === 'overview'">
             <div class="dw-stack">
+              @if (tab() === 'overview') {
               <section class="dw-panel">
                 <div class="dw-panel-body">
                   <dl class="dw-facts">
@@ -162,6 +165,7 @@ interface CompanyDetail extends Company {
                         <dw-status kind="alert" [value]="contact.email_verified ? 'ok' : 'warning'" [label]="t('platform.companies.emailVerified') + ' : ' + t(contact.email_verified ? 'common.yes' : 'common.no')" />
                       } @else { — }
                     </dd>
+                    @if (c.company_type === 'industrial' && c.industry) { <dt>{{ t('auth.register.industry') }}</dt><dd>{{ t('onboarding.industries.' + c.industry) }}</dd> }
                     @if (c.activities.length > 0) { <dt>{{ t('auth.register.activities') }}</dt><dd>@for (activity of c.activity_names; track $index; let last = $last) { {{ activity | dwLocalized }}{{ last ? '' : ', ' }} }</dd> }
                     @if (c.requested_plan) { <dt>{{ t('platform.companies.requestedPlan') }}</dt><dd>{{ planName(c.requested_plan) }}@if (c.requested_sites) { · {{ t('platform.overview.sites', { count: c.requested_sites }) }} }</dd> }
                     <dt>{{ t('platform.companies.usage') }}</dt><dd>{{ t('platform.companies.usageDetail', c.counts) }}</dd>
@@ -171,6 +175,8 @@ interface CompanyDetail extends Company {
                 </div>
               </section>
 
+              }
+              @if (tab() === 'activity') {
               @if (c.company_type === 'provider') {
                 <section class="dw-panel">
                   <header class="dw-panel-head"><h2 class="dw-h2">{{ t('providers.accreditations') }}</h2></header>
@@ -218,7 +224,8 @@ interface CompanyDetail extends Company {
                 } @else { <p class="none">{{ t('platform.companies.noUsers') }}</p> }
               </section>
 
-              @if (c.company_type === 'industrial') {
+              }
+              @if (tab() === 'invoices' && c.company_type === 'industrial') {
                 <section class="dw-panel">
                   <header class="dw-panel-head"><h2 class="dw-h2">{{ t('platform.companies.invoices') }}</h2><span class="count">{{ c.invoices.length }}</span></header>
                   @if (c.invoices.length > 0) {
@@ -237,6 +244,7 @@ interface CompanyDetail extends Company {
                 </section>
               }
 
+              @if (tab() === 'history') {
               <section class="dw-panel">
                 <header class="dw-panel-head"><h2 class="dw-h2">{{ t('platform.companies.history') }}</h2></header>
                 <ul class="list">
@@ -248,9 +256,10 @@ interface CompanyDetail extends Company {
                   } @empty { <li class="dw-faint">{{ t('platform.companies.noHistory') }}</li> }
                 </ul>
               </section>
+              }
             </div>
 
-            @if (c.company_type === 'industrial' && (c.subscription || (canBill && c.status === 'active'))) {
+            @if (tab() === 'overview' && c.company_type === 'industrial' && (c.subscription || (canBill && c.status === 'active'))) {
             <div class="dw-stack">
               <section class="dw-panel">
                 <header class="dw-panel-head"><h2 class="dw-h2">{{ t('platform.companies.subscription') }}</h2>
@@ -301,6 +310,7 @@ interface CompanyDetail extends Company {
     </ng-container>
   `,
   styles: `
+    .tabs { margin-block-end: 18px; }
     .list { list-style: none; margin: 0; padding: 0; }
     .list li { display: flex; align-items: center; gap: var(--dw-3); padding: var(--dw-3) var(--dw-4); border-block-start: 1px solid var(--dw-line-soft); }
     .plan { display: grid; gap: var(--dw-3); }
@@ -311,6 +321,17 @@ interface CompanyDetail extends Company {
   `,
 })
 export class PlatformCompanyPage implements OnInit {
+  protected readonly tab = signal<'overview' | 'activity' | 'invoices' | 'history'>('overview');
+
+  protected tabOptions(t: (key: string) => string, company: { company_type: string }): { value: string; label: string }[] {
+    return [
+      { value: 'overview', label: t('platform.companies.tabs.overview') },
+      { value: 'activity', label: t('platform.companies.tabs.activity') },
+      ...(company.company_type === 'industrial' ? [{ value: 'invoices', label: t('platform.companies.invoices') }] : []),
+      { value: 'history', label: t('platform.companies.history') },
+    ];
+  }
+
   private readonly api = inject(Api);
   private readonly session = inject(Session);
   private readonly toast = inject(Toast);

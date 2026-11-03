@@ -6,7 +6,8 @@ import { forkJoin } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 
 import { Api, Page } from '../../core/api/api';
-import { Dashboard, DirectoryProvider, OnboardingState, Pickup, StockResponse } from '../../core/api/models';
+import { Davi } from '../../core/davi/davi';
+import { Dashboard, OnboardingState, Pickup, StockResponse } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { DatePipe, KgPipe, MoneyPipe, NumberPipe } from '../../core/format/pipes';
 import { Locale } from '../../core/i18n/i18n';
@@ -15,13 +16,8 @@ import { KpiComponent, PageHeaderComponent, StatusComponent } from '../../ui/pag
 import { Period, PeriodFilterComponent, presetPeriod } from '../../ui/period';
 import { StateComponent } from '../../ui/state';
 import { IconComponent } from '../../ui/icon';
+import { AttentionComponent, AttentionItem } from '../../ui/attention';
 
-interface Attention {
-  icon: string;
-  tone: 'warning' | 'danger' | 'info';
-  text: string;
-  link: string;
-}
 
 /**
  * M6-01 / M6-02. The screen answers, in order: what needs me today, how much waste we produce, where it goes,
@@ -34,22 +30,32 @@ interface ProductionSummary {
 
 @Component({
   imports: [
-    RouterLink, TranslocoDirective, ButtonDirective, ChartComponent, KpiComponent, PageHeaderComponent, StatusComponent, PeriodFilterComponent, StateComponent, DatePipe, KgPipe, MoneyPipe, NumberPipe, IconComponent,
+    RouterLink, TranslocoDirective, ButtonDirective, ChartComponent, KpiComponent, PageHeaderComponent, StatusComponent, PeriodFilterComponent, StateComponent, DatePipe, KgPipe, MoneyPipe, NumberPipe, IconComponent, AttentionComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <dw-page-header [title]="t('dashboard.title')" [subtitle]="session.company()?.legal_name ?? ''">
-        <dw-period-filter [(value)]="period" (changed)="load()" />
+      <!-- D-02: the three things people come to do, one click away. -->
+      <dw-page-header [title]="t('dashboard.greeting', { name: session.me()?.first_name ?? '' })" [subtitle]="(session.company()?.legal_name ?? '') + ' · ' + (today | dwDate: 'long')">
+        @if (session.uses('marketplace') && session.canAnywhere('marketplace.manage')) {
+          <a pButton severity="secondary" outlined routerLink="/marketplace"><dw-icon>storefront</dw-icon>{{ t('marketplace.sellLot') }}</a>
+        }
+        @if (session.canAnywhere('pickups.request')) {
+          <a pButton severity="secondary" outlined routerLink="/pickups/new"><dw-icon>local_shipping</dw-icon>{{ t('pickups.new') }}</a>
+        }
+        @if (session.canAnywhere('lots.create')) {
+          <a pButton routerLink="/lots" [queryParams]="{ new: 1 }"><dw-icon>add</dw-icon>{{ t('lots.new') }}</a>
+        }
       </dw-page-header>
 
-      @if (onboarding(); as steps) {
+      <!-- With DAVI, its card under the title guides the start (one guide, not two). -->
+      @if (!davi.available() && onboarding(); as steps) {
         @if (!steps.completed && !steps.dismissed && session.can('company.update')) {
-          <a class="onboarding dw-panel" routerLink="/onboarding">
-            <dw-icon aria-hidden="true">rocket_launch</dw-icon>
-            <span><strong>{{ t('onboarding.bannerTitle') }}</strong> {{ t('onboarding.bannerBody', { done: doneSteps(), total: steps.steps.length }) }}</span>
-            <span class="dw-spacer"></span>
-            <span class="link">{{ t('onboarding.resume') }}</span>
+          <a class="onboarding" routerLink="/onboarding">
+            <span class="rocket"><dw-icon aria-hidden="true">rocket_launch</dw-icon></span>
+            <span class="ob-text"><strong>{{ t('onboarding.bannerTitle') }}</strong><span>{{ t('onboarding.bannerBody', { done: doneSteps(), total: steps.steps.length }) }}</span></span>
+            <span class="ob-track" aria-hidden="true"><span [style.inline-size.%]="(doneSteps() / steps.steps.length) * 100"></span></span>
+            <span class="link">{{ t('onboarding.resume') }}<dw-icon>arrow_forward</dw-icon></span>
           </a>
         }
       }
@@ -57,7 +63,18 @@ interface ProductionSummary {
       <dw-state [loading]="loading()" [error]="error()" (retry)="load()">
         @if (data(); as d) {
           <div class="dw-stack">
-            <!-- 1. Figures of the period -->
+            <!-- D-01: what needs a decision comes first for who acts; a director starts with the figures (D-03). -->
+            <section class="dw-panel" [style.order]="operational() ? 0 : 2" [attr.aria-label]="t('dashboard.attention')">
+              <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.attention') }}</h2>@if (attentionItems().length) { <span class="count">{{ attentionItems().length }}</span> }</div>
+              <dw-attention [items]="attentionItems()" />
+            </section>
+
+            <!-- Figures of the period, with the period beside them -->
+            <section class="figures" [style.order]="1">
+              <div class="figures-head">
+                <h2 class="dw-h2">{{ t('dashboard.period') }}</h2>
+                <dw-period-filter [(value)]="period" (changed)="load()" />
+              </div>
             <div class="dw-stats">
               <dw-kpi [label]="t('dashboard.generated')" [value]="d.totals.generated_kg | dwKg: 'auto'" [hint]="t('dashboard.lots', { count: d.totals.generated_lots }) + ((d.totals.unweighed_lots ?? 0) > 0 ? ' · ' + t('lots.unweighedCount', { count: d.totals.unweighed_lots }) : '')" />
               <dw-kpi [label]="t('dashboard.stock')" [value]="stock()?.meta?.total_kg | dwKg: 'auto'" [hint]="t('dashboard.stockHint')" />
@@ -72,19 +89,10 @@ interface ProductionSummary {
               <dw-kpi [label]="t('dashboard.netBalance')" [value]="d.totals.net_balance | dwMoney: currency()" [tone]="+d.totals.net_balance < 0 ? 'danger' : 'success'"
                 [hint]="t('dashboard.balanceHint', { revenue: (d.totals.revenue | dwMoney: currency()), cost: (d.totals.cost | dwMoney: currency()) })" />
             </div>
+            </section>
 
-            <!-- 2. What needs a decision, next to 3. where the waste is -->
-            <div [class.dw-grid-2]="attention().length > 0">
-              @if (attention().length > 0) {
-                <section class="dw-panel" [attr.aria-label]="t('dashboard.attention')">
-                  <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.attention') }}</h2><span class="count">{{ attention().length }}</span></div>
-                  <ul class="attention">
-                    @for (item of attention(); track item.text) {
-                      <li><a [routerLink]="item.link" [class]="item.tone"><span class="mark"><dw-icon>{{ item.icon }}</dw-icon></span><span>{{ item.text }}</span><dw-icon class="go">chevron_right</dw-icon></a></li>
-                    }
-                  </ul>
-                </section>
-              }
+            <!-- Where the waste is -->
+            <div class="dw-grid-2" [style.order]="5">
               <section class="dw-panel">
                 <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.bySite') }}</h2></div>
                 <table class="dw-table">
@@ -101,11 +109,21 @@ interface ProductionSummary {
                   </tbody>
                 </table>
               </section>
+            <section class="dw-panel">
+              <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.byType') }}</h2></div>
+              <div class="dw-panel-body">
+                @if (d.by_waste_type.length > 0) {
+                  <dw-chart [option]="typeChart()" [label]="t('dashboard.byType')" [height]="typeHeight()" />
+                } @else {
+                  <p class="dw-muted none">{{ t('dashboard.noLots') }}</p>
+                }
+              </div>
+            </section>
             </div>
 
-            <!-- 4. Pickups in progress -->
+            <!-- Pickups in progress: next to what needs a decision for who acts -->
             @if (pickups().length > 0) {
-              <section class="dw-panel">
+              <section class="dw-panel" [style.order]="operational() ? 0 : 3">
                 <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.openPickups') }}</h2><span class="dw-spacer"></span><a class="more" routerLink="/pickups">{{ t('common.seeAll') }}<dw-icon>chevron_right</dw-icon></a></div>
                 <div class="scroll">
                   <table class="dw-table">
@@ -124,8 +142,8 @@ interface ProductionSummary {
               </section>
             }
 
-            <!-- 5. Trends -->
-            <div class="dw-split">
+            <!-- Trends -->
+            <div class="dw-split" [style.order]="4">
               <section class="dw-panel">
                 <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.byMonth') }}</h2></div>
                 <div class="dw-panel-body"><dw-chart [option]="monthChart()" [label]="t('dashboard.byMonth')" [height]="260" /></div>
@@ -143,7 +161,7 @@ interface ProductionSummary {
             </div>
 
             @if (production(); as p) {
-              <section class="dw-panel">
+              <section class="dw-panel" [style.order]="5">
                 <div class="dw-panel-head">
                   <div class="dw-spacer"><h2 class="dw-h2">{{ t('dashboard.production') }}</h2><p class="dw-muted prod-sub">{{ t('dashboard.productionHint') }}</p></div>
                   <a pButton text routerLink="/production/stats">{{ t('dashboard.seeAll') }}<dw-icon>chevron_right</dw-icon></a>
@@ -167,16 +185,6 @@ interface ProductionSummary {
               </section>
             }
 
-            <section class="dw-panel">
-              <div class="dw-panel-head"><h2 class="dw-h2">{{ t('dashboard.byType') }}</h2></div>
-              <div class="dw-panel-body">
-                @if (d.by_waste_type.length > 0) {
-                  <dw-chart [option]="typeChart()" [label]="t('dashboard.byType')" [height]="typeHeight()" />
-                } @else {
-                  <p class="dw-muted none">{{ t('dashboard.noLots') }}</p>
-                }
-              </div>
-            </section>
           </div>
         }
       </dw-state>
@@ -186,11 +194,20 @@ interface ProductionSummary {
     .prod-sub { margin: 2px 0 0; font-size: 13px; }
     .prod { display: grid; gap: var(--dw-3); }
     .prod-figures { display: flex; gap: var(--dw-5); flex-wrap: wrap; } .prod-figures div { display: grid; gap: 2px; } .prod-figures strong { font-size: 18px; }
-    .onboarding { display: flex; align-items: center; gap: var(--dw-3); padding: 10px var(--dw-4); margin-block-end: var(--dw-4); color: var(--dw-ink); border-color: var(--dw-primary-line); background: var(--dw-primary-soft); }
-    .onboarding:hover { text-decoration: none; border-color: var(--dw-primary); }
-    .onboarding dw-icon { color: var(--dw-primary); }
-    .onboarding .link { color: var(--dw-primary); font-weight: 600; }
-    .count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding-inline: 5px; border-radius: 9px; background: var(--dw-warning-soft); color: var(--dw-warning); font-size: 11px; font-weight: 700; }
+    .onboarding { display: flex; align-items: center; gap: 16px; padding: 16px 20px; margin-block-end: 20px; color: #fff; border-radius: var(--dw-radius-lg);
+      background: radial-gradient(120% 140% at 100% 0%, rgb(127 214 194 / 28%), transparent 55%), linear-gradient(120deg, #0f5c56, #0b3f3b); box-shadow: 0 10px 30px -14px rgb(10 60 56 / 60%); }
+    .onboarding:hover { text-decoration: none; }
+    .rocket { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 11px; background: rgb(255 255 255 / 14%); }
+    .ob-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; font-size: 13px; color: rgb(255 255 255 / 80%); }
+    .ob-text strong { color: #fff; font-size: 14.5px; font-weight: 620; }
+    .ob-track { flex: 0 1 180px; height: 6px; border-radius: 3px; background: rgb(255 255 255 / 18%); overflow: hidden; }
+    .ob-track span { display: block; height: 100%; border-radius: 3px; background: #7fd6c2; }
+    .onboarding .link { display: inline-flex; align-items: center; gap: 6px; color: #fff; font-weight: 620; white-space: nowrap; }
+    .onboarding .link dw-icon { font-size: 17px; transition: transform 160ms var(--dw-ease); }
+    .onboarding:hover .link dw-icon { transform: translateX(3px); }
+    .figures { display: grid; gap: 12px; }
+    .figures-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
+    .count { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding-inline: 7px; border-radius: 11px; background: var(--dw-warning-soft); color: var(--dw-warning); font-size: 12px; font-weight: 650; }
     .attention { list-style: none; margin: 0; padding: 0; }
     .attention a { display: flex; align-items: center; gap: var(--dw-3); min-height: 40px; padding: 6px var(--dw-3) 6px var(--dw-4); color: var(--dw-ink); border-block-end: 1px solid var(--dw-line-soft); }
     .attention li:last-child a { border-block-end: 0; border-end-start-radius: var(--dw-radius-lg); border-end-end-radius: var(--dw-radius-lg); }
@@ -226,17 +243,26 @@ export class DashboardPage {
   protected readonly data = signal<Dashboard | null>(null);
   protected readonly stock = signal<StockResponse | null>(null);
   protected readonly pickups = signal<Pickup[]>([]);
-  protected readonly providers = signal<DirectoryProvider[]>([]);
   protected readonly onboarding = signal<OnboardingState | null>(null);
 
   protected readonly currency = computed(() => this.session.company()?.currency_code ?? 'TND');
   protected readonly doneSteps = computed(() => this.onboarding()?.steps.filter((step) => step.done || step.skipped).length ?? 0);
   protected readonly typeHeight = computed(() => Math.max(180, (this.data()?.by_waste_type.length ?? 0) * 30 + 40));
 
-  /** What needs a decision today, most urgent first. */
-  protected readonly attention = computed<Attention[]>(() => {
+  protected readonly today = new Date().toISOString();
+  /** Someone who records lots or asks for pickups starts with what to do; a reader with the figures (D-03). */
+  protected readonly operational = computed(() => this.session.canAnywhere('lots.create') || this.session.canAnywhere('pickups.request') || this.session.canAnywhere('pickups.complete'));
+  private readonly waiting = signal<AttentionItem[]>([]);
+  /** What waits in the company (API) and the stock alerts computed with the stock, most urgent first. */
+  protected readonly attentionItems = computed<AttentionItem[]>(() => {
+    const rank = { danger: 0, warning: 1, info: 2, neutral: 3 };
+    return [...this.attention(), ...this.waiting()].sort((a, b) => rank[a.tone] - rank[b.tone]);
+  });
+
+  /** Stock alerts: limits and zones, computed with the stock. */
+  private readonly attention = computed<AttentionItem[]>(() => {
     const t = (key: string, params?: Record<string, unknown>): string => this.transloco.translate(key, params);
-    const items: Attention[] = [];
+    const items: { icon: string; tone: 'danger' | 'warning' | 'info'; text: string; link: string }[] = [];
     const exceeded = this.stock()?.thresholds.filter((threshold) => threshold.alert_level === 'exceeded').length ?? 0;
     const warning = this.stock()?.thresholds.filter((threshold) => threshold.alert_level === 'warning').length ?? 0;
     if (exceeded > 0) {
@@ -260,25 +286,8 @@ export class DashboardPage {
     if (unknown > 0) {
       items.push({ icon: 'help', tone: 'warning', text: t('dashboard.alerts.capacityUnverifiable', { count: unknown }), link: '/stock' });
     }
-    const flagged = this.pickups().filter((pickup) => pickup.variance_flagged && !pickup.variance_acknowledged).length;
-    if (flagged > 0) {
-      items.push({ icon: 'scale', tone: 'danger', text: t('dashboard.alerts.variance', { count: flagged }), link: '/pickups' });
-    }
-    const requested = this.pickups().filter((pickup) => pickup.status === 'requested').length;
-    if (requested > 0) {
-      items.push({ icon: 'schedule', tone: 'info', text: t('dashboard.alerts.requested', { count: requested }), link: '/pickups' });
-    }
-    for (const provider of this.providers()) {
-      const accreditation = provider.accreditations.find((item) => item.state !== 'valid');
-      if (provider.partnership?.status === 'active' && accreditation) {
-        items.push({
-          icon: 'verified', tone: accreditation.state === 'expired' ? 'danger' : 'warning', link: '/providers',
-          text: t(accreditation.state === 'expired' ? 'dashboard.alerts.accreditationExpired' : 'dashboard.alerts.accreditationExpiring', { provider: provider.legal_name, days: accreditation.days_left }),
-        });
-      }
-    }
 
-    return items;
+    return items.map((item, index) => ({ key: `stock-${index}`, area: 'stock', count: 1, params: {}, ...item }));
   });
 
   protected readonly monthChart = computed<EChartsCoreOption>(() => {
@@ -327,6 +336,8 @@ export class DashboardPage {
     };
   });
 
+  protected readonly davi = inject(Davi);
+
   constructor() {
     this.load();
     if (this.session.can('company.update')) {
@@ -349,7 +360,7 @@ export class DashboardPage {
       },
     });
 
-    if (this.session.can('production.stats.view')) {
+    if (this.session.uses('production') && this.session.can('production.stats.view')) {
       this.api.get<ProductionSummary>('production/stats', { from, to, site }).subscribe({ next: (stats) => this.production.set(stats.by_order.length > 0 ? stats : null), error: () => this.production.set(null) });
     }
 
@@ -357,12 +368,12 @@ export class DashboardPage {
     forkJoin({
       stock: this.session.can('stock.view') ? this.api.raw<StockResponse>('stock', { filter: { site } }) : [null],
       pickups: this.session.can('pickups.view') ? this.api.list<Pickup>('pickups', { filter: { status: ['requested', 'confirmed', 'collected', 'received'], site }, per_page: 8 }) : [null],
-      providers: this.session.can('providers.view') ? this.api.get<DirectoryProvider[]>('providers/directory', { filter: { partners_only: true } }) : [null],
+      waiting: this.api.get<AttentionItem[]>('attention'),
     }).subscribe({
-      next: ({ stock, pickups, providers }) => {
+      next: ({ stock, pickups, waiting }) => {
         this.stock.set(stock as StockResponse | null);
         this.pickups.set((pickups as Page<Pickup> | null)?.data ?? []);
-        this.providers.set((providers as DirectoryProvider[] | null) ?? []);
+        this.waiting.set(waiting);
       },
       error: () => undefined,
     });

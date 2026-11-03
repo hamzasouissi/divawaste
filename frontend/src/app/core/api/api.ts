@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, Subject, map, tap } from 'rxjs';
 
 export interface PageMeta {
   current_page: number;
@@ -78,6 +78,16 @@ export function toParams(query: Query = {}): HttpParams {
 @Injectable({ providedIn: 'root' })
 export class Api {
   private readonly http = inject(HttpClient);
+  /** A write succeeded (its path): what shows the state of the data, such as DAVI's card, reloads. DAVI's own calls aside. */
+  readonly changed = new Subject<string>();
+
+  private written<T>(path: string): (source: Observable<T>) => Observable<T> {
+    return (source) => source.pipe(tap(() => {
+      if (!path.startsWith('davi/')) {
+        this.changed.next(path);
+      }
+    }));
+  }
   private readonly base = '/api/v1';
 
   get<T>(path: string, query?: Query): Observable<T> {
@@ -95,15 +105,15 @@ export class Api {
   }
 
   post<T = void>(path: string, body: unknown = {}, query?: Query): Observable<T> {
-    return this.http.post<{ data: T } | null>(this.url(path), body, { params: toParams(query) }).pipe(map((res) => (res?.data ?? undefined) as T));
+    return this.http.post<{ data: T } | null>(this.url(path), body, { params: toParams(query) }).pipe(map((res) => (res?.data ?? undefined) as T), this.written<T>(path));
   }
 
   put<T = void>(path: string, body: unknown = {}): Observable<T> {
-    return this.http.put<{ data: T } | null>(this.url(path), body).pipe(map((res) => (res?.data ?? undefined) as T));
+    return this.http.put<{ data: T } | null>(this.url(path), body).pipe(map((res) => (res?.data ?? undefined) as T), this.written<T>(path));
   }
 
   delete<T = void>(path: string, body?: unknown): Observable<T> {
-    return this.http.delete<{ data: T } | null>(this.url(path), { body }).pipe(map((res) => (res?.data ?? undefined) as T));
+    return this.http.delete<{ data: T } | null>(this.url(path), { body }).pipe(map((res) => (res?.data ?? undefined) as T), this.written<T>(path));
   }
 
   blob(path: string, query?: Query): Observable<Blob> {
