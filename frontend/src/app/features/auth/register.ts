@@ -57,9 +57,13 @@ const FIELD_LABELS: Record<string, string> = {
     <ng-container *transloco="let t">
       @if (done()) {
         <div class="dw-stack" role="status">
-          <dw-icon class="ok" aria-hidden="true">mark_email_read</dw-icon>
-          <h1 class="dw-h1">{{ t('auth.register.doneTitle') }}</h1>
-          <p class="dw-muted">{{ t('auth.register.doneBody', { email: form.controls.contact.controls.email.value }) }}</p>
+          <dw-icon class="ok" aria-hidden="true">{{ status() === 'pending_verification' ? 'mark_email_read' : 'check_circle' }}</dw-icon>
+          <!-- The platform may confirm the address itself (tests, demo), and even approve the account at once. -->
+          @switch (status()) {
+            @case ('active') { <h1 class="dw-h1">{{ t('auth.register.readyTitle') }}</h1><p class="dw-muted">{{ t('auth.register.readyBody') }}</p> }
+            @case ('pending_approval') { <h1 class="dw-h1">{{ t('auth.register.reviewTitle') }}</h1><p class="dw-muted">{{ t('auth.verify.doneBody') }}</p> }
+            @default { <h1 class="dw-h1">{{ t('auth.register.doneTitle') }}</h1><p class="dw-muted">{{ t('auth.register.doneBody', { email: form.controls.contact.controls.email.value }) }}</p> }
+          }
           <a pButton routerLink="/login">{{ t('auth.login.submit') }}</a>
         </div>
       } @else {
@@ -265,6 +269,8 @@ export class RegisterPage {
   protected readonly loadError = signal<unknown>(null);
   protected readonly busy = signal(false);
   protected readonly done = signal(false);
+  /** The company's status once created: email to confirm, review to wait for, or ready to use. */
+  protected readonly status = signal('pending_verification');
   protected readonly files = signal<(File | null)[]>([]);
   protected readonly step = signal(0);
   /** A provider has no plan to choose: its third step is its activity. */
@@ -415,7 +421,10 @@ export class RegisterPage {
     this.busy.set(true);
     try {
       // Multipart only when files are attached; the API accepts both encodings of the same structure.
-      await firstValueFrom<unknown>(provider ? this.http.post('/api/v1/auth/register', this.toFormData(payload)) : this.api.post('auth/register', payload));
+      const created = await firstValueFrom<unknown>(provider ? this.http.post('/api/v1/auth/register', this.toFormData(payload)) : this.api.post('auth/register', payload));
+      // The multipart call returns the whole body ({ data }), the other one its data.
+      const company = ((created as { data?: { status?: string } } | null)?.data ?? created) as { status?: string } | null;
+      this.status.set(company?.status ?? 'pending_verification');
       this.done.set(true);
     } catch (error) {
       if (error instanceof ApiError && error.isValidation) {

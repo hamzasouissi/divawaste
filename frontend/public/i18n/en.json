@@ -276,7 +276,10 @@
         "you": "You",
         "plan": "Plan and terms",
         "activity": "Activity and terms"
-      }
+      },
+      "readyTitle": "Your account is ready",
+      "readyBody": "You can sign in right away with your email and password.",
+      "reviewTitle": "Registration received"
     },
     "verify": {
       "pending": "Confirming your address…",
@@ -1870,7 +1873,11 @@
         "custom": "Custom",
         "customCount": "{{count}} of {{total}}"
       },
-      "roleNameIs": "Identifier: {{name}}"
+      "roleNameIs": "Identifier: {{name}}",
+      "linkTitle": "Invitation link",
+      "linkHint": "Emails are confirmed by the platform (test mode): pass this link on to the person invited so they can set up their access.",
+      "copyLink": "Copy the link",
+      "linkCopied": "Link copied."
     },
     "audit": {
       "title": "Audit log",

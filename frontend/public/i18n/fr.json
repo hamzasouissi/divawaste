@@ -276,7 +276,10 @@
         "you": "Vous",
         "plan": "Formule et conditions",
         "activity": "Activité et conditions"
-      }
+      },
+      "readyTitle": "Votre compte est prêt",
+      "readyBody": "Vous pouvez vous connecter dès maintenant avec votre email et votre mot de passe.",
+      "reviewTitle": "Inscription enregistrée"
     },
     "verify": {
       "pending": "Confirmation de votre adresse en cours…",
@@ -1870,7 +1873,11 @@
         "custom": "Sur mesure",
         "customCount": "{{count}} sur {{total}}"
       },
-      "roleNameIs": "Identifiant : {{name}}"
+      "roleNameIs": "Identifiant : {{name}}",
+      "linkTitle": "Lien d'invitation",
+      "linkHint": "Les emails sont confirmés par la plateforme (mode test) : transmettez ce lien à la personne invitée pour qu'elle crée son accès.",
+      "copyLink": "Copier le lien",
+      "linkCopied": "Lien copié."
     },
     "audit": {
       "title": "Journal d'audit",
