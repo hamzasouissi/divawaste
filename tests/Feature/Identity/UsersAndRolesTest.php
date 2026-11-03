@@ -30,6 +30,20 @@ class UsersAndRolesTest extends TestCase
         Notification::fake();
     }
 
+    public function test_with_automatic_confirmation_the_invitation_link_is_given_back(): void
+    {
+        $company = $this->makeCompany();
+        $token = $this->tokenFor($this->makeMember($company, ['client_admin' => null]), $company);
+
+        $this->withToken($token)->postJson('/api/v1/invitations', ['email' => 'a@usine.example', 'role' => 'workshop_operator'])
+            ->assertCreated()->assertJsonMissingPath('data.accept_url');
+
+        config(['app.auto_verify_emails' => true]);
+        $url = $this->withToken($token)->postJson('/api/v1/invitations', ['email' => 'b@usine.example', 'role' => 'workshop_operator'])
+            ->assertCreated()->json('data.accept_url');
+        $this->assertStringEndsWith('token='.$this->sentInvitationToken('b@usine.example'), (string) $url);
+    }
+
     public function test_invitation_with_role_and_sites_is_accepted_by_a_new_user(): void
     {
         $company = $this->makeCompany();

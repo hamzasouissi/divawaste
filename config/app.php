@@ -64,6 +64,12 @@ return [
     'auto_approve_signups' => (bool) env('AUTO_APPROVE_SIGNUPS', false),
 
     /*
+    | A registration's email counts as confirmed at once, without the link (tests, demonstrations with made-up
+    | addresses). Off by default: the contact proves the mailbox is theirs (M0-02).
+    */
+    'auto_verify_emails' => (bool) env('AUTO_VERIFY_EMAILS', false),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------

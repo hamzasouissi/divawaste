@@ -1,7 +1,9 @@
 <?php
 
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
+use App\Modules\Common\Support\FrontendUrl;
 use App\Modules\Identity\Actions\AttemptLogin;
+use App\Modules\Identity\Actions\ConfirmEmail;
 use App\Modules\Identity\Actions\ManageInvitations;
 use App\Modules\Identity\Actions\ManageMembers;
 use App\Modules\Identity\Actions\ManageTwoFactor;
@@ -19,8 +21,6 @@ use App\Modules\Identity\Support\CompanyRoles;
 use App\Modules\Identity\Support\EmailVerification;
 use App\Modules\Identity\Support\LegalAcceptance;
 use App\Modules\Identity\Support\PasswordRules;
-use App\Modules\Notifications\Actions\NotifyUsers;
-use App\Modules\Tenancy\Actions\ReviewCompany;
 use App\Modules\Tenancy\Enums\MembershipStatus;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\Resources\CompanyResource;
@@ -94,22 +94,7 @@ Route::post('auth/email/verify', function (Request $request) {
         throw ValidationException::withMessages(['signature' => [__('validation.custom.email_verification.invalid')]]);
     }
 
-    if ($user->email_verified_at === null) {
-        $user->forceFill(['email_verified_at' => now()])->save();
-        // M0-06: a registration only reaches the platform review queue once the contact's email is confirmed.
-        foreach (Company::query()->where('primary_contact_user_id', $user->id)->where('status', 'pending_verification')->get() as $company) {
-            $company->forceFill(['status' => 'pending_approval', 'submitted_at' => now()])->save();
-            if (config('app.auto_approve_signups')) {
-                // Approved on the spot: the contact receives the usual approval email, the platform reads it in the audit.
-                app(ReviewCompany::class)->approve($company, null);
-
-                continue;
-            }
-            app(NotifyUsers::class)->toPlatformPermission('platform.companies.review', 'company.pending_review', [
-                'company' => $company->legal_name, 'type' => $company->company_type->value,
-            ], '/platform/companies/'.$company->ulid);
-        }
-    }
+    app(ConfirmEmail::class)->handle($user);
     $active = Company::query()->where('primary_contact_user_id', $user->id)->where('status', 'active')->exists();
 
     return response()->json(['data' => ['email' => $user->email, 'verified' => true, 'approved' => $active]]);
@@ -350,10 +335,14 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             ->orderByRaw("status = 'pending' desc")->orderByDesc('id')->limit(200)->get()->map($invitationData)]);
     })->name('invitations.index');
 
-    Route::post('invitations', function (Request $request, ManageInvitations $invitations) use ($allow, $invitationData) {
+    // Tests and demonstrations (app.auto_verify_emails): the link of the email is given back too, to pass on by hand.
+    $withLink = fn (UserInvitation $invitation) => $invitationData($invitation)
+        + (config('app.auto_verify_emails') && $invitation->plainToken !== null ? ['accept_url' => FrontendUrl::to('invitation', ['token' => $invitation->plainToken])] : []);
+
+    Route::post('invitations', function (Request $request, ManageInvitations $invitations) use ($allow, $withLink) {
         $allow($request, 'users.invite');
 
-        return response()->json(['data' => $invitationData($invitations->invite($request->validate([
+        return response()->json(['data' => $withLink($invitations->invite($request->validate([
             'email' => ['required', 'string', 'email', 'max:191'],
             'first_name' => ['nullable', 'string', 'max:100'],
             'last_name' => ['nullable', 'string', 'max:100'],
@@ -364,10 +353,10 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         ]), $request->user()))], 201);
     })->name('invitations.store');
 
-    Route::post('invitations/{invitation}/resend', function (Request $request, UserInvitation $invitation, ManageInvitations $invitations) use ($allow, $invitationData) {
+    Route::post('invitations/{invitation}/resend', function (Request $request, UserInvitation $invitation, ManageInvitations $invitations) use ($allow, $withLink) {
         $allow($request, 'users.invite');
 
-        return response()->json(['data' => $invitationData($invitations->resend($invitation, $request->user()))]);
+        return response()->json(['data' => $withLink($invitations->resend($invitation, $request->user()))]);
     })->name('invitations.resend')->middleware('throttle:action');
 
     Route::delete('invitations/{invitation}', function (Request $request, UserInvitation $invitation, ManageInvitations $invitations) use ($allow) {

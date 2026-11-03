@@ -140,7 +140,7 @@ cd /var/www/divawaste-textile && git fetch origin \
 
 The script (`backend/scripts/server/update-demo.sh`) stops at the first error. In order: a backup in
 `/root/backups/divawaste-textile/<date-time>/` (database dump, `.env`, `storage/app`, `web/`, nginx site, commit),
-`git pull --ff-only`, `composer install --no-dev`, `migrate --force`, `.env` settings (`AUTO_APPROVE_SIGNUPS=true`,
+`git pull --ff-only`, `composer install --no-dev`, `migrate --force`, `.env` settings (`AUTO_VERIFY_EMAILS=true` and `AUTO_APPROVE_SIGNUPS=true`: an account is usable at once,
 `DAVI_URL`, a `DAVI_KEY` if there is none — printed once at the end), the ANGed lists, the Pantone catalogue (if
 `/root/pantones` exists), the new screens (if `web-new/` exists; the previous ones go to `web.previous/`), the nginx
 `/guides/` location and a 300 s FastCGI timeout (checked with `nginx -t`, put back if refused), caches, PHP-FPM reload,

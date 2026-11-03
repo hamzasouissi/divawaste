@@ -140,6 +140,27 @@ class RegistrationAndReviewTest extends TestCase
             ->assertJsonPath('data.company.ulid', $company->ulid);
     }
 
+    public function test_with_automatic_confirmation_and_approval_a_registration_is_ready_at_once(): void
+    {
+        config(['app.auto_verify_emails' => true, 'app.auto_approve_signups' => true]);
+        $this->postJson('/api/v1/auth/register', $this->industrialPayload())->assertCreated()
+            ->assertJsonPath('data.status', 'active');
+        $user = User::query()->where('email', 'amira@textile.example')->firstOrFail();
+
+        $this->assertNotNull($user->email_verified_at);
+        Notification::assertNotSentTo($user, VerifyEmailNotification::class);
+        Notification::assertSentTo($user, CompanyStatusNotification::class, fn (CompanyStatusNotification $n) => $n->event === 'company_approved');
+        $this->postJson('/api/v1/auth/login', ['email' => $user->email, 'password' => self::PASSWORD])->assertOk()
+            ->assertJsonPath('data.company.legal_name', $this->industrialPayload()['company']['legal_name']);
+    }
+
+    public function test_automatic_confirmation_alone_leaves_the_review_to_the_platform(): void
+    {
+        config(['app.auto_verify_emails' => true]);
+        $this->postJson('/api/v1/auth/register', $this->industrialPayload())->assertCreated()
+            ->assertJsonPath('data.status', 'pending_approval');
+    }
+
     public function test_registration_is_validated(): void
     {
         // The sector is said at sign-up: the catalogue and zone types of the setup follow it.
