@@ -70,6 +70,11 @@
   .who { display: flex; gap: 4mm; align-items: center; }
   .who svg { flex: none; width: 16mm; height: 16mm; }
   .badge { display: inline-block; font-size: 8.5pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: #7b8f8b; border-radius: 6px; padding: 1px 7px; vertical-align: middle; margin-left: 6px; }
+  .phones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; margin: 2mm 0 3mm; }
+  .phones .shot { margin: 0; } .phones .cap { margin: 1.5mm 0 0; }
+  .phones.four { grid-template-columns: repeat(4, 1fr); gap: 4mm; }
+  .crop img { height: 100mm; object-fit: cover; object-position: top; }
+  .crop.short img { height: 80mm; }
 </style>
 </head>
 <body>
@@ -112,6 +117,7 @@
       <li><b>R3</b> — Le cycle de vie d'un lot, avec un prestataire <b>qui a un compte</b></li>
       <li><b>R4</b> — Le même cycle avec un prestataire <b>sans compte</b></li>
       <li><b>R5</b> — L'Accueil : chaque valeur et ce qu'elle veut dire</li>
+      <li><b>R6</b> — Trouver un prestataire dans la <b>liste ANGed</b> et remplir sa fiche</li>
       <li>Une <b>fiche de test</b></li>
     </ul>
   </div>
@@ -368,6 +374,47 @@
 </section>
 
 <!-- ============================================================ TEST -->
+<!-- ============================================================ R6 -->
+<section class="page">
+  <h2 class="part">R6. Trouver un prestataire dans la liste ANGed <small>Exemple : Filature de Monastir</small></h2>
+  <p class="lead">L'ANGed publie qui a le droit de collecter, transporter, recycler ou traiter des déchets en Tunisie. DivaWaste contient ces listes (<b>5 653 entrées</b>, lues sur anged.nat.tn le 3 novembre 2026) : vous y cherchez un prestataire, et sa fiche se remplit toute seule.</p>
+  <table>
+    <tr><th>Les listes</th><th>Ce qu'elles donnent</th></tr>
+    <tr><td><b>Déchets dangereux</b> (11 listes : batteries, huiles, D3E, déchets industriels, soins…)</td><td>L'<b>autorisation du ministère</b> : son numéro, ses dates, la quantité par an, la zone de collecte</td></tr>
+    <tr><td><b>Déchets non dangereux</b> (17 listes : textile, carton, papier, plastique, métaux, bois…)</td><td>Les sociétés qui ont déposé le <b>cahier des charges</b> : nom, contact, téléphone, adresse, quantité par an. <b>Pas de numéro</b> ni de date.</td></tr>
+  </table>
+  <div class="step">
+    <ol class="do"><li><b>Enlèvements › Prestataires</b>, dans le cadre <b>Partenaires sans compte</b> : <b>Liste ANGed</b>.</li></ol>
+    <div class="shot half"><img src="img5/a0-anged-button.jpg"></div>
+    <ol class="do" start="2"><li>Tapez ce que vous cherchez dans <b>Rechercher</b> : un nom, un déchet (« textile »), une ville, un n° d'autorisation ou un téléphone. Affinez avec <b>Liste</b>, <b>Activité</b> (collecte, transport, recyclage / traitement, tri, stockage) et <b>Gouvernorat</b>.</li></ol>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <div class="shot half"><img src="img5/a1-anged-search.jpg"></div>
+    <p class="cap">« textile », liste Déchets Textiles, gouvernorat Monastir : chaque entrée montre son activité, son gouvernorat, son téléphone, son contact et sa quantité par an.</p>
+    <ol class="do" start="3"><li>Sur la bonne société : <b>Ajouter comme partenaire</b>. La fiche <b>Ajouter un partenaire</b> s'ouvre, déjà remplie : raison sociale, activités, ville, adresse, contact, téléphone, et la mention « Rempli depuis la liste ANGed ».</li>
+      <li>Vérifiez avec le prestataire, complétez son <b>matricule fiscal</b> (la liste ne le donne pas), puis <b>Enregistrer</b>.</li></ol>
+    <div class="shot half"><img src="img5/a2-anged-form.jpg"></div>
+    <div class="box info"><b>Déjà dans le formulaire ?</b> En créant un partenaire avec <b>Ajouter un partenaire</b>, le lien <b>Remplir depuis la liste ANGed</b> ouvre la même recherche, en partant du nom déjà tapé.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">5</span>Un prestataire pour déchets dangereux</h3>
+    <p>Cochez <b>Déchets dangereux seulement</b> : seules restent les autorisations du ministère. Une autorisation <b>échue</b> est signalée en rouge.</p>
+    <div class="shot half"><img src="img5/a3-anged-hazardous.jpg"></div>
+    <p>La fiche reprend l'autorisation : <b>N° d'autorisation</b> (« ANGed 02-2026 »), <b>Expire le</b>, et la case <b>Autorisé pour les déchets dangereux</b>. DivaWaste vous préviendra avant la fin de validité, comme pour tout partenaire.</p>
+    <div class="shot half"><img src="img5/a4-anged-hazardous-form.jpg"></div>
+    <div class="box warn"><b>La liste est la parole de l'ANGed.</b> DivaWaste la reprend sans la vérifier, et elle peut dater : demandez l'autorisation au prestataire avant de lui confier des déchets dangereux. Une même société peut figurer dans plusieurs listes (une par type de déchet) : choisissez l'entrée du déchet que vous lui confiez.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
+</section>
+
 <section class="page">
   <h2 class="part">Fiche de test</h2>
   <p class="lead" style="margin-bottom:2mm">Cochez chaque résultat obtenu, notez ce qui a gêné.</p>
@@ -382,8 +429,9 @@
     <tr><td>☐</td><td>R3 Bordereau</td><td>Trois signatures en ligne ; « Documents complets ».</td></tr>
     <tr><td>☐</td><td>R4 Sans compte</td><td>Vous confirmez, recevez, déclarez ; signatures à la main + scan ; « Documents complets ».</td></tr>
     <tr><td>☐</td><td>R5 Accueil</td><td>Générés, stock, évacués et taux correspondent aux lots et enlèvements de la période.</td></tr>
+    <tr><td>☐</td><td>R6 Liste ANGed</td><td>La recherche trouve la société ; « Ajouter comme partenaire » remplit la fiche ; une autorisation dangereuse reprend son n° et sa date.</td></tr>
   </table>
-  <div class="remarks" style="height:62mm">Mes remarques…</div>
+  <div class="remarks" style="height:52mm">Mes remarques…</div>
   <div class="foot"><span>DivaWaste · Guide 4 — Référence</span><span class="pg"></span></div>
 </section>
 

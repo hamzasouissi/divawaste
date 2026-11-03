@@ -115,7 +115,7 @@
       <li>Votre compte <b>Administrateur plateforme</b></li>
       <li>Le <b>relevé bancaire</b> (pour les virements)</li>
       <li>Les <b>tarifs</b> convenus avec chaque client</li>
-      <li>Un moyen de vérifier un <b>agrément</b> (registre de l'ANGed…)</li>
+      <li>Un moyen de vérifier un <b>agrément</b> : la <b>liste ANGed</b> est dans le back-office (F)</li>
     </ul>
   </div>
 </section>
@@ -129,6 +129,7 @@
     <div><b><span class="num">C</span>Agréments</b><span>Vérifier le document d'un prestataire, approuver ou rejeter.</span></div>
     <div><b><span class="num">D</span>Argent</b><span>Virements déclarés, factures, formules et tarifs.</span></div>
     <div><b><span class="num">E</span>Référentiels et suivi</b><span>Catalogue de déchets, rôles et permissions, activité.</span></div>
+    <div><b><span class="num">F</span>Liste ANGed et mode test</b><span>Les opérateurs autorisés ; les inscriptions validées d'office.</span></div>
     <div><b><span class="num">✓</span>Fiche de test</b><span>Cochez ce qui marche, notez ce qui gêne.</span></div>
   </div>
   <div class="box info"><b>Un espace à part.</b> Un compte Diva Software arrive sur le <b>Back-office</b> (barre latérale bleu nuit, pastille « Administration de la plateforme »). Il ne voit les données d'un client que par les écrans ci-dessous ; il ne travaille jamais « dans » une société.</div>
@@ -236,6 +237,37 @@
   <div class="foot"><span>DivaWaste · Guide 10 — Back-office Diva Software</span><span class="pg"></span></div>
 </section>
 
+<!-- ============================================================ ANGED -->
+<section class="page">
+  <h2 class="part">F. La liste ANGed et le mode test</h2>
+  <div class="step">
+    <h3><span class="n">F1</span>Les opérateurs autorisés (liste ANGed)</h3>
+    <p><b>Liste ANGed</b> (menu Clients et prestataires) : les <b>5 653</b> entrées que l'ANGed publie sur anged.nat.tn, lues le 3 novembre 2026. <b>11 listes de déchets dangereux</b> : l'autorisation du ministère, son numéro, ses dates, la quantité par an, la zone de collecte. <b>17 listes de déchets non dangereux</b> (textile, carton, plastique, métaux…) : les sociétés qui ont déposé le cahier des charges.</p>
+    <ul class="do"><li><b>Vérifier un agrément</b> (C) : cherchez la référence ou le nom du prestataire ; comparez numéro et dates avec le document déposé.</li>
+      <li><b>Trouver qui inviter</b> : filtrez par liste, activité et gouvernorat ; le contact et le téléphone y sont.</li></ul>
+    <div class="shot half"><img src="img10/50-anged.jpg"></div>
+    <p>Les clients voient la même liste dans <b>Enlèvements › Prestataires › Liste ANGed</b> et s'en servent pour remplir un partenaire sans compte (Guide 4, R6). Nouvelle édition de l'ANGed : l'équipe technique relance l'extraction et <code>php artisan registry:import-anged</code> (elle remplace la précédente).</p>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 10 — Back-office Diva Software</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">F2</span>Le mode test : inscriptions validées d'office</h3>
+    <p>Pour les essais et les démonstrations, deux réglages du serveur (fichier <code>.env</code> de l'API) :</p>
+    <table>
+      <tr><th>Réglage</th><th>Quand il vaut true</th></tr>
+      <tr><td><code>AUTO_VERIFY_EMAILS</code></td><td>L'email d'une inscription est tenu pour confirmé : <b>aucun lien à cliquer</b>. Une invitation donne aussi son lien à celui qui invite (« Copier le lien », Guide 7).</td></tr>
+      <tr><td><code>AUTO_APPROVE_SIGNUPS</code></td><td>L'inscription est <b>validée d'office</b> : la société passe Active, l'essai commence (industriel), le profil est publié (prestataire), l'email de validation part.</td></tr>
+    </table>
+    <p>Avec les deux, une société créée est utilisable tout de suite : la page d'inscription affiche « Votre compte est prêt ». Rien n'arrive dans <b>Sociétés › En attente de validation</b> ; l'<b>Activité de la plateforme</b> montre une validation <b>sans auteur</b>.</p>
+    <div class="shot half"><img src="img10/51-ready.jpg"></div>
+    <p class="cap">En mode test, juste après « Créer mon compte » : plus de « Vérifiez votre boîte mail ».</p>
+    <div class="box warn"><b>Avant d'ouvrir à de vrais clients</b>, remettez les deux à <code>false</code> puis <code>php artisan config:cache</code> : chaque inscription reviendra confirmer son email et attendre votre validation (B1). Le serveur de démonstration les a à <code>true</code>.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 10 — Back-office Diva Software</span><span class="pg"></span></div>
+</section>
+
 <!-- ============================================================ TEST -->
 <section class="page">
   <h2 class="part">Fiche de test</h2>
@@ -251,6 +283,8 @@
     <tr><td>☐</td><td>Je crée un type de référence ; un client peut l'activer.</td></tr>
     <tr><td>☐</td><td>Chaque décision apparaît dans l'Activité de la plateforme et l'historique de la société.</td></tr>
     <tr><td>☐</td><td>L'assistant de la vue d'ensemble dit ce qui attend (inscriptions, virements…).</td></tr>
+    <tr><td>☐</td><td>Liste ANGed : je retrouve un prestataire par son nom ou son n° d'autorisation, filtré par gouvernorat.</td></tr>
+    <tr><td>☐</td><td>Mode test : une nouvelle inscription est « prête » sans email ni validation ; mode normal : elle attend en B1.</td></tr>
   </table>
   <div class="remarks">Remarques, questions, ce qui gêne :</div>
   <div class="foot"><span>DivaWaste · Guide 10 — Back-office Diva Software</span><span class="pg"></span></div>
