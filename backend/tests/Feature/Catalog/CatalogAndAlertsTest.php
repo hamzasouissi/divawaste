@@ -41,9 +41,12 @@ class CatalogAndAlertsTest extends TestCase
         $this->assertContains('landfill', array_column($reference['treatment_channels'], 'code'));
         $this->assertTrue(collect($reference['regulatory_waste_codes'])->firstWhere('code', '04 02 16')['is_hazardous']);
 
-        // M1-03: the 14 default types are offered, none activated yet.
+        // M1-03: the 14 default types are offered, none activated yet, with what serves every industry (pallets and
+        // wood); a textile company is not offered the other industries' wastes unless it asks for them all.
         $catalogue = $this->withToken($token)->getJson('/api/v1/waste-catalog')->assertOk()->json('data');
-        $this->assertCount(14, $catalogue);
+        $this->assertCount(15, $catalogue);
+        $this->assertNotContains('manure', array_column($catalogue, 'code'));
+        $this->assertContains('manure', array_column($this->withToken($token)->getJson('/api/v1/waste-catalog?all=1')->json('data'), 'code'));
         $this->assertNull($catalogue[0]['waste_type']);
 
         $type = $this->withToken($token)->postJson('/api/v1/waste-types', ['catalog_item' => 'dye_residues', 'code' => 'TEINT'])
@@ -99,7 +102,7 @@ class CatalogAndAlertsTest extends TestCase
         $company = $this->makeCompany();
         $client = $this->tokenFor($this->makeMember($company, ['client_admin' => null]), $company);
         $this->withToken($client)->postJson('/api/v1/platform/waste-catalog', ['code' => 'x', 'name_fr' => 'X', 'waste_family' => 'packaging', 'is_hazardous' => false])->assertForbidden();
-        $this->assertCount(15, $this->withToken($client)->getJson('/api/v1/waste-catalog')->json('data'));
+        $this->assertCount(16, $this->withToken($client)->getJson('/api/v1/waste-catalog')->json('data'));
     }
 
     public function test_accreditation_alert_is_sent_once_30_days_before_expiry_and_once_at_expiry(): void

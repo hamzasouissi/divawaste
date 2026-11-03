@@ -6,7 +6,7 @@ return [
         'clients' => 'Clients', 'suppliers' => 'Fournisseurs', 'materials' => 'Matières premières', 'articles' => 'Articles',
         'orders' => 'Commandes', 'manufacturing_orders' => 'Ordres de fabrication',
         'received_lots' => 'Lots reçus (matières)', 'consumptions' => 'Matières consommées par OF', 'produced_lots' => 'Lots fabriqués',
-        'expenses' => 'Dépenses de production', 'invoices' => 'Factures clients',
+        'expenses' => 'Dépenses de production', 'invoices' => 'Factures clients', 'waste_lots' => 'Lots de déchets',
     ],
     'fields' => [
         'clients' => ['code' => 'Code', 'name' => 'Nom', 'country_code' => 'Pays (code)', 'contact_name' => 'Contact', 'email' => 'Email', 'phone' => 'Téléphone'],
@@ -50,6 +50,11 @@ return [
             'number' => 'N° de facture', 'customer_order' => 'N° de commande', 'amount' => 'Montant HT', 'kind' => 'Type (facture, avoir)', 'issued_on' => 'Date',
             'manufacturing_order' => 'N° d\'OF', 'currency' => 'Devise',
         ],
+        'waste_lots' => [
+            'site' => 'Site', 'zone' => 'Zone', 'waste_type' => 'Type de déchet', 'net_weight_kg' => 'Poids (kg)', 'weight_estimated' => 'Poids estimé (oui / non)',
+            'quantity' => 'Quantité', 'unit' => 'Unité (kg, t, l, m³, pièce)', 'packaging' => 'Emballage', 'package_count' => 'Nombre d\'emballages', 'generated_at' => 'Date du lot',
+            'manufacturing_order' => 'N° d\'OF', 'step' => 'Étape de production', 'notes' => 'Remarques', 'external_reference' => 'Votre référence du lot',
+        ],
     ],
     'errors' => [
         'amount_mismatch' => 'Le montant ne correspond pas à la quantité multipliée par le prix unitaire.',
@@ -64,11 +69,21 @@ return [
         'unknown' => ':what inconnu(e) : « :value ».',
         'unit' => 'Unité inconnue : « :value » (attendu : m, kg ou pièce).',
         'unexpected' => 'Cette ligne n\'a pas pu être enregistrée.',
+        'site_rights' => 'Vous ne pouvez pas créer de lots sur le site « :site ».',
+        'zone_needed' => 'Le site « :site » a plusieurs zones et aucune aire de stockage : indiquez la zone.',
+        'lot_unit' => 'Unité inconnue : « :value » (attendu : kg, t, l, m³ ou pièce).',
+        'yes_no' => '« :field » : « :value » n\'est ni oui ni non.',
         'format' => [
             'integer' => '« :value » n\'est pas un nombre entier.',
             'decimal' => '« :value » n\'est pas un nombre.',
             'date' => '« :value » n\'est pas une date reconnue (JJ/MM/AAAA ou AAAA-MM-JJ).',
             'text' => '« :value » n\'est pas valide.',
+        ],
+    ],
+    'feeds' => [
+        'errors' => [
+            'address' => 'L\'adresse doit commencer par https:// et mener à un serveur accessible depuis internet.',
+            'download' => 'L\'adresse n\'a pas pu être lue (serveur introuvable ou réponse en erreur).',
         ],
     ],
 ];

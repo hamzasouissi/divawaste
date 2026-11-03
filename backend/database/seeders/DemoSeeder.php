@@ -11,6 +11,7 @@ use App\Modules\Catalog\Actions\CreateWasteType;
 use App\Modules\Catalog\DTOs\CreateWasteTypeData;
 use App\Modules\Catalog\Models\WasteToleranceRule;
 use App\Modules\Common\Support\FileStorage;
+use App\Modules\Contracts\Actions\ManageContracts;
 use App\Modules\Documents\Actions\ManifestWorkflow;
 use App\Modules\Documents\Models\WasteAuthorization;
 use App\Modules\Identity\Models\Role;
@@ -221,7 +222,7 @@ class DemoSeeder extends Seeder
         $context->runAs($provider, function () use ($provider, $karim, $role, $files) {
             CompanyUser::query()->create(['user_id' => $karim->id, 'joined_at' => now()]);
             UserRoleAssignment::query()->create(['user_id' => $karim->id, 'role_id' => $role('provider_admin'), 'site_id' => null]);
-            ProviderProfile::query()->create(['is_collector' => true, 'is_recycler' => true, 'is_eliminator' => true, 'service_area' => 'Sousse, Monastir, Nabeul, Tunis',
+            ProviderProfile::query()->create(['is_collector' => true, 'is_recycler' => true, 'is_sorter' => true, 'service_area' => 'Sousse, Monastir, Nabeul, Tunis',
                 'description' => 'Collecte et recyclage de chutes textiles, cartons et plastiques ; traitement de déchets dangereux.',
                 'public_contact_name' => 'Karim Ben Salah', 'public_contact_email' => $karim->email, 'public_contact_phone' => '+216 73 000 000',
                 'is_published' => true, 'published_at' => now()]);
@@ -297,6 +298,19 @@ class DemoSeeder extends Seeder
                 'city' => 'Grombalia', 'phone' => '+216 72 000 222', 'email' => 'contact@fibres-du-cap.test', 'contact_name' => 'Mouna Zribi', 'is_recycler' => true,
                 'accreditation_reference' => 'ANGed-2025-0412', 'accreditation_expires_on' => now()->addMonths(8)->toDateString(), 'created_by_user_id' => $amira->id]);
             StockThreshold::query()->create(['site_id' => $sites['NAB']->id, 'waste_type_id' => $types['CHUTES']->id, 'max_quantity' => 900, 'warning_pct' => 80, 'created_by_user_id' => $sami->id]);
+
+            // A yearly contract with the recycler: two collections a month, cutting scraps bought, cardboard taken for a
+            // cost, a transport fee per pickup. Its prices apply to the pickups received under it.
+            $contracts = app(ManageContracts::class);
+            $contracts->activate($contracts->create(['provider_company_id' => $provider->id, 'party_role' => 'receiver', 'title' => 'Collecte et recyclage des déchets textiles',
+                'reference' => 'RS-CB-2026-01', 'starts_on' => now()->subMonths(4)->toDateString(), 'ends_on' => now()->addMonths(8)->toDateString(),
+                'frequency' => 'monthly', 'pickups_per_period' => 2, 'weekdays' => ['tue', 'thu'], 'planned_pickups' => 24,
+                'pickup_fee' => '45', 'pickup_fee_direction' => 'cost', 'payment_terms_days' => 30,
+                'notes' => 'Contrat signé le '.now()->subMonths(4)->format('d/m/Y').'. Révision des prix au semestre.',
+                'prices' => [
+                    ['waste_type_id' => $types['CHUTES']->id, 'pricing_mode' => 'per_tonne', 'unit_price' => '180', 'direction' => 'revenue'],
+                    ['waste_type_id' => $types['CARTON']->id, 'pricing_mode' => 'per_tonne', 'unit_price' => '25', 'direction' => 'cost'],
+                ]], $amira));
 
             // Three months of production: a deterministic spread so charts are stable from one seed to the next.
             $weights = ['CHUTES' => [118, 96, 142, 87, 131, 104], 'FILS' => [22, 18, 27], 'REBUTS' => [41, 36], 'CARTON' => [64, 58, 71], 'PLAST' => [19, 24], 'TEINT' => [33, 28]];

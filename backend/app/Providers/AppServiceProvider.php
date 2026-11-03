@@ -70,6 +70,15 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute((int) config('app.api_rate_limit', 240))
             ->by($request->user()?->id ? 'u:'.$request->user()->id : 'ip:'.$request->ip()));
 
+        // Limits of one kind of request each, counted apart: a bare "throttle:10,1" shares one count per user with every
+        // other bare limit, so ten questions to DAVI or ten searches used to refuse the signature of a slip.
+        $who = fn (Request $request) => $request->user()?->id ? 'u:'.$request->user()->id : 'ip:'.$request->ip();
+        RateLimiter::for('davi', fn (Request $request) => Limit::perMinute(40)->by($who($request)));
+        RateLimiter::for('search', fn (Request $request) => Limit::perMinute(120)->by($who($request)));
+        // Actions that matter (sign a slip, create an API key, resend an invitation, run an ERP export): ten a minute,
+        // for each action on its own.
+        RateLimiter::for('action', fn (Request $request) => Limit::perMinute(10)->by(($request->route()?->getName() ?? $request->path()).'|'.$who($request)));
+
         // Sign-in: five attempts a minute for one account from one address, so that a shift signing in behind the
         // same address is not refused because of a neighbour; a wider ceiling per address still stops a sweep over
         // many accounts. The lockout of an account after five failures is separate (M0-09).

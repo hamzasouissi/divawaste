@@ -285,8 +285,9 @@ final class ManifestWorkflow
             'transporter' => $manifest->transporter_snapshot,
             'receiver' => $manifest->receiver_snapshot,
             'lots' => DB::table('pickup_lots')->where('hazardous_waste_manifest_id', $manifest->id)->orderBy('id')
-                ->get(['lot_number_snapshot', 'declared_weight_kg', 'departure_weight_kg', 'received_weight_kg', 'measure_dimension', 'unit_code', 'declared_quantity', 'departure_quantity', 'received_quantity'])
-                ->map(fn ($line) => ['lot_number' => $line->lot_number_snapshot,
+                ->get(['lot_number_snapshot', 'declared_weight_kg', 'departure_weight_kg', 'received_weight_kg', 'measure_dimension', 'unit_code', 'declared_quantity', 'departure_quantity', 'received_quantity', 'composition_snapshot'])
+                // What each lot is made of, as it left. Only lines that carry one have the key: what earlier slips signed is unchanged.
+                ->map(fn ($line) => ($line->composition_snapshot === null ? [] : ['composition' => json_decode((string) $line->composition_snapshot, true)]) + ['lot_number' => $line->lot_number_snapshot,
                     'weight_kg' => ($line->departure_weight_kg ?? $line->declared_weight_kg) === null ? null : (string) ($line->departure_weight_kg ?? $line->declared_weight_kg),
                     'received_weight_kg' => $line->received_weight_kg === null ? null : (string) $line->received_weight_kg,
                     // Waste counted in pieces or litres travels with its quantity; its weight is printed only when known.

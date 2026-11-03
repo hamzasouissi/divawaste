@@ -19,10 +19,13 @@ final class ReviewCompany
 {
     public function __construct(private readonly StartTrial $startTrial) {}
 
-    public function approve(Company $company, User $reviewer): Company
+    /**
+     * Without a reviewer, the platform approves on its own (config app.auto_approve_signups): no one is named as approver.
+     */
+    public function approve(Company $company, ?User $reviewer): Company
     {
         return $this->decide($company, [CompanyStatus::PendingApproval], CompanyStatus::Active, 'company_approved', null, function (Company $company) use ($reviewer) {
-            $company->forceFill(['approved_at' => now(), 'approved_by_user_id' => $reviewer->id]);
+            $company->forceFill(['approved_at' => now(), 'approved_by_user_id' => $reviewer?->id]);
 
             if ($company->company_type === CompanyType::Industrial) {
                 // M0-03: every formula starts with the 30-day trial; the requested plan is kept for the conversion.
@@ -56,7 +59,7 @@ final class ReviewCompany
      * @param  list<CompanyStatus>  $from
      * @param  callable(Company): mixed  $apply
      */
-    private function decide(Company $company, array $from, CompanyStatus $to, string $event, ?string $reason, callable $apply, User $reviewer): Company
+    private function decide(Company $company, array $from, CompanyStatus $to, string $event, ?string $reason, callable $apply, ?User $reviewer): Company
     {
         $company = DB::transaction(function () use ($company, $from, $to, $event, $reason, $apply, $reviewer) {
             $company = Company::query()->whereKey($company->id)->lockForUpdate()->firstOrFail();
@@ -69,7 +72,7 @@ final class ReviewCompany
             $company->forceFill(['status' => $to])->save();
 
             AuditLogger::record([
-                'company_id' => $company->id, 'actor_user_id' => $reviewer->id, 'event' => $event, 'tags' => ['platform_review'],
+                'company_id' => $company->id, 'actor_user_id' => $reviewer?->id, 'event' => $event, 'tags' => $reviewer === null ? ['platform_review', 'automatic'] : ['platform_review'],
                 'auditable_type' => 'companies', 'auditable_id' => $company->id, 'auditable_ulid' => $company->ulid,
                 'old_values' => ['status' => $previous->value], 'new_values' => array_filter(['status' => $to->value, 'reason' => $reason]),
             ]);

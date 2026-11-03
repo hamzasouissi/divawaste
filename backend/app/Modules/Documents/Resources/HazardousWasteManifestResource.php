@@ -31,6 +31,8 @@ final class HazardousWasteManifestResource extends JsonResource
             'manifest_number' => $this->manifest_number,
             'status' => $this->status,
             'pickup' => DB::table('pickups')->where('id', $this->pickup_id)->first(['ulid', 'pickup_number']),
+            // The archived document of a completed slip (the scan of the copy signed by hand, or the signed PDF): to open it.
+            'document' => ($archived = DB::table('documents')->where('id', $this->document_id)->whereNotNull('stored_file_id')->value('ulid')) === null ? null : ['ulid' => $archived],
             'regulatory_code' => app(ReferenceCodes::class)->code('regulatory_waste_codes', $this->regulatory_waste_code_id),
             'is_hazardous' => $this->is_hazardous,
             'waste_type' => ManifestWorkflow::designation($this->resource),

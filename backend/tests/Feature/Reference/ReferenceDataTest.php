@@ -19,7 +19,11 @@ class ReferenceDataTest extends TestCase
 
         $this->assertSame(3, DB::table('currencies')->count());
         $this->assertSame(4, DB::table('countries')->count());
-        $this->assertSame(14, DB::table('waste_catalog_items')->count(), 'M1-03 default types');
+        $this->assertSame(14, DB::table('waste_catalog_items')->whereJsonContains('industries', 'textile')->count()
+            + DB::table('waste_catalog_items')->whereIn('code', ['cardboard', 'plastic_films_bags', 'etp_sludge', 'oils', 'metals'])->count(), 'M1-03 default types');
+        // the other industries have their own (agriculture, food, metal, plastics, chemicals, construction)
+        $this->assertTrue(DB::table('waste_catalog_items')->where('code', 'manure')->whereJsonContains('industries', 'agriculture')->exists());
+        $this->assertTrue(DB::table('zone_types')->where('code', 'field')->whereJsonContains('industries', 'agriculture')->exists());
         $this->assertSame(1, DB::table('zone_types')->where('code', 'waste_storage')->where('is_waste_storage', true)->count());
         $this->assertSame(3, DB::table('currencies')->where('code', 'TND')->value('minor_unit'));
         $this->assertSame(['TN'], DB::table('countries')->where('is_signup_enabled', true)->pluck('iso2')->all());

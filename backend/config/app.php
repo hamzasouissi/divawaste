@@ -58,6 +58,12 @@ return [
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:4200'),
 
     /*
+    | A registration is approved as soon as its contact confirms the email, without waiting for the platform's review
+    | (demonstrations, pilots). Off by default: Diva Software reviews each account (M0-06).
+    */
+    'auto_approve_signups' => (bool) env('AUTO_APPROVE_SIGNUPS', false),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------

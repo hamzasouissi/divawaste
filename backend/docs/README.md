@@ -16,7 +16,7 @@
 | `screenshots/` | — | Captures of the real application used by the guides, by area |
 | [SETUP.md](SETUP.md) | Developers | Install, configure, seed, run the API and the Angular application, run the tests |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Developers | Modules, domain model, tenancy, authentication, authorization, workflows, files |
-| [API.md](API.md) | Front-end and integration developers | Conventions and the list of the 150 routes |
+| [API.md](API.md) | Front-end and integration developers | Conventions and a readable list of the routes (the generated `api/openapi.yaml` is complete) |
 | [OFFLINE_SYNC.md](OFFLINE_SYNC.md) | Developers | Workshop PWA, offline outbox, synchronisation protocol |
 | [OPERATIONS.md](OPERATIONS.md) | Whoever deploys and runs it | Deployment, queue, scheduler, storage, backups, security checklist |
 | [DECISIONS.md](DECISIONS.md) | Diva Software | Technical decisions and assumptions that need validation |

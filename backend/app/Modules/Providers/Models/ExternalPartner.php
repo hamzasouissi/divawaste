@@ -24,26 +24,34 @@ class ExternalPartner extends Model
 
     protected $fillable = [
         'ulid', 'legal_name', 'tax_id', 'address_line1', 'postal_code', 'city', 'phone', 'email', 'contact_name',
-        'is_transporter', 'is_recycler', 'is_eliminator', 'accreditation_reference', 'accreditation_expires_on', 'covers_hazardous',
+        'is_collector', 'is_transporter', 'is_recycler', 'is_sorter', 'accreditation_reference', 'accreditation_expires_on', 'covers_hazardous',
         'notes', 'is_active', 'created_by_user_id',
     ];
 
-    protected $attributes = ['is_transporter' => false, 'is_recycler' => false, 'is_eliminator' => false, 'covers_hazardous' => false, 'is_active' => true];
+    protected $attributes = ['is_collector' => false, 'is_transporter' => false, 'is_recycler' => false, 'is_sorter' => false, 'covers_hazardous' => false, 'is_active' => true];
 
     protected function casts(): array
     {
         return [
-            'is_transporter' => 'boolean', 'is_recycler' => 'boolean', 'is_eliminator' => 'boolean', 'covers_hazardous' => 'boolean',
+            'is_collector' => 'boolean', 'is_transporter' => 'boolean', 'is_recycler' => 'boolean', 'is_sorter' => 'boolean', 'covers_hazardous' => 'boolean',
             'is_active' => 'boolean', 'accreditation_expires_on' => 'date',
         ];
     }
 
     /**
-     * May receive waste (recycle or eliminate it), as opposed to only carrying it.
+     * May receive waste (collect, recycle or sort it), as opposed to only carrying it.
      */
     public function receives(): bool
     {
-        return $this->is_recycler || $this->is_eliminator;
+        return $this->is_collector || $this->is_recycler || $this->is_sorter;
+    }
+
+    /**
+     * Fetches the waste itself: a collector or a transporter.
+     */
+    public function carries(): bool
+    {
+        return $this->is_collector || $this->is_transporter;
     }
 
     /**

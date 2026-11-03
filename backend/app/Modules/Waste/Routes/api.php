@@ -14,6 +14,7 @@ use App\Modules\Sites\Models\Zone;
 use App\Modules\Sites\Support\StockQuery;
 use App\Modules\Tenancy\Rules\TenantExists;
 use App\Modules\Waste\Actions\CreateWasteLot;
+use App\Modules\Waste\Actions\LotComposition;
 use App\Modules\Waste\Actions\TransformLots;
 use App\Modules\Waste\Actions\TransitionLot;
 use App\Modules\Waste\DTOs\GroupWasteLotsData;
@@ -23,6 +24,7 @@ use App\Modules\Waste\Models\WasteLot;
 use App\Modules\Waste\Models\WasteLotEvent;
 use App\Modules\Waste\Requests\StoreWasteLotRequest;
 use App\Modules\Waste\Resources\WasteLotResource;
+use App\Modules\Waste\Rules\ValidComposition;
 use App\Modules\Waste\Support\LotLabel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -111,8 +113,13 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             ->where('pl.waste_lot_id', $lot->id)->orderByDesc('pl.id')
             ->first(['p.ulid', 'p.pickup_number', 'p.status', DB::raw('COALESCE(c.legal_name, xp.legal_name) as provider'), 'pl.line_status', 'pl.departure_weight_kg', 'pl.received_weight_kg']);
 
+        // The listing of the bourse the lot is offered in, while it is a draft or published.
+        $listing = DB::table('marketplace_listing_lots as ml')->join('marketplace_listings as l', 'l.id', '=', 'ml.marketplace_listing_id')
+            ->where('ml.waste_lot_id', $lot->id)->where('ml.is_active_flag', true)->first(['l.ulid', 'l.listing_number', 'l.status']);
+
         return (new WasteLotResource($lot))->additional(['meta' => [
             'composition' => $materials,
+            'listing' => $listing,
             'parents' => $lineage('child_lot_id', 'parent_lot_id'),
             'children' => $lineage('parent_lot_id', 'child_lot_id'),
             'pickup' => $pickup,
@@ -268,6 +275,46 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
         return new WasteLotResource($lot);
     })->name('lots.packages');
+
+    /*
+     * What the lot is made of, entered or corrected on the lot itself — for a company that does not follow its raw
+     * materials or its production, this is where the composition is known. Allowed while the lot is on site (a pickup
+     * that has not left follows); once it has left, its pickup and its tracking slip keep what it carried.
+     */
+    Route::put('lots/{lot}/composition', function (Request $request, WasteLot $lot) {
+        abort_unless($request->user()->can('lots.update', $lot->site_id), 403);
+        $input = $request->validate([
+            // An empty list = the composition is not known.
+            'composition' => ['present', 'array'],
+            'composition.*.material' => ['required', 'string', Rule::exists('materials', 'code')->where('is_active', true)],
+            'composition.*.pct' => ['required', 'decimal:0,2'],
+            'version' => ['nullable', 'integer'],
+        ]);
+        if ($input['composition'] !== []) {
+            $request->validate(['composition' => [new ValidComposition]]);
+        }
+
+        $lot = DB::transaction(function () use ($lot, $input, $request) {
+            $lot = WasteLot::query()->whereKey($lot->id)->lockForUpdate()->firstOrFail();
+            if (! in_array($lot->status, StockQuery::ON_SITE, true)) {
+                throw new BusinessRuleViolation('LOT_COMPOSITION_FROZEN', "Lot {$lot->lot_number} has left the site: its pickup and its tracking slip keep the composition it left with.");
+            }
+            if (isset($input['version']) && (int) $input['version'] !== $lot->version) {
+                throw new BusinessRuleViolation('LOT_VERSION_CONFLICT', 'This lot was modified in the meantime.');
+            }
+            $previous = ['label' => $lot->composition_label, 'source' => $lot->composition_source];
+            $lines = array_map(fn (array $line) => ['material' => (string) $line['material'], 'pct' => (string) $line['pct']], $input['composition']);
+            LotComposition::replace($lot, $lines);
+            $lot->forceFill(['updated_by_user_id' => $request->user()->id])->save();
+            WasteLotEvent::record($lot, 'composition_changed', ['user_id' => $request->user()->id, 'payload' => [
+                'previous' => $previous['label'], 'previous_source' => $previous['source'], 'composition' => $lot->composition_label,
+            ]]);
+
+            return $lot;
+        });
+
+        return new WasteLotResource($lot);
+    })->name('lots.composition');
 
     // M2-06.
     Route::post('lots/{lot}/split', function (Request $request, WasteLot $lot, TransformLots $action, EvaluateStockThresholds $thresholds) {

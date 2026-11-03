@@ -96,24 +96,67 @@ class RegistrationAndReviewTest extends TestCase
         // M0-07: nothing configured yet, a step can be skipped then resumed.
         $onboarding = $this->withToken($login->json('data.access_token'))->getJson('/api/v1/onboarding')->assertOk();
         $this->assertFalse($onboarding->json('data.completed'));
-        $this->assertSame(['sites', 'waste_types', 'users', 'providers'], array_column($onboarding->json('data.steps'), 'key'));
+        $this->assertSame(['profile', 'sites', 'waste_types', 'users', 'providers'], array_column($onboarding->json('data.steps'), 'key'));
         $this->withToken($login->json('data.access_token'))->putJson('/api/v1/onboarding/steps/providers', ['skipped' => true])
-            ->assertOk()->assertJsonPath('data.steps.3.skipped', true);
+            ->assertOk()->assertJsonPath('data.steps.4.skipped', true);
         $this->withToken($login->json('data.access_token'))->putJson('/api/v1/onboarding/steps/providers', ['skipped' => false])
-            ->assertOk()->assertJsonPath('data.steps.3.skipped', false);
+            ->assertOk()->assertJsonPath('data.steps.4.skipped', false);
+
+        // A new company starts with the basics: production, customs and bourse wait for its answers, which switch on
+        // what it uses (and off again what it does not).
+        $token = $login->json('data.access_token');
+        $this->withToken($token)->getJson('/api/v1/company')->assertJsonPath('data.modules.production', false)->assertJsonPath('data.profile', null);
+        $this->withToken($token)->putJson('/api/v1/company/modules', ['profile' => ['erp' => false, 'production' => true, 'hazardous' => false, 'customs' => true, 'marketplace' => false]])
+            ->assertOk()->assertJsonPath('data.modules.production', true)->assertJsonPath('data.modules.authorizations', true);
+        $this->withToken($token)->putJson('/api/v1/company/modules', ['profile' => ['erp' => false, 'production' => false, 'hazardous' => true, 'customs' => false, 'marketplace' => true]])
+            ->assertOk()
+            ->assertJsonPath('data.modules.production', false)->assertJsonPath('data.modules.production_finance', false)
+            ->assertJsonPath('data.modules.authorizations', false)->assertJsonPath('data.modules.marketplace', true)
+            ->assertJsonPath('data.modules.contracts', true)->assertJsonPath('data.profile.hazardous', true);
+        $this->withToken($token)->getJson('/api/v1/onboarding')->assertJsonPath('data.steps.0.done', true);
+        // Costs need production: switching production off takes them along.
+        $this->withToken($token)->putJson('/api/v1/company/modules', ['modules' => ['production' => true, 'production_finance' => true]])
+            ->assertJsonPath('data.modules.production_finance', true);
+        $this->withToken($token)->putJson('/api/v1/company/modules', ['modules' => ['production' => false]])
+            ->assertJsonPath('data.modules.production_finance', false);
+    }
+
+    public function test_with_automatic_approval_a_confirmed_email_opens_the_account(): void
+    {
+        config(['app.auto_approve_signups' => true]);
+        $response = $this->postJson('/api/v1/auth/register', $this->industrialPayload())->assertCreated();
+        $company = Company::query()->where('ulid', $response->json('data.ulid'))->firstOrFail();
+        $user = User::query()->where('email', 'amira@textile.example')->firstOrFail();
+
+        $this->postJson('/api/v1/auth/email/verify', EmailVerification::parameters($user))->assertOk()
+            ->assertJsonPath('data.approved', true);
+
+        $this->assertSame('active', $company->fresh()->status->value);
+        $this->assertNull($company->fresh()->approved_by_user_id);
+        Notification::assertSentTo($user, CompanyStatusNotification::class, fn (CompanyStatusNotification $n) => $n->event === 'company_approved');
+        $this->assertDatabaseHas('company_subscriptions', ['company_id' => $company->id, 'status' => 'trialing', 'is_current' => true]);
+        $this->assertDatabaseHas('audit_logs', ['company_id' => $company->id, 'event' => 'company_approved', 'actor_user_id' => null]);
+        $this->postJson('/api/v1/auth/login', ['email' => $user->email, 'password' => self::PASSWORD])->assertOk()
+            ->assertJsonPath('data.company.ulid', $company->ulid);
     }
 
     public function test_registration_is_validated(): void
     {
-        $this->postJson('/api/v1/auth/register', $this->industrialPayload())->assertCreated();
+        // The sector is said at sign-up: the catalogue and zone types of the setup follow it.
+        $farm = $this->industrialPayload();
+        $farm['company']['industry'] = 'agriculture';
+        $farm['company']['activities'] = [];
+        // Production, customs and bourse wait for the answers of the first onboarding step.
+        $this->postJson('/api/v1/auth/register', $farm)->assertCreated()->assertJsonPath('data.industry', 'agriculture')
+            ->assertJsonPath('data.modules.production', false)->assertJsonPath('data.modules.marketplace', false)->assertJsonPath('data.modules.contracts', true);
 
         $payload = $this->industrialPayload();
         $payload['contact']['password'] = 'short';
         $payload['accept_terms'] = false;
-        $payload['company']['activities'] = [];
+        unset($payload['company']['industry']);
 
         $this->postJson('/api/v1/auth/register', $payload)->assertUnprocessable()->assertJsonValidationErrors([
-            'company.tax_id', 'contact.email', 'contact.password', 'accept_terms', 'company.activities',
+            'company.tax_id', 'contact.email', 'contact.password', 'accept_terms', 'company.industry',
         ]);
         $this->assertSame(1, Company::query()->count());
     }
@@ -196,7 +239,7 @@ class RegistrationAndReviewTest extends TestCase
             'company_type' => 'industrial',
             'company' => [
                 'legal_name' => 'Textile du Cap Bon', 'tax_id' => '1234567A', 'country' => 'TN',
-                'activities' => ['weaving', 'garment_making'], 'city' => 'Nabeul',
+                'industry' => 'textile', 'activities' => ['weaving', 'garment_making'], 'city' => 'Nabeul',
             ],
             'contact' => ['first_name' => 'Amira', 'last_name' => 'Trabelsi', 'email' => 'Amira@Textile.example', 'phone' => '+21620000001', 'password' => self::PASSWORD],
             'plan' => 'per_site',

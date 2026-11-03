@@ -113,6 +113,71 @@ Not provided by the application. To set up on the infrastructure:
 3. A monthly restore into an empty environment, followed by `php artisan test` against it or a manual check of the
    dashboard and of one archived document.
 
+## The hosted demo (46.62.254.192, port 8088)
+
+One server holds the demo: `/var/www/divawaste-textile` is a clone of github.com/hamzasouissi/divawaste (`backend/`,
+`frontend/`, `docs/`), `web/` holds the built screens, nginx serves `web/` on port 8088 and sends `/api`, `/sanctum` and
+`/up` to `backend/public/index.php`; `/guides/` is `docs/guides/` (the PDF guides and their index page). MySQL database
+`divawaste_textile`, queue worker `divawaste-textile-worker` (supervisor), scheduler in www-data's crontab.
+
+### Update it
+
+On the PC: commit, push `main`, build the screens and copy them (and, once, the Pantone files):
+
+```powershell
+cd C:\Projects\DIVA-WASTE-FRONTEND-LAB\frontend
+npm run build
+scp -r dist\frontend\browser root@46.62.254.192:/var/www/divawaste-textile/web-new
+scp -r C:\Users\DELL\Downloads\pantones-master\pantones-master root@46.62.254.192:/root/pantones   # once
+```
+
+On the server, as root:
+
+```bash
+cd /var/www/divawaste-textile && git fetch origin \
+  && git show origin/main:backend/scripts/server/update-demo.sh > /tmp/update-demo.sh && bash /tmp/update-demo.sh
+```
+
+The script (`backend/scripts/server/update-demo.sh`) stops at the first error. In order: a backup in
+`/root/backups/divawaste-textile/<date-time>/` (database dump, `.env`, `storage/app`, `web/`, nginx site, commit),
+`git pull --ff-only`, `composer install --no-dev`, `migrate --force`, `.env` settings (`AUTO_APPROVE_SIGNUPS=true`,
+`DAVI_URL`, a `DAVI_KEY` if there is none — printed once at the end), the ANGed lists, the Pantone catalogue (if
+`/root/pantones` exists), the new screens (if `web-new/` exists; the previous ones go to `web.previous/`), the nginx
+`/guides/` location and a 300 s FastCGI timeout (checked with `nginx -t`, put back if refused), caches, PHP-FPM reload,
+worker restart, scheduler, then checks (`/up`, `/`, `/guides/`, counts).
+
+### Restore the demo from a backup
+
+```bash
+B=/root/backups/divawaste-textile/<date-time>          # the folder the update printed
+cd /var/www/divawaste-textile
+git checkout "$(cat $B/commit.txt)" -- . && git log --oneline -1   # the code of that moment (main stays as it is on GitHub)
+gunzip -c $B/divawaste_textile.sql.gz | mysql divawaste_textile    # the database as it was (replaces the current one)
+cp $B/backend.env backend/.env
+tar -xzf $B/storage-app.tar.gz -C backend/storage
+rm -rf web && tar -xzf $B/web.tar.gz -C .
+cp $B/nginx-site.conf /etc/nginx/sites-available/divawaste-textile && nginx -t && systemctl reload nginx
+cd backend && COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev -q && php artisan optimize:clear && php artisan config:cache && php artisan route:cache
+systemctl reload php8.3-fpm && supervisorctl restart divawaste-textile-worker
+```
+
+The next update needs `git checkout main` first. On GitHub, the tag `backup-2026-11-03` marks `main` as it was
+before the November 2026 update.
+
+### The assistant on the demo
+
+The model and DAVI run on the PC (no GPU on the server). `docs/platform-intelligence/davi/serve-server.ps1` (frontend
+lab repository) opens an SSH tunnel — on the server, `127.0.0.1:8040` leads to the PC — and starts DAVI against the
+server's API for every account (`DAVI_ANY_ACCOUNT=1`). It asks once for the server's `DAVI_KEY` and keeps it in
+`%USERPROFILE%\.davi\server-key`. While the PC or the tunnel is off, the assistant answers that it is unavailable; the
+rest of the application works.
+
+### Emails
+
+Gmail SMTP (`MAIL_MAILER=smtp`, `MAIL_HOST=smtp.gmail.com`, port 587, an app password of the account). Emails are
+queued: the worker sends them. `php artisan mail:test address@example.com` sends one at once; `php artisan mail:outbox`
+lists the last ones. Gmail sends about 500 emails a day from a personal account.
+
 ## Security checklist before opening to clients
 
 - HTTPS only, HSTS, `SESSION_SECURE_COOKIE=true`.

@@ -27,6 +27,23 @@ return [
         'site_exceeded' => ['title' => 'Capacité du site dépassée — :site', 'body' => 'Le site contient :detail, toutes zones confondues : son poids maximal est dépassé de :excess. Les lots continuent d\'être acceptés ; planifiez un enlèvement.'],
         'site_unverifiable' => ['title' => 'Capacité du site non vérifiable — :site', 'body' => 'Poids connu sur le site : :detail, mais :missing lot(s) ne sont pas pesés (:lots). Ce n\'est pas un dépassement constaté ; la capacité ne peut pas être dite respectée : pesez ces lots.'],
     ],
+    'contract' => [
+        'activated' => ['title' => 'Contrat :number en vigueur', 'body' => ':company a mis en vigueur le contrat « :title ».'],
+        'ending_soon' => ['title' => 'Contrat :number bientôt échu', 'body' => 'Le contrat « :title » avec :company prend fin le :date.'],
+        'pickup_due' => ['title' => 'Enlèvement prévu :when : contrat :number', 'body' => "Le contrat « :title » avec :partner prévoit un enlèvement le :date, et aucun n'est demandé : préparez la demande."],
+        'terminated' => ['title' => 'Contrat :number résilié', 'body' => ':company a mis fin au contrat « :title » au :date.'],
+    ],
+    'marketplace' => [
+        'listing_published' => ['title' => 'Nouvelle annonce sur la bourse — :title', 'body' => 'L\'annonce :number (:waste_type) correspond aux déchets que vous acceptez. Consultez-la et faites une offre.'],
+        'offer_received' => ['title' => 'Nouvelle offre — annonce :number', 'body' => ':buyer a fait une offre sur l\'annonce « :title ». Acceptez-la, refusez-la ou faites une contre-proposition.'],
+        'counter_offer' => ['title' => 'Contre-proposition — annonce :number', 'body' => 'Une nouvelle proposition attend votre réponse sur l\'annonce « :title ».'],
+        'offer_accepted' => ['title' => 'Proposition acceptée — annonce :number', 'body' => 'L\'accord sur l\'annonce « :title » est conclu. Un enlèvement en brouillon a été préparé au prix convenu.'],
+        'offer_refused' => ['title' => 'Proposition refusée — annonce :number', 'body' => 'La négociation sur l\'annonce « :title » a été refusée.'],
+        'offer_withdrawn' => ['title' => 'Offre retirée — annonce :number', 'body' => ':buyer a retiré son offre sur l\'annonce « :title ».'],
+        'listing_closed' => ['title' => 'Annonce close — :number', 'body' => 'L\'annonce « :title » est close : :reason. Votre négociation est terminée.'],
+        'reasons' => ['sold_to_another' => 'les lots ont été cédés à un autre preneur', 'listing_cancelled' => 'le vendeur a retiré l\'annonce', 'listing_expired' => 'sa date de clôture est passée'],
+        'pickup_note' => 'Accord de la bourse, annonce :number : le prix convenu est appliqué à la réception.',
+    ],
     'pickup' => [
         'requested' => [
             'title' => 'Nouvelle demande d\'enlèvement :number',

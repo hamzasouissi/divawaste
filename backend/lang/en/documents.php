@@ -71,6 +71,7 @@ return [
         'loose' => 'loose',
         'plus_unweighed' => '+ :count lot(s) not weighed',
         'lot_number' => 'Lot no.',
+        'composition' => 'Composition',
         'signatures' => 'Signatures',
         'method' => 'Method',
         'electronic' => 'Electronic',

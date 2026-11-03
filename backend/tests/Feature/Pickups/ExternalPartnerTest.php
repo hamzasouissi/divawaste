@@ -89,6 +89,13 @@ class ExternalPartnerTest extends TestCase
         $this->client()->postJson("/api/v1/pickups/{$alone}/cancel", ['reason' => 'erreur'])->assertOk();
         $wrong = $this->client()->postJson('/api/v1/pickups', $base + ['external_provider' => $carrier['ulid']])->assertCreated()->json('data.ulid');
         $this->client()->postJson("/api/v1/pickups/{$wrong}/submit")->assertConflict()->assertJsonPath('code', 'PARTNER_ROLE_MISMATCH');
+        $this->client()->postJson("/api/v1/pickups/{$wrong}/cancel", ['reason' => 'erreur'])->assertOk();
+
+        // A collector without an account fetches the waste itself and receives it: no transporter to name.
+        $collector = $this->partner(['legal_name' => 'Collecte Ben Ali', 'roles' => ['collector']]);
+        $this->assertSame(['collector'], $collector['roles']);
+        $fetched = $this->client()->postJson('/api/v1/pickups', $base + ['external_provider' => $collector['ulid']])->assertCreated()->json('data.ulid');
+        $this->client()->postJson("/api/v1/pickups/{$fetched}/submit")->assertOk();
     }
 
     public function test_the_company_records_every_stage_and_the_slip_is_signed_on_paper(): void
@@ -146,13 +153,13 @@ class ExternalPartnerTest extends TestCase
 
     public function test_hazardous_waste_needs_a_recorded_authorisation_and_a_receiver_with_an_account_keeps_its_own_stages(): void
     {
-        $eliminator = $this->partner(['legal_name' => 'Elim', 'roles' => ['eliminator', 'transporter']]);
+        $sorter = $this->partner(['legal_name' => 'Tri Textile', 'roles' => ['sorter', 'transporter']]);
         $lot = $this->lot('20', hazardous: true);
-        $pickup = $this->client()->postJson('/api/v1/pickups', ['site' => $this->site->ulid, 'external_provider' => $eliminator['ulid'],
+        $pickup = $this->client()->postJson('/api/v1/pickups', ['site' => $this->site->ulid, 'external_provider' => $sorter['ulid'],
             'requested_date' => now()->toDateString(), 'lots' => [$lot['ulid']]])->assertCreated()->json('data.ulid');
 
         $this->client()->postJson("/api/v1/pickups/{$pickup}/submit")->assertConflict()->assertJsonPath('code', 'PROVIDER_NOT_ELIGIBLE');
-        $this->client()->putJson("/api/v1/external-partners/{$eliminator['ulid']}", ['legal_name' => 'Elim', 'roles' => ['eliminator', 'transporter'],
+        $this->client()->putJson("/api/v1/external-partners/{$sorter['ulid']}", ['legal_name' => 'Tri Textile', 'roles' => ['sorter', 'transporter'],
             'accreditation_reference' => 'AUT-77', 'accreditation_expires_on' => now()->addMonth()->toDateString(), 'covers_hazardous' => true])->assertOk();
         $this->client()->postJson("/api/v1/pickups/{$pickup}/submit")->assertOk();
 

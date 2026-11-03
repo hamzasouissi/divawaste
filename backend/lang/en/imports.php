@@ -6,7 +6,7 @@ return [
         'clients' => 'Clients', 'suppliers' => 'Suppliers', 'materials' => 'Raw materials', 'articles' => 'Articles',
         'orders' => 'Orders', 'manufacturing_orders' => 'Manufacturing orders',
         'received_lots' => 'Received lots (materials)', 'consumptions' => 'Materials consumed per order', 'produced_lots' => 'Produced lots',
-        'expenses' => 'Production expenses', 'invoices' => 'Customer invoices',
+        'expenses' => 'Production expenses', 'invoices' => 'Customer invoices', 'waste_lots' => 'Waste lots',
     ],
     'fields' => [
         'clients' => ['code' => 'Code', 'name' => 'Name', 'country_code' => 'Country (code)', 'contact_name' => 'Contact', 'email' => 'Email', 'phone' => 'Phone'],
@@ -50,6 +50,11 @@ return [
             'number' => 'Invoice number', 'customer_order' => 'Order number', 'amount' => 'Amount excl. tax', 'kind' => 'Type (invoice, credit note)', 'issued_on' => 'Date',
             'manufacturing_order' => 'Manufacturing order number', 'currency' => 'Currency',
         ],
+        'waste_lots' => [
+            'site' => 'Site', 'zone' => 'Zone', 'waste_type' => 'Waste type', 'net_weight_kg' => 'Weight (kg)', 'weight_estimated' => 'Estimated weight (yes / no)',
+            'quantity' => 'Quantity', 'unit' => 'Unit (kg, t, l, m³, piece)', 'packaging' => 'Packaging', 'package_count' => 'Number of packages', 'generated_at' => 'Lot date',
+            'manufacturing_order' => 'MO number', 'step' => 'Production step', 'notes' => 'Remarks', 'external_reference' => 'Your lot reference',
+        ],
     ],
     'errors' => [
         'amount_mismatch' => 'The amount does not match the quantity multiplied by the unit price.',
@@ -64,11 +69,21 @@ return [
         'unknown' => 'Unknown :what: ":value".',
         'unit' => 'Unknown unit: ":value" (expected: m, kg or piece).',
         'unexpected' => 'This line could not be saved.',
+        'site_rights' => 'You may not create lots on the site ":site".',
+        'zone_needed' => 'The site ":site" has several zones and no storage area: give the zone.',
+        'lot_unit' => 'Unknown unit: ":value" (expected: kg, t, l, m³ or piece).',
+        'yes_no' => '":field": ":value" is neither yes nor no.',
         'format' => [
             'integer' => '":value" is not a whole number.',
             'decimal' => '":value" is not a number.',
             'date' => '":value" is not a recognised date (DD/MM/YYYY or YYYY-MM-DD).',
             'text' => '":value" is not valid.',
+        ],
+    ],
+    'feeds' => [
+        'errors' => [
+            'address' => 'The address must start with https:// and lead to a server reachable from the internet.',
+            'download' => 'The address could not be read (server not found or error response).',
         ],
     ],
 ];

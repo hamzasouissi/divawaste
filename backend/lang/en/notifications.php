@@ -26,6 +26,23 @@ return [
         'site_exceeded' => ['title' => 'Site capacity exceeded — :site', 'body' => 'The site holds :detail, all zones together: its maximum weight is exceeded by :excess. Lots are still accepted; plan a pickup.'],
         'site_unverifiable' => ['title' => 'Site capacity cannot be verified — :site', 'body' => 'Known weight on the site: :detail, but :missing lot(s) are not weighed (:lots). This is not a confirmed exceedance; the capacity cannot be called respected: weigh these lots.'],
     ],
+    'contract' => [
+        'activated' => ['title' => 'Contract :number in force', 'body' => ':company put contract ":title" in force.'],
+        'ending_soon' => ['title' => 'Contract :number ends soon', 'body' => 'Contract ":title" with :company ends on :date.'],
+        'pickup_due' => ['title' => 'Pickup due :when: contract :number', 'body' => 'Contract ":title" with :partner plans a pickup on :date and none is requested: prepare the request.'],
+        'terminated' => ['title' => 'Contract :number terminated', 'body' => ':company ended contract ":title" on :date.'],
+    ],
+    'marketplace' => [
+        'listing_published' => ['title' => 'New listing on the bourse — :title', 'body' => 'Listing :number (:waste_type) matches the waste you accept. Read it and make an offer.'],
+        'offer_received' => ['title' => 'New offer — listing :number', 'body' => ':buyer made an offer on listing ":title". Accept it, refuse it or make a counter-offer.'],
+        'counter_offer' => ['title' => 'Counter-offer — listing :number', 'body' => 'A new proposal waits for your answer on listing ":title".'],
+        'offer_accepted' => ['title' => 'Proposal accepted — listing :number', 'body' => 'The deal on listing ":title" is made. A draft pickup was prepared at the agreed price.'],
+        'offer_refused' => ['title' => 'Proposal refused — listing :number', 'body' => 'The negotiation on listing ":title" was refused.'],
+        'offer_withdrawn' => ['title' => 'Offer withdrawn — listing :number', 'body' => ':buyer withdrew its offer on listing ":title".'],
+        'listing_closed' => ['title' => 'Listing closed — :number', 'body' => 'Listing ":title" is closed: :reason. Your negotiation has ended.'],
+        'reasons' => ['sold_to_another' => 'the lots went to another buyer', 'listing_cancelled' => 'the seller withdrew the listing', 'listing_expired' => 'its closing date passed'],
+        'pickup_note' => 'Deal of the bourse, listing :number: the agreed price is applied at reception.',
+    ],
     'pickup' => [
         'requested' => ['title' => 'New pickup request :number', 'body' => ':company requests a pickup on :date at site :site (:lots lot(s): :quantity).'],
         'confirmed' => ['title' => 'Pickup :number confirmed', 'body' => ':provider confirmed pickup :number for :date.'],

@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class Onboarding
 {
-    public const STEPS = ['sites', 'waste_types', 'users', 'providers'];
+    /** profile: the first questions (ERP, production, hazardous waste, customs, bourse) that choose the modules. */
+    public const STEPS = ['profile', 'sites', 'waste_types', 'users', 'providers'];
 
     /**
      * @return array{completed: bool, dismissed: bool, steps: list<array{key: string, done: bool, skipped: bool, count: int}>}
@@ -23,6 +24,7 @@ final class Onboarding
         $skipped = $state['skipped'] ?? [];
 
         $counts = [
+            'profile' => isset($company->settings['profile']) ? 1 : 0,
             'sites' => DB::table('sites')->where('company_id', $company->id)->whereNull('deleted_at')->count(),
             'waste_types' => DB::table('waste_types')->where('company_id', $company->id)->whereNull('deleted_at')->count(),
             // The registering administrator does not count: the step is about bringing the team in.

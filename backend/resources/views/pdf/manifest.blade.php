@@ -14,6 +14,13 @@
     $unweighed = collect($payload['lots'])->filter(fn ($lot) => ($lot['unit'] ?? null) === null && $lot['weight_kg'] === null)->count();
     $electronic = fn ($signature) => $signature->status === 'signed' && $signature->signature_method !== 'paper';
     $paper = fn ($signature) => $signature->status === 'signed' && $signature->signature_method === 'paper';
+    // What each lot is made of, with the names of the materials in the language of the document.
+    $names = \Illuminate\Support\Facades\DB::table('materials')->pluck('name', 'code')->map(fn ($name) => json_decode((string) $name, true));
+    $composition = fn (?array $lines) => $lines === null || $lines === [] ? '—' : collect($lines)
+        ->map(fn ($line) => ($names[$line['material']][app()->getLocale()] ?? $names[$line['material']]['fr'] ?? $line['material']).' '.rtrim(rtrim(number_format((float) $line['pct'], 2, ',', ' '), '0'), ',').' %')->implode(', ');
+    $composed = collect($payload['lots'])->contains(fn ($lot) => ($lot['composition'] ?? null) !== null);
+    // When every lot of the slip is made of the same, it is said once for the waste.
+    $same = $composed && collect($payload['lots'])->map(fn ($lot) => json_encode($lot['composition'] ?? null))->unique()->count() === 1 ? ($payload['lots'][0]['composition'] ?? null) : null;
 @endphp
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}">
@@ -54,13 +61,14 @@
         {{ __('documents.manifest.code') }}{{ __('documents.colon') }}<strong>{{ $payload['waste_code'] }}</strong> — {{ $payload['waste_label'] }}<br>
     @endif
     {{ __('documents.manifest.designation') }}{{ __('documents.colon') }}{{ $payload['waste_type'] }} · {{ __('documents.manifest.packages') }}{{ __('documents.colon') }}{{ $payload['package_count'] ?? __('documents.manifest.loose') }} · {{ __('documents.manifest.departure_weight') }}{{ __('documents.colon') }}<strong>{{ $weighed ? $kg($payload['declared_weight_kg']) : __($counted ? 'documents.manifest.not_weighed' : 'documents.manifest.not_weighed_lot') }}</strong>@if ($weighed && $unweighed > 0) {{ __('documents.manifest.plus_unweighed', ['count' => $unweighed]) }}@endif
+    @if ($same !== null)<br>{{ __('documents.manifest.composition') }}{{ __('documents.colon') }}{{ $composition($same) }}@endif
 </div>
 
 <table class="data">
-    <thead><tr><th>{{ __('documents.manifest.lot_number') }}</th><th class="num">{{ __($counted ? 'documents.manifest.departure_quantity' : 'documents.manifest.departure_weight') }}</th><th class="num">{{ __($counted ? 'documents.manifest.received_quantity' : 'documents.manifest.received_weight') }}</th></tr></thead>
+    <thead><tr><th>{{ __('documents.manifest.lot_number') }}</th>@if ($composed)<th>{{ __('documents.manifest.composition') }}</th>@endif<th class="num">{{ __($counted ? 'documents.manifest.departure_quantity' : 'documents.manifest.departure_weight') }}</th><th class="num">{{ __($counted ? 'documents.manifest.received_quantity' : 'documents.manifest.received_weight') }}</th></tr></thead>
     <tbody>
     @foreach ($payload['lots'] as $lot)
-        <tr><td>{{ $lot['lot_number'] }}</td><td class="num">{{ $measure($lot['weight_kg'], $lot['quantity'] ?? null, $lot['unit'] ?? null, true) }}</td><td class="num">{{ $measure($lot['received_weight_kg'], $lot['received_quantity'] ?? null, $lot['unit'] ?? null) }}</td></tr>
+        <tr><td>{{ $lot['lot_number'] }}</td>@if ($composed)<td>{{ $composition($lot['composition'] ?? null) }}</td>@endif<td class="num">{{ $measure($lot['weight_kg'], $lot['quantity'] ?? null, $lot['unit'] ?? null, true) }}</td><td class="num">{{ $measure($lot['received_weight_kg'], $lot['received_quantity'] ?? null, $lot['unit'] ?? null) }}</td></tr>
     @endforeach
     </tbody>
 </table>

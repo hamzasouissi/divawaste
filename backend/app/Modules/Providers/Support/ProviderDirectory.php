@@ -28,7 +28,7 @@ final class ProviderDirectory
             ->when($filter['search'] ?? null, fn ($query, $value) => $query->where('c.legal_name', 'like', '%'.addcslashes($value, '%_\\').'%'))
             ->when($filter['partners_only'] ?? false, fn ($query) => $query->where('pp.status', 'active'))
             ->orderByRaw("pp.status = 'active' desc")->orderBy('c.legal_name')
-            ->get(['c.id', 'c.ulid', 'c.legal_name', 'c.city', 'p.is_collector', 'p.is_transporter', 'p.is_recycler', 'p.is_eliminator',
+            ->get(['c.id', 'c.ulid', 'c.legal_name', 'c.city', 'p.is_collector', 'p.is_transporter', 'p.is_recycler', 'p.is_sorter',
                 'p.description', 'p.service_area', 'p.public_contact_name', 'p.public_contact_email', 'p.public_contact_phone',
                 'pp.ulid as partnership', 'pp.status as partnership_status']);
 
@@ -71,7 +71,7 @@ final class ProviderDirectory
                 'city' => $provider->city,
                 'roles' => array_keys(array_filter([
                     'collector' => $provider->is_collector, 'transporter' => $provider->is_transporter,
-                    'recycler' => $provider->is_recycler, 'eliminator' => $provider->is_eliminator,
+                    'recycler' => $provider->is_recycler, 'sorter' => $provider->is_sorter,
                 ])),
                 'description' => $provider->description,
                 'service_area' => $provider->service_area,

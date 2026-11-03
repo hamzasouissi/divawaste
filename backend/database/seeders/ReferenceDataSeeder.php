@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Modules\Catalog\Support\Colors;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Global reference data defined by the cahier (idempotent: upsert on natural keys).
@@ -64,6 +65,7 @@ class ReferenceDataSeeder extends Seeder
             'pallet' => ['Palette', 'Pallet'],
             'container' => ['Conteneur', 'Container'],
             'bulk' => ['Vrac', 'Bulk'],
+            'roll' => ['Rouleau', 'Roll'],
         ]));
 
         $this->upsert('units', 'code', [
@@ -129,6 +131,9 @@ class ReferenceDataSeeder extends Seeder
         ]));
 
         $this->seedCatalog();
+        if (Schema::hasColumn('zone_types', 'industries')) {
+            $this->industries();
+        }
 
         $this->upsert('subscription_plans', 'code', [[
             'code' => 'trial',
@@ -181,6 +186,92 @@ class ReferenceDataSeeder extends Seeder
         }
 
         $this->upsert('waste_catalog_items', 'code', $rows);
+    }
+
+    /**
+     * Industries beyond textile (2026-10-30): which zone types, waste families and catalogue items belong to which
+     * industry (none named = every industry), and those of the other industries. Codes of the new catalogue items are
+     * provisional like the others (to be validated by Diva Software, P-21). Run by the seed and by the migration
+     * that adds the column, on a database that already has its reference data.
+     */
+    public function industries(): void
+    {
+        $tag = fn (string $table, array $codes, ?array $industries) => DB::table($table)->whereIn('code', $codes)
+            ->update(['industries' => $industries === null ? null : json_encode($industries)]);
+
+        // textile only: its workshops, its families and its wastes; the rest serves every industry
+        $tag('zone_types', ['cutting', 'sewing', 'dyeing', 'finishing', 'spinning', 'weaving', 'knitting'], ['textile']);
+        $tag('waste_families', ['textile_fibre', 'textile_product'], ['textile']);
+        $tag('waste_catalog_items', ['cutting_scraps', 'selvedges', 'yarn_waste', 'garment_rejects', 'roll_ends', 'downgraded_pieces', 'cones', 'dye_residues', 'needles'], ['textile']);
+
+        $zones = [
+            'production' => ['Atelier de production', 'Production workshop', ['agriculture', 'food', 'metal', 'plastics', 'chemicals', 'other']],
+            'reception' => ['Réception', 'Receiving area', null],
+            'packing' => ['Conditionnement', 'Packing', ['agriculture', 'food', 'plastics', 'chemicals', 'other']],
+            'field' => ['Exploitation, parcelles', 'Fields, plots', ['agriculture']],
+            'livestock' => ["Bâtiment d'élevage", 'Livestock building', ['agriculture']],
+            'cold_room' => ['Chambre froide', 'Cold room', ['food', 'agriculture']],
+            'machining' => ['Usinage', 'Machining', ['metal']],
+            'paint_shop' => ['Peinture, traitement de surface', 'Painting, surface treatment', ['metal', 'plastics', 'construction']],
+            'laboratory' => ['Laboratoire', 'Laboratory', ['chemicals', 'food']],
+            'worksite' => ['Chantier', 'Worksite', ['construction']],
+        ];
+        $order = (int) DB::table('zone_types')->max('sort_order');
+        foreach ($zones as $code => [$fr, $en, $industries]) {
+            DB::table('zone_types')->updateOrInsert(['code' => $code], ['name' => $this->t($fr, $en), 'industries' => $industries === null ? null : json_encode($industries),
+                'is_active' => true, 'sort_order' => $order += 10, 'updated_at' => now()] + (DB::table('zone_types')->where('code', $code)->exists() ? [] : ['created_at' => now()]));
+        }
+
+        $families = [
+            'organic' => ['Déchets organiques', 'Organic waste', ['agriculture', 'food', 'other']],
+            'agrochemical' => ['Produits agrochimiques', 'Agrochemicals', ['agriculture']],
+            'plastic' => ['Plastiques', 'Plastics', null],
+            'construction' => ['Déchets du BTP', 'Construction waste', ['construction']],
+            'wood' => ['Bois', 'Wood', null],
+        ];
+        $order = (int) DB::table('waste_families')->max('sort_order');
+        foreach ($families as $code => [$fr, $en, $industries]) {
+            DB::table('waste_families')->updateOrInsert(['code' => $code], ['name' => $this->t($fr, $en), 'industries' => $industries === null ? null : json_encode($industries),
+                'is_active' => true, 'sort_order' => $order += 10, 'updated_at' => now()] + (DB::table('waste_families')->where('code', $code)->exists() ? [] : ['created_at' => now()]));
+        }
+
+        $family = DB::table('waste_families')->pluck('id', 'code');
+        $kg = DB::table('units')->where('code', 'kg')->value('id');
+        $items = [
+            // agriculture and livestock
+            'crop_residues' => ['Résidus de culture', 'Crop residues', 'organic', false, ['agriculture']],
+            'manure' => ['Fumier et lisier', 'Manure and slurry', 'organic', false, ['agriculture']],
+            'green_waste' => ['Déchets verts', 'Green waste', 'organic', false, ['agriculture', 'other']],
+            'agri_films' => ['Films plastiques agricoles', 'Agricultural plastic films', 'plastic', false, ['agriculture']],
+            'pesticide_packaging' => ['Emballages de produits phytosanitaires', 'Pesticide packaging', 'agrochemical', true, ['agriculture']],
+            'unused_pesticides' => ['Produits phytosanitaires non utilisables', 'Unusable pesticides', 'agrochemical', true, ['agriculture']],
+            // food
+            'food_scraps' => ['Déchets alimentaires de production', 'Food production scraps', 'organic', false, ['food']],
+            'off_spec_products' => ['Produits périmés ou non conformes', 'Expired or off-spec products', 'organic', false, ['food']],
+            'cooking_oils' => ['Huiles alimentaires usagées', 'Used cooking oils', 'oil', false, ['food']],
+            // metal and mechanical
+            'metal_chips' => ['Copeaux et chutes métalliques', 'Metal chips and offcuts', 'metal', false, ['metal']],
+            'cutting_fluids' => ['Huiles et fluides de coupe', 'Cutting oils and fluids', 'oil', true, ['metal']],
+            'paint_residues' => ['Résidus de peinture', 'Paint residues', 'chemical_sludge', true, ['metal', 'plastics', 'construction']],
+            'solvents' => ['Solvants usagés', 'Used solvents', 'chemical_sludge', true, ['metal', 'chemicals', 'plastics']],
+            // plastics
+            'plastic_scraps' => ['Chutes et rebuts plastiques', 'Plastic offcuts and rejects', 'plastic', false, ['plastics']],
+            'purge_lumps' => ['Purges de production', 'Production purges', 'plastic', false, ['plastics']],
+            // chemicals and cosmetics
+            'process_residues' => ['Résidus de fabrication', 'Process residues', 'chemical_sludge', true, ['chemicals']],
+            'soiled_packaging' => ['Emballages souillés', 'Soiled packaging', 'packaging', true, ['chemicals', 'metal', 'agriculture', 'plastics', 'construction', 'other']],
+            // construction
+            'rubble' => ['Gravats et déblais', 'Rubble and spoil', 'construction', false, ['construction']],
+            'mixed_construction' => ['Déchets de chantier en mélange', 'Mixed worksite waste', 'construction', false, ['construction']],
+            // every industry
+            'wood_pallets' => ['Palettes et bois', 'Pallets and wood', 'wood', false, null],
+        ];
+        $order = (int) DB::table('waste_catalog_items')->max('sort_order');
+        foreach ($items as $code => [$fr, $en, $familyCode, $hazardous, $industries]) {
+            DB::table('waste_catalog_items')->updateOrInsert(['code' => $code], ['name' => $this->t($fr, $en), 'waste_family_id' => $family[$familyCode],
+                'default_unit_id' => $kg, 'default_is_hazardous' => $hazardous, 'industries' => $industries === null ? null : json_encode($industries),
+                'is_active' => true, 'sort_order' => $order += 10, 'updated_at' => now()] + (DB::table('waste_catalog_items')->where('code', $code)->exists() ? [] : ['created_at' => now()]));
+        }
     }
 
     /**

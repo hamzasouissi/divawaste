@@ -73,7 +73,13 @@ final class CreateWasteLot
                 'created_device_id' => $data->deviceId,
             ]);
 
-            LotComposition::apply($lot, $data->composition ?? $material['composition'] ?? $type->default_composition ?? []);
+            // What the lot is made of: as typed, else from its raw material, else the defaults of its waste type.
+            [$composition, $source] = match (true) {
+                ($data->composition ?? []) !== [] => [$data->composition, 'entered'],
+                ($material['composition'] ?? []) !== [] => [$material['composition'], 'raw_material'],
+                default => [$type->default_composition ?? [], 'waste_type'],
+            };
+            LotComposition::apply($lot, $composition, $source);
             LotTag::query()->create(['waste_lot_id' => $lot->id, 'tag_type' => 'qr', 'tag_value' => $data->tagValue ?? $lot->ulid,
                 'assigned_at' => now(), 'assigned_by_user_id' => $actor->id]);
             WasteLotEvent::record($lot, 'created', [

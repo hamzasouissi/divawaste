@@ -16,6 +16,7 @@ use App\Modules\Providers\Models\ProviderAcceptedWaste;
 use App\Modules\Providers\Models\ProviderAccreditation;
 use App\Modules\Providers\Models\ProviderPartnership;
 use App\Modules\Providers\Models\ProviderProfile;
+use App\Modules\Providers\Support\OperatorRegistry;
 use App\Modules\Providers\Support\ProviderDirectory;
 use App\Modules\Tenancy\Enums\CompanyType;
 use App\Modules\Tenancy\Models\Company;
@@ -112,7 +113,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
         'ulid' => $partner->ulid, 'legal_name' => $partner->legal_name, 'tax_id' => $partner->tax_id,
         'address_line1' => $partner->address_line1, 'postal_code' => $partner->postal_code, 'city' => $partner->city,
         'phone' => $partner->phone, 'email' => $partner->email, 'contact_name' => $partner->contact_name,
-        'roles' => array_keys(array_filter(['transporter' => $partner->is_transporter, 'recycler' => $partner->is_recycler, 'eliminator' => $partner->is_eliminator])),
+        'roles' => array_keys(array_filter(['collector' => $partner->is_collector, 'transporter' => $partner->is_transporter, 'recycler' => $partner->is_recycler, 'sorter' => $partner->is_sorter])),
         'accreditation_reference' => $partner->accreditation_reference,
         'accreditation_expires_on' => $partner->accreditation_expires_on?->toDateString(),
         'covers_hazardous' => $partner->covers_hazardous, 'notes' => $partner->notes, 'is_active' => $partner->is_active,
@@ -170,7 +171,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
             'email' => ['nullable', 'email', 'max:191'],
             'contact_name' => ['nullable', 'string', 'max:150'],
             'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['string', 'distinct', Rule::in(['transporter', 'recycler', 'eliminator'])],
+            'roles.*' => ['string', 'distinct', Rule::in(['collector', 'transporter', 'recycler', 'sorter'])],
             'accreditation_reference' => ['nullable', 'string', 'max:100'],
             'accreditation_expires_on' => ['nullable', 'date'],
             'covers_hazardous' => ['sometimes', 'boolean'],
@@ -179,8 +180,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
         ]);
         $roles = $input['roles'];
 
-        return ['is_transporter' => in_array('transporter', $roles, true), 'is_recycler' => in_array('recycler', $roles, true),
-            'is_eliminator' => in_array('eliminator', $roles, true), 'covers_hazardous' => (bool) ($input['covers_hazardous'] ?? false)]
+        return ['is_collector' => in_array('collector', $roles, true), 'is_transporter' => in_array('transporter', $roles, true), 'is_recycler' => in_array('recycler', $roles, true),
+            'is_sorter' => in_array('sorter', $roles, true), 'covers_hazardous' => (bool) ($input['covers_hazardous'] ?? false)]
             + array_diff_key($input, ['roles' => true]);
     };
 
@@ -334,7 +335,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
 
         return [
             'roles' => array_keys(array_filter(['collector' => $profile->is_collector, 'transporter' => $profile->is_transporter,
-                'recycler' => $profile->is_recycler, 'eliminator' => $profile->is_eliminator])),
+                'recycler' => $profile->is_recycler, 'sorter' => $profile->is_sorter])),
             'description' => $profile->description,
             'service_area' => $profile->service_area,
             'public_contact_name' => $profile->public_contact_name,
@@ -366,7 +367,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
         $allow($request, 'provider.profile.manage');
         $input = $request->validate([
             'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['string', 'distinct', Rule::in(['collector', 'transporter', 'recycler', 'eliminator'])],
+            'roles.*' => ['string', 'distinct', Rule::in(['collector', 'transporter', 'recycler', 'sorter'])],
             'description' => ['nullable', 'string', 'max:2000'],
             'service_area' => ['nullable', 'string', 'max:500'],
             'public_contact_name' => ['nullable', 'string', 'max:150'],
@@ -406,7 +407,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($accredita
         DB::transaction(function () use ($input, $codes) {
             ProviderProfile::query()->firstOrFail()->forceFill([
                 'is_collector' => in_array('collector', $input['roles'], true), 'is_transporter' => in_array('transporter', $input['roles'], true),
-                'is_recycler' => in_array('recycler', $input['roles'], true), 'is_eliminator' => in_array('eliminator', $input['roles'], true),
+                'is_recycler' => in_array('recycler', $input['roles'], true), 'is_sorter' => in_array('sorter', $input['roles'], true),
             ] + array_intersect_key($input, array_flip(['description', 'service_area', 'public_contact_name', 'public_contact_email', 'public_contact_phone'])))->save();
 
             ProviderAcceptedWaste::query()->delete();
@@ -539,4 +540,78 @@ Route::middleware('auth:sanctum')->prefix('platform')->group(function () use ($a
 
         return response()->noContent();
     })->name('platform.accreditations.review');
+});
+
+/*
+ * The official lists of waste operators (ANGed): read by the companies to find a collector, a transporter or a
+ * recycler and fill in a partner from it, and by the platform. Nobody edits them here (registry:import-anged).
+ */
+$registryOperator = fn (stdClass $row) => [
+    'ulid' => $row->ulid, 'registry' => $row->registry, 'list' => $row->list_code, 'list_title' => $row->list_title,
+    'hazardous' => (bool) $row->hazardous, 'legal_name' => $row->legal_name, 'contact_name' => $row->contact_name,
+    'phone' => $row->phone, 'fax' => $row->fax, 'email' => $row->email, 'head_office' => $row->head_office,
+    'plant_address' => $row->plant_address, 'governorate' => $row->governorate, 'activity' => $row->activity, 'waste' => $row->waste,
+    'roles' => array_values(array_filter(['collector', 'transporter', 'recycler', 'sorter', 'storer'], fn (string $role) => (bool) $row->{'is_'.$role})),
+    'authorization_number' => $row->authorization_number, 'valid_from' => $row->valid_from, 'valid_until' => $row->valid_until,
+    'expired' => $row->valid_until !== null && $row->valid_until < now()->toDateString(),
+    'annual_tonnage' => $row->annual_tonnage, 'collection_area' => $row->collection_area, 'withdrawal' => $row->withdrawal,
+    'source_url' => $row->source_url, 'extracted_on' => $row->extracted_on,
+];
+$registrySearch = function (Request $request) use ($registryOperator) {
+    $input = $request->validate([
+        'filter.search' => ['nullable', 'string', 'max:100'],
+        'filter.list' => ['nullable', 'string', 'max:40'],
+        'filter.role' => ['nullable', Rule::in(['collector', 'transporter', 'recycler', 'sorter', 'storer'])],
+        'filter.governorate' => ['nullable', 'string', 'max:40'],
+        'filter.hazardous' => ['nullable', 'boolean'],
+        'filter.valid' => ['nullable', 'boolean'],
+        'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+    ]);
+    $filter = $input['filter'] ?? [];
+    $page = OperatorRegistry::search([
+        'q' => $filter['search'] ?? null, 'list' => $filter['list'] ?? null, 'role' => $filter['role'] ?? null,
+        'governorate' => $filter['governorate'] ?? null, 'valid' => (bool) ($filter['valid'] ?? false),
+        'hazardous' => array_key_exists('hazardous', $filter) && $filter['hazardous'] !== null ? (bool) $filter['hazardous'] : null,
+    ])->paginate((int) ($input['per_page'] ?? 25));
+
+    return [
+        'data' => array_map($registryOperator, $page->items()),
+        'meta' => ['current_page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'per_page' => $page->perPage(), 'total' => $page->total()],
+    ];
+};
+// What the filters offer: the lists with their size, the governorates, and when the data was read from the agency.
+$registryLists = fn () => ['data' => [
+    'lists' => DB::table('regulatory_operators')->groupBy('list_code', 'list_title', 'hazardous')->orderByDesc('hazardous')->orderBy('list_title')
+        ->get(['list_code as code', 'list_title as title', 'hazardous', DB::raw('COUNT(*) as entries')])
+        ->map(fn (stdClass $row) => ['code' => $row->code, 'title' => $row->title, 'hazardous' => (bool) $row->hazardous, 'entries' => (int) $row->entries]),
+    'governorates' => DB::table('regulatory_operators')->whereNotNull('governorate')->distinct()->orderBy('governorate')->pluck('governorate'),
+    'extracted_on' => DB::table('regulatory_operators')->max('extracted_on'),
+    'total' => DB::table('regulatory_operators')->count(),
+]];
+
+Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($registrySearch, $registryLists) {
+    Route::get('registry/operators', function (Request $request) use ($registrySearch) {
+        abort_unless($request->user()->can('providers.view'), 403);
+
+        return $registrySearch($request);
+    })->name('registry.operators.index');
+    Route::get('registry/operators/lists', function (Request $request) use ($registryLists) {
+        abort_unless($request->user()->can('providers.view'), 403);
+
+        return $registryLists();
+    })->name('registry.operators.lists');
+});
+
+Route::middleware('auth:sanctum')->prefix('platform')->group(function () use ($registrySearch, $registryLists) {
+    $allow = fn (Request $request) => abort_unless($request->user()->hasAnyPermission(['platform.providers.review', 'platform.support.view']), 403);
+    Route::get('registry/operators', function (Request $request) use ($allow, $registrySearch) {
+        $allow($request);
+
+        return $registrySearch($request);
+    })->name('platform.registry.operators.index');
+    Route::get('registry/operators/lists', function (Request $request) use ($allow, $registryLists) {
+        $allow($request);
+
+        return $registryLists();
+    })->name('platform.registry.operators.lists');
 });

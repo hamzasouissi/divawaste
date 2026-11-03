@@ -15,6 +15,7 @@ use App\Modules\Production\Models\ProductionOrderExpense;
 use App\Modules\Production\Models\ProductionSupplier;
 use App\Modules\Production\Models\RawMaterial;
 use App\Modules\Production\Models\RawMaterialBatch;
+use App\Modules\Production\Support\ErpFeeds;
 use App\Modules\Production\Support\FinanceReport;
 use App\Modules\Production\Support\ImportEngine;
 use App\Modules\Production\Support\LotOrigin;
@@ -23,8 +24,11 @@ use App\Modules\Production\Support\ProductionFinance;
 use App\Modules\Production\Support\ProductionStats;
 use App\Modules\Production\Support\ProductionVolumes;
 use App\Modules\Reporting\Support\ArrayExport;
+use App\Modules\Sites\Actions\EvaluateStockThresholds;
 use App\Modules\Sites\Models\Site;
+use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\Rules\TenantExists;
+use App\Modules\Tenancy\Support\CompanyModules;
 use App\Modules\Tenancy\TenantContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
@@ -766,6 +770,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
             || array_filter(array_intersect_key($mapping, array_flip(ImportEngine::MONEY_FIELDS)), fn ($column) => $column !== null && $column !== '') !== [];
         abort_if($touches && ! $request->user()->can('production.finance.view'), 403);
     };
+    // Lots are imported by who creates lots; the production files by who manages production.
+    $mayImport = fn (Request $request, string $target) => abort_unless(ImportEngine::allowed($request->user(), $target), 403);
     $read = function (ImportEngine $engine, Request $request) {
         try {
             return $engine->read($request->file('file'));
@@ -774,29 +780,32 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
         }
     };
 
-    Route::get('imports/targets', function (Request $request) use ($manage, $fields) {
-        $manage($request);
+    Route::get('imports/targets', function (Request $request) use ($fields) {
+        $targets = collect(array_keys(ImportEngine::TARGETS))->filter(fn (string $target) => ImportEngine::allowed($request->user(), $target))
+            ->reject(fn (string $target) => in_array($target, ImportEngine::MONEY_TARGETS, true) && ! $request->user()->can('production.finance.view'));
+        abort_if($targets->isEmpty(), 403);
 
-        return ['data' => collect(array_keys(ImportEngine::TARGETS))
-            ->reject(fn (string $target) => in_array($target, ImportEngine::MONEY_TARGETS, true) && ! $request->user()->can('production.finance.view'))
-            ->map(fn (string $target) => ['target' => $target, 'fields' => $fields($target)])->values()];
+        return ['data' => $targets->map(fn (string $target) => ['target' => $target, 'fields' => $fields($target)])->values()];
     })->name('production.imports.targets');
 
     // An empty file with the expected headings, for who has no export to start from.
-    Route::get('imports/targets/{target}/template', function (Request $request, string $target) use ($manage, $fields) {
-        $manage($request);
+    // A company that does not follow its production gets no columns of OF or step in its file of lots.
+    Route::get('imports/targets/{target}/template', function (Request $request, string $target, TenantContext $context) use ($mayImport, $fields) {
         abort_unless(isset(ImportEngine::TARGETS[$target]), 404);
+        $mayImport($request, $target);
+        $production = CompanyModules::of(Company::query()->findOrFail($context->companyId()))['production'];
+        $headings = $fields($target)->reject(fn (array $field) => ! $production && in_array($field['field'], ImportEngine::PRODUCTION_FIELDS, true))->pluck('label')->all();
 
-        return response(Excel::raw(new ArrayExport(__("imports.targets.{$target}"), $fields($target)->pluck('label')->all(), []), ExcelFormat::XLSX), 200, [
+        return response(Excel::raw(new ArrayExport(__("imports.targets.{$target}"), $headings, []), ExcelFormat::XLSX), 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition' => 'attachment; filename="'.Str::slug(__("imports.targets.{$target}")).'.xlsx"', 'Cache-Control' => 'private, no-store',
         ]);
     })->name('production.imports.template');
 
     // Step 1: the headings of the file, its first lines, and where each piece of information seems to be.
-    Route::post('imports/preview', function (Request $request, ImportEngine $engine) use ($manage, $targetRule, $fileRule, $fields, $read, $moneyGuard) {
-        $manage($request);
+    Route::post('imports/preview', function (Request $request, ImportEngine $engine) use ($mayImport, $targetRule, $fileRule, $fields, $read, $moneyGuard) {
         $input = $request->validate(['target' => $targetRule, 'file' => $fileRule]);
+        $mayImport($request, $input['target']);
         $moneyGuard($request, $input['target']);
         $sheet = $read($engine, $request);
 
@@ -805,9 +814,9 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
     })->name('production.imports.preview');
 
     // Step 2: check (`dry_run`) or import. A line in error is skipped and reported; the others are written.
-    Route::post('imports/run', function (Request $request, ImportEngine $engine) use ($manage, $targetRule, $fileRule, $read, $moneyGuard) {
-        $manage($request);
+    Route::post('imports/run', function (Request $request, ImportEngine $engine, EvaluateStockThresholds $thresholds) use ($mayImport, $targetRule, $fileRule, $read, $moneyGuard) {
         $input = $request->validate(['target' => $targetRule, 'file' => $fileRule, 'dry_run' => ['sometimes', 'boolean'], 'mapping' => ['required', 'array'], 'mapping.*' => ['nullable', 'integer', 'min:0']]);
+        $mayImport($request, $input['target']);
         $moneyGuard($request, $input['target'], $input['mapping']);
         $sheet = $read($engine, $request);
         $mapping = [];
@@ -825,8 +834,65 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
         $result = $engine->run($input['target'], $sheet['rows'], $mapping, $request->boolean('dry_run'));
         if (! $request->boolean('dry_run')) {
             ProductionVolumes::sync(app(TenantContext::class)->companyId());
+            // New lots may bring a site to its stock limit.
+            foreach ($engine->sitesTouched() as $siteId) {
+                $thresholds->forSite($siteId);
+            }
         }
 
         return ['data' => $result + ['dry_run' => $request->boolean('dry_run')]];
     })->name('production.imports.run');
+
+    /*
+     * G-03 / PRD-05: exports an ERP publishes at an address, read every night with the columns of the last import.
+     */
+    $feedTarget = fn (string $target) => abort_unless(isset(ImportEngine::TARGETS[$target]), 404);
+    $feedMoney = fn (Request $request, string $target) => abort_if(in_array($target, ImportEngine::MONEY_TARGETS, true) && ! $request->user()->can('production.finance.view'), 403);
+    $company = fn () => Company::query()->findOrFail(app(TenantContext::class)->companyId());
+
+    Route::get('erp-feeds', function (Request $request) use ($company) {
+        $mine = fn (string $target) => ImportEngine::allowed($request->user(), $target);
+        abort_unless(collect(array_keys(ImportEngine::TARGETS))->contains($mine), 403);
+
+        return ['data' => array_values(array_filter(ErpFeeds::of($company()), $mine, ARRAY_FILTER_USE_KEY))];
+    })->name('production.erp-feeds.index');
+
+    Route::put('erp-feeds/{target}', function (Request $request, string $target) use ($mayImport, $feedTarget, $feedMoney, $company) {
+        $feedTarget($target);
+        $mayImport($request, $target);
+        $feedMoney($request, $target);
+        $input = $request->validate(['url' => ['nullable', 'string', 'url:https', 'max:2000'], 'enabled' => ['required', 'boolean']]);
+        $url = $input['url'] ?? null;
+        if ($url !== null) {
+            try {
+                ErpFeeds::publicAddresses($url);
+            } catch (RuntimeException $exception) {
+                throw ValidationException::withMessages(['url' => [__('imports.feeds.errors.'.$exception->getMessage())]]);
+            }
+        }
+        try {
+            ErpFeeds::set($company(), $target, $url, $input['enabled'], $request->user());
+        } catch (RuntimeException) {
+            throw ValidationException::withMessages(['url' => [__('validation.required', ['attribute' => 'url'])]]);
+        }
+
+        return ['data' => ErpFeeds::of($company())[$target]];
+    })->name('production.erp-feeds.update');
+
+    Route::delete('erp-feeds/{target}', function (Request $request, string $target) use ($mayImport, $feedTarget, $company) {
+        $feedTarget($target);
+        $mayImport($request, $target);
+        ErpFeeds::forget($company(), $target);
+
+        return response()->noContent();
+    })->name('production.erp-feeds.destroy');
+
+    // Read now, to try an address or to catch up without waiting for the night.
+    Route::post('erp-feeds/{target}/run', function (Request $request, string $target, ErpFeeds $feeds) use ($mayImport, $feedTarget, $feedMoney, $company) {
+        $feedTarget($target);
+        $mayImport($request, $target);
+        $feedMoney($request, $target);
+
+        return ['data' => $feeds->pull($company(), $target)];
+    })->middleware('throttle:action')->name('production.erp-feeds.run');
 });

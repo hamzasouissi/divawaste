@@ -2,6 +2,9 @@
 
 namespace App\Modules\Production\Support;
 
+use App\Modules\Catalog\Models\WasteType;
+use App\Modules\Identity\Authorization\AccessResolver;
+use App\Modules\Identity\Models\User;
 use App\Modules\Production\Models\Article;
 use App\Modules\Production\Models\CustomerOrder;
 use App\Modules\Production\Models\CustomerOrderInvoice;
@@ -12,12 +15,20 @@ use App\Modules\Production\Models\ProductionOrderExpense;
 use App\Modules\Production\Models\ProductionSupplier;
 use App\Modules\Production\Models\RawMaterial;
 use App\Modules\Production\Models\RawMaterialBatch;
+use App\Modules\Sites\Models\Site;
+use App\Modules\Sites\Models\Zone;
 use App\Modules\Tenancy\TenantContext;
+use App\Modules\Waste\Actions\CreateWasteLot;
+use App\Modules\Waste\Models\WasteLot;
+use App\Modules\Waste\Requests\StoreWasteLotRequest;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Reader\Csv;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
@@ -66,9 +77,19 @@ final class ImportEngine
             'incurred_on' => ['date', false], 'supplier' => ['text', false], 'currency' => ['text', false]],
         'invoices' => ['number' => ['text', true], 'customer_order' => ['text', true], 'amount' => ['decimal', true], 'kind' => ['text', false], 'issued_on' => ['date', false],
             'manufacturing_order' => ['text', false], 'currency' => ['text', false]],
+        // Waste lots, for any company (not only production): the site and the waste are enough, the rest is optional.
+        'waste_lots' => ['site' => ['text', true], 'zone' => ['text', false], 'waste_type' => ['text', true], 'net_weight_kg' => ['decimal', false], 'weight_estimated' => ['text', false],
+            'quantity' => ['decimal', false], 'unit' => ['text', false], 'packaging' => ['text', false], 'package_count' => ['integer', false], 'generated_at' => ['date', false],
+            'manufacturing_order' => ['text', false], 'step' => ['text', false], 'notes' => ['text', false], 'external_reference' => ['text', false]],
     ];
 
+    /** Targets anyone who creates lots may import; the others belong to who manages production. */
+    public const WASTE_TARGETS = ['waste_lots'];
+
     /** Pieces of information that are money: imported only by who may see amounts. */
+    /** Fields of a waste lot that tie it to production: left out for a company that does not follow it. */
+    public const PRODUCTION_FIELDS = ['manufacturing_order', 'step'];
+
     public const MONEY_FIELDS = ['unit_price', 'total_amount', 'delivery_cost', 'currency', 'amount'];
 
     /** Targets that are nothing but money. */
@@ -82,6 +103,8 @@ final class ImportEngine
         'lot_number' => 'LF-2026-014-A', 'quantity' => '1200', 'produced_on' => '25/03/2026', 'status' => 'livré', 'delivered_on' => '28/03/2026', 'step' => 'Coupe', 'site' => 'NAB',
         'description' => 'Délavage en sous-traitance', 'amount' => '1850', 'category' => 'sous-traitance', 'incurred_on' => '20/03/2026', 'number' => 'FV-2026-0231', 'customer_order' => 'CMD-7781',
         'kind' => 'facture', 'issued_on' => '30/03/2026', 'order_number' => 'OF-2026-014', 'article' => 'JEAN-501', 'client' => 'Maison Dupont', 'quantity_planned' => '1200',
+        'zone' => 'Aire de stockage', 'waste_type' => 'Chutes de coupe', 'net_weight_kg' => '125,5', 'weight_estimated' => 'oui / non', 'packaging' => 'Big bag', 'package_count' => '3',
+        'generated_at' => '12/03/2026', 'notes' => 'Atelier 2', 'external_reference' => 'ERP-88541',
     ];
 
     /** Other headings under which a piece of information is commonly found in an export. */
@@ -144,6 +167,16 @@ final class ImportEngine
         'email' => ['email', 'e mail', 'mail', 'courriel'],
         'phone' => ['telephone', 'tel', 'phone', 'mobile', 'gsm'],
         'step' => ['etape', 'operation', 'phase', 'atelier', 'step', 'stage'],
+        'zone' => ['zone', 'emplacement', 'zone de stockage', 'lieu de stockage', 'stockage', 'location', 'area'],
+        'waste_type' => ['type de dechet', 'dechet', 'dechets', 'type', 'nature', 'nature du dechet', 'code dechet', 'categorie', 'waste type', 'waste'],
+        'net_weight_kg' => ['poids', 'poids kg', 'poids net', 'poids net kg', 'kg', 'masse', 'tonnage', 'weight', 'net weight', 'weight kg'],
+        'weight_estimated' => ['estime', 'poids estime', 'estimation', 'estimated', 'pese'],
+        'waste_lots.quantity' => ['quantite', 'qte', 'quantity', 'qty', 'nombre', 'volume'],
+        'packaging' => ['emballage', 'conditionnement', 'contenant', 'packaging', 'container'],
+        'package_count' => ['nombre de colis', 'nb colis', 'colis', 'nombre d emballages', 'nb emballages', 'sacs', 'nb sacs', 'balles', 'packages', 'bags'],
+        'generated_at' => ['date', 'date du lot', 'date de production', 'produit le', 'date de generation', 'date creation', 'date de creation', 'generated', 'date generated'],
+        'notes' => ['notes', 'note', 'remarque', 'remarques', 'commentaire', 'commentaires', 'observations', 'comment', 'comments'],
+        'waste_lots.external_reference' => ['reference', 'ref', 'n lot', 'numero lot', 'lot', 'reference externe', 'ref externe', 'id erp', 'external reference', 'external id', 'id'],
         'site' => ['site', 'usine', 'unite de production', 'plant', 'factory'],
     ];
 
@@ -156,6 +189,41 @@ final class ImportEngine
             'mo' => 'labour', 'other' => 'other', 'autre' => 'other', 'divers' => 'other'],
         'kind' => ['invoice' => 'invoice', 'facture' => 'invoice', 'creditnote' => 'credit_note', 'avoir' => 'credit_note'],
     ];
+
+    /** Words a file uses to say yes or no, for "this weight is an estimate". */
+    private const YES_NO = ['oui' => true, 'o' => true, 'yes' => true, 'y' => true, '1' => true, 'x' => true, 'vrai' => true, 'true' => true, 'estime' => true, 'estimee' => true,
+        'estimation' => true, 'estimated' => true, 'non' => false, 'n' => false, 'no' => false, '0' => false, 'faux' => false, 'false' => false, 'pese' => false, 'pesee' => false,
+        'mesure' => false, 'reel' => false, 'weighed' => false, 'measured' => false];
+
+    /** Units a waste is counted in (never a length). */
+    private const LOT_UNITS = ['kg' => 'kg', 'kilo' => 'kg', 'kilos' => 'kg', 'kilogramme' => 'kg', 'kilogrammes' => 'kg', 'kilogram' => 'kg', 'kgs' => 'kg',
+        't' => 't', 'tonne' => 't', 'tonnes' => 't', 'ton' => 't', 'tons' => 't', 'l' => 'l', 'litre' => 'l', 'litres' => 'l', 'liter' => 'l', 'liters' => 'l',
+        'm3' => 'm3', 'metrecube' => 'm3', 'metrescubes' => 'm3', 'piece' => 'piece', 'pieces' => 'piece', 'pc' => 'piece', 'pcs' => 'piece', 'u' => 'piece', 'unite' => 'piece', 'unites' => 'piece'];
+
+    /** Who imports: the lots are created in their name, and only on the sites where they may create lots. */
+    private ?User $actor = null;
+
+    private string $source = 'web';
+
+    /** @var array<int, true> sites that received lots, for their stock limits */
+    private array $sitesTouched = [];
+
+    /** @var array<string, Collection<int, object>> sites, zones and types of the company, read once per file */
+    private array $cache = [];
+
+    /**
+     * Whether a person may import this kind of file: lots for who creates lots somewhere, the rest for who manages production.
+     */
+    public static function allowed(User $user, string $target): bool
+    {
+        return in_array($target, self::WASTE_TARGETS, true) ? app(AccessResolver::class)->siteIdsFor($user, 'lots.create') !== [] : $user->can('production.manage');
+    }
+
+    /** @return list<int> */
+    public function sitesTouched(): array
+    {
+        return array_keys($this->sitesTouched);
+    }
 
     private const UNITS = ['m' => 'm', 'metre' => 'm', 'metres' => 'm', 'meter' => 'm', 'ml' => 'm', 'kg' => 'kg', 'kilo' => 'kg', 'kilogramme' => 'kg', 'kilogram' => 'kg',
         'piece' => 'piece', 'pieces' => 'piece', 'pc' => 'piece', 'pcs' => 'piece', 'u' => 'piece', 'unite' => 'piece', 'unit' => 'piece'];
@@ -224,9 +292,14 @@ final class ImportEngine
      * @param  array<string, int|null>  $mapping  field => column
      * @return array{total: int, created: int, updated: int, unchanged: int, also_created: array<string, int>, errors: list<array{line: int, message: string}>}
      */
-    public function run(string $target, array $rows, array $mapping, bool $dryRun): array
+    public function run(string $target, array $rows, array $mapping, bool $dryRun, ?User $actor = null, string $source = 'web'): array
     {
         $fields = self::TARGETS[$target];
+        $user = $actor ?? auth()->user();
+        $this->actor = $user instanceof User ? $user : null;
+        $this->source = $source;
+        $this->sitesTouched = [];
+        $this->cache = [];
         $result = ['total' => count($rows), 'created' => 0, 'updated' => 0, 'unchanged' => 0, 'also_created' => [], 'errors' => []];
 
         DB::beginTransaction();
@@ -668,6 +741,105 @@ final class ImportEngine
         }
 
         return (int) $id;
+    }
+
+    /**
+     * A waste lot, created exactly as the lot form creates it (same rules, number, QR label and history), on a site
+     * where the person may create lots. A line whose reference was already imported is left as it is, so the same
+     * export read twice creates nothing the second time; a line without a reference is a new lot each time.
+     *
+     * @param  array<string, mixed>  $v
+     * @param  array<string, int>  $also
+     */
+    private function importWasteLots(array $v, array &$also): string
+    {
+        $actor = $this->actor ?? throw new RuntimeException(__('imports.errors.unexpected'));
+        if ($v['external_reference'] !== null && WasteLot::query()->where('extra_attributes->import_reference', $v['external_reference'])->exists()) {
+            return 'unchanged';
+        }
+        $unknown = fn (string $field, string $value) => new RuntimeException(__('imports.errors.unknown', ['what' => __("imports.fields.waste_lots.{$field}"), 'value' => $value]));
+
+        $site = $this->named($this->once('sites', fn () => Site::query()->where('is_active', true)->orderBy('id')->get(['id', 'ulid', 'code', 'name'])), $v['site'], ['code', 'name'])
+            ?? throw $unknown('site', $v['site']);
+        if (! $actor->can('lots.create', (int) $site->id)) {
+            throw new RuntimeException(__('imports.errors.site_rights', ['site' => $site->name]));
+        }
+        $zones = $this->once("zones.{$site->id}", fn () => Zone::query()->where('site_id', $site->id)->where('is_active', true)->orderBy('id')->get(['id', 'ulid', 'code', 'name', 'is_waste_storage']));
+        // Without a zone, the lot goes where the site keeps its waste: its storage area, or its only zone.
+        $zone = $v['zone'] !== null ? ($this->named($zones, $v['zone'], ['code', 'name']) ?? throw $unknown('zone', $v['zone']))
+            : ($zones->firstWhere('is_waste_storage', true) ?? ($zones->count() === 1 ? $zones->first() : throw new RuntimeException(__('imports.errors.zone_needed', ['site' => $site->name]))));
+        // A waste is named by its code, its name or its regulatory code, as the file has it.
+        $codes = $this->once('regulatory', fn () => DB::table('regulatory_waste_codes')->pluck('code', 'id'));
+        $types = $this->once('waste_types', fn () => WasteType::query()->where('is_active', true)->orderBy('id')->get(['ulid', 'code', 'name', 'regulatory_waste_code_id'])
+            ->map(fn (WasteType $type) => (object) ['ulid' => $type->ulid, 'code' => $type->code, 'name' => $type->name, 'regulatory' => $codes[$type->regulatory_waste_code_id] ?? null]));
+        $type = $this->named($types, $v['waste_type'], ['code', 'name', 'regulatory']) ?? throw $unknown('waste_type', $v['waste_type']);
+
+        $unit = $v['unit'] === null ? null : (self::LOT_UNITS[self::normalize($v['unit'])] ?? throw new RuntimeException(__('imports.errors.lot_unit', ['value' => $v['unit']])));
+        $weight = $v['net_weight_kg'];
+        // A quantity in kilos or tonnes is a weight.
+        if ($weight === null && $v['quantity'] !== null && in_array($unit, ['kg', 't'], true)) {
+            $weight = (string) ((float) $v['quantity'] * ($unit === 't' ? 1000 : 1));
+        }
+        $counted = $v['quantity'] !== null && ! in_array($unit, ['kg', 't'], true);
+        $estimated = $v['weight_estimated'] === null ? false
+            : (self::YES_NO[self::normalize($v['weight_estimated'])] ?? throw new RuntimeException(__('imports.errors.yes_no', ['field' => __('imports.fields.waste_lots.weight_estimated'), 'value' => $v['weight_estimated']])));
+        $packaging = $v['packaging'] === null ? null : ($this->named($this->once('packaging', fn () => DB::table('packaging_types')->where('is_active', true)->get(['code', 'name'])
+            ->map(fn ($row) => (object) ['code' => $row->code, 'names' => array_values((array) json_decode((string) $row->name, true))])), $v['packaging'], ['code', 'names'])?->code
+            ?? throw $unknown('packaging', $v['packaging']));
+        $order = $v['manufacturing_order'] === null ? null : (ProductionOrder::query()->where('order_number', $v['manufacturing_order'])->value('ulid') ?? throw $unknown('manufacturing_order', $v['manufacturing_order']));
+        $step = $v['step'] === null ? null : (ProductionData::steps((int) app(TenantContext::class)->companyId())->get(['code', 'name'])
+            ->first(fn ($row) => in_array(self::normalize($v['step']), array_map(self::normalize(...), [$row->code, ...array_values((array) json_decode((string) $row->name, true))]), true))?->code
+            ?? throw $unknown('step', $v['step']));
+
+        $input = array_filter([
+            'site' => $site->ulid, 'zone' => $zone->ulid, 'waste_type' => $type->ulid,
+            'net_weight_kg' => $weight === null ? null : (string) round((float) $weight, 3), 'weight_estimated' => $estimated,
+            'quantity' => $counted ? (string) round((float) $v['quantity'], 3) : null, 'unit' => $counted ? $unit : null,
+            'packaging_type' => $packaging, 'package_count' => $v['package_count'], 'generated_at' => $v['generated_at'], 'notes' => $v['notes'],
+            'production_order' => $order, 'production_step' => $step,
+            'extra_attributes' => $v['external_reference'] === null ? null : ['import_reference' => $v['external_reference']],
+        ], fn ($value) => $value !== null);
+        // The rules of the lot form, word for word.
+        $validator = Validator::make($input, StoreWasteLotRequest::lotRules((string) $site->ulid));
+        if ($validator->fails()) {
+            throw new RuntimeException((string) $validator->errors()->first());
+        }
+        try {
+            app(CreateWasteLot::class)->handle(StoreWasteLotRequest::dataFrom($validator->validated(), null, $this->source), $actor);
+        } catch (ValidationException $error) {
+            throw new RuntimeException((string) (collect($error->errors())->flatten()->first() ?? __('imports.errors.unexpected')));
+        }
+        $this->sitesTouched[(int) $site->id] = true;
+
+        return 'created';
+    }
+
+    /**
+     * @param  \Closure(): Collection<int, object>  $load
+     * @return Collection<int, object>
+     */
+    private function once(string $key, \Closure $load): Collection
+    {
+        return $this->cache[$key] ??= $load();
+    }
+
+    /**
+     * The row a value of the file names, compared without case, accents, spaces or punctuation; columns tried in order.
+     *
+     * @param  Collection<int, object>  $rows
+     * @param  list<string>  $columns
+     */
+    private function named(Collection $rows, string $value, array $columns): ?object
+    {
+        $wanted = self::normalize($value);
+        foreach ($columns as $column) {
+            $found = $rows->first(fn (object $row) => in_array($wanted, array_map(fn ($name) => self::normalize((string) $name), (array) ($row->{$column} ?? [])), true));
+            if ($found !== null) {
+                return $found;
+            }
+        }
+
+        return null;
     }
 
     private function codeFrom(string $name): string

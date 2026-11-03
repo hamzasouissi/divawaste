@@ -11,13 +11,15 @@
 |---|---|
 | Tenancy | Companies, registration, platform review, onboarding, tenant context |
 | Identity | Users, login, 2FA, invitations, members, roles and permissions |
-| Sites | Sites, zones, stock (computed), thresholds |
-| Catalog | Reference vocabularies, waste catalogue, a company's waste types |
-| Waste | Lots, lifecycle events, labels, split and group |
-| Providers | Provider profile, accreditations, directory, partnerships |
-| Pickups | Pickup requests and their workflow on both sides |
-| Documents | Certificates, hazardous-waste slips, annual declarations, register |
+| Sites | Sites, zones, stock (computed), stock limits in a unit, zone room (packages or volume) and load, capacity alerts |
+| Catalog | Reference vocabularies, waste catalogue, a company's waste types, colours, tolerance rules |
+| Waste | Lots, lifecycle events, labels, package counts, split and group |
+| Providers | Provider profile, accreditations, directory, partnerships, partners without an account and their requirements |
+| Pickups | Pickup requests and their workflow on all sides (industrial, receiver, transporter) |
+| Documents | Certificates, tracking slips (every waste), waste authorisations, annual declarations, register |
 | Reporting | Dashboard statistics, generated reports, production volumes |
+| Production | Reference to attribute waste: clients, suppliers, materials and received lots, articles, orders, OFs, produced lots, costs and gain, import (F26–F49) |
+| Platform | Back office of Diva Software: overview, plans, invoices, activity |
 | Billing | Plans, subscriptions, invoices, payments |
 | Notifications | In-app and email notifications, preferences |
 | Audit | Audit trail |
@@ -32,7 +34,7 @@ Company ─┬─ Site ── Zone
          ├─ WasteLot ── events, tags (QR), lineage (split / group)
          ├─ Pickup ── lines (one per lot, with snapshots) ── provider Company [, transporter Company]
          ├─ Document (certificate | slip | declaration) ── StoredFile
-         ├─ HazardousWasteManifest ── signatures (producer, transporter, receiver)
+         ├─ HazardousWasteManifest (tracking slip of every waste; the name is historical) ── signatures (producer, transporter, receiver)
          ├─ AnnualDeclaration (per site and year)
          └─ Subscription ── Invoice ── Payment
 Provider Company ── ProviderProfile, accepted wastes, accreditations ── partnerships with industrial companies
@@ -40,8 +42,10 @@ Provider Company ── ProviderProfile, accepted wastes, accreditations ── 
 
 Rules that shape the code:
 
-- **A lot's status only moves through `TransitionLot`**: created → stored → awaiting pickup → collected → treated → closed.
-  Every change writes an event with its time and author.
+- **A lot's status only moves through `TransitionLot`** (`LotStatus::canTransitionTo`): created → stored | awaiting
+  pickup | closed; stored → awaiting pickup | closed; awaiting pickup → stored (refused, cancelled or not loaded) |
+  collected; collected → treated; treated → closed. A move between zones of a stored lot is an event, not a status
+  change. Every change writes an event with its time and author.
 - **Stock is never stored.** It is the sum of lots present on a site (`StockQuery`). No counter can drift.
 - **A pickup line keeps snapshots** (lot number, label, waste type, code, weights) so the provider and the documents never
   depend on later edits, and the provider never reads the industrial's lots.
@@ -56,8 +60,9 @@ Single database, `company_id` on every tenant table.
 - `EstablishTenantContext` (middleware `tenant`) resolves the company from the session or the token — never from the
   request body or URL — and refuses companies that are not active (a lapsed subscription makes an industrial account
   read-only: writes answer 402).
-- `BelongsToCompany` adds `TenantScope` to the model: **without a context a query returns nothing** (fail closed) and
-  `company_id` is stamped on creation and cannot be changed.
+- `BelongsToCompany` adds `TenantScope` to the model: **without a context a query throws**
+  (`MissingTenantContextException` — fail closed) and `company_id` is stamped on creation and cannot be changed. Reads
+  written with the query builder (`DB::table`) are not covered by the scope and filter the company themselves.
 - Shared objects (a pickup seen by its provider, a slip by its three parties) declare `partyColumns`: the scope then also
   matches rows where the current company is a named party. Nothing else crosses the boundary.
 - Platform staff act through `TenantContext::runAs($company, …)` for the one operation they perform; `runAsSystem` is
@@ -65,11 +70,12 @@ Single database, `company_id` on every tenant table.
 
 ## Authentication
 
-| Client | Mechanism |
-|---|---|
+| Client          | Mechanism                                                                                                                         |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | Web application | Sanctum cookie session. `GET /sanctum/csrf-cookie` then `POST /api/v1/auth/login` with `mode: session`. CSRF token on every write |
-| Workshop sync | Device bearer token (`POST mobile/devices`), sent without cookies, valid for `sync/push` only as a device |
-| Scripts, tests | Bearer token (`mode: token`), 12 hours |
+| Workshop sync   | Device bearer token (`POST mobile/devices`), sent without cookies, valid for `sync/push` only as a device                         |
+| Scripts, tests  | Bearer token (`mode: token`), 12 hours                                                                                            |
+|                 |                                                                                                                                   |
 
 Login enforces email verification, lockout (5 failures → 15 minutes, email to the owner), optional TOTP (Fortify) with
 recovery codes, and company selection when the user belongs to several.
@@ -87,18 +93,32 @@ recovery codes, and company selection when the user belongs to several.
 **Pickup** (both parties act on the same object)
 
 ```
-draft ──submit──▶ requested ──confirm──▶ confirmed ──collect──▶ collected ──receive──▶ received ──complete──▶ completed
-   └──cancel             └──refuse──▶ refused                      (provider: treat)   (industrial: acknowledge variance, price)
+draft ──submit──▶ requested ──confirm (receiver sets the date)──▶ confirmed ──collect──▶ collected ──receive──▶ received ──complete──▶ completed
+   │                 │  └─ with a transporter of the platform other than the receiver: stays requested,
+   │                 │     awaiting the transporter ──transport/confirm──▶ confirmed
+   │                 └──refuse / transport/refuse──▶ refused (refused_by: receiver | transporter)
+   └──cancel (from draft, requested or confirmed)                (receiver: treat)    (industrial: acknowledge gap, price)
 ```
 
-- Submit and confirm refuse a provider that is not an active partner or has no approved accreditation valid on the date
-  (hazardous lots need a hazardous accreditation).
-- Reception compares received and departure weights; beyond the company threshold (5 % by default) on the total **or on
-  any lot**, the pickup is flagged and cannot be closed until acknowledged.
-- Closing requires the treatment of every received lot.
+- Submit and confirm refuse a receiver or transporter that is not an active partner, not published, or has no
+  approved accreditation valid on the date (hazardous lots need a hazardous accreditation); each company must do what
+  its profile says (`PARTNER_ROLE_MISMATCH`, `TRANSPORTER_REQUIRED`, F104). Submit also checks the receiver's
+  requirements (F83–F99) and the waste authorisations (F23–F73).
+- The receiver's stages (confirm, refuse, receive, treat) belong to the receiver; a transporter reaching the pickup
+  can only confirm or refuse its transport and sign the slip as transporter (F105, F106). For a partner without an
+  account, the industrial records the receiver's stages.
+- Reception judges each lot in its own unit (weight, pieces, litres) by the most precise tolerance rule (5 % warning
+  by default, F50–F55); a gap to review flags the pickup, which cannot be closed until it is explained (and accepted by
+  `pickups.authorize_variance` above a blocking limit).
+- Closing requires the treatment of every received lot. It does not wait for signed slips: the documents state of the
+  pickup is followed apart (F100).
+- **Open point**: a lot that was loaded and is never received has no defined outcome — it stays `collected` after the
+  pickup is closed (see `docs/platform-intelligence` in the frontend repository, gap `gap.pickups.loaded-not-received-lot`).
 
-**Hazardous-waste slip**: generated from a confirmed pickup, one per hazardous waste code; signed in order producer →
-transporter → receiver, each with password re-entry; the completed slip is archived as a document.
+**Tracking slip**: every waste that leaves has one, issued automatically at loading — one per regulatory waste code,
+or per waste type for a non-hazardous waste without a code; a hazardous lot without a code waits until the code is
+completed (F21, F92, F102). Signed in order producer → transporter → receiver, electronically with password re-entry or
+by hand with the scan of the signed copy (F9, F22); the completed slip is archived as a document.
 
 **Annual declaration**: computed per site and year from lots and pickups; recomputable while a draft; validation freezes
 the figures and archives the PDF for ten years.

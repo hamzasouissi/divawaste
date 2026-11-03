@@ -20,6 +20,7 @@ use App\Modules\Identity\Support\EmailVerification;
 use App\Modules\Identity\Support\LegalAcceptance;
 use App\Modules\Identity\Support\PasswordRules;
 use App\Modules\Notifications\Actions\NotifyUsers;
+use App\Modules\Tenancy\Actions\ReviewCompany;
 use App\Modules\Tenancy\Enums\MembershipStatus;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\Resources\CompanyResource;
@@ -98,13 +99,20 @@ Route::post('auth/email/verify', function (Request $request) {
         // M0-06: a registration only reaches the platform review queue once the contact's email is confirmed.
         foreach (Company::query()->where('primary_contact_user_id', $user->id)->where('status', 'pending_verification')->get() as $company) {
             $company->forceFill(['status' => 'pending_approval', 'submitted_at' => now()])->save();
+            if (config('app.auto_approve_signups')) {
+                // Approved on the spot: the contact receives the usual approval email, the platform reads it in the audit.
+                app(ReviewCompany::class)->approve($company, null);
+
+                continue;
+            }
             app(NotifyUsers::class)->toPlatformPermission('platform.companies.review', 'company.pending_review', [
                 'company' => $company->legal_name, 'type' => $company->company_type->value,
             ], '/platform/companies/'.$company->ulid);
         }
     }
+    $active = Company::query()->where('primary_contact_user_id', $user->id)->where('status', 'active')->exists();
 
-    return response()->json(['data' => ['email' => $user->email, 'verified' => true]]);
+    return response()->json(['data' => ['email' => $user->email, 'verified' => true, 'approved' => $active]]);
 })->name('auth.email.verify')->middleware('throttle:10,1');
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -360,7 +368,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         $allow($request, 'users.invite');
 
         return response()->json(['data' => $invitationData($invitations->resend($invitation, $request->user()))]);
-    })->name('invitations.resend')->middleware('throttle:10,1');
+    })->name('invitations.resend')->middleware('throttle:action');
 
     Route::delete('invitations/{invitation}', function (Request $request, UserInvitation $invitation, ManageInvitations $invitations) use ($allow) {
         $allow($request, 'users.invite');

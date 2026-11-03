@@ -5,8 +5,10 @@ namespace App\Modules\Pickups\Actions;
 use App\Modules\Catalog\Support\UnitConversion;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Support\NumberSequence;
+use App\Modules\Contracts\Support\ContractTerms;
 use App\Modules\Documents\Support\AuthorizationQuota;
 use App\Modules\Identity\Models\User;
+use App\Modules\Marketplace\Support\MarketplaceDeal;
 use App\Modules\Pickups\Enums\PickupStatus;
 use App\Modules\Pickups\Models\Pickup;
 use App\Modules\Pickups\Models\PickupLot;
@@ -14,6 +16,7 @@ use App\Modules\Pickups\Support\ProviderRequirements;
 use App\Modules\Providers\Models\ExternalPartner;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\TenantContext;
+use App\Modules\Waste\Actions\LotComposition;
 use App\Modules\Waste\Actions\TransitionLot;
 use App\Modules\Waste\Enums\LotStatus;
 use App\Modules\Waste\Models\WasteLot;
@@ -49,6 +52,11 @@ final class PickupWorkflow
                 'transporter_company_id' => $parties['transporter_company_id'] ?? null, 'external_transporter_id' => $parties['external_transporter_id'] ?? null,
                 'requested_date' => $requestedDate, 'currency_code' => DB::table('companies')->where('id', $this->context->companyId())->value('currency_code'),
                 'created_by_user_id' => $actor->id,
+                // The contracts the receiver and the transporter work under for this site on that day, if any.
+                'contract_id' => ContractTerms::applicable($this->context->companyId(), ['provider_company_id' => $parties['provider_company_id'] ?? null,
+                    'external_partner_id' => $parties['external_provider_id'] ?? null], 'receiver', $siteId, $requestedDate),
+                'transport_contract_id' => ContractTerms::applicable($this->context->companyId(), ['provider_company_id' => $parties['transporter_company_id'] ?? null,
+                    'external_partner_id' => $parties['external_transporter_id'] ?? null], 'transporter', $siteId, $requestedDate),
             ]);
 
             $lots = WasteLot::query()->whereIn('ulid', $lotUlids)->where('site_id', $siteId)->lockForUpdate()->get();
@@ -61,6 +69,12 @@ final class PickupWorkflow
                 }
                 if (PickupLot::query()->where('waste_lot_id', $lot->id)->where('is_active_flag', true)->exists()) {
                     throw new BusinessRuleViolation('LOT_IN_PICKUP', "Lot {$lot->lot_number} is already in an active pickup.");
+                }
+                // A lot offered on the bourse is reserved for the deal: it leaves with the buyer that accepts it.
+                $listing = DB::table('marketplace_listing_lots as ml')->join('marketplace_listings as l', 'l.id', '=', 'ml.marketplace_listing_id')
+                    ->where('ml.waste_lot_id', $lot->id)->where('ml.is_active_flag', true)->value('l.listing_number');
+                if ($listing !== null) {
+                    throw new BusinessRuleViolation('LOT_LISTED', "Lot {$lot->lot_number} is offered on the bourse (listing {$listing}): cancel the listing, or wait for its deal.", ['listing' => $listing, 'lot' => $lot->lot_number]);
                 }
                 $this->addLine($pickup, $lot, $channelId);
             }
@@ -214,6 +228,29 @@ final class PickupWorkflow
      * @param  array<string, string>  $quantities  lot number => received quantity, in the unit of the line
      */
     public function receive(Pickup $pickup, array $received, User $actor, array $quantities = []): Pickup
+    {
+        return DB::transaction(function () use ($pickup, $received, $actor, $quantities) {
+            $pickup = $this->receiveLines($pickup, $received, $actor, $quantities);
+            // A pickup made by a deal of the bourse is priced as agreed, else by the contract of its receiver, on what was
+            // received; the company may still correct the prices. The fees of the contracts are written beside them.
+            $prices = MarketplaceDeal::agreedPrices($pickup) ?: ContractTerms::prices($pickup);
+            if ($prices !== []) {
+                $this->context->runAs(Company::query()->findOrFail($pickup->company_id), fn () => $this->price($pickup, $prices, $actor));
+            }
+            $fees = ContractTerms::pickupFees($pickup);
+            if ($fees !== null) {
+                $pickup->forceFill(['contract_fees_amount' => $fees])->save();
+            }
+
+            return $pickup;
+        });
+    }
+
+    /**
+     * @param  array<string, string|null>  $received
+     * @param  array<string, string>  $quantities
+     */
+    private function receiveLines(Pickup $pickup, array $received, User $actor, array $quantities): Pickup
     {
         return $this->step($pickup, [PickupStatus::Collected], PickupStatus::Received, function (Pickup $p) use ($received, $actor, $quantities) {
             $total = '0';
@@ -430,10 +467,10 @@ final class PickupWorkflow
         // Each company does what its profile says: a company that only transports never receives waste, and a receiver
         // that neither collects nor transports needs a transporter to come and fetch it.
         $roles = DB::table('provider_profiles')->whereIn('company_id', array_filter([$pickup->provider_company_id, $pickup->transporter_company_id]))
-            ->get(['company_id', 'is_collector', 'is_transporter', 'is_recycler', 'is_eliminator'])->keyBy('company_id');
+            ->get(['company_id', 'is_collector', 'is_transporter', 'is_recycler', 'is_sorter'])->keyBy('company_id');
         $name = fn (int $id): string => (string) DB::table('companies')->where('id', $id)->value('legal_name');
         $receiverRoles = $pickup->provider_company_id === null ? null : ($roles[$pickup->provider_company_id] ?? null);
-        if ($receiverRoles !== null && ! $receiverRoles->is_collector && ! $receiverRoles->is_recycler && ! $receiverRoles->is_eliminator) {
+        if ($receiverRoles !== null && ! $receiverRoles->is_collector && ! $receiverRoles->is_recycler && ! $receiverRoles->is_sorter) {
             throw new BusinessRuleViolation('PARTNER_ROLE_MISMATCH', "{$name((int) $pickup->provider_company_id)} only transports waste: it cannot be the receiver.");
         }
         if ($receiverRoles !== null && ! $receiverRoles->is_collector && ! $receiverRoles->is_transporter && $pickup->transporter_company_id === null && $pickup->external_transporter_id === null) {
@@ -463,12 +500,12 @@ final class PickupWorkflow
         $receiver = $pickup->external_provider_id === null ? null : ExternalPartner::query()->findOrFail($pickup->external_provider_id);
         $transporter = $pickup->external_transporter_id === null ? null : ExternalPartner::query()->findOrFail($pickup->external_transporter_id);
         if ($receiver !== null && ! $receiver->receives()) {
-            throw new BusinessRuleViolation('PARTNER_ROLE_MISMATCH', "{$receiver->legal_name} is not recorded as a recycler or an eliminator.");
+            throw new BusinessRuleViolation('PARTNER_ROLE_MISMATCH', "{$receiver->legal_name} is not recorded as a collector, a recycler or a sorter.");
         }
         if ($transporter !== null && ! $transporter->is_transporter) {
             throw new BusinessRuleViolation('PARTNER_ROLE_MISMATCH', "{$transporter->legal_name} is not recorded as a transporter.");
         }
-        if ($receiver !== null && ! $receiver->is_transporter && $transporter === null && $pickup->transporter_company_id === null) {
+        if ($receiver !== null && ! $receiver->carries() && $transporter === null && $pickup->transporter_company_id === null) {
             throw new BusinessRuleViolation('TRANSPORTER_REQUIRED', "{$receiver->legal_name} does not transport waste: choose a transporter.");
         }
         foreach (array_filter([$receiver, $transporter]) as $partner) {
@@ -541,6 +578,8 @@ final class PickupWorkflow
             'transporter_company_id' => $pickup->transporter_company_id, 'lot_number_snapshot' => $lot->lot_number,
             'qr_tag_value_snapshot' => DB::table('lot_tags')->where('waste_lot_id', $lot->id)->where('tag_type', 'qr')->where('is_active_flag', true)->value('tag_value'),
             'waste_type_label_snapshot' => DB::table('waste_types')->where('id', $lot->waste_type_id)->value('name'),
+            // What the lot is made of travels with it, and is printed on its tracking slip.
+            'composition_snapshot' => LotComposition::of((int) $lot->id) ?: null,
             'regulatory_waste_code_id' => $lot->regulatory_waste_code_id, 'regulatory_code_snapshot' => $code,
             'is_hazardous' => $lot->is_hazardous, 'declared_weight_kg' => $lot->net_weight_kg, 'weight_basis' => $lot->weight_basis ?? 'measured',
         ]);

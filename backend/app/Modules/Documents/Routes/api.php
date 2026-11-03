@@ -172,7 +172,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         $paper = ($input['method'] ?? 'electronic') === 'paper' ? ['signer_name' => trim((string) $input['signer_name']), 'signed_on' => (string) $input['signed_on']] : null;
 
         return new HazardousWasteManifestResource($workflow->sign($manifest, $request->user(), $request, $paper));
-    })->name('manifests.sign')->middleware('throttle:10,1');
+    })->name('manifests.sign')->middleware('throttle:action');
 
     // The scan of the slip signed by hand: it closes a slip that carries at least one handwritten signature.
     Route::post('manifests/{manifest}/signed-copy', function (Request $request, HazardousWasteManifest $manifest, ManifestWorkflow $workflow) use ($isProvider) {
