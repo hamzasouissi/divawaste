@@ -724,7 +724,7 @@ table.dw-table tbody td .p-button {
   .p-dialog-header { padding: 16px 12px 4px 20px; }
   .p-dialog-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
   .p-dialog-content { padding: 0 20px 18px; font-size: 13px; color: var(--dw-ink-2); }
-  .p-confirmdialog-message { margin: 0; }
+  .p-confirmdialog-message { margin: 0; min-width: 0; overflow-wrap: anywhere; } // a long link wraps instead of leaving the dialog
   .p-dialog-footer { padding: 10px 20px; border-block-start: 1px solid var(--dw-line); background: var(--dw-surface-2); border-end-start-radius: inherit; border-end-end-radius: inherit; }
 }
 

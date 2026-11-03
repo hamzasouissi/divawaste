@@ -540,6 +540,8 @@ export class PartnerRequirementsDialog {
   `,
   styles: `
     :host { display: block; margin-block-end: var(--dw-4); }
+    /* the title takes the room left; the two buttons keep theirs and go under it on a narrow screen */
+    .dw-panel-head { flex-wrap: wrap; } .dw-panel-head > button { flex: none; white-space: nowrap; }
     .hint { margin: 2px 0 0; font-size: 13px; } .asks { display: flex; align-items: center; gap: 6px; margin-block-start: 4px; font-size: 12.5px; color: var(--dw-ink-2); }
     tr.off td { color: var(--dw-ink-3); }
     .match { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; padding: 4px 8px; border-radius: var(--dw-radius); background: var(--dw-primary-soft); font-size: 12.5px; }
