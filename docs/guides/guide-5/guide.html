@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Guide 5 — Prestataire et Bourse</title>
+<style>
+  @page { size: A4; margin: 0; }
+  :root { --green: #0f5a4f; --green-2: #16796a; --soft: #e8f3f0; --ink: #16222b; --ink-2: #45525c; --line: #d9e2e0; --red: #c62f32; --amber: #9a5b00; --amber-soft: #fff4dc; --blue-soft: #eef3fb; --blue: #2f5ea8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", Inter, Arial, sans-serif; color: var(--ink); font-size: 11.4pt; line-height: 1.48; }
+  .page { width: 210mm; height: 297mm; overflow: hidden; padding: 15mm 17mm 14mm; page-break-after: always; position: relative; }
+  .page:last-child { page-break-after: auto; }
+  .foot { position: absolute; bottom: 8mm; left: 17mm; right: 17mm; display: flex; justify-content: space-between; font-size: 8.5pt; color: #7b8790; border-top: 1px solid var(--line); padding-top: 3mm; }
+
+  .cover { background: linear-gradient(160deg, #0b1c1f 0%, #0f3a35 60%, #16796a 100%); color: #fff; display: flex; flex-direction: column; padding: 22mm 20mm; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15pt; }
+  .brand .logo { width: 34px; height: 34px; border-radius: 9px; background: #2a8f7e; display: grid; place-items: center; font-weight: 800; }
+  .cover .kicker { margin-top: 30mm; font-size: 11pt; letter-spacing: .14em; text-transform: uppercase; color: #9fd8cc; font-weight: 700; }
+  .cover h1 { font-size: 29pt; line-height: 1.12; margin: 4mm 0 5mm; font-weight: 750; }
+  .cover .sub { font-size: 13.5pt; color: #d4ece6; max-width: 150mm; }
+  .robot-cover { position: absolute; right: 20mm; top: 18mm; width: 30mm; height: 30mm; }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8mm; }
+  .tag { padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 10.5pt; }
+  .need { margin-top: auto; background: rgba(255,255,255,.08); border-radius: 14px; padding: 7mm 8mm; }
+  .need h3 { margin: 0 0 3mm; font-size: 12pt; color: #9fd8cc; text-transform: uppercase; letter-spacing: .08em; }
+  .need ul { margin: 0; padding-left: 18px; columns: 2; column-gap: 10mm; }
+  .need li { margin-bottom: 1.5mm; break-inside: avoid; }
+
+  h2.part { font-size: 19pt; margin: 0 0 2mm; color: var(--green); }
+  h2.part small { display: block; font-size: 10.5pt; color: var(--ink-2); font-weight: 500; letter-spacing: .02em; }
+  .lead { color: var(--ink-2); margin: 0 0 5mm; }
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3.5mm; margin: 3mm 0 5mm; }
+  .map div { border: 1px solid var(--line); border-radius: 12px; padding: 3.5mm 5mm; }
+  .map div.extra { border-style: dashed; background: #fafcfc; }
+  .map b { display: block; color: var(--green); font-size: 11pt; } .map span { color: var(--ink-2); font-size: 10pt; }
+  .num { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: var(--green); color: #fff; font-size: 9.5pt; font-weight: 700; margin-right: 6px; }
+  .map .num { color: #fff; }
+  .extra .num { background: #7b8f8b; }
+
+  .step { margin-bottom: 6mm; }
+  .step h3 { display: flex; align-items: center; gap: 8px; font-size: 14pt; margin: 0 0 2.5mm; }
+  .step h3 .n { flex: none; display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 9px; background: var(--green); color: #fff; font-size: 11.5pt; }
+  .step.extra h3 .n { background: #7b8f8b; }
+  ol.do, ul.do { margin: 0 0 3mm; padding-left: 22px; } ol.do li, ul.do li { margin-bottom: 1.2mm; }
+  .shot { margin: 2mm 0 3mm; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; box-shadow: 0 3px 10px rgba(16, 40, 40, .08); }
+  .shot img { display: block; width: 100%; }
+  .shot.half { width: 72%; margin-left: auto; margin-right: auto; }
+  .shot.mid { width: 60%; margin-left: auto; margin-right: auto; }
+  .shot.small { width: 48%; margin-left: auto; margin-right: auto; }
+  .cap { font-size: 9pt; color: #6c7880; margin: -1.5mm 0 3mm; text-align: center; }
+  .box { border-radius: 10px; padding: 3mm 4.5mm; margin: 2mm 0 3mm; font-size: 10.5pt; }
+  .see { background: var(--soft); border-left: 4px solid var(--green); }
+  .see b:first-child { color: var(--green); }
+  .tip { background: #f3f6f8; border-left: 4px solid #8796a0; }
+  .warn { background: var(--amber-soft); border-left: 4px solid var(--amber); }
+  .info { background: var(--blue-soft); border-left: 4px solid var(--blue); }
+  .info b:first-child { color: var(--blue); }
+  .ring { color: var(--red); font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 10.2pt; margin: 2mm 0 3mm; }
+  th, td { text-align: left; padding: 2mm 3mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f3f6f6; font-size: 9.3pt; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  td.ans { font-weight: 700; color: var(--green); white-space: nowrap; }
+  table.xl { font-family: Calibri, "Segoe UI", Arial, sans-serif; font-size: 9.8pt; border: 1px solid #b7c4c1; }
+  table.xl th { background: #e6efe9; color: #1f3b33; text-transform: none; letter-spacing: 0; font-size: 9.8pt; border-right: 1px solid #c9d4d1; }
+  table.xl td { border-right: 1px solid #e0e6e4; padding: 1.4mm 2.5mm; }
+  .check td:first-child { width: 9mm; font-size: 13pt; color: var(--green); }
+  .check td { padding: 1.6mm 3mm; font-size: 9.8pt; }
+  .remarks { border: 1px dashed #b9c6c4; border-radius: 10px; height: 34mm; margin-top: 3mm; padding: 3mm 4mm; color: #9aa6ad; font-size: 10pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; align-items: start; }
+  .who { display: flex; gap: 4mm; align-items: center; }
+  .who svg { flex: none; width: 16mm; height: 16mm; }
+  .badge { display: inline-block; font-size: 8.5pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: #7b8f8b; border-radius: 6px; padding: 1px 7px; vertical-align: middle; margin-left: 6px; }
+</style>
+</head>
+<body>
+
+<!-- the assistant's face, as in the application -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="dg" x1="4" y1="2" x2="36" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1c8a7c"/><stop offset="0.55" stop-color="#0f5c56"/><stop offset="1" stop-color="#0b3f3b"/></linearGradient>
+    <linearGradient id="ds" x1="10" y1="11" x2="30" y2="31" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#bfeee1"/></linearGradient>
+    <symbol id="robot" viewBox="0 0 40 40">
+      <rect x="2" y="2" width="36" height="36" rx="12" fill="url(#dg)"/>
+      <clipPath id="tile"><rect x="2" y="2" width="36" height="36" rx="12"/></clipPath>
+      <rect x="11.5" y="31" width="17" height="10" rx="4.5" fill="#bfeee1" opacity="0.85" clip-path="url(#tile)"/>
+      <line x1="20" y1="7.8" x2="20" y2="11.5" stroke="#bfeee1" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="20" cy="6.6" r="2.1" fill="#7ff5d9"/>
+      <rect x="7" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="29.6" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="9.5" y="11" width="21" height="19.5" rx="6.5" fill="url(#ds)"/>
+      <rect x="12.3" y="14.6" width="15.4" height="10" rx="4.6" fill="#0b3f3b"/>
+      <rect x="15" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <rect x="21.7" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <path d="M17.6 27 Q20 28.5 22.4 27" fill="none" stroke="#0f5c56" stroke-width="1.3" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ============================================================ COVER -->
+<section class="page cover">
+  <div class="brand"><span class="logo">D</span> DivaWaste</div>
+  <svg class="robot-cover"><use href="#robot"/></svg>
+  <div class="kicker">Guide 5 · Pas à pas</div>
+  <h1>Prestataire :<br>votre compte et la Bourse</h1>
+  <div class="sub">Pour un <b>collecteur, transporteur, recycleur ou trieur</b> : créer son compte, se faire trouver par les industriels, et acheter des lots sur la Bourse. Avec, en miroir, le côté <b>vendeur</b> (l'industriel).</div>
+  <div class="tags"><span class="tag">⏱ 20 minutes</span><span class="tag">♻ Exemple : Eco Recyclage Kairouan</span><span class="tag">🆓 Gratuit pour les prestataires</span></div>
+  <div class="need">
+    <h3>Avant de commencer, ayez sous la main</h3>
+    <ul>
+      <li>Le <b>matricule fiscal</b> de votre société</li>
+      <li>Une <b>adresse email</b> que vous consultez</li>
+      <li>Vos <b>activités</b> : collecte, transport, recyclage, tri</li>
+      <li>Votre <b>zone d'intervention</b> (villes, régions)</li>
+      <li>Vos <b>agréments</b> : n°, dates, et le PDF de chacun</li>
+      <li>Les <b>déchets</b> que vous acceptez</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ OVERVIEW -->
+<section class="page">
+  <h2 class="part">Le chemin en un coup d'œil</h2>
+  <div class="map">
+    <div><b><span class="num">A</span>Créer le compte</b><span>Société, vous, activités et agréments. Gratuit.</span></div>
+    <div><b><span class="num">B</span>La validation</b><span>Diva Software valide la société, puis chaque agrément.</span></div>
+    <div><b><span class="num">C</span>Votre profil</b><span>Ce que voient les industriels dans l'annuaire, et les déchets que vous acceptez.</span></div>
+    <div><b><span class="num">D</span>Votre espace</b><span>Demandes, Bourse, Contrats, Documents, Mon entreprise.</span></div>
+    <div><b><span class="num">E</span>La Bourse côté prestataire</b><span>Trouver une annonce, faire une offre, négocier.</span></div>
+    <div><b><span class="num">F</span>La Bourse côté vendeur</b><span>Répondre aux offres, conclure, envoyer l'enlèvement.</span></div>
+    <div><b><span class="num">G</span>Après l'accord</b><span>L'enlèvement au prix convenu, comme d'habitude.</span></div>
+    <div><b><span class="num">✓</span>Fiche de test</b><span>Cochez ce qui marche, notez ce qui gêne.</span></div>
+  </div>
+  <div class="box info"><b>Prestataire ou partenaire sans compte ?</b> Un prestataire <b>avec compte</b> confirme lui-même les enlèvements, enregistre la réception et signe les bordereaux en ligne. Sans compte, l'industriel fait tout cela à sa place (Guide 4, R4). Créer un compte est gratuit.</div>
+  <div class="box tip"><b>Comment lire ce guide.</b> L'élément à cliquer est <span class="ring">entouré en rouge</span> ; l'encadré vert dit <b>ce que vous devez voir</b>. Les étiquettes <span class="badge">Prestataire</span> et <span class="badge" style="background:var(--green)">Vendeur</span> disent qui fait l'étape.</div>
+  <div class="foot"><span>DivaWaste · Guide 5 — Prestataire et Bourse</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ A -->
+<section class="page">
+  <h2 class="part">A. Créer le compte prestataire</h2>
+  <div class="step">
+    <h3><span class="n">A1</span>Votre société</h3>
+    <ol class="do"><li><b>Créer un compte</b>, puis choisissez <b>Prestataire (collecteur, recycleur, transporteur)</b>. « L'accès est gratuit, vos agréments sont vérifiés par la plateforme. »</li>
+      <li><b>Raison sociale</b>, <b>Pays</b>, <b>Matricule fiscal</b> (format montré sous le champ), Ville, Téléphone. <b>Suivant</b>.</li></ol>
+    <div class="two"><div class="shot"><img src="img6/01-register-provider.jpg"></div><div class="shot"><img src="img6/02-provider-company.jpg"></div></div>
+    <h3 style="margin-top:3mm"><span class="n">A2</span>Vous</h3>
+    <p>Prénom, nom, email, téléphone, mot de passe (12 caractères, une lettre et un chiffre). <b>Suivant</b>. Vous serez l'<b>administrateur</b> du compte.</p>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 5 — Prestataire et Bourse</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">A3</span>Activité et conditions</h3>
+    <ol class="do"><li><b>Activités *</b> : cochez tout ce que vous faites — Collecteur, Transporteur, Recycleur, Trieur (ici Collecteur et Recycleur).</li>
+      <li><b>Zone d'intervention</b> : où vous allez chercher les déchets (ici Kairouan, Sousse, Monastir).</li>
+      <li><b>Ajouter vos agréments maintenant</b> (facultatif, mais conseillé) : <b>Type d'agrément</b>, <b>N° d'agrément</b>, <b>Valable du</b>, <b>Expire le</b>, et le <b>PDF</b>. Plusieurs ? <b>Ajouter un agrément</b>.</li>
+      <li>Cochez <b>J'ai lu et j'accepte</b>, puis <b>Créer mon compte</b>.</li></ol>
+    <div class="shot mid"><img src="img6/05-provider-accreditation.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> « Vérifiez votre boîte mail ». Confirmez l'adresse avec le lien reçu (valable 24 heures), puis connectez-vous : « En attente de validation ».</div>
+    <div class="box tip"><b>Pas d'agrément sous la main ?</b> Vous pourrez le déposer plus tard, depuis <b>Mon entreprise › Agréments</b>. Sans agrément valide, vous ne pourrez pas être choisi pour un enlèvement.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 5 — Prestataire et Bourse</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ B -->
+<section class="page">
+  <h2 class="part">B. La validation par Diva Software</h2>
+  <p>Deux vérifications, faites par l'équipe de Diva Software (le <b>back-office</b> de la plateforme) :</p>
+  <ol class="do"><li><b>La société</b> : « Inscriptions à valider ». Vous êtes prévenu par email ; cliquez alors sur <b>Actualiser</b> (ou reconnectez-vous).</li>
+    <li><b>Chaque agrément</b> : « Agréments à valider » — le document est ouvert, puis <b>Approuver</b> et <b>Confirmer</b> (ou <b>Rejeter</b>).</li></ol>
+  <div class="two"><div class="shot"><img src="img6/16-admin-accreditations.jpg"></div><div class="shot"><img src="img6/17-admin-approve.jpg"></div></div>
+  <p class="cap">Écrans du back-office de Diva Software, pour information : vous ne les voyez pas.</p>
+  <div class="shot half"><img src="img6/19-accreditation-valid.jpg"></div>
+  <div class="box see"><b>✔ Vous devez voir</b> dans <b>Mon entreprise › Agréments</b> : votre agrément <b>Approuvé</b> (avant : « À valider »). Il apparaît alors dans l'annuaire, et vous pouvez être choisi pour un enlèvement.</div>
+  <div class="box warn"><b>Un agrément expire ?</b> Les industriels qui travaillent avec vous le voient venir sur leur Accueil (« Agrément de … : expire dans 16 jour(s) »). Déposez le nouveau à temps : un agrément expiré vous retire des choix possibles.</div>
+  <div class="foot"><span>DivaWaste · Guide 5 — Prestataire et Bourse</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ C + D -->
+<section class="page">
+  <h2 class="part">C. Votre profil dans l'annuaire</h2>
+  <p><b>Mon entreprise › Profil et déchets acceptés</b> : ce que voient les industriels quand ils cherchent un prestataire.</p>
+  <ol class="do"><li><b>Activités</b>, <b>Description</b> (une phrase : ce que vous faites, où), <b>Zone d'intervention</b>, <b>Contact</b>, <b>Téléphone</b>, <b>Email</b>.</li>
+    <li><b>Déchets acceptés</b> : cliquez sur les familles que vous prenez (ici Produits textiles, Emballages). Pour chacune, précisez si besoin un <b>type</b>, la <b>filière</b> (Recyclage…) et <b>ce que vous demandez par enlèvement</b> (vos exigences : tri, conditionnement…).</li>
+    <li><b>Enregistrer</b>.</li></ol>
+  <div class="shot half"><img src="img6/14-accepted-wastes.jpg"></div>
+  <div class="box info"><b>Pourquoi c'est important.</b> La <b>Bourse</b> ne vous montre que les annonces des déchets que vous acceptez. Un industriel ne peut vous choisir que pour ces déchets.</div>
+  <div class="foot"><span>DivaWaste · Guide 5 — Prestataire et Bourse</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <h2 class="part">D. Votre espace prestataire</h2>
+  <div class="shot half"><img src="img6/10-provider-home.jpg"></div>
+  <table>
+    <tr><th>Menu</th><th>Ce que vous y faites</th></tr>
+    <tr><td><b>Demandes d'enlèvement</b></td><td>Les demandes des industriels : <b>Confirmer</b> la date, <b>Proposer une autre date</b> ou <b>Refuser</b> ; puis <b>Enregistrer la réception</b> et <b>Déclarer le traitement</b> (Guide 4, R3). Onglets À traiter, Planifiés, Terminés.</td></tr>
+    <tr><td><b>Bourse</b></td><td>Les lots mis en vente pour les déchets que vous acceptez (partie E).</td></tr>
+    <tr><td><b>Contrats</b></td><td>Les contrats que les industriels ont passés avec vous : prix, rythme, durée.</td></tr>
+    <tr><td><b>Documents</b></td><td>Les bordereaux à signer (comme transporteur et/ou destinataire), et vos certificats.</td></tr>
+    <tr><td><b>Mon entreprise</b></td><td>Profil, déchets acceptés, agréments.</td></tr>
+    <tr><td><b>Paramètres</b></td><td>Les réglages du compte (voir Guide 1, partie C).</td></tr>
+  </table>
+  <div class="foot"><span>DivaWaste · Guide 5 — Prestataire et Bourse</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ E -->
+<section class="page">
+  <h2 class="part">E. La Bourse, côté prestataire <span class="badge">Prestataire</span></h2>
+  <p class="lead">La Bourse met en relation un industriel qui a des déchets valorisables et les prestataires qui les veulent. Chaque négociation est <b>privée</b> entre le vendeur et un preneur.</p>
+  <div class="step">
+    <h3><span class="n">E1</span>Trouver une annonce</h3>
+    <p>Menu <b>Bourse</b> : les annonces ouvertes, pour vos déchets acceptés. Le vendeur reste <b>anonyme</b> (seule la région du site est montrée) jusqu'à l'accord.</p>
+    <div class="shot half"><img src="img6/20-provider-bourse.jpg"></div>
+    <p>Ouvrez l'annonce : description, type, poids, lots, <b>prix demandé</b> (« 60 DT / t · le preneur paie »), date à partir de laquelle on peut enlever, clôture des offres.</p>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 5 — Prestataire et Bourse</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">E2</span>Faire une offre</h3>
+    <ul class="do"><li><b>Proposer le prix demandé</b> : vous prenez le prix tel quel ; il ne reste que la date.</li>
+      <li><b>Proposer un prix</b> : votre prix. Choisissez <b>Je paie</b> (vous achetez) ou <b>Je reçois</b> (le vendeur vous paie pour l'enlever), le montant et l'unité (par tonne, par kg, forfait).</li></ul>
+    <div class="shot half"><img src="img6/22-listing-provider.jpg"></div>
+    <div class="shot mid"><img src="img6/23-offer-price.jpg"></div>
+    <p>Indiquez la <b>Date d'enlèvement souhaitée</b>, éventuellement <b>Valable jusqu'au</b> (7 jours par défaut) et un message. <b>Envoyer</b>. L'estimation se met à jour : « Soit environ 6,000 DT à payer au vendeur, sur 120 kg connus ».</p>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 5 — Prestataire et Bourse</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ F -->
+<section class="page">
+  <h2 class="part">F. La Bourse, côté vendeur <span class="badge" style="background:var(--green)">Vendeur</span></h2>
+  <p>Pour mettre un lot en vente : Guide 1, partie E. Les offres arrivent sur l'annonce (<b>Enlèvements › Bourse</b>), dans <b>Offres</b>, avec le nom du prestataire.</p>
+  <div class="shot half"><img src="img6/30-seller-offer.jpg"></div>
+  <p>Pour chaque négociation : <b>Accepter</b>, <b>Contre-proposer</b> (un autre prix, une autre date) ou <b>Refuser</b>. Ici, le vendeur contre-propose <b>55 DT / t</b> :</p>
+  <div class="shot mid"><img src="img6/31-counter.jpg"></div>
+  <div class="foot"><span>DivaWaste · Guide 5 — Prestataire et Bourse</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">E3</span>Répondre à une contre-proposition <span class="badge">Prestataire</span></h3>
+    <p>Dans <b>Ma négociation</b>, la dernière proposition attend votre réponse : <b>Accepter</b>, <b>Contre-proposer</b> ou <b>Refuser</b>. Les échanges restent visibles, du plus ancien au plus récent.</p>
+    <div class="shot half"><img src="img6/25-provider-counter.jpg"></div>
+    <h3 style="margin-top:3mm"><span class="n">E4</span>L'accord</h3>
+    <div class="shot half"><img src="img6/27-provider-won.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> « <b>Accord conclu</b> — 55,000 DT / t · le preneur paie », l'annonce <b>Cédée</b>, le nom du vendeur révélé (Confection Nour), et « <b>Enlèvement préparé : ENL-2026-0003</b> ».</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 5 — Prestataire et Bourse</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ G -->
+<section class="page">
+  <h2 class="part">G. Après l'accord : l'enlèvement</h2>
+  <div class="step">
+    <h3><span class="n">G1</span>Le vendeur envoie la demande <span class="badge" style="background:var(--green)">Vendeur</span></h3>
+    <p>L'accord a préparé un <b>brouillon</b> d'enlèvement : les lots de l'annonce, le preneur, la date convenue, et le prix (« <b>Accord de la bourse (ANN-2026-0001) — 55 DT / t · Prix appliqué automatiquement à la réception, sur le poids reçu</b> »). Le vendeur vérifie et clique sur <b>Envoyer la demande</b>.</p>
+    <div class="shot half"><img src="img6/36-seller-sent.jpg"></div>
+    <h3 style="margin-top:3mm"><span class="n">G2</span>Le prestataire la reçoit <span class="badge">Prestataire</span></h3>
+    <p>Dans <b>Demandes d'enlèvement</b>, onglet <b>À traiter</b> : <b>Confirmer</b> la date, puis le cycle habituel — chargement, bordereau, réception, traitement, clôture (Guide 4, R3).</p>
+    <div class="shot half"><img src="img6/28-provider-pickups.jpg"></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 5 — Prestataire et Bourse</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ TEST -->
+<section class="page">
+  <h2 class="part">Fiche de test</h2>
+  <p class="lead" style="margin-bottom:2mm">Cochez chaque résultat obtenu, notez ce qui a gêné.</p>
+  <table class="check">
+    <tr><th></th><th>Partie</th><th>Résultat attendu</th></tr>
+    <tr><td>☐</td><td>A Inscription</td><td>Étape 3 « Activité et conditions » (pas de formule) ; un agrément sans PDF est refusé.</td></tr>
+    <tr><td>☐</td><td>B Validation</td><td>« En attente de validation » puis l'espace prestataire ; l'agrément passe de « À valider » à « Approuvé ».</td></tr>
+    <tr><td>☐</td><td>C Profil</td><td>Les déchets acceptés s'enregistrent ; le profil est « publié dans l'annuaire ».</td></tr>
+    <tr><td>☐</td><td>E1 Annonce</td><td>Seules les annonces de vos déchets acceptés ; vendeur anonyme.</td></tr>
+    <tr><td>☐</td><td>E2 Offre</td><td>« Je paie / Je reçois » ; l'estimation dit « à payer au vendeur » ou « reçus du vendeur ».</td></tr>
+    <tr><td>☐</td><td>F Vendeur</td><td>L'offre arrive avec le nom du prestataire ; Accepter, Contre-proposer, Refuser.</td></tr>
+    <tr><td>☐</td><td>E4 Accord</td><td>« Accord conclu », annonce « Cédée », nom du vendeur révélé, enlèvement préparé.</td></tr>
+    <tr><td>☐</td><td>G Enlèvement</td><td>Le brouillon porte le prix de la bourse ; envoyé, il apparaît chez le prestataire.</td></tr>
+  </table>
+  <div class="remarks" style="height:70mm">Mes remarques…</div>
+  <div class="foot"><span>DivaWaste · Guide 5 — Prestataire et Bourse</span><span class="pg"></span></div>
+</section>
+
+<script>
+  document.querySelectorAll('.page').forEach((page, i) => { const pg = page.querySelector('.pg'); if (pg) pg.textContent = String(i + 1); });
+</script>
+</body>
+</html>

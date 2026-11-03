@@ -11,6 +11,7 @@ import { Tab, TabList, TabPanel, TabPanels, Tabs } from 'primeng/tabs';
 import { Api, ApiError } from '../../core/api/api';
 import { Localized, WasteType } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
+import { MoreComponent } from '../../ui/more';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
 import { Locale } from '../../core/i18n/i18n';
@@ -28,8 +29,7 @@ import { SELECT } from '../../ui/select';
 import { FilterBarComponent } from '../../ui/filter-bar';
 import { HelpComponent } from '../../ui/help';
 import { COLOR } from '../../ui/swatch';
-import { ColorsComponent } from './colors';
-import { TolerancesComponent } from './tolerances';
+
 
 interface CatalogItem {
   code: string;
@@ -51,7 +51,7 @@ const num = (value: string | null): string | null => (!value || value.trim() ===
 
 /** M1-02 / M1-04: a company's own type, or the editable attributes of an existing one. */
 @Component({
-  imports: [ReactiveFormsModule, TranslocoDirective, LocalizedPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT, ...COLOR, CheckboxComponent, ...DIALOG_PARTS],
+  imports: [ReactiveFormsModule, TranslocoDirective, LocalizedPipe, IconComponent, ButtonDirective, InputText, ...FIELD, ...SELECT, ...COLOR, CheckboxComponent, ...DIALOG_PARTS, MoreComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -83,13 +83,15 @@ const num = (value: string | null): string | null => (!value || value.trim() ===
               <dw-checkbox formControlName="is_hazardous">{{ t('common.hazardous') }}</dw-checkbox>
               @if (form.controls.is_hazardous.value && !form.controls.regulatory_code.value) { <p class="bad dw-span-2" role="status">{{ t('wasteTypes.codeRequired') }}</p> }
             }
-            <dw-checkbox class="dw-span-2" formControlName="requires_authorization">{{ t('wasteTypes.requiresAuthorization') }}</dw-checkbox>
             <dw-field [label]="t('wasteTypes.unit')">
               <dw-select formControlName="unit" required>
                 @for (unit of vocabulary()?.units ?? []; track unit.code) { <dw-option [value]="unit.code" [label]="(unit.name | dwLocalized) + ' (' + unit.symbol + ')'" /> }
               </dw-select>
               <small dwHint>{{ t('wasteTypes.unitHint.' + dimension()) }}</small>
             </dw-field>
+            <!-- W-03: what most types never change, folded; density and unit weight only when the unit needs them. -->
+            <dw-more [summary]="t('wasteTypes.moreSummary')">
+            @if (session.uses('authorizations')) { <dw-checkbox class="dw-span-2" formControlName="requires_authorization">{{ t('wasteTypes.requiresAuthorization') }}</dw-checkbox> }
             <dw-field [label]="t('wasteTypes.method')">
               <dw-select formControlName="measurement_method" required>
                 @for (method of methods; track method) { <dw-option [value]="method" [label]="t('wasteTypes.methods.' + method)" /> }
@@ -107,15 +109,17 @@ const num = (value: string | null): string | null => (!value || value.trim() ===
                 @for (packaging of vocabulary()?.packaging_types ?? []; track packaging.code) { <dw-option [value]="packaging.code" [label]="packaging.name | dwLocalized" /> }
               </dw-select>
             </dw-field>
+            @if (session.uses('colors')) {
             <dw-field [label]="t('lots.color')">
               <dw-select formControlName="color_family">
                 <dw-option [value]="null" label="—" />
                 @for (color of vocabulary()?.color_families ?? []; track color.code) { <dw-option [value]="color.code" [label]="(color.name | dwLocalized) | dwColorName: color.pantone_reference" [swatch]="color.hex_color" /> }
               </dw-select>
             </dw-field>
+            }
             <dw-field [label]="t('lots.grammage')"><input pInputText formControlName="default_grammage_gsm" inputmode="decimal" /></dw-field>
-            <dw-field [label]="t('wasteTypes.density')"><input pInputText formControlName="density_kg_m3" inputmode="decimal" /></dw-field>
-            <dw-field [label]="t('wasteTypes.unitWeight')"><input pInputText formControlName="unit_weight_kg" inputmode="decimal" /></dw-field>
+            @if (dimension() === 'volume') { <dw-field [label]="t('wasteTypes.density')"><input pInputText formControlName="density_kg_m3" inputmode="decimal" /></dw-field> }
+            @if (dimension() === 'count') { <dw-field [label]="t('wasteTypes.unitWeight')"><input pInputText formControlName="unit_weight_kg" inputmode="decimal" /></dw-field> }
 
             <h3 class="dw-h3 dw-form-section">{{ t('wasteTypes.defaultComposition') }}</h3>
             <div class="dw-span-2 composition" formArrayName="composition">
@@ -127,7 +131,7 @@ const num = (value: string | null): string | null => (!value || value.trim() ===
                     </dw-select>
                   </dw-field>
                   <dw-field class="pct" [label]="t('wasteTypes.pct')"><input pInputText formControlName="pct" inputmode="decimal" required /></dw-field>
-                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="composition.removeAt(index)" [attr.aria-label]="t('common.remove')"><dw-icon>close</dw-icon></button>
+                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="composition.removeAt(index)" [attr.aria-label]="t('common.remove')" [title]="t('common.remove')"><dw-icon>close</dw-icon></button>
                 </div>
               }
               <div class="dw-row">
@@ -136,6 +140,7 @@ const num = (value: string | null): string | null => (!value || value.trim() ===
               </div>
               @if (form.controls.composition.errors?.['server']; as message) { <p class="bad" role="alert">{{ message }}</p> }
             </div>
+            </dw-more>
           </div>
         </div>
         <div class="dw-dialog-foot">
@@ -153,6 +158,7 @@ const num = (value: string | null): string | null => (!value || value.trim() ===
 })
 export class WasteTypeDialog {
   protected readonly data = dialogData<WasteType | null>();
+  protected readonly session = inject(Session);
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
   private readonly reference = inject(ReferenceData);
@@ -273,24 +279,33 @@ export class RegulatoryCodeDialog {
 /** M1-02 / M1-03: the company's waste types and the reference catalogue they come from. */
 @Component({
   imports: [
-    HelpComponent, ColorsComponent, TolerancesComponent,
+    HelpComponent,
     CodePipe, TranslocoDirective, ...TABLE, PageHeaderComponent, StatusComponent, SearchComponent, StateComponent, LocalizedPipe, IconComponent, ButtonDirective, CheckboxComponent, FilterBarComponent, Tabs, TabList, Tab, TabPanels, TabPanel,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-page-header [title]="t('wasteTypes.title')" [subtitle]="t('wasteTypes.subtitle')">
-        @if (canManage) { <button pButton type="button" (click)="edit(null)"><dw-icon>add</dw-icon>{{ t('wasteTypes.new') }}</button> }
+        <!-- W-02: adding a type starts in the reference catalogue; a custom type only when nothing fits. -->
+        @if (canManage) { <button pButton type="button" (click)="startAdd()"><dw-icon>add</dw-icon>{{ t('wasteTypes.add') }}</button> }
       </dw-page-header>
       <dw-help topic="wasteTypes" />
 
+      <!-- W-04: hazardous types without their code, completed one after the other. -->
+      @if (canManage && missing().length > 0) {
+        <div class="missing" role="status">
+          <span class="ico"><dw-icon>qr_code_2</dw-icon></span>
+          <span class="dw-spacer">{{ t('wasteTypes.missingCodes', { count: missing().length }) }}</span>
+          <button pButton type="button" (click)="completeAll()">{{ t('wasteTypes.completeAll') }}</button>
+        </div>
+      }
+
       <div class="dw-panel">
-        <p-tabs [value]="0" (valueChange)="onTab($event)">
+        <p-tabs [value]="tab()" (valueChange)="tab.set($any($event)); onTab($event)">
           <p-tablist>
             <p-tab [value]="0">{{ t('wasteTypes.mine') }}</p-tab>
             <p-tab [value]="1">{{ t('wasteTypes.catalog') }}</p-tab>
-            <p-tab [value]="2">{{ t('colors.title') }}</p-tab>
-            <p-tab [value]="3">{{ t('tolerance.rules.title') }}</p-tab>
+
           </p-tablist>
           <p-tabpanels>
             <p-tabpanel [value]="0">
@@ -323,9 +338,16 @@ export class RegulatoryCodeDialog {
               </dw-data-table>
             </p-tabpanel>
             <p-tabpanel [value]="1">
+              <dw-filter-bar>
+                <dw-search [placeholder]="t('wasteTypes.searchCatalog')" [query]="catalogSearch()" (queryChange)="catalogSearch.set($event)" />
+                <span class="dw-spacer"></span>
+                <!-- the catalogue of the company's industry first; the other industries' wastes on demand (mixed activities) -->
+                <button pButton text type="button" (click)="toggleAllSectors()"><dw-icon>{{ allSectors() ? 'filter_alt' : 'travel_explore' }}</dw-icon>{{ t(allSectors() ? 'wasteTypes.mySector' : 'wasteTypes.allSectors') }}</button>
+                @if (canManage) { <button pButton text type="button" (click)="edit(null)"><dw-icon>add</dw-icon>{{ t('wasteTypes.nothingFits') }}</button> }
+              </dw-filter-bar>
               <dw-state [loading]="catalogLoading()" [error]="catalogError()" (retry)="loadCatalog(true)">
                 <ul class="catalog">
-                  @for (item of catalog(); track item.code) {
+                  @for (item of filteredCatalog(); track item.code) {
                     <li>
                       <div class="what">
                         <strong>{{ item.name | dwLocalized }}</strong>
@@ -343,18 +365,15 @@ export class RegulatoryCodeDialog {
                 </ul>
               </dw-state>
             </p-tabpanel>
-            <p-tabpanel [value]="2">
-              <dw-colors />
-            </p-tabpanel>
-            <p-tabpanel [value]="3">
-              @if (tolerances()) { <dw-tolerances /> }
-            </p-tabpanel>
+
           </p-tabpanels>
         </p-tabs>
       </div>
     </ng-container>
   `,
   styles: `
+    .missing { display: flex; align-items: center; gap: 12px; margin-block-end: 16px; padding: 12px 14px; border-radius: var(--dw-radius-lg); background: var(--dw-danger-soft); color: var(--dw-ink); }
+    .missing .ico { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: var(--dw-surface); color: var(--dw-danger); }
     .chip { display: inline-block; padding: 1px 8px; margin-inline-end: 4px; border-radius: 999px; background: var(--dw-neutral-soft); font-size: 12px; }
     .catalog { list-style: none; margin: 0; padding: 0; }
     .catalog li { display: flex; align-items: center; gap: var(--dw-3); padding: 10px var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); min-height: 52px; }
@@ -372,17 +391,47 @@ export class WasteTypesPage {
   protected readonly canManage = inject(Session).can('waste_types.manage');
   protected readonly search = signal('');
   protected readonly inactive = signal(false);
+  protected readonly tab = signal(0);
+  protected readonly catalogSearch = signal('');
+  /** The catalogue, filtered by name, regulatory code or code as one types. */
+  protected readonly filteredCatalog = computed(() => {
+    const words = this.catalogSearch().trim().toLowerCase();
+    return words ? this.catalog().filter((item) => `${JSON.stringify(item.name)} ${item.regulatory_code ?? ''} ${item.code}`.toLowerCase().includes(words)) : this.catalog();
+  });
+  /** Active hazardous types that wait for their regulatory code. */
+  protected readonly missing = signal<WasteType[]>([]);
+
+  protected startAdd(): void {
+    this.tab.set(1);
+    this.loadCatalog();
+  }
+
+  protected loadMissing(): void {
+    this.api.list<WasteType>('waste-types', { per_page: 100, active_only: true }).subscribe({
+      next: (page) => this.missing.set(page.data.filter((type) => type.regulatory_code_missing)),
+      error: () => undefined,
+    });
+  }
+
+  /** One dialog after the other; a type left without a code stays in the list for later. */
+  protected async completeAll(): Promise<void> {
+    for (const type of [...this.missing()]) {
+      await this.completeCode(type);
+    }
+    this.loadMissing();
+  }
+
   protected readonly list = new ListStore<WasteType>((query) => this.api.list<WasteType>('waste-types', { ...query, search: this.search(), active_only: !this.inactive() }));
   protected readonly catalog = signal<CatalogItem[]>([]);
   protected readonly catalogLoading = signal(false);
   protected readonly catalogError = signal<unknown>(null);
   protected readonly activating = signal<string | null>(null);
-  /** The tolerances are loaded when their tab is first opened. */
-  protected readonly tolerances = signal(false);
+
   private readonly catalogLoaded = computed(() => this.catalog().length > 0);
 
   constructor() {
     // Opened from a pickup whose hazardous lots wait for the code of their type: that type is offered at once.
+    this.loadMissing();
     const pending = inject(ActivatedRoute).snapshot.queryParamMap.get('code');
     if (pending && this.canManage) {
       this.api.get<WasteType>(`waste-types/${pending}`).subscribe({ next: (type) => void (type.regulatory_code_missing && this.completeCode(type)), error: () => undefined });
@@ -403,9 +452,13 @@ export class WasteTypesPage {
     if (tab === 1) {
       this.loadCatalog();
     }
-    if (tab === 3) {
-      this.tolerances.set(true);
-    }
+  }
+
+  protected readonly allSectors = signal(false);
+
+  protected toggleAllSectors(): void {
+    this.allSectors.set(!this.allSectors());
+    this.loadCatalog(true);
   }
 
   protected loadCatalog(force = false): void {
@@ -414,7 +467,7 @@ export class WasteTypesPage {
     }
     this.catalogLoading.set(true);
     this.catalogError.set(null);
-    this.api.get<CatalogItem[]>('waste-catalog').subscribe({
+    this.api.get<CatalogItem[]>('waste-catalog', this.allSectors() ? { all: 1 } : undefined).subscribe({
       next: (items) => {
         this.catalog.set(items);
         this.catalogLoading.set(false);
@@ -468,6 +521,7 @@ export class WasteTypesPage {
       this.reference.refreshWasteTypes();
       this.toast.success('wasteTypes.codeCompleted');
       this.list.reload();
+      this.missing.update((types) => types.filter((item) => item.ulid !== type.ulid));
     } catch (error) {
       this.toast.error(error);
     }

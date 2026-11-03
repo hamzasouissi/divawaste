@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Guide 2 — Sans ERP, avec production</title>
+<style>
+  @page { size: A4; margin: 0; }
+  :root { --green: #0f5a4f; --green-2: #16796a; --soft: #e8f3f0; --ink: #16222b; --ink-2: #45525c; --line: #d9e2e0; --red: #c62f32; --amber: #9a5b00; --amber-soft: #fff4dc; --blue-soft: #eef3fb; --blue: #2f5ea8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", Inter, Arial, sans-serif; color: var(--ink); font-size: 11.4pt; line-height: 1.48; }
+  .page { width: 210mm; height: 297mm; overflow: hidden; padding: 15mm 17mm 14mm; page-break-after: always; position: relative; }
+  .page:last-child { page-break-after: auto; }
+  .foot { position: absolute; bottom: 8mm; left: 17mm; right: 17mm; display: flex; justify-content: space-between; font-size: 8.5pt; color: #7b8790; border-top: 1px solid var(--line); padding-top: 3mm; }
+
+  .cover { background: linear-gradient(160deg, #0b1c1f 0%, #0f3a35 60%, #16796a 100%); color: #fff; display: flex; flex-direction: column; padding: 22mm 20mm; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15pt; }
+  .brand .logo { width: 34px; height: 34px; border-radius: 9px; background: #2a8f7e; display: grid; place-items: center; font-weight: 800; }
+  .cover .kicker { margin-top: 30mm; font-size: 11pt; letter-spacing: .14em; text-transform: uppercase; color: #9fd8cc; font-weight: 700; }
+  .cover h1 { font-size: 29pt; line-height: 1.12; margin: 4mm 0 5mm; font-weight: 750; }
+  .cover .sub { font-size: 13.5pt; color: #d4ece6; max-width: 150mm; }
+  .robot-cover { position: absolute; right: 20mm; top: 18mm; width: 30mm; height: 30mm; }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8mm; }
+  .tag { padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 10.5pt; }
+  .need { margin-top: auto; background: rgba(255,255,255,.08); border-radius: 14px; padding: 7mm 8mm; }
+  .need h3 { margin: 0 0 3mm; font-size: 12pt; color: #9fd8cc; text-transform: uppercase; letter-spacing: .08em; }
+  .need ul { margin: 0; padding-left: 18px; columns: 2; column-gap: 10mm; }
+  .need li { margin-bottom: 1.5mm; break-inside: avoid; }
+
+  h2.part { font-size: 19pt; margin: 0 0 2mm; color: var(--green); }
+  h2.part small { display: block; font-size: 10.5pt; color: var(--ink-2); font-weight: 500; letter-spacing: .02em; }
+  .lead { color: var(--ink-2); margin: 0 0 5mm; }
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3.5mm; margin: 3mm 0 5mm; }
+  .map div { border: 1px solid var(--line); border-radius: 12px; padding: 3.5mm 5mm; }
+  .map div.extra { border-style: dashed; background: #fafcfc; }
+  .map b { display: block; color: var(--green); font-size: 11pt; } .map span { color: var(--ink-2); font-size: 10pt; }
+  .num { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: var(--green); color: #fff; font-size: 9.5pt; font-weight: 700; margin-right: 6px; }
+  .map .num { color: #fff; }
+  .extra .num { background: #7b8f8b; }
+
+  .step { margin-bottom: 6mm; }
+  .step h3 { display: flex; align-items: center; gap: 8px; font-size: 14pt; margin: 0 0 2.5mm; }
+  .step h3 .n { flex: none; display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 9px; background: var(--green); color: #fff; font-size: 11.5pt; }
+  .step.extra h3 .n { background: #7b8f8b; }
+  ol.do, ul.do { margin: 0 0 3mm; padding-left: 22px; } ol.do li, ul.do li { margin-bottom: 1.2mm; }
+  .shot { margin: 2mm 0 3mm; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; box-shadow: 0 3px 10px rgba(16, 40, 40, .08); }
+  .shot img { display: block; width: 100%; }
+  .shot.half { width: 72%; margin-left: auto; margin-right: auto; }
+  .shot.mid { width: 60%; margin-left: auto; margin-right: auto; }
+  .shot.small { width: 48%; margin-left: auto; margin-right: auto; }
+  .cap { font-size: 9pt; color: #6c7880; margin: -1.5mm 0 3mm; text-align: center; }
+  .box { border-radius: 10px; padding: 3mm 4.5mm; margin: 2mm 0 3mm; font-size: 10.5pt; }
+  .see { background: var(--soft); border-left: 4px solid var(--green); }
+  .see b:first-child { color: var(--green); }
+  .tip { background: #f3f6f8; border-left: 4px solid #8796a0; }
+  .warn { background: var(--amber-soft); border-left: 4px solid var(--amber); }
+  .info { background: var(--blue-soft); border-left: 4px solid var(--blue); }
+  .info b:first-child { color: var(--blue); }
+  .ring { color: var(--red); font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 10.2pt; margin: 2mm 0 3mm; }
+  th, td { text-align: left; padding: 2mm 3mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f3f6f6; font-size: 9.3pt; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  td.ans { font-weight: 700; color: var(--green); white-space: nowrap; }
+  table.xl { font-family: Calibri, "Segoe UI", Arial, sans-serif; font-size: 9.8pt; border: 1px solid #b7c4c1; }
+  table.xl th { background: #e6efe9; color: #1f3b33; text-transform: none; letter-spacing: 0; font-size: 9.8pt; border-right: 1px solid #c9d4d1; }
+  table.xl td { border-right: 1px solid #e0e6e4; padding: 1.4mm 2.5mm; }
+  .check td:first-child { width: 9mm; font-size: 13pt; color: var(--green); }
+  .check td { padding: 1.6mm 3mm; font-size: 9.8pt; }
+  .remarks { border: 1px dashed #b9c6c4; border-radius: 10px; height: 34mm; margin-top: 3mm; padding: 3mm 4mm; color: #9aa6ad; font-size: 10pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; align-items: start; }
+  .who { display: flex; gap: 4mm; align-items: center; }
+  .who svg { flex: none; width: 16mm; height: 16mm; }
+  .badge { display: inline-block; font-size: 8.5pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: #7b8f8b; border-radius: 6px; padding: 1px 7px; vertical-align: middle; margin-left: 6px; }
+</style>
+</head>
+<body>
+
+<!-- the assistant's face, as in the application -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="dg" x1="4" y1="2" x2="36" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1c8a7c"/><stop offset="0.55" stop-color="#0f5c56"/><stop offset="1" stop-color="#0b3f3b"/></linearGradient>
+    <linearGradient id="ds" x1="10" y1="11" x2="30" y2="31" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#bfeee1"/></linearGradient>
+    <symbol id="robot" viewBox="0 0 40 40">
+      <rect x="2" y="2" width="36" height="36" rx="12" fill="url(#dg)"/>
+      <clipPath id="tile"><rect x="2" y="2" width="36" height="36" rx="12"/></clipPath>
+      <rect x="11.5" y="31" width="17" height="10" rx="4.5" fill="#bfeee1" opacity="0.85" clip-path="url(#tile)"/>
+      <line x1="20" y1="7.8" x2="20" y2="11.5" stroke="#bfeee1" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="20" cy="6.6" r="2.1" fill="#7ff5d9"/>
+      <rect x="7" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="29.6" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="9.5" y="11" width="21" height="19.5" rx="6.5" fill="url(#ds)"/>
+      <rect x="12.3" y="14.6" width="15.4" height="10" rx="4.6" fill="#0b3f3b"/>
+      <rect x="15" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <rect x="21.7" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <path d="M17.6 27 Q20 28.5 22.4 27" fill="none" stroke="#0f5c56" stroke-width="1.3" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ============================================================ COVER -->
+<section class="page cover">
+  <div class="brand"><span class="logo">D</span> DivaWaste</div>
+  <svg class="robot-cover"><use href="#robot"/></svg>
+  <div class="kicker">Guide 2 · Pas à pas</div>
+  <h1>Sans ERP,<br>avec suivi de production</h1>
+  <div class="sub">Pour une usine qui n'a <b>pas d'ERP</b> mais qui veut savoir <b>d'où viennent ses déchets</b> : quel ordre de fabrication, quelle matière, combien de déchets par pièce.</div>
+  <div class="tags"><span class="tag">⏱ 30 minutes</span><span class="tag">🧵 Exemple : jeans</span><span class="tag">🤖 L'assistant virtuel vous guide</span></div>
+  <div class="need">
+    <h3>Avant de commencer, ayez sous la main</h3>
+    <ul>
+      <li>Tout ce que demande le <b>Guide 1</b> (société, site, déchets, prestataire)</li>
+      <li>Vos <b>matières premières</b> (référence, unité : m, kg ou pièce)</li>
+      <li>Vos <b>articles</b> et ce qu'une pièce consomme</li>
+      <li>Un <b>ordre de fabrication</b> (OF) en cours</li>
+      <li>Ce que l'OF a <b>consommé</b> et <b>produit</b></li>
+      <li>Les <b>ateliers</b> par lesquels passe l'OF (coupe, confection…)</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ OVERVIEW -->
+<section class="page">
+  <h2 class="part">Le chemin en un coup d'œil</h2>
+  <p class="lead">La création du compte et les quatre premières étapes sont les mêmes que dans le Guide 1 : elles sont résumées ici. Ce guide détaille ensuite ce qui est propre au suivi de production. Exemple : l'usine <b>Jeans Sahel</b> fabrique 500 jeans (OF-2026-001).</p>
+  <div class="map">
+    <div><b><span class="num">A</span>Créer le compte</b><span>Comme le Guide 1 : société et secteur, vous, formule, email, validation.</span></div>
+    <div><b><span class="num">1</span>Votre façon de travailler</b><span>Une seule différence : « Suivez-vous la production ? » → <b>Oui</b>.</span></div>
+    <div><b><span class="num">2–4</span>Site, déchets, prestataire</b><span>Comme le Guide 1, avec un atelier par étape de fabrication.</span></div>
+    <div><b><span class="num">P1</span>Vos matières premières</b><span>Le tissu, le fil… ce qui entre dans l'usine.</span></div>
+    <div><b><span class="num">P2</span>Vos articles</b><span>Ce que vous fabriquez, et ce qu'une pièce consomme.</span></div>
+    <div><b><span class="num">P3</span>Un ordre de fabrication</b><span>Quel article, combien, par quels ateliers.</span></div>
+    <div><b><span class="num">P4</span>Les déchets de l'OF</b><span>Chaque lot de déchets rattaché à son OF.</span></div>
+    <div><b><span class="num">P5</span>Consommé et produit</b><span>Pour calculer le taux de chute et les déchets par pièce.</span></div>
+    <div><b><span class="num">P6</span>Lire les résultats</b><span>Sur l'OF, la page Analyse et l'Accueil.</span></div>
+    <div><b><span class="num">✓</span>Fiche de test</b><span>Cochez ce qui marche, notez ce qui gêne.</span></div>
+  </div>
+  <div class="box tip"><b>Comment lire ce guide.</b> L'élément à cliquer est <span class="ring">entouré en rouge</span> ; l'encadré vert dit <b>ce que vous devez voir</b>. Les mots de l'écran sont en <b>gras</b>.</div>
+  <div class="box info"><b>Le vocabulaire.</b> <b>Matière première</b> : ce que vous achetez (Denim). <b>Article</b> : ce que vous fabriquez (Jean 5 poches). <b>OF</b> (ordre de fabrication) : « fabriquer 500 jeans », avec ses étapes (coupe, confection). <b>Lot de déchets</b> : un sac, une balle… de déchets, suivi jusqu'à son départ.</div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ A + 1 -->
+<section class="page">
+  <h2 class="part">A. Créer le compte <small>Détail pas à pas : Guide 1, partie A</small></h2>
+  <ol class="do"><li><b>Créer un compte</b> › <b>Industriel</b>. Société, matricule fiscal, <b>Secteur d'activité</b> (ici Textile et habillement). <b>Suivant</b>.</li>
+    <li>Vous : nom, email, mot de passe (12 caractères, une lettre et un chiffre). <b>Suivant</b>.</li>
+    <li>Formule (30 jours gratuits), cochez <b>J'ai lu et j'accepte</b>, <b>Créer mon compte</b>. Confirmez l'email, puis attendez la validation par Diva Software.</li></ol>
+  <div class="two"><div class="shot"><img src="img3/03-company-filled.jpg"></div><div class="shot"><img src="img3/09-pending.jpg"></div></div>
+  <p class="cap">À gauche : la société et son secteur. À droite : « En attente de validation ».</p>
+  <div class="step">
+    <h3><span class="n">1</span>Votre façon de travailler</h3>
+    <p>Carte de l'assistant › <b>Aller à : Accueil › Mise en route</b>. Le secteur est déjà choisi. Répondez :</p>
+    <table>
+      <tr><th>Question</th><th>Réponse</th><th>Ce que cela change</th></tr>
+      <tr><td>Avez-vous un ERP ?</td><td class="ans">Non</td><td>Vous saisissez vos OF dans DivaWaste (ou les importez d'un tableau Excel).</td></tr>
+      <tr><td>Suivez-vous la production (OF, matières premières) ?</td><td class="ans">Oui</td><td>Le menu <b>Production</b> apparaît : Fabrication, Référentiel, Analyse.</td></tr>
+      <tr><td>Déchets dangereux ? Douane ? Bourse ?</td><td class="ans">Selon vous</td><td>Comme dans le Guide 1.</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="shot half"><img src="img3/12-questions.jpg"></div>
+  <p>Cliquez sur <b>Enregistrer mes réponses</b>.</p>
+  <div class="shot half"><img src="img3/14-step1-done.jpg"></div>
+  <div class="box see"><b>✔ Vous devez voir</b> à gauche, sous « PRODUCTION » : <b>Fabrication</b>, <b>Référentiel</b> et <b>Analyse</b>. Avant vos réponses, ce menu n'apparaît pas. L'assistant passe à l'<b>étape 2 sur 7</b>.</div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ 2-4 -->
+<section class="page">
+  <h2 class="part">2–4. Site, déchets, prestataire <small>Détail pas à pas : Guide 1, étapes 2 à 4</small></h2>
+  <div class="step">
+    <h3><span class="n">2</span>Le site, avec un atelier par étape</h3>
+    <p><b>Déchets › Sites et zones › Nouveau site</b>. Cochez une zone pour <b>chaque étape de fabrication</b> où naissent des déchets : ici <b>Coupe</b> et <b>Confection</b>, plus l'aire de stockage (toujours créée).</p>
+    <div class="two"><div class="shot"><img src="img3/17-site-zones.jpg"></div><div class="shot"><img src="img3/19-zones.jpg"></div></div>
+    <div class="box info"><b>Pourquoi c'est important ici.</b> Un lot de déchets créé dans la zone <b>Coupe</b> est compté à l'étape « Coupe » de l'OF. La zone sert à savoir <b>à quelle étape</b> le déchet est né.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">3–4</span>Vos types de déchets et votre prestataire</h3>
+    <p><b>Paramètres › Types de déchets › Catalogue de référence › Activer</b> (ici : Chutes de coupe, Rebuts de confection, Cartons). Puis <b>Enlèvements › Prestataires › Ajouter à mes partenaires</b>.</p>
+    <div class="shot half"><img src="img3/23-my-types.jpg"></div>
+  </div>
+  <div class="shot half"><img src="img3/28-onboarding.jpg"></div>
+  <div class="box see"><b>✔ Vous devez voir</b> sur <b>Accueil › Mise en route</b> les étapes 1, 2, 3 et 5 « Terminé ». L'équipe (4) peut attendre.</div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <p>Plus bas, <b>Comment vos données arrivent-elles ?</b> Sans ERP, deux chemins :</p>
+  <div class="shot half"><img src="img3/29-data-ways.jpg"></div>
+  <ul class="do"><li><b>Les saisir dans DivaWaste</b> : c'est ce que montre la suite de ce guide.</li>
+    <li><b>Importer un fichier Excel ou CSV</b> : si vous tenez déjà vos OF dans un tableau (voir « Plus », en fin de guide).</li></ul>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ P1 -->
+<section class="page">
+  <h2 class="part">P. Votre production</h2>
+  <div class="step">
+    <h3><span class="n">P1</span>Une matière première</h3>
+    <ol class="do"><li>Menu <b>Référentiel › Matières premières et articles</b>, onglet <b>Matières premières</b>, bouton <b>Nouvelle matière première</b>.</li></ol>
+    <div class="shot half"><img src="img3/49-catalog.jpg"></div>
+    <ol class="do" start="2"><li><b>Référence</b> (DEN-12), <b>Unité</b> (Mètre), <b>Désignation</b> (Denim 12 oz bleu). Facultatif : catégorie, fournisseur, couleur.</li>
+      <li>Tissu au mètre : remplissez <b>Grammage</b> (400 g/m²) et <b>Laize</b> (150 cm). Sans eux, DivaWaste ne peut pas convertir les mètres consommés en kg, ni calculer le taux de chute.</li>
+      <li><b>Enregistrer</b>.</li></ol>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="shot mid"><img src="img3/50-material-form.jpg"></div>
+  <div class="box see"><b>✔ Vous devez voir</b> la fiche <b>DEN-12 — Denim 12 oz bleu</b>, « Actif », avec ses onglets Aperçu, Lots reçus, Consommations, Prix d'achat.</div>
+  <div class="box tip"><b>Bon à savoir.</b> La <b>composition</b> et la <b>couleur</b> d'une matière première sont reprises sur les déchets qui en proviennent : utile pour vendre ou recycler les chutes.</div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ P2 -->
+<section class="page">
+  <div class="step">
+    <h3><span class="n">P2</span>Un article</h3>
+    <ol class="do"><li>Même page, onglet <b>Articles</b>, bouton <b>Nouvel article</b>.</li>
+      <li><b>Référence</b> (JEAN-501), <b>Famille</b> (Jean), <b>Désignation</b> (Jean 5 poches). <b>Client</b> : facultatif.</li>
+      <li><b>Consommation par pièce</b> › <b>Ajouter une matière première</b> : DEN-12, <b>1,4</b> (m par jean). Elle sert à comparer le prévu et le réel d'un OF.</li>
+      <li><b>Enregistrer</b>.</li></ol>
+    <div class="two"><div class="shot"><img src="img3/52-article-form.jpg"></div><div class="shot"><img src="img3/53-article-saved.jpg"></div></div>
+    <div class="box see"><b>✔ Vous devez voir</b> la ligne <b>JEAN-501 · Jean 5 poches · 1,4 m · DEN-12</b>, « Actif ».</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ P3 -->
+<section class="page">
+  <div class="step">
+    <h3><span class="n">P3</span>Un ordre de fabrication (OF)</h3>
+    <ol class="do"><li>Menu <b>Fabrication › Ordres de fabrication</b>, bouton <b>Nouvel OF</b>.</li>
+      <li><b>N° d'OF</b> (OF-2026-001), <b>Statut</b> (« En cours » ; ou « Prévu »), <b>Article</b> (JEAN-501), <b>Quantité prévue</b> (500).</li>
+      <li><b>Commande</b> : « Sans commande » suffit. Une commande client sert à calculer le gain (voir « Plus »).</li>
+      <li><b>Étapes</b> › <b>Ajouter une étape</b> : <b>Coupe</b> à l'Usine de Ksar Hellal, puis <b>Confection</b>. Chaque étape a son site : un OF peut être coupé dans une usine et cousu dans une autre.</li>
+      <li><b>Enregistrer</b>.</li></ol>
+    <div class="shot mid"><img src="img3/55-of-form.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> la page <b>Ordre de fabrication OF-2026-001</b> « En cours » : le chemin Client › Commande › OF › Article, et les cases Produit / prévu, Déchets, Coût, Gain.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ P4 -->
+<section class="page">
+  <div class="step">
+    <h3><span class="n">P4</span>Les déchets de l'OF</h3>
+    <ol class="do"><li>Sur la page de l'OF, onglet <b>Lots de déchets</b> : <b>Enregistrer un déchet</b>.</li></ol>
+    <div class="shot half"><img src="img3/57-of-waste-button.jpg"></div>
+    <ol class="do" start="2"><li><b>Site et zone</b> : la zone de l'atelier où le déchet est né (ici <b>Usine de Ksar Hellal · Coupe</b>).</li>
+      <li><b>Type de déchet</b> (Chutes de coupe) et <b>Poids net</b> (35 kg). Pas encore pesé ? Laissez vide : le lot restera « À peser ».</li>
+      <li><b>Créer</b>.</li></ol>
+    <div class="shot mid"><img src="img3/58-of-lot-form.jpg"></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="shot mid"><img src="img3/58b-of-lot-details.jpg"></div>
+  <p class="cap">« Plus de détails » : l'OF est déjà rempli, la matière première est « Celle de l'OF » ; l'étape est déduite de la zone.</p>
+  <div class="shot half"><img src="img3/59-of-with-lot.jpg"></div>
+  <div class="box see"><b>✔ Vous devez voir</b> dans <b>Lots de déchets</b> la ligne <b>L-2026-000002 · Chutes de coupe · Coupe · Usine de Ksar Hellal · DEN-12 · 35 kg</b>. Un lot créé sans poids s'affiche « À peser » (ici L-2026-000001) : pesez-le plus tard depuis sa fiche (<b>Plus d'actions › Repeser</b>).</div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ P5 -->
+<section class="page">
+  <div class="step">
+    <h3><span class="n">P5</span>Ce que l'OF a consommé et produit</h3>
+    <ol class="do"><li>Page de l'OF, onglet <b>Étapes et consommations</b> › <b>Modifier les consommations</b> › <b>Ajouter une consommation</b>.</li>
+      <li><b>Matière première</b> (DEN-12), <b>Quantité</b> (720 m), <b>Étape</b> (Coupe), <b>Site</b>. <b>Lot reçu</b> : si vous savez de quelle livraison vient le tissu ; sinon, « Lot non précisé ». <b>Enregistrer</b>.</li></ol>
+    <div class="shot"><img src="img3/60-consumption.jpg"></div>
+    <ol class="do" start="3"><li>En haut de l'OF, <b>Modifier</b> › <b>Quantité produite</b> : 480. <b>Enregistrer</b>.</li></ol>
+    <div class="two"><div class="shot"><img src="img3/61-of-produced.jpg"></div><div class="shot"><img src="img3/63-of-consumed.jpg"></div></div>
+    <div class="box see"><b>✔ Vous devez voir</b> pour DEN-12 : <b>Prévu 700 m</b> (500 jeans × 1,4 m), <b>Consommé 720 m</b>, <b>Écart +20 m (+2,9 %)</b>.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ P6 -->
+<section class="page">
+  <div class="step">
+    <h3><span class="n">P6</span>Lire les résultats</h3>
+    <p><b>Sur l'OF</b> : les cases du haut.</p>
+    <div class="shot half"><img src="img3/62-of-summary.jpg"></div>
+    <table>
+      <tr><th>Case</th><th>Ici</th><th>Ce que cela veut dire</th></tr>
+      <tr><td>Produit / prévu</td><td class="ans">480 / 500</td><td>Pièces produites sur pièces prévues.</td></tr>
+      <tr><td>Déchets</td><td class="ans">35 kg</td><td>Tous les lots rattachés à l'OF. « 8,1 % de la matière première consommée » : 35 kg de chutes pour 720 m de denim (≈ 432 kg avec le grammage et la laize).</td></tr>
+      <tr><td>Coût de production</td><td class="ans">0,000 DT</td><td>« Incomplet » tant que le prix d'achat du tissu n'est pas saisi (fiche de la matière › Prix d'achat).</td></tr>
+      <tr><td>Gain</td><td class="ans">Non calculable</td><td>Il faut une commande client avec son prix de vente (voir « Plus »).</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <p><b>Menu Analyse › Statistiques</b> : tous vos OF de la période.</p>
+  <div class="shot half"><img src="img3/65-stats.jpg"></div>
+  <table>
+    <tr><th>Valeur</th><th>Ce que cela veut dire</th></tr>
+    <tr><td><b>Mesuré</b></td><td>Déchets de lots qui désignent leur OF (comme L-2026-000002).</td></tr>
+    <tr><td><b>Estimé</b></td><td>Lots qui n'indiquent que leur étape (zone) : leur poids est réparti entre les OF présents à cette étape, ce jour-là, selon les pièces réalisées.</td></tr>
+    <tr><td><b>Non attribué</b></td><td>Lots sans OF ni étape reconnue.</td></tr>
+    <tr><td><b>Par pièce</b></td><td>Déchets ÷ pièces produites : 35 kg ÷ 480 = <b>72,9 g par jean</b>.</td></tr>
+    <tr><td><b>Taux de chute</b></td><td>Part de la matière consommée devenue déchet (8,1 %).</td></tr>
+  </table>
+  <div class="box warn"><b>Sur l'Accueil, « Déchets par pièce produite » reste vide</b> (« Nombre de pièces non saisi ») tant que vous n'avez pas saisi vos <b>Pièces produites</b> par site et par mois, en bas de la page Statistiques. Cet indicateur de l'Accueil ne lit pas les quantités des OF.</div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="shot half"><img src="img3/67-pieces.jpg"></div>
+  <p class="cap">Analyse › Statistiques, en bas : « Pièces produites », une case par site et par mois.</p>
+  <p><b>Sur l'Accueil</b>, le bloc <b>Origine des déchets en production</b> reprend vos OF qui ont produit le plus de déchets (total, par pièce, taux de chute).</p>
+  <div class="shot half"><img src="img3/66-dashboard-kpis.jpg"></div>
+  <div class="box tip"><b>La suite.</b> Les lots de l'OF se demandent en enlèvement comme tous les autres : voir le Guide 1 et la fiche « Le cycle de vie d'un lot ».</div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ PLUS -->
+<section class="page">
+  <h2 class="part">+ Pour aller plus loin<small>Facultatif</small></h2>
+  <div class="step extra">
+    <h3><span class="n">+1</span>Importer vos OF depuis un tableau Excel</h3>
+    <p>Vous tenez déjà vos OF, articles ou matières dans Excel ? <b>Accueil › Mise en route</b> › « <b>Importer un fichier Excel ou CSV</b> ». Choisissez ce que contient le fichier (matières, articles, OF, consommations…), puis le fichier : comme pour les lots (Guide 1, partie D), vous vérifiez les colonnes, puis <b>Vérifier sans importer</b> et <b>Importer</b>. Importez dans l'ordre de la liste : d'abord les matières, puis les articles, puis les OF.</p>
+    <div class="shot half"><img src="img3/70-prod-import.jpg"></div>
+    <div class="box info"><b>Sans ERP</b>, cette page ne propose ni l'API ni la lecture automatique chaque nuit : ce sont des chemins pour un ERP (Guide 3).</div>
+  </div>
+  <div class="step extra">
+    <h3><span class="n">+2</span>Clients, commandes et gain</h3>
+    <p><b>Référentiel › Clients et fournisseurs › Nouveau client</b>, puis <b>Fabrication › Commandes › Nouvelle commande</b> (client, article, quantité, prix de vente). Rattachez l'OF à la commande (<b>Modifier › Commande</b>). Avec le prix d'achat de la matière, la case <b>Gain</b> de l'OF se calcule.</p>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ TEST -->
+<section class="page">
+  <h2 class="part">Fiche de test</h2>
+  <p class="lead" style="margin-bottom:2mm">Cochez chaque résultat obtenu, notez ce qui a gêné.</p>
+  <table class="check">
+    <tr><th></th><th>Étape</th><th>Résultat attendu</th></tr>
+    <tr><td>☐</td><td>1 Activité</td><td>Avant les réponses, pas de menu Production ; après « Production : Oui », Fabrication, Référentiel, Analyse apparaissent.</td></tr>
+    <tr><td>☐</td><td>Mise en route</td><td>« Comment vos données arrivent-elles ? » propose seulement « Les saisir » et « Importer un fichier ».</td></tr>
+    <tr><td>☐</td><td>P1 Matière</td><td>La fiche s'ouvre après « Enregistrer » ; grammage et laize enregistrés.</td></tr>
+    <tr><td>☐</td><td>P2 Article</td><td>« 1,4 m · DEN-12 » (avec une virgule) dans la liste des articles.</td></tr>
+    <tr><td>☐</td><td>P3 OF</td><td>L'OF s'ouvre « En cours », avec ses deux étapes.</td></tr>
+    <tr><td>☐</td><td>P4 Déchet</td><td>Le lot créé depuis l'OF porte l'OF, l'étape (de la zone) et la matière DEN-12.</td></tr>
+    <tr><td>☐</td><td>P5 Consommé</td><td>Prévu 700 m, consommé 720 m, écart +20 m (+2,9 %).</td></tr>
+    <tr><td>☐</td><td>P6 Résultats</td><td>8,1 % sur l'OF ; 72,9 g par pièce sur Analyse ; l'OF dans « Origine des déchets » de l'Accueil.</td></tr>
+    <tr><td>☐</td><td>+1 Import</td><td>Pas de bloc API ni « Chaque nuit » sur la page d'import.</td></tr>
+    <tr><td>☐</td><td>Assistant</td><td>Sur les pages de production, sa carte et son bouton mènent au bon endroit.</td></tr>
+  </table>
+  <div class="remarks" style="height:60mm">Mes remarques…</div>
+  <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<script>
+  document.querySelectorAll('.page').forEach((page, i) => { const pg = page.querySelector('.pg'); if (pg) pg.textContent = String(i + 1); });
+</script>
+</body>
+</html>

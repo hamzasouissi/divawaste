@@ -315,7 +315,9 @@ export class MaterialDetailPage {
   private readonly dialog = inject(Dialogs);
   private readonly session = inject(Session);
 
-  protected readonly canManage = this.session.can('production.manage');
+  protected get canManage(): boolean {
+    return this.session.canEditProduction();
+  }
   protected readonly money = this.session.can('production.finance.view');
   protected readonly currency = this.session.company()?.currency_code ?? null;
   protected readonly tone = statusTone;

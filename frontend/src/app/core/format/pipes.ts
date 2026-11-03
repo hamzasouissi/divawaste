@@ -138,7 +138,7 @@ export class MoneyPipe implements PipeTransform {
 export class DatePipe implements PipeTransform {
   private readonly locale = inject(Locale);
 
-  transform(value: string | null | undefined, style: 'date' | 'datetime' | 'month' | 'time' = 'date'): string {
+  transform(value: string | null | undefined, style: 'date' | 'datetime' | 'month' | 'time' | 'long' = 'date'): string {
     if (!value) {
       return EMPTY;
     }
@@ -147,6 +147,13 @@ export class DatePipe implements PipeTransform {
     if (Number.isNaN(date.getTime())) {
       return EMPTY;
     }
+    // A moment at exactly midnight (UTC or here) is a day given without its hour, as a register gives it: that day
+    // only, never an invented "01:00".
+    const midnight = (h: number, m: number, sec: number, ms: number) => h === 0 && m === 0 && sec === 0 && ms === 0;
+    const utcDay = midnight(date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds(), date.getUTCMilliseconds());
+    if (style === 'datetime' && (utcDay || midnight(date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds()))) {
+      return new Intl.DateTimeFormat(this.locale.intl, { day: '2-digit', month: '2-digit', year: 'numeric', ...(utcDay ? { timeZone: 'UTC' } : {}) }).format(date);
+    }
     const options: Intl.DateTimeFormatOptions =
       style === 'datetime'
         ? { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }
@@ -154,7 +161,9 @@ export class DatePipe implements PipeTransform {
           ? { month: 'short', year: 'numeric' }
           : style === 'time'
             ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }
-            : { dateStyle: 'medium' };
+            : style === 'long'
+              ? { weekday: 'long', day: 'numeric', month: 'long' }
+              : { dateStyle: 'medium' };
 
     return new Intl.DateTimeFormat(this.locale.intl, options).format(date);
   }
@@ -215,9 +224,14 @@ export class TermPipe implements PipeTransform {
     if (!code) {
       return '—';
     }
-    const words = this.transloco.translateObject<Record<string, string> | string>(group);
+    const words = this.transloco.translateObject<Record<string, unknown> | string>(group);
+    if (typeof words !== 'object' || words === null) {
+      return humanize(code);
+    }
+    // A code with dots ("platform.support.view") is a path: the translations hold it as nested objects.
+    const found = words[code] ?? code.split('.').reduce<unknown>((node, part) => (node && typeof node === 'object' ? (node as Record<string, unknown>)[part] : undefined), words);
 
-    return (typeof words === 'object' && words !== null ? words[code] : undefined) ?? humanize(code);
+    return typeof found === 'string' ? found : humanize(code);
   }
 }
 

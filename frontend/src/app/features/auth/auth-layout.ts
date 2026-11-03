@@ -11,7 +11,7 @@ import { LanguageComponent } from '../../ui/language';
   template: `
     <ng-container *transloco="let t">
       <aside class="brand">
-        <div class="logo"><img src="icons/icon.svg" alt="" width="36" height="36" /><span>DivaWaste Textile</span></div>
+        <div class="logo"><img src="icons/icon.svg" alt="" width="36" height="36" /><span>DivaWaste</span></div>
         <div>
           <p class="pitch">{{ t('auth.pitch') }}</p>
           <ul>

@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Guide 10 — Back-office Diva Software</title>
+<style>
+  @page { size: A4; margin: 0; }
+  :root { --green: #0f5a4f; --green-2: #16796a; --soft: #e8f3f0; --ink: #16222b; --ink-2: #45525c; --line: #d9e2e0; --red: #c62f32; --amber: #9a5b00; --amber-soft: #fff4dc; --blue-soft: #eef3fb; --blue: #2f5ea8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", Inter, Arial, sans-serif; color: var(--ink); font-size: 11.4pt; line-height: 1.48; }
+  .page { width: 210mm; height: 297mm; overflow: hidden; padding: 15mm 17mm 14mm; page-break-after: always; position: relative; }
+  .page:last-child { page-break-after: auto; }
+  .foot { position: absolute; bottom: 8mm; left: 17mm; right: 17mm; display: flex; justify-content: space-between; font-size: 8.5pt; color: #7b8790; border-top: 1px solid var(--line); padding-top: 3mm; }
+
+  .cover { background: linear-gradient(160deg, #0b1c1f 0%, #0f3a35 60%, #16796a 100%); color: #fff; display: flex; flex-direction: column; padding: 22mm 20mm; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15pt; }
+  .brand .logo { width: 34px; height: 34px; border-radius: 9px; background: #2a8f7e; display: grid; place-items: center; font-weight: 800; }
+  .cover .kicker { margin-top: 30mm; font-size: 11pt; letter-spacing: .14em; text-transform: uppercase; color: #9fd8cc; font-weight: 700; }
+  .cover h1 { font-size: 29pt; line-height: 1.12; margin: 4mm 0 5mm; font-weight: 750; }
+  .cover .sub { font-size: 13.5pt; color: #d4ece6; max-width: 150mm; }
+  .robot-cover { position: absolute; right: 20mm; top: 18mm; width: 30mm; height: 30mm; }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8mm; }
+  .tag { padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 10.5pt; }
+  .need { margin-top: auto; background: rgba(255,255,255,.08); border-radius: 14px; padding: 7mm 8mm; }
+  .need h3 { margin: 0 0 3mm; font-size: 12pt; color: #9fd8cc; text-transform: uppercase; letter-spacing: .08em; }
+  .need ul { margin: 0; padding-left: 18px; columns: 2; column-gap: 10mm; }
+  .need li { margin-bottom: 1.5mm; break-inside: avoid; }
+
+  h2.part { font-size: 19pt; margin: 0 0 2mm; color: var(--green); }
+  h2.part small { display: block; font-size: 10.5pt; color: var(--ink-2); font-weight: 500; letter-spacing: .02em; }
+  .lead { color: var(--ink-2); margin: 0 0 5mm; }
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3.5mm; margin: 3mm 0 5mm; }
+  .map div { border: 1px solid var(--line); border-radius: 12px; padding: 3.5mm 5mm; }
+  .map div.extra { border-style: dashed; background: #fafcfc; }
+  .map b { display: block; color: var(--green); font-size: 11pt; } .map span { color: var(--ink-2); font-size: 10pt; }
+  .num { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: var(--green); color: #fff; font-size: 9.5pt; font-weight: 700; margin-right: 6px; }
+  .map .num { color: #fff; }
+  .extra .num { background: #7b8f8b; }
+
+  .step { margin-bottom: 6mm; }
+  .step h3 { display: flex; align-items: center; gap: 8px; font-size: 14pt; margin: 0 0 2.5mm; }
+  .step h3 .n { flex: none; display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 9px; background: var(--green); color: #fff; font-size: 11.5pt; }
+  .step.extra h3 .n { background: #7b8f8b; }
+  ol.do, ul.do { margin: 0 0 3mm; padding-left: 22px; } ol.do li, ul.do li { margin-bottom: 1.2mm; }
+  .shot { margin: 2mm 0 3mm; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; box-shadow: 0 3px 10px rgba(16, 40, 40, .08); }
+  .shot img { display: block; width: 100%; }
+  .shot.half { width: 72%; margin-left: auto; margin-right: auto; }
+  .shot.mid { width: 60%; margin-left: auto; margin-right: auto; }
+  .shot.small { width: 48%; margin-left: auto; margin-right: auto; }
+  .cap { font-size: 9pt; color: #6c7880; margin: -1.5mm 0 3mm; text-align: center; }
+  .box { border-radius: 10px; padding: 3mm 4.5mm; margin: 2mm 0 3mm; font-size: 10.5pt; }
+  .see { background: var(--soft); border-left: 4px solid var(--green); }
+  .see b:first-child { color: var(--green); }
+  .tip { background: #f3f6f8; border-left: 4px solid #8796a0; }
+  .warn { background: var(--amber-soft); border-left: 4px solid var(--amber); }
+  .info { background: var(--blue-soft); border-left: 4px solid var(--blue); }
+  .info b:first-child { color: var(--blue); }
+  .ring { color: var(--red); font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 10.2pt; margin: 2mm 0 3mm; }
+  th, td { text-align: left; padding: 2mm 3mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f3f6f6; font-size: 9.3pt; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  td.ans { font-weight: 700; color: var(--green); white-space: nowrap; }
+  table.xl { font-family: Calibri, "Segoe UI", Arial, sans-serif; font-size: 9.8pt; border: 1px solid #b7c4c1; }
+  table.xl th { background: #e6efe9; color: #1f3b33; text-transform: none; letter-spacing: 0; font-size: 9.8pt; border-right: 1px solid #c9d4d1; }
+  table.xl td { border-right: 1px solid #e0e6e4; padding: 1.4mm 2.5mm; }
+  .check td:first-child { width: 9mm; font-size: 13pt; color: var(--green); }
+  .check td { padding: 1.6mm 3mm; font-size: 9.8pt; }
+  .remarks { border: 1px dashed #b9c6c4; border-radius: 10px; height: 34mm; margin-top: 3mm; padding: 3mm 4mm; color: #9aa6ad; font-size: 10pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; align-items: start; }
+  .who { display: flex; gap: 4mm; align-items: center; }
+  .who svg { flex: none; width: 16mm; height: 16mm; }
+  .badge { display: inline-block; font-size: 8.5pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: #7b8f8b; border-radius: 6px; padding: 1px 7px; vertical-align: middle; margin-left: 6px; }
+  .phones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; margin: 2mm 0 3mm; }
+  .phones .shot { margin: 0; } .phones .cap { margin: 1.5mm 0 0; }
+  .phones.four { grid-template-columns: repeat(4, 1fr); gap: 4mm; }
+  .crop img { height: 100mm; object-fit: cover; object-position: top; }
+  .crop.short img { height: 80mm; }
+</style>
+</head>
+<body>
+
+<!-- the assistant's face, as in the application -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="dg" x1="4" y1="2" x2="36" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1c8a7c"/><stop offset="0.55" stop-color="#0f5c56"/><stop offset="1" stop-color="#0b3f3b"/></linearGradient>
+    <linearGradient id="ds" x1="10" y1="11" x2="30" y2="31" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#bfeee1"/></linearGradient>
+    <symbol id="robot" viewBox="0 0 40 40">
+      <rect x="2" y="2" width="36" height="36" rx="12" fill="url(#dg)"/>
+      <clipPath id="tile"><rect x="2" y="2" width="36" height="36" rx="12"/></clipPath>
+      <rect x="11.5" y="31" width="17" height="10" rx="4.5" fill="#bfeee1" opacity="0.85" clip-path="url(#tile)"/>
+      <line x1="20" y1="7.8" x2="20" y2="11.5" stroke="#bfeee1" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="20" cy="6.6" r="2.1" fill="#7ff5d9"/>
+      <rect x="7" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="29.6" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="9.5" y="11" width="21" height="19.5" rx="6.5" fill="url(#ds)"/>
+      <rect x="12.3" y="14.6" width="15.4" height="10" rx="4.6" fill="#0b3f3b"/>
+      <rect x="15" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <rect x="21.7" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <path d="M17.6 27 Q20 28.5 22.4 27" fill="none" stroke="#0f5c56" stroke-width="1.3" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ============================================================ COVER -->
+<section class="page cover">
+  <div class="brand"><span class="logo">D</span> DivaWaste</div>
+  <svg class="robot-cover"><use href="#robot"/></svg>
+  <div class="kicker">Guide 10 · Diva Software</div>
+  <h1>Le back-office<br>de la plateforme</h1>
+  <div class="sub">Pour l'équipe <b>Diva Software</b> : valider les inscriptions et les agréments, rapprocher les virements, activer les formules, tenir le catalogue de déchets de référence et la matrice des rôles, et suivre qui a décidé quoi.</div>
+  <div class="tags"><span class="tag">⏱ 15 minutes</span><span class="tag">🛡 Administrateur plateforme</span><span class="tag">🔒 Réservé à Diva Software</span></div>
+  <div class="need">
+    <h3>Avant de commencer, ayez sous la main</h3>
+    <ul>
+      <li>Votre compte <b>Administrateur plateforme</b></li>
+      <li>Le <b>relevé bancaire</b> (pour les virements)</li>
+      <li>Les <b>tarifs</b> convenus avec chaque client</li>
+      <li>Un moyen de vérifier un <b>agrément</b> (registre de l'ANGed…)</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ OVERVIEW -->
+<section class="page">
+  <h2 class="part">Le chemin en un coup d'œil</h2>
+  <div class="map">
+    <div><b><span class="num">A</span>Vue d'ensemble</b><span>Ce qui attend une décision, et la santé de la plateforme.</span></div>
+    <div><b><span class="num">B</span>Sociétés</b><span>Valider ou rejeter une inscription, activer une formule, suspendre.</span></div>
+    <div><b><span class="num">C</span>Agréments</b><span>Vérifier le document d'un prestataire, approuver ou rejeter.</span></div>
+    <div><b><span class="num">D</span>Argent</b><span>Virements déclarés, factures, formules et tarifs.</span></div>
+    <div><b><span class="num">E</span>Référentiels et suivi</b><span>Catalogue de déchets, rôles et permissions, activité.</span></div>
+    <div><b><span class="num">✓</span>Fiche de test</b><span>Cochez ce qui marche, notez ce qui gêne.</span></div>
+  </div>
+  <div class="box info"><b>Un espace à part.</b> Un compte Diva Software arrive sur le <b>Back-office</b> (barre latérale bleu nuit, pastille « Administration de la plateforme »). Il ne voit les données d'un client que par les écrans ci-dessous ; il ne travaille jamais « dans » une société.</div>
+  <table>
+    <tr><th style="width:32%">Rôle</th><th>Ce qu'il peut faire</th></tr>
+    <tr><td><b>Administrateur plateforme</b></td><td>Tout le back-office : inscriptions, suspensions, agréments, virements, formules, factures, catalogue, pays et fiscalité, matrice des rôles, documents légaux.</td></tr>
+    <tr><td><b>Support plateforme</b></td><td>Consulter l'<b>Activité de la plateforme</b> pour aider un client, sans rien décider.</td></tr>
+  </table>
+  <div class="box tip"><b>Chaque décision est tracée</b> avec son auteur, sa date et son motif : elle apparaît dans « Dernières décisions », dans l'historique de la société et dans l'Activité de la plateforme (E3).</div>
+  <div class="foot"><span>DivaWaste · Guide 10 — Back-office Diva Software</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ A -->
+<section class="page">
+  <h2 class="part">A. La vue d'ensemble</h2>
+  <div class="shot half"><img src="img10/01-overview.jpg"></div>
+  <table>
+    <tr><th style="width:32%">Tuile</th><th>Ce qu'elle veut dire, et où elle mène</th></tr>
+    <tr><td><b>Inscription(s) à valider</b></td><td>Sociétés inscrites, email confirmé, qui attendent votre décision › Sociétés (filtre « En attente de validation »).</td></tr>
+    <tr><td><b>Agrément(s) à valider</b></td><td>Agréments déposés par des prestataires › Agréments à valider.</td></tr>
+    <tr><td><b>Virement(s) à rapprocher</b></td><td>Virements déclarés par des clients › Virements déclarés.</td></tr>
+    <tr><td><b>Formule(s) à activer</b></td><td>Clients qui ont demandé une formule depuis leur page Abonnement › Sociétés (filtre « Formule demandée »).</td></tr>
+  </table>
+  <p>Dessous, la santé de la plateforme : <b>sociétés actives</b> (industriels et prestataires), <b>essais en cours</b>, <b>abonnements payants</b>, <b>factures à encaisser</b>, <b>sociétés suspendues</b>, <b>emails non confirmés</b> (inscriptions non finalisées), <b>agréments expirant</b> dans les 30 jours et <b>expirés</b>. Puis les listes « Inscriptions à valider » (avec <b>Valider l'inscription</b> et <b>Rejeter</b> directement), « Formules demandées » et « Dernières décisions ».</p>
+  <div class="foot"><span>DivaWaste · Guide 10 — Back-office Diva Software</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ B -->
+<section class="page">
+  <h2 class="part">B. Les sociétés</h2>
+  <div class="step">
+    <h3><span class="n">B1</span>Valider une inscription</h3>
+    <ol class="do"><li><b>Sociétés</b> : toutes les sociétés inscrites, filtrables par statut, type et « Formule demandée ». Les sociétés s'inscrivent elles-mêmes (Guides 1 et 5).</li>
+      <li>Ouvrez une société <b>En attente de validation</b> : matricule fiscal, adresse, contact et <b>email confirmé</b>, secteur, formule demandée, utilisation.</li>
+      <li>Vérifiez le matricule fiscal et l'identité, puis <span class="ring">Valider l'inscription</span> › <b>Confirmer</b>. Ou <b>Rejeter</b>, avec un <b>motif communiqué au demandeur</b>.</li></ol>
+    <div class="two"><div class="shot"><img src="img10/03-company-pending.jpg"></div><div class="shot"><img src="img10/05-reject-dialog.jpg"></div></div>
+    <div class="box see"><b>Vous devez voir</b> la société passer à <b>Active</b>. Un industriel commence alors son <b>essai gratuit de 30 jours</b> ; son administrateur reçoit un email et peut travailler. Un prestataire validé apparaît dans l'annuaire des industriels dès que son profil est publié, avec ses agréments approuvés (C).</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 10 — Back-office Diva Software</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">B2</span>Activer une formule</h3>
+    <ol class="do"><li>Sur la fiche d'une société active, à droite : l'<b>abonnement</b> actuel (formule, nombre de sites, fin de l'essai) et <b>Activer une formule</b>.</li>
+      <li>La <b>formule</b> (par site, par volume), la <b>périodicité</b> (mois, année), le <b>nombre de sites</b> et le <b>prix unitaire HT</b>. Le tarif de référence pré-remplit le prix ; <b>le prix saisi ici est celui qui sera facturé</b> au client, figé sur son abonnement.</li>
+      <li><b>Activer une formule</b>. La demande du client disparaît des « Formules demandées ».</li></ol>
+    <div class="two"><div class="shot"><img src="img10/19-activate-plan.jpg"></div><div class="shot"><img src="img10/20-suspend.jpg"></div></div>
+  </div>
+  <div class="step">
+    <h3><span class="n">B3</span>Suspendre, et les onglets de la fiche</h3>
+    <ul class="do"><li><b>Suspendre</b> (en haut à droite) : avec un <b>motif communiqué au client</b>. Ses utilisateurs ne voient plus que la page qui explique la suspension ; ses données restent intactes. <b>Réactiver</b> les lui rend.</li>
+      <li><b>Sites, équipe et agréments</b> : ses sites, ses utilisateurs (rôle, dernière connexion), et pour un prestataire ses agréments.</li>
+      <li><b>Factures</b> : les factures de la société. <b>Historique du compte</b> : chaque décision prise sur elle.</li></ul>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 10 — Back-office Diva Software</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ C -->
+<section class="page">
+  <h2 class="part">C. Les agréments des prestataires</h2>
+  <ol class="do"><li><b>Agréments à valider</b> : chaque agrément déposé, avec le prestataire, le <b>type</b> et sa <b>référence</b>, l'<b>autorité de délivrance</b> et les dates.</li>
+    <li><b>Voir le document</b> : le PDF joint par le prestataire. Comparez la référence, les dates et les déchets couverts.</li>
+    <li><b>Approuver</b>, ou <b>Rejeter</b> avec un motif (le prestataire le lit et dépose un document corrigé).</li></ol>
+  <div class="shot half"><img src="img10/09-accreditations.jpg"></div>
+  <div class="box see"><b>Vous devez voir</b> l'agrément passer à <b>Approuvé</b>. Le prestataire devient choisissable par les industriels pour ces déchets, et voit les annonces de la Bourse qui leur correspondent (Guide 5).</div>
+  <div class="box warn"><b>À l'expiration</b>, l'agrément ne couvre plus rien : les industriels sont prévenus 30 jours avant (« Agrément de … : expire dans n jour(s) ») et ne peuvent plus choisir ce prestataire ensuite. Le prestataire, lui, voit l'expiration venir sur sa page de demandes et dépose le renouvellement, que vous approuvez ici.</div>
+  <div class="box tip">Le filtre en haut (« À valider ») montre aussi les agréments <b>approuvés</b>, <b>rejetés</b> et <b>révoqués</b>.</div>
+  <div class="foot"><span>DivaWaste · Guide 10 — Back-office Diva Software</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ D -->
+<section class="page">
+  <h2 class="part">D. Virements, factures, formules</h2>
+  <div class="step">
+    <h3><span class="n">D1</span>Rapprocher un virement</h3>
+    <p>Un client déclare son virement sur sa facture (Guide 9, F2). <b>Virements déclarés</b> : la société, la facture, le <b>montant viré</b> sur le montant dû, la <b>référence bancaire</b> et la date. Retrouvez-le sur le relevé bancaire, puis <b>Valider</b> › Confirmer : la facture est réglée. Pas sur le relevé ? <b>Rejeter</b>, avec le motif.</p>
+    <div class="two"><div class="shot"><img src="img10/10-payments.jpg"></div><div class="shot"><img src="img10/14-invoices.jpg"></div></div>
+    <p class="cap"><b>Factures</b> : toutes les factures de tous les clients, leur échéance, ce qui est réglé, et « Virement déclaré » quand un virement attend.</p>
+  </div>
+  <div class="step">
+    <h3><span class="n">D2</span>Les formules et tarifs</h3>
+    <p><b>Formules et tarifs</b> : l'essai gratuit (durée), l'abonnement par site, par volume ; leurs tarifs mensuel et annuel HT, le nombre de clients, et leur état : <b>Actif</b> (activable pour un client) et <b>Publique</b> (proposée à l'inscription). <b>Modifier</b> : nom, description, durée de l'essai, ces deux réglages.</p>
+    <div class="box info"><b>Changer un tarif</b> ne change pas ce que paient les clients déjà abonnés : leur prix est figé sur leur abonnement (B2). Le tarif de référence ne sert qu'à pré-remplir le prix suivant.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 10 — Back-office Diva Software</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ E -->
+<section class="page">
+  <h2 class="part">E. Référentiels et suivi</h2>
+  <div class="step">
+    <h3><span class="n">E1</span>Le catalogue de déchets de référence</h3>
+    <p>Les types proposés à <b>tous</b> les clients, qu'ils activent dans Paramètres › Types de déchets › Catalogue de référence (Guide 4, R1). <b>Nouveau type de référence</b> : <b>code</b>, <b>famille</b>, libellés <b>français</b> et <b>anglais</b>, <b>code déchet</b> réglementaire, <b>filière habituelle</b>, <b>dangereux</b>, <b>actif</b>.</p>
+    <div class="two"><div class="shot"><img src="img10/16-catalog-new.jpg"></div><div class="shot"><img src="img10/17-roles.jpg"></div></div>
+  </div>
+  <div class="step">
+    <h3><span class="n">E2</span>Rôles et permissions</h3>
+    <p>La matrice des <b>rôles standard</b>, commune à toutes les sociétés : choisissez un rôle, cochez ou décochez ses permissions, <b>Enregistrer</b>. <b>Les modifications s'appliquent immédiatement</b> à tous les utilisateurs de ce rôle, dans toutes les sociétés : à faire avec prudence. Les rôles propres à une société, eux, se règlent dans la société (Guide 7, D).</p>
+  </div>
+  <div class="step">
+    <h3><span class="n">E3</span>L'activité de la plateforme</h3>
+    <p>Qui a décidé quoi : inscriptions validées ou rejetées, suspensions, agréments, formules, paiements, référentiels ; filtrable par objet et par dates. C'est l'écran du <b>Support plateforme</b> pour répondre à un client (« pourquoi mon compte est-il suspendu ? »).</p>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 10 — Back-office Diva Software</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ TEST -->
+<section class="page">
+  <h2 class="part">Fiche de test</h2>
+  <table class="check">
+    <tr><td>☐</td><td>Les tuiles de la vue d'ensemble comptent juste et mènent à la bonne liste.</td></tr>
+    <tr><td>☐</td><td>Je valide une inscription : la société passe Active, son essai commence, son administrateur peut se connecter.</td></tr>
+    <tr><td>☐</td><td>Je rejette une inscription avec un motif ; le demandeur le voit.</td></tr>
+    <tr><td>☐</td><td>J'ouvre le document d'un agrément et je l'approuve ; le prestataire devient choisissable.</td></tr>
+    <tr><td>☐</td><td>Je valide un virement déclaré ; la facture passe à réglée.</td></tr>
+    <tr><td>☐</td><td>J'active une formule avec un prix ; il apparaît sur l'abonnement du client.</td></tr>
+    <tr><td>☐</td><td>Je suspends une société avec un motif, puis je la réactive.</td></tr>
+    <tr><td>☐</td><td>Je modifie la durée de l'essai gratuit ; les nouvelles inscriptions la reçoivent.</td></tr>
+    <tr><td>☐</td><td>Je crée un type de référence ; un client peut l'activer.</td></tr>
+    <tr><td>☐</td><td>Chaque décision apparaît dans l'Activité de la plateforme et l'historique de la société.</td></tr>
+    <tr><td>☐</td><td>L'assistant de la vue d'ensemble dit ce qui attend (inscriptions, virements…).</td></tr>
+  </table>
+  <div class="remarks">Remarques, questions, ce qui gêne :</div>
+  <div class="foot"><span>DivaWaste · Guide 10 — Back-office Diva Software</span><span class="pg"></span></div>
+</section>
+<script>
+  document.querySelectorAll('.page').forEach((page, i) => { const pg = page.querySelector('.pg'); if (pg) pg.textContent = String(i + 1); });
+</script>
+</body>
+</html>

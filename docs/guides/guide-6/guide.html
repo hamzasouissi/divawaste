@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Guide 6 — L'assistant virtuel</title>
+<style>
+  @page { size: A4; margin: 0; }
+  :root { --green: #0f5a4f; --green-2: #16796a; --soft: #e8f3f0; --ink: #16222b; --ink-2: #45525c; --line: #d9e2e0; --red: #c62f32; --amber: #9a5b00; --amber-soft: #fff4dc; --blue-soft: #eef3fb; --blue: #2f5ea8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", Inter, Arial, sans-serif; color: var(--ink); font-size: 11.4pt; line-height: 1.48; }
+  .page { width: 210mm; height: 297mm; overflow: hidden; padding: 15mm 17mm 14mm; page-break-after: always; position: relative; }
+  .page:last-child { page-break-after: auto; }
+  .foot { position: absolute; bottom: 8mm; left: 17mm; right: 17mm; display: flex; justify-content: space-between; font-size: 8.5pt; color: #7b8790; border-top: 1px solid var(--line); padding-top: 3mm; }
+
+  .cover { background: linear-gradient(160deg, #0b1c1f 0%, #0f3a35 60%, #16796a 100%); color: #fff; display: flex; flex-direction: column; padding: 22mm 20mm; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15pt; }
+  .brand .logo { width: 34px; height: 34px; border-radius: 9px; background: #2a8f7e; display: grid; place-items: center; font-weight: 800; }
+  .cover .kicker { margin-top: 30mm; font-size: 11pt; letter-spacing: .14em; text-transform: uppercase; color: #9fd8cc; font-weight: 700; }
+  .cover h1 { font-size: 29pt; line-height: 1.12; margin: 4mm 0 5mm; font-weight: 750; }
+  .cover .sub { font-size: 13.5pt; color: #d4ece6; max-width: 150mm; }
+  .robot-cover { position: absolute; right: 20mm; top: 18mm; width: 30mm; height: 30mm; }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8mm; }
+  .tag { padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 10.5pt; }
+  .need { margin-top: auto; background: rgba(255,255,255,.08); border-radius: 14px; padding: 7mm 8mm; }
+  .need h3 { margin: 0 0 3mm; font-size: 12pt; color: #9fd8cc; text-transform: uppercase; letter-spacing: .08em; }
+  .need ul { margin: 0; padding-left: 18px; columns: 2; column-gap: 10mm; }
+  .need li { margin-bottom: 1.5mm; break-inside: avoid; }
+
+  h2.part { font-size: 19pt; margin: 0 0 2mm; color: var(--green); }
+  h2.part small { display: block; font-size: 10.5pt; color: var(--ink-2); font-weight: 500; letter-spacing: .02em; }
+  .lead { color: var(--ink-2); margin: 0 0 5mm; }
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3.5mm; margin: 3mm 0 5mm; }
+  .map div { border: 1px solid var(--line); border-radius: 12px; padding: 3.5mm 5mm; }
+  .map div.extra { border-style: dashed; background: #fafcfc; }
+  .map b { display: block; color: var(--green); font-size: 11pt; } .map span { color: var(--ink-2); font-size: 10pt; }
+  .num { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: var(--green); color: #fff; font-size: 9.5pt; font-weight: 700; margin-right: 6px; }
+  .map .num { color: #fff; }
+  .extra .num { background: #7b8f8b; }
+
+  .step { margin-bottom: 6mm; }
+  .step h3 { display: flex; align-items: center; gap: 8px; font-size: 14pt; margin: 0 0 2.5mm; }
+  .step h3 .n { flex: none; display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 9px; background: var(--green); color: #fff; font-size: 11.5pt; }
+  .step.extra h3 .n { background: #7b8f8b; }
+  ol.do, ul.do { margin: 0 0 3mm; padding-left: 22px; } ol.do li, ul.do li { margin-bottom: 1.2mm; }
+  .shot { margin: 2mm 0 3mm; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; box-shadow: 0 3px 10px rgba(16, 40, 40, .08); }
+  .shot img { display: block; width: 100%; }
+  .shot.half { width: 72%; margin-left: auto; margin-right: auto; }
+  .shot.mid { width: 60%; margin-left: auto; margin-right: auto; }
+  .shot.small { width: 48%; margin-left: auto; margin-right: auto; }
+  .cap { font-size: 9pt; color: #6c7880; margin: -1.5mm 0 3mm; text-align: center; }
+  .box { border-radius: 10px; padding: 3mm 4.5mm; margin: 2mm 0 3mm; font-size: 10.5pt; }
+  .see { background: var(--soft); border-left: 4px solid var(--green); }
+  .see b:first-child { color: var(--green); }
+  .tip { background: #f3f6f8; border-left: 4px solid #8796a0; }
+  .warn { background: var(--amber-soft); border-left: 4px solid var(--amber); }
+  .info { background: var(--blue-soft); border-left: 4px solid var(--blue); }
+  .info b:first-child { color: var(--blue); }
+  .ring { color: var(--red); font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 10.2pt; margin: 2mm 0 3mm; }
+  th, td { text-align: left; padding: 2mm 3mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f3f6f6; font-size: 9.3pt; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  td.ans { font-weight: 700; color: var(--green); white-space: nowrap; }
+  table.xl { font-family: Calibri, "Segoe UI", Arial, sans-serif; font-size: 9.8pt; border: 1px solid #b7c4c1; }
+  table.xl th { background: #e6efe9; color: #1f3b33; text-transform: none; letter-spacing: 0; font-size: 9.8pt; border-right: 1px solid #c9d4d1; }
+  table.xl td { border-right: 1px solid #e0e6e4; padding: 1.4mm 2.5mm; }
+  .check td:first-child { width: 9mm; font-size: 13pt; color: var(--green); }
+  .check td { padding: 1.6mm 3mm; font-size: 9.8pt; }
+  .remarks { border: 1px dashed #b9c6c4; border-radius: 10px; height: 34mm; margin-top: 3mm; padding: 3mm 4mm; color: #9aa6ad; font-size: 10pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; align-items: start; }
+  .who { display: flex; gap: 4mm; align-items: center; }
+  .who svg { flex: none; width: 16mm; height: 16mm; }
+  .badge { display: inline-block; font-size: 8.5pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: #7b8f8b; border-radius: 6px; padding: 1px 7px; vertical-align: middle; margin-left: 6px; }
+</style>
+</head>
+<body>
+
+<!-- the assistant's face, as in the application -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="dg" x1="4" y1="2" x2="36" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1c8a7c"/><stop offset="0.55" stop-color="#0f5c56"/><stop offset="1" stop-color="#0b3f3b"/></linearGradient>
+    <linearGradient id="ds" x1="10" y1="11" x2="30" y2="31" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#bfeee1"/></linearGradient>
+    <symbol id="robot" viewBox="0 0 40 40">
+      <rect x="2" y="2" width="36" height="36" rx="12" fill="url(#dg)"/>
+      <clipPath id="tile"><rect x="2" y="2" width="36" height="36" rx="12"/></clipPath>
+      <rect x="11.5" y="31" width="17" height="10" rx="4.5" fill="#bfeee1" opacity="0.85" clip-path="url(#tile)"/>
+      <line x1="20" y1="7.8" x2="20" y2="11.5" stroke="#bfeee1" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="20" cy="6.6" r="2.1" fill="#7ff5d9"/>
+      <rect x="7" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="29.6" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="9.5" y="11" width="21" height="19.5" rx="6.5" fill="url(#ds)"/>
+      <rect x="12.3" y="14.6" width="15.4" height="10" rx="4.6" fill="#0b3f3b"/>
+      <rect x="15" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <rect x="21.7" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <path d="M17.6 27 Q20 28.5 22.4 27" fill="none" stroke="#0f5c56" stroke-width="1.3" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ============================================================ COVER -->
+<section class="page cover">
+  <div class="brand"><span class="logo">D</span> DivaWaste</div>
+  <svg class="robot-cover"><use href="#robot"/></svg>
+  <div class="kicker">Guide 6 · L'assistant virtuel</div>
+  <h1>Parler à l'assistant,<br>et ce qu'il sait faire</h1>
+  <div class="sub">L'assistant connaît DivaWaste, vos données et les règles. Il vous montre où cliquer, répond avec vos chiffres, explique, et <b>prépare</b> les actions — que vous confirmez.</div>
+  <div class="tags"><span class="tag">⏱ 10 minutes</span><span class="tag">💬 Vos mots, en français ou en anglais</span><span class="tag">🛡 Rien sans votre accord</span></div>
+  <div class="need">
+    <h3>Ce guide contient</h3>
+    <ul>
+      <li>Où trouver l'assistant</li>
+      <li>Six choses qu'il fait, avec des exemples</li>
+      <li>Ce qu'il ne fait jamais</li>
+      <li>Comment bien lui parler</li>
+      <li>Noter ses réponses, l'historique, l'entraîner</li>
+      <li>Une fiche de test</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ WHERE -->
+<section class="page">
+  <h2 class="part">1. Où trouver l'assistant</h2>
+  <div class="step">
+    <h3><span class="n">a</span>Le bouton « Assistant », en haut</h3>
+    <p>Sur toutes les pages, en haut à droite (ou <b>Ctrl + J</b>). Un point de couleur sur le bouton : il a quelque chose à vous dire.</p>
+    <div class="shot half"><img src="img6/50-assistant-button.jpg"></div>
+    <h3><span class="n">b</span>Sa carte, en haut de chaque page</h3>
+    <p>Le point le plus utile de la page, avec un bouton pour le faire (« Les afficher »), <b>Le faire avec l'assistant</b>, et <b>Comment marche cette page ?</b> qui déplie une explication courte.</p>
+    <div class="two"><div class="shot"><img src="img6/60-card.jpg"></div><div class="shot"><img src="img6/61-how-page.jpg"></div></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 6 — L'assistant virtuel</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">c</span>La fenêtre de conversation</h3>
+    <div class="two">
+      <div class="shot"><img src="img6/51-panel-open.jpg"></div>
+      <div>
+        <ul class="do">
+          <li><b>En ce moment</b> : ce qui demande votre attention.</li>
+          <li><b>Je peux le faire pour vous</b> : des actions prêtes, d'un clic (elles se confirment ensuite).</li>
+          <li><b>Vous pouvez me demander</b> : des questions utiles sur la page où vous êtes.</li>
+          <li>En bas : votre question, le <b>trombone</b> pour joindre un fichier, la flèche (ou <b>Entrée</b>) pour envoyer.</li>
+          <li>En haut : <b>Nouvelle</b> conversation, <b>Entraîner l'assistant</b> (le chapeau), <b>Conversations</b> (l'historique), <b>Texte plus grand</b>, Fermer.</li>
+        </ul>
+        <div class="box info"><b>Il sait où vous êtes.</b> « Sur la page : Lots » : une question comme « que puis-je faire ici ? » parle de cette page.</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 6 — L'assistant virtuel</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ WHAT -->
+<section class="page">
+  <h2 class="part">2. Ce qu'il fait</h2>
+  <div class="step">
+    <h3><span class="n">1</span>Vous montrer où cliquer</h3>
+    <p>« Où… ? », « Comment… ? » : il nomme la page et le bouton, ouvre la page et fait <b>clignoter le bouton</b>. Si le bouton est caché par la fenêtre, elle s'écarte.</p>
+    <div class="two"><div class="shot"><img src="img6/52-ask-where.jpg"></div><div class="shot"><img src="img6/53-spotlight.jpg"></div></div>
+    <p class="cap">« où je crée une demande d'enlèvement ? » → la page Nouvelle demande, bouton « Envoyer la demande » mis en évidence.</p>
+    <div class="box tip"><b>Exemples :</b> « où je mets un lot en vente ? », « comment j'ajoute une zone ? », « où sont mes bordereaux ? », « comment importer mes lots depuis Excel ? »</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 6 — L'assistant virtuel</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="two">
+    <div class="step">
+      <h3><span class="n">2</span>Lire vos données</h3>
+      <p>Il répond avec <b>vos</b> lots, enlèvements, prestataires, chiffres — seulement ce que votre compte a le droit de voir.</p>
+      <div class="shot"><img src="img6/54-ask-data.jpg"></div>
+    </div>
+    <div class="step">
+      <h3><span class="n">3</span>Dire quoi faire aujourd'hui</h3>
+      <p>« qu'est-ce que je dois faire aujourd'hui ? » : la liste <b>À traiter</b>, du plus urgent, avec un bouton par point.</p>
+      <div class="shot"><img src="img6/56-ask-today.jpg"></div>
+    </div>
+  </div>
+  <div class="box tip"><b>Exemples :</b> « quels lots sont en attente d'enlèvement ? », « où en est ENL-2026-0001 ? », « combien de déchets on a évacués ce mois-ci ? », « quel est mon taux de valorisation ? »</div>
+  <div class="foot"><span>DivaWaste · Guide 6 — L'assistant virtuel</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="two">
+    <div class="step">
+      <h3><span class="n">4</span>Expliquer les règles</h3>
+      <p>Bordereaux, agréments, autorisations, tolérances… La réponse indique <b>« D'après N source(s) vérifiée(s) »</b> : elle s'appuie sur la réglementation et les règles de DivaWaste, pas sur une supposition.</p>
+      <div class="shot"><img src="img6/55-ask-rule.jpg"></div>
+      <div class="box tip"><b>Exemples :</b> « c'est quoi un bordereau de suivi ? », « que se passe-t-il si l'agrément d'un prestataire expire ? », « quelle différence entre prestataire, partenaire et destinataire ? »</div>
+    </div>
+    <div class="step">
+      <h3><span class="n">5</span>Préparer une action</h3>
+      <p>Dites ce que vous voulez faire. Il prépare l'action et l'affiche <b>« À confirmer »</b> : rien n'est fait avant votre clic.</p>
+      <div class="shot"><img src="img6/57-ask-action.jpg"></div>
+      <ul class="do"><li><b>Confirmer</b> : c'est fait.</li><li><b>Modifier</b> : vous corrigez la phrase.</li><li><b>Annuler</b> : rien ne se passe.</li></ul>
+    </div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 6 — L'assistant virtuel</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="two">
+    <div class="step">
+      <div class="shot"><img src="img6/58-action-done.jpg"></div>
+      <div class="box see"><b>✔ Vous devez voir</b> « C'est fait », un lien vers ce qui a changé (« Ouvrir L-2026-000002 »), et souvent l'étape suivante proposée.</div>
+    </div>
+    <div>
+      <p><b>Ce qu'il peut préparer</b> (selon vos droits) :</p>
+      <ul class="do">
+        <li>créer un lot (« crée un lot de 25 kg de cartons dans l'aire de stockage »), le peser, le ranger dans une zone, changer son nombre de colis ;</li>
+        <li>demander un enlèvement, l'annuler ; côté prestataire, confirmer une date ;</li>
+        <li>ajouter un prestataire, fixer une limite de stock ;</li>
+        <li>produire un rapport.</li>
+      </ul>
+      <div class="box info"><b>Il lui manque une information ?</b> Il la demande (« Sur quel site ? », « Quel poids net, en kg ? ») ; répondez simplement.</div>
+    </div>
+  </div>
+  <div class="step">
+    <h3><span class="n">6</span>Lire vos fichiers</h3>
+    <ul class="do"><li><b>Un registre Excel de lots</b> : glissez-le dans la fenêtre (ou le trombone, ou collez les lignes). Il vérifie chaque ligne et propose « Importer N lots » (Guide 1, partie D5).</li>
+      <li><b>Une autorisation de douane en PDF</b> : joignez-la dans le formulaire ; il remplit les champs, vous vérifiez (Guide 4, R2).</li></ul>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 6 — L'assistant virtuel</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ NEVER -->
+<section class="page">
+  <h2 class="part">3. Ce qu'il ne fait jamais</h2>
+  <div class="two">
+    <div>
+      <ul class="do">
+        <li><b>Rien sans votre confirmation</b> : chaque action passe par « À confirmer ».</li>
+        <li><b>Rien au-delà de vos droits</b> : il agit avec votre compte, comme vous.</li>
+        <li><b>Pas de signature à votre place</b> : signer un bordereau est un acte personnel, avec votre mot de passe.</li>
+        <li>Pas de requête à la base de données, pas d'identifiants, aucun contrôle contourné.</li>
+      </ul>
+      <p>Quand il refuse, il dit <b>pourquoi</b> et ce que vous pouvez faire vous-même.</p>
+    </div>
+    <div class="shot"><img src="img6/59-ask-refused.jpg"></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 6 — L'assistant virtuel</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <h2 class="part">4. Bien lui parler</h2>
+  <table>
+    <tr><th>Conseil</th><th>Exemple</th></tr>
+    <tr><td><b>Vos mots, une chose à la fois</b></td><td>« range le lot L-2026-000002 dans l'aire de stockage »</td></tr>
+    <tr><td><b>Donnez les numéros</b> (lot, enlèvement, bordereau)</td><td>« où en est ENL-2026-0001 ? »</td></tr>
+    <tr><td><b>Dites l'unité</b></td><td>« pèse ce lot à 35 kg », « 1,2 t »</td></tr>
+    <tr><td><b>Commencez par où / comment</b> pour être guidé</td><td>« comment je signe un bordereau ? »</td></tr>
+    <tr><td><b>Changez de sujet ?</b> Nouvelle conversation</td><td>bouton <b>Nouvelle</b> en haut</td></tr>
+    <tr><td><b>Langue</b></td><td>Français et anglais. L'arabe n'est pas encore pris en charge : il répond alors en français.</td></tr>
+  </table>
+  <div class="box warn"><b>Patience.</b> Les réponses directes (pages, listes, actions) viennent en 2 à 5 secondes ; une explication peut prendre jusqu'à 40 secondes sur la version de démonstration. « L'assistant réfléchit… » s'affiche pendant ce temps.</div>
+  <div class="foot"><span>DivaWaste · Guide 6 — L'assistant virtuel</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ RATE -->
+<section class="page">
+  <h2 class="part">5. Le faire progresser</h2>
+  <div class="two">
+    <div class="step">
+      <h3><span class="n">a</span>Noter une réponse</h3>
+      <p>Sous chaque réponse : 👍 ou 👎. Avec 👎, écrivez ce qui manquait, puis <b>Envoyer</b>. Ces remarques servent à son prochain entraînement.</p>
+      <div class="shot"><img src="img6/62-thumbs.jpg"></div>
+    </div>
+    <div class="step">
+      <h3><span class="n">b</span>Retrouver une conversation</h3>
+      <p><b>Conversations</b> (l'horloge, en haut) : vos échanges passés, pour les rouvrir.</p>
+      <div class="shot"><img src="img6/63-history.jpg"></div>
+    </div>
+  </div>
+  <div class="step">
+    <h3><span class="n">c</span>Le jeu « Entraîner l'assistant »</h3>
+    <p>Le chapeau, en haut de la fenêtre. Une <b>mission</b> (trouver un bouton, faire une action, poser une question de règle, lire un chiffre), votre question avec vos mots, sa réponse, votre verdict. Une réponse juste rapporte 1 point, une erreur trouvée 3 : ce sont les erreurs qui l'améliorent.</p>
+    <div class="shot half"><img src="img6/64-train.jpg"></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 6 — L'assistant virtuel</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ TEST -->
+<section class="page">
+  <h2 class="part">Fiche de test</h2>
+  <p class="lead" style="margin-bottom:2mm">Posez ces questions, cochez ce qui marche, notez ce qui gêne (et utilisez 👎 dans l'assistant).</p>
+  <table class="check">
+    <tr><th></th><th>Question</th><th>Résultat attendu</th></tr>
+    <tr><td>☐</td><td>« où je crée une demande d'enlèvement ? »</td><td>La bonne page s'ouvre, le bouton clignote.</td></tr>
+    <tr><td>☐</td><td>« quels sont mes prestataires ? »</td><td>Vos prestataires, avec et sans compte.</td></tr>
+    <tr><td>☐</td><td>« qu'est-ce que je dois faire aujourd'hui ? »</td><td>Les points À traiter, du plus urgent.</td></tr>
+    <tr><td>☐</td><td>« combien de déchets on a évacués ce mois-ci ? »</td><td>La période et les chiffres, en mots (« Déchets évacués : 336 kg »).</td></tr>
+    <tr><td>☐</td><td>« c'est quoi un bordereau de suivi ? »</td><td>Une définition, « D'après N source(s) vérifiée(s) ».</td></tr>
+    <tr><td>☐</td><td>« crée un lot de 25 kg de cartons dans l'aire de stockage »</td><td>« À confirmer » avec 25 kg ; rien n'est créé avant Confirmer.</td></tr>
+    <tr><td>☐</td><td>« range le lot L-… dans l'aire de stockage »</td><td>Confirmer → « C'est fait » et le lien vers le lot.</td></tr>
+    <tr><td>☐</td><td>« signe le bordereau BSD-… à ma place »</td><td>Refus expliqué ; il dit comment le faire vous-même.</td></tr>
+    <tr><td>☐</td><td>Un fichier Excel glissé dans la fenêtre</td><td>« Importer N lots », rien avant Confirmer.</td></tr>
+    <tr><td>☐</td><td>👎 avec une remarque</td><td>La remarque s'envoie ; « Merci, c'est noté. » s'affiche.</td></tr>
+  </table>
+  <div class="remarks" style="height:52mm">Mes remarques…</div>
+  <div class="foot"><span>DivaWaste · Guide 6 — L'assistant virtuel</span><span class="pg"></span></div>
+</section>
+
+<script>
+  document.querySelectorAll('.page').forEach((page, i) => { const pg = page.querySelector('.pg'); if (pg) pg.textContent = String(i + 1); });
+</script>
+</body>
+</html>

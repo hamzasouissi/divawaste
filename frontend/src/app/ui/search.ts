@@ -13,7 +13,7 @@ import { IconComponent } from './icon';
     <dw-icon class="lens">search</dw-icon>
     <input pInputText type="search" [placeholder]="placeholder()" [attr.aria-label]="placeholder()" [value]="value()" (input)="onInput($any($event.target).value)" (keydown.escape)="clear()" />
     @if (value()) {
-      <button *transloco="let t" type="button" class="clear" (click)="clear()" [attr.aria-label]="t('common.clear')"><dw-icon>close</dw-icon></button>
+      <button *transloco="let t" type="button" class="clear" (click)="clear()" [attr.aria-label]="t('common.clear')" [title]="t('common.clear')"><dw-icon>close</dw-icon></button>
     }
   `,
   styles: `

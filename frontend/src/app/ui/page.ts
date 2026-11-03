@@ -4,6 +4,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { Tag } from 'primeng/tag';
 
 import { IconComponent } from './icon';
+import { DaviHintComponent } from '../layout/davi-hint';
 
 /**
  * Header of every screen: where you are, what it is, and the actions that apply to the whole screen
@@ -11,7 +12,7 @@ import { IconComponent } from './icon';
  */
 @Component({
   selector: 'dw-page-header',
-  imports: [RouterLink, IconComponent],
+  imports: [RouterLink, IconComponent, DaviHintComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="main">
@@ -30,14 +31,16 @@ import { IconComponent } from './icon';
       }
     </div>
     <div class="actions"><ng-content /></div>
+    <!-- DAVI's card of the page, under its title: the page's guide (its explanation folds inside). -->
+    <dw-davi-hint />
   `,
   styles: `
-    :host { display: flex; align-items: flex-end; gap: var(--dw-3) var(--dw-4); flex-wrap: wrap; margin-block-end: var(--dw-4); min-height: 44px; }
+    :host { display: flex; align-items: flex-end; gap: 12px 20px; flex-wrap: wrap; margin-block-end: 24px; min-height: 48px; }
     .main { flex: 1 1 320px; min-width: 0; }
-    .title-row { display: flex; align-items: center; gap: var(--dw-3); flex-wrap: wrap; }
-    h1 { font-size: 19px; line-height: 26px; font-weight: 650; letter-spacing: -0.015em; color: var(--dw-ink); }
-    .subtitle { font-size: 13px; line-height: 18px; color: var(--dw-ink-2); margin-block-start: 1px; max-width: 86ch; }
-    .back { display: inline-flex; align-items: center; gap: 1px; margin-inline-start: -4px; margin-block-end: 2px; font-size: 12px; font-weight: 500; color: var(--dw-ink-2); border-radius: 4px; }
+    .title-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    h1 { font-size: 26px; line-height: 34px; font-weight: 680; letter-spacing: -0.025em; color: var(--dw-ink); }
+    .subtitle { font-size: 14px; line-height: 21px; color: var(--dw-ink-2); margin-block-start: 4px; max-width: 80ch; }
+    .back { display: inline-flex; align-items: center; gap: 2px; margin-inline-start: -4px; margin-block-end: 6px; font-size: 12.5px; font-weight: 560; color: var(--dw-ink-3); border-radius: 6px; }
     .back:hover { color: var(--dw-primary); text-decoration: none; }
     .back dw-icon { font-size: 16px; }
     :host-context([dir='rtl']) .back dw-icon { transform: scaleX(-1); }
@@ -58,6 +61,10 @@ type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
 const TONES: Record<string, Record<string, Tone>> = {
   lot: { created: 'info', stored: 'neutral', awaiting_pickup: 'warning', collected: 'info', treated: 'success', closed: 'neutral' },
   pickup: { draft: 'neutral', requested: 'warning', confirmed: 'info', refused: 'danger', collected: 'info', received: 'success', completed: 'neutral', cancelled: 'danger' },
+  // The bourse: a listing, and each buyer's negotiation on it.
+  listing: { draft: 'neutral', published: 'info', sold: 'success', expired: 'neutral', cancelled: 'danger' },
+  contract: { draft: 'neutral', upcoming: 'info', active: 'success', expired: 'neutral', terminated: 'danger' },
+  negotiation: { awaiting_seller: 'warning', awaiting_buyer: 'warning', accepted: 'success', refused: 'danger', withdrawn: 'neutral', closed: 'neutral' },
   tolerance: { within: 'success', warning: 'warning', blocking: 'danger', no_reference: 'warning', not_measured: 'neutral' },
   line: { planned: 'neutral', loaded: 'info', not_loaded: 'warning', received: 'success', rejected: 'danger', treated: 'success' },
   company: { pending_verification: 'warning', pending_approval: 'warning', active: 'success', rejected: 'danger', suspended: 'danger', closed: 'neutral' },
@@ -112,15 +119,18 @@ export class StatusComponent {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="label">{{ label() }}</div>
-    <div class="value" [class]="tone()">{{ value() }}</div>
+    <div class="value" [class]="tone() + ' ' + size()">{{ value() }}</div>
     @if (hint()) {
       <div class="hint">{{ hint() }}</div>
     }
   `,
   styles: `
-    :host { display: block; background: var(--dw-surface); padding: 12px var(--dw-4) 13px; min-width: 0; }
-    .label { font-size: 12px; line-height: 16px; font-weight: 500; color: var(--dw-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .value { font-size: 21px; line-height: 28px; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-block-start: 3px; color: var(--dw-ink); overflow-wrap: anywhere; }
+    :host { display: block; background: var(--dw-surface); padding: 18px 20px 18px; min-width: 0; }
+    .label { font-size: 12.5px; line-height: 16px; font-weight: 560; color: var(--dw-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .value { font-size: 28px; line-height: 36px; font-weight: 680; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; margin-block-start: 6px; color: var(--dw-ink); overflow-wrap: anywhere; }
+    /* an amount in dinars with its millimes ("309 798,857 DT") keeps to one line in a quarter of the page */
+    .value.long { font-size: 22px; line-height: 30px; }
+    .value.longer { font-size: 18px; line-height: 26px; }
     .value.danger { color: var(--dw-danger); }
     .value.warning { color: var(--dw-warning); }
     .value.success { color: var(--dw-success); }
@@ -132,6 +142,11 @@ export class KpiComponent {
   readonly value = input.required<string | number>();
   readonly hint = input('');
   readonly tone = input<Tone>('neutral');
+  protected readonly size = computed(() => {
+    const length = String(this.value() ?? '').length;
+
+    return length > 13 ? 'longer' : length > 10 ? 'long' : '';
+  });
 }
 
 export const PAGE = [PageHeaderComponent, StatusComponent, KpiComponent] as const;

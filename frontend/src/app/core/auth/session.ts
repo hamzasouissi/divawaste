@@ -3,7 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { Api, ApiError } from '../api/api';
-import { Access, AccessSite, Me } from '../api/models';
+import { Access, AccessSite, Company, CompanyModule, Me } from '../api/models';
 
 export type Audience = 'platform' | 'industrial' | 'provider' | 'none';
 
@@ -107,7 +107,11 @@ export class Session {
 
   /** Loads the session once per page load; later calls reuse the result. */
   ensureLoaded(): Promise<void> {
-    this.loading ??= this.reload();
+    // A load that failed (server busy or out of reach) is tried again on the next navigation, not kept failed.
+    this.loading ??= this.reload().catch((error: unknown) => {
+      this.loading = null;
+      throw error;
+    });
 
     return this.loading;
   }
@@ -121,7 +125,7 @@ export class Session {
       return;
     }
     try {
-      const me = await firstValueFrom(this.api.get<Me>('me'));
+      const me = await this.fetchMe();
       this.meState.set(me);
       this.accessState.set(me.memberships.length > 0 ? await firstValueFrom(this.api.get<Access>('me/access')).catch(() => null) : null);
     } catch (error) {
@@ -132,7 +136,23 @@ export class Session {
     }
   }
 
-  async login(credentials: { email: string; password: string; code?: string; recovery_code?: string; company?: string }): Promise<LoginResult> {
+  /** The signed-in user; a busy server (too many requests, a 502/503) is asked again twice, after 1 s then 3 s. */
+  private async fetchMe(): Promise<Me> {
+    for (const wait of [1000, 3000, 0]) {
+      try {
+        return await firstValueFrom(this.api.get<Me>('me'));
+      } catch (error) {
+        const busy = error instanceof ApiError && [429, 502, 503].includes(error.status);
+        if (!busy || wait === 0) {
+          throw error;
+        }
+        await new Promise((resolve) => setTimeout(resolve, wait));
+      }
+    }
+    throw new Error('unreachable');
+  }
+
+  async login(credentials:{ email: string; password: string; code?: string; recovery_code?: string; company?: string }): Promise<LoginResult> {
     // The CSRF cookie must exist before the first state-changing request of a cookie session.
     await firstValueFrom(this.http.get('/sanctum/csrf-cookie', { responseType: 'text' }));
     // Signing in replaces the session: a sign-out that was still waiting for the network no longer applies.
@@ -175,10 +195,39 @@ export class Session {
     this.loading = Promise.resolve();
   }
 
+  /**
+   * G-02: a module the company switched off takes its rights with it in the interface — its buttons and fields
+   * disappear everywhere, not only its menu. PRD-02: with an ERP, production data are read-only here until someone
+   * chooses to correct them (the API still decides).
+   */
+  private moduleAllows(permission: string): boolean {
+    if (permission.startsWith('production.finance')) {
+      return this.uses('production') && this.uses('production_finance');
+    }
+    if (permission.startsWith('production.')) {
+      return this.uses('production');
+    }
+    if (permission.startsWith('marketplace.')) {
+      return this.uses('marketplace');
+    }
+    if (permission.startsWith('contracts.')) {
+      return this.uses('contracts');
+    }
+    return true;
+  }
+
+  /** Production data of an ERP company opened for correction, for this visit only. */
+  readonly erpUnlocked = signal(false);
+
+  /** PRD-02: production records are edited here only without an ERP, or once the correction is opened. */
+  canEditProduction(): boolean {
+    return this.can('production.manage') && (!this.withErp() || this.erpUnlocked());
+  }
+
   /** Company-wide permission, or a site permission on the given site (any site when none is given). */
   can(permission: string, siteUlid?: string | null): boolean {
     const access = this.accessState();
-    if (!access) {
+    if (!access || !this.moduleAllows(permission)) {
       return false;
     }
     if (access.company_permissions.includes(permission)) {
@@ -189,7 +238,25 @@ export class Session {
   }
 
   canAnywhere(permission: string): boolean {
-    return this.accessState()?.sites.some((site) => site.permissions.includes(permission)) ?? false;
+    return this.moduleAllows(permission) && (this.accessState()?.sites.some((site) => site.permissions.includes(permission)) ?? false);
+  }
+
+  /** Whether the company uses a part of the product (all of them until it chose). */
+  uses(module: CompanyModule): boolean {
+    return this.company()?.modules?.[module] ?? true;
+  }
+
+  /** Works with an ERP: production data come from it and are read here. */
+  readonly withErp = computed(() => this.company()?.profile?.erp === true);
+  /** Said it has no ERP (a company that never answered keeps the ways in of an ERP). */
+  readonly noErp = computed(() => this.company()?.profile?.erp === false);
+
+  /** After a change of the company (modules, identity): the new one, without reloading the session. */
+  setCompany(company: Company): void {
+    const access = this.accessState();
+    if (access) {
+      this.accessState.set({ ...access, company });
+    }
   }
 
   canPlatform(permission: string): boolean {

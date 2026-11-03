@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { TranslocoDirective } from '@jsverse/transloco';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { Observable, firstValueFrom, forkJoin, of } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
+import { Davi } from '../../core/davi/davi';
 
 import { Api, ApiError, Page, openBlob } from '../../core/api/api';
 import { DocumentRecord, Manifest, Pickup, PickupLine } from '../../core/api/models';
@@ -20,6 +21,7 @@ import { DateComponent } from '../../ui/date';
 import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
 import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
+import { Step, StepsComponent } from '../../ui/steps';
 
 @Component({
   imports: [FormsModule, TranslocoDirective, ButtonDirective, ...FIELD, DateComponent, ...DIALOG_PARTS],
@@ -52,7 +54,7 @@ export class ConfirmDateDialog {
  * current status and the user's permissions allow; everything else about the pickup is on the page.
  */
 @Component({
-  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, CodePipe, DatePipe, KnownWeightPipe, MoneyPipe, NumberPipe, QuantityPipe, ToleranceDecisionCard, IconComponent, ButtonDirective, RequirementsComponent],
+  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, CodePipe, DatePipe, KnownWeightPipe, MoneyPipe, NumberPipe, QuantityPipe, ToleranceDecisionCard, IconComponent, ButtonDirective, RequirementsComponent, StepsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -62,24 +64,17 @@ export class ConfirmDateDialog {
             <dw-status dwTitleBadge kind="pickup" [value]="p.status" />
             @for (action of actions(); track action.key) {
               @if (action.primary) {
-                <button pButton type="button" [disabled]="busy()" (click)="run(action.key)"><dw-icon>{{ action.icon }}</dw-icon>{{ t('pickups.actions.' + action.key) }}</button>
+                <button pButton type="button" [disabled]="busy()" (click)="run(action.key)"><dw-icon>{{ action.icon }}</dw-icon>{{ t(action.label ?? 'pickups.actions.' + action.key, { date: (p.requested_date | dwDate) }) }}</button>
               } @else {
-                <button pButton [severity]="action.danger ? 'danger' : 'secondary'" outlined type="button" [disabled]="busy()" (click)="run(action.key)"><dw-icon>{{ action.icon }}</dw-icon>{{ t('pickups.actions.' + action.key) }}</button>
+                <button pButton [severity]="action.danger ? 'danger' : 'secondary'" outlined type="button" [disabled]="busy()" (click)="run(action.key)"><dw-icon>{{ action.icon }}</dw-icon>{{ t(action.label ?? 'pickups.actions.' + action.key, { date: (p.requested_date | dwDate) }) }}</button>
               }
             }
           </dw-page-header>
 
           <div class="dw-stack">
-            @if (p.status === 'refused') {
-              <p class="banner danger" role="status">{{ p.refused_by === 'transporter' ? t('pickups.refusedByTransporter', { transporter: p.transporter?.legal_name, reason: p.refusal_reason }) : t('pickups.refused', { reason: p.refusal_reason }) }}</p>
-            }
-            <!-- A transporter of the platform other than the receiver confirms the date the receiver set. -->
-            @if (p.awaiting === 'transporter') {
-              <p class="banner info" role="status" data-testid="awaiting-transporter"><dw-icon aria-hidden="true">local_shipping</dw-icon><span>{{ t('pickups.awaitingTransporter', { receiver: p.provider?.legal_name, transporter: p.transporter?.legal_name, date: (p.confirmed_date | dwDate) }) }}</span></p>
-            } @else if (p.awaiting === 'receiver' && p.transporter_confirms) {
-              <p class="banner info" role="note"><dw-icon aria-hidden="true">local_shipping</dw-icon><span>{{ t('pickups.awaitingReceiver', { receiver: p.provider?.legal_name, transporter: p.transporter?.legal_name }) }}</span></p>
-            }
-            @if (p.status === 'cancelled') { <p class="banner danger" role="status">{{ t('pickups.cancelled', { reason: p.cancellation_reason }) }}</p> }
+            <!-- PD-01: where the pickup stands and who acts now, instead of a banner per case. -->
+            <dw-steps [steps]="steps()" [current]="stepKey()" [stopped]="stoppedLabel()" [finished]="p.status === 'completed'" [next]="nextText()" [note]="noteText()"
+              [tone]="p.status === 'refused' || p.status === 'cancelled' ? 'danger' : 'normal'" [label]="t('pickups.steps.label')" />
             @if (onBehalf()) { <p class="banner info" role="note"><dw-icon aria-hidden="true">info</dw-icon><span>{{ t('pickups.onBehalf', { name: p.provider?.legal_name }) }}</span></p> }
             @if (p.variance_flagged) {
               <p class="banner" [class.danger]="!p.variance_acknowledged" role="status">
@@ -129,24 +124,25 @@ export class ConfirmDateDialog {
             }
 
             <!-- The documents, apart from the status: a pickup can be closed while a slip still waits for a signature. -->
-            @if (p.compliance; as documents) {
-              @if (documents.state !== 'not_due' && documents.state !== 'not_applicable') {
+            @if (p.compliance; as docs) {
+              @if ((docs.state !== 'not_due' && docs.state !== 'not_applicable') || manifests().length > 0 || documents().length > 0) {
+                <!-- PD-02: one Documents panel: where the paperwork stands, what is missing, and the files. -->
                 <section class="dw-panel dw-panel-body compliance" data-testid="compliance">
-                  <div class="head"><h2 class="dw-h2">{{ t('pickups.compliance.title') }}</h2><dw-status kind="compliance" [value]="documents.state" /></div>
-                  <p class="dw-muted">{{ t('pickups.compliance.hint.' + documents.state, { done: documents.slips_completed, total: documents.slips }) }}</p>
-                  @for (missing of documents.missing_codes; track missing.waste_type) {
+                  <div class="head"><h2 class="dw-h2">{{ t('pickups.documents') }}</h2>@if (docs.state !== 'not_due' && docs.state !== 'not_applicable') { <dw-status kind="compliance" [value]="docs.state" /> }</div>
+                  @if (docs.state !== 'not_due' && docs.state !== 'not_applicable') { <p class="dw-muted">{{ t('pickups.compliance.hint.' + docs.state, { done: docs.slips_completed, total: docs.slips }) }}</p> }
+                  @for (missing of docs.missing_codes; track missing.waste_type) {
                     <p class="banner danger" role="status">
                       <dw-icon aria-hidden="true">assignment_late</dw-icon>
                       <span>{{ t('pickups.compliance.missingCode', { type: missing.name, code: missing.code, count: missing.lots.length, lots: missing.lots.join(', ') }) }}</span>
                       @if (!provider && session.can('waste_types.manage')) { <a [routerLink]="['/waste-types']" [queryParams]="{ code: missing.waste_type }">{{ t('pickups.compliance.completeCode') }}</a> }
                     </p>
                   }
-                  @if (documents.lots_without_slip.length > 0) {
-                    <p class="banner danger" role="status"><dw-icon aria-hidden="true">assignment_late</dw-icon><span>{{ t('pickups.compliance.withoutSlip', { count: documents.lots_without_slip.length, lots: documents.lots_without_slip.join(', ') }) }}</span></p>
+                  @if (docs.lots_without_slip.length > 0) {
+                    <p class="banner danger" role="status"><dw-icon aria-hidden="true">assignment_late</dw-icon><span>{{ t('pickups.compliance.withoutSlip', { count: docs.lots_without_slip.length, lots: docs.lots_without_slip.join(', ') }) }}</span></p>
                   }
-                  @if (documents.pending_slips.length > 0) {
+                  @if (docs.pending_slips.length > 0 && manifests().length === 0) {
                     <ul class="pending">
-                      @for (slip of documents.pending_slips; track slip.ulid) {
+                      @for (slip of docs.pending_slips; track slip.ulid) {
                         <li>
                           <a class="dw-mono" [routerLink]="[provider ? '/provider/manifests' : '/compliance/manifests', slip.ulid]">{{ slip.number }}</a>
                           <span>{{ t('pickups.compliance.waitingFor.' + slip.waiting_for) }}</span>
@@ -154,6 +150,26 @@ export class ConfirmDateDialog {
                       }
                     </ul>
                   }
+                  @if (manifests().length > 0 || documents().length > 0) {
+                <ul class="docs">
+                  @for (manifest of manifests(); track manifest.ulid) {
+                    <li>
+                      <dw-icon aria-hidden="true">assignment_late</dw-icon>
+                      <a [routerLink]="[provider ? '/provider/manifests' : '/compliance/manifests', manifest.ulid]">{{ t('compliance.documents.types.hazardous_manifest') }} <span class="dw-mono">{{ manifest.manifest_number }}</span></a>
+                      <dw-status kind="manifest" [value]="manifest.status" />
+                    </li>
+                  }
+                  @for (document of documents(); track document.ulid) {
+                    @if (document.document_type !== 'hazardous_manifest') {
+                      <li>
+                        <dw-icon aria-hidden="true">description</dw-icon>
+                        <button type="button" class="linkish" (click)="download(document)">{{ t('compliance.documents.types.' + document.document_type) }}</button>
+                        <span class="dw-faint">{{ document.uploaded_by?.legal_name }} · {{ document.issued_at | dwDate }}</span>
+                      </li>
+                    }
+                  }
+                </ul>
+                }
                 </section>
               }
             }
@@ -171,6 +187,23 @@ export class ConfirmDateDialog {
                 <div><dt>{{ t('pickups.received') }}</dt><dd>{{ p.received_weight_kg | dwKgKnown: (p.received_unweighed_lots ?? (p.received_at ? p.unweighed_lots : 0)) }} @if (p.received_at) { <span class="dw-faint">· {{ p.received_at | dwDate: 'datetime' }}</span> }</dd></div>
                 @if (!provider && p.net_amount !== null && p.net_amount !== undefined) {
                   <div><dt>{{ t('pickups.netAmount') }}</dt><dd [class.neg]="+p.net_amount < 0"><strong>{{ p.net_amount | dwMoney: p.currency_code }}</strong></dd></div>
+                }
+                <!-- The contracts the pickup falls under: their prices are applied at reception, their fees added. -->
+                @if (p.contract || p.transport_contract) {
+                  <div class="dw-span-2"><dt>{{ t('contracts.ofPickup') }}</dt>
+                    <dd>
+                      @for (c of [p.contract, p.transport_contract]; track $index) {
+                        @if (c) { <a class="dw-mono" [routerLink]="[provider ? '/provider/contracts' : '/contracts', c.ulid]">{{ c.contract_number }}</a><span class="dw-faint"> · {{ c.title }}</span><br /> }
+                      }
+                      @if (p.contract_fees_amount !== null && p.contract_fees_amount !== undefined) { {{ t('contracts.feesOfPickup') }} : <strong [class.neg]="+p.contract_fees_amount < 0">{{ p.contract_fees_amount | dwMoney: p.currency_code }}</strong> }
+                      @else if (!p.received_at) { <span class="dw-faint">{{ t('contracts.appliedAtReception') }}</span> }
+                    </dd></div>
+                }
+                <!-- A pickup made by a deal of the bourse: the price both sides agreed, applied by itself at reception. -->
+                @if (p.marketplace_deal; as deal) {
+                  <div class="dw-span-2"><dt>{{ t('marketplace.dealOfListing', { number: deal.listing_number }) }}</dt>
+                    <dd><strong>{{ deal.unit_price | dwMoney: deal.currency_code }}</strong>{{ t('marketplace.per.' + deal.pricing_mode) }} · {{ t('marketplace.directions.' + deal.direction) }}
+                      <div class="dw-faint">{{ t('marketplace.dealAppliedAtReception') }}</div></dd></div>
                 }
               </dl>
             </section>
@@ -193,7 +226,7 @@ export class ConfirmDateDialog {
                           @if (line.lot) { <a [routerLink]="['/lots', line.lot]">{{ line.lot_number_snapshot }}</a> } @else { {{ line.lot_number_snapshot }} }
                           @if (line.is_hazardous) { <dw-icon class="hazard" [title]="t('common.hazardous')" [attr.aria-label]="t('common.hazardous')">warning</dw-icon> }
                         </td>
-                        <td>{{ line.waste_type_label_snapshot }}</td><td class="dw-mono">{{ line.regulatory_code_snapshot ?? '—' }}</td>
+                        <td>{{ line.waste_type_label_snapshot }}@if (line.composition?.length) { <div class="dw-faint">@for (part of line.composition; track part.material) { {{ part.material | dwCode: 'material' }} {{ +part.pct }} % } </div> }</td><td class="dw-mono">{{ line.regulatory_code_snapshot ?? '—' }}</td>
                         <td>
                           @if (line.packaging_type) { {{ line.package_count ?? 1 }} × {{ line.packaging_type | dwCode: 'packaging' }} } @else { <span class="dw-faint">{{ t('lots.loose') }}</span> }
                           @if (line.corrected_package_count !== null && line.corrected_package_count !== undefined && line.corrected_package_count !== line.package_count) { <div class="dw-faint">{{ t('lots.packagesCorrected', { count: line.corrected_package_count }) }}</div> }
@@ -231,29 +264,6 @@ export class ConfirmDateDialog {
               </section>
             }
 
-            @if (manifests().length > 0 || documents().length > 0) {
-              <section class="dw-panel">
-                <div class="dw-panel-head"><h2 class="dw-h2">{{ t('pickups.documents') }}</h2></div>
-                <ul class="docs">
-                  @for (manifest of manifests(); track manifest.ulid) {
-                    <li>
-                      <dw-icon aria-hidden="true">assignment_late</dw-icon>
-                      <a [routerLink]="[provider ? '/provider/manifests' : '/compliance/manifests', manifest.ulid]">{{ t('compliance.documents.types.hazardous_manifest') }} <span class="dw-mono">{{ manifest.manifest_number }}</span></a>
-                      <dw-status kind="manifest" [value]="manifest.status" />
-                    </li>
-                  }
-                  @for (document of documents(); track document.ulid) {
-                    @if (document.document_type !== 'hazardous_manifest') {
-                      <li>
-                        <dw-icon aria-hidden="true">description</dw-icon>
-                        <button type="button" class="linkish" (click)="download(document)">{{ t('compliance.documents.types.' + document.document_type) }}</button>
-                        <span class="dw-faint">{{ document.uploaded_by?.legal_name }} · {{ document.issued_at | dwDate }}</span>
-                      </li>
-                    }
-                  }
-                </ul>
-              </section>
-            }
           </div>
         }
       </dw-state>
@@ -266,7 +276,7 @@ export class ConfirmDateDialog {
     .scroll { overflow-x: auto; } .decisions { display: grid; gap: 10px; } .decisions button { justify-self: start; }
     .neg { color: var(--dw-danger); font-weight: 600; }
     .hazard { font-size: 15px; width: 15px; height: 15px; color: var(--dw-warning); vertical-align: -2px; }
-    .docs { list-style: none; margin: 0; padding: 0; } .docs li { display: flex; align-items: center; gap: 10px; padding: 10px var(--dw-4); border-block-end: 1px solid var(--dw-line-soft); }
+    .docs { list-style: none; margin: 4px 0 0; padding: 0; border-block-start: 1px solid var(--dw-line-soft); } .docs li { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-block-end: 1px solid var(--dw-line-soft); }
     .docs li:last-child { border-block-end: 0; } .docs dw-icon { font-size: 18px; color: var(--dw-ink-3); }
     .compliance { display: grid; gap: var(--dw-2); } .compliance .head { display: flex; align-items: center; gap: var(--dw-2); flex-wrap: wrap; }
     .banner { flex-wrap: wrap; } .banner a { font-weight: 600; }
@@ -285,6 +295,7 @@ export class PickupDetailPage implements OnInit {
   readonly ulid = input.required<string>();
   protected readonly provider = this.session.audience() === 'provider';
   protected readonly listPath = this.provider ? '/provider/pickups' : '/pickups';
+  private readonly davi = inject(Davi);
   protected readonly pickup = signal<Pickup | null>(null);
   protected readonly manifests = signal<Manifest[]>([]);
   protected readonly documents = signal<DocumentRecord[]>([]);
@@ -310,6 +321,56 @@ export class PickupDetailPage implements OnInit {
     return nextStep(pickup?.tolerance_status ?? (pickup?.variance_flagged ? 'warning' : null), pickup?.variance_acknowledged ?? false, this.session.can('pickups.authorize_variance', pickup?.site?.ulid));
   });
 
+  private readonly transloco = inject(TranslocoService);
+  /** G-07: the steps of every pickup, in the words of both sides. */
+  protected readonly steps = computed<Step[]>(() => ['draft', 'requested', 'confirmed', 'collected', 'received', 'completed']
+    .filter((key) => !(this.provider && key === 'draft'))
+    .map((key) => ({ key, label: this.transloco.translate(`pickups.steps.${key}`) })));
+  /** A refused or cancelled pickup stopped where it was: before or after the date was confirmed. */
+  protected readonly stepKey = computed(() => {
+    const pickup = this.pickup();
+    if (!pickup) {
+      return 'draft';
+    }
+    if (pickup.status === 'refused' || pickup.status === 'cancelled') {
+      return pickup.confirmed_date ? 'confirmed' : 'requested';
+    }
+    return pickup.status;
+  });
+  protected readonly stoppedLabel = computed(() => {
+    const status = this.pickup()?.status;
+    return status === 'refused' || status === 'cancelled' ? this.transloco.translate(`status.pickup.${status}`) : null;
+  });
+  /** Who must act now, from the side of the reader: "À vous" for the reader's own part. */
+  protected readonly nextText = computed(() => {
+    const pickup = this.pickup();
+    if (!pickup) {
+      return '';
+    }
+    const t = (key: string, params?: Record<string, unknown>): string => this.transloco.translate(`pickups.steps.next.${key}`, params);
+    const receiver = pickup.provider?.legal_name ?? '';
+    const transporter = pickup.transporter?.legal_name ?? receiver;
+    const mine = this.provider ? (pickup.viewer_roles ?? ['receiver']).includes('receiver') : pickup.provider?.external === true;
+    const date = this.dates.transform(pickup.confirmed_date ?? pickup.requested_date);
+    switch (pickup.status) {
+      case 'draft': return t('draft');
+      case 'requested': return pickup.awaiting === 'transporter' ? (this.provider && (pickup.viewer_roles ?? []).includes('transporter') ? t('confirmTransportMine') : t('confirmTransport', { transporter }))
+        : mine ? t('confirmMine') : t('confirm', { receiver });
+      case 'confirmed': return this.provider ? t('loadingProvider', { date }) : t('loading', { date });
+      case 'collected': return mine ? t('receiveMine') : t('receive', { receiver });
+      case 'received': return pickup.variance_flagged && !pickup.variance_acknowledged ? (this.provider ? t('varianceProvider') : t('variance'))
+        : (pickup.lots ?? []).some((line) => line.line_status === 'received') ? (mine ? t('treatMine') : t('treat', { receiver })) : (this.provider ? t('closeProvider') : t('close'));
+      case 'completed': return t('completed');
+      case 'refused': return pickup.refused_by === 'transporter' ? t('refusedByTransporter', { transporter }) : t('refused', { receiver });
+      case 'cancelled': return t('cancelled');
+      default: return '';
+    }
+  });
+  protected readonly noteText = computed(() => {
+    const pickup = this.pickup();
+    return pickup?.status === 'refused' ? (pickup.refusal_reason ?? '') : pickup?.status === 'cancelled' ? (pickup.cancellation_reason ?? '') : '';
+  });
+
   /** The receiver has no account: the industrial records its answer, the reception and the treatment itself. */
   protected readonly onBehalf = computed(() => !this.provider && this.pickup()?.provider?.external === true && !['completed', 'cancelled', 'refused'].includes(this.pickup()?.status ?? ''));
 
@@ -327,9 +388,10 @@ export class PickupDetailPage implements OnInit {
     // A provider is the receiver, the transporter, or both: each does only its own part.
     const receiver = pickup.viewer_roles?.includes('receiver') ?? true;
     const carrier = pickup.transporter_confirms === true && (pickup.viewer_roles?.includes('transporter') ?? false);
-    const all: { key: string; icon: string; show: boolean; primary?: boolean; danger?: boolean }[] = this.provider
+    const all: { key: string; icon: string; show: boolean; primary?: boolean; danger?: boolean; label?: string }[] = this.provider
       ? [
-          { key: 'confirm', icon: 'event_available', primary: true, show: receiver && pickup.awaiting === 'receiver' && can('provider.pickups.respond') },
+          { key: 'confirmRequested', icon: 'event_available', primary: true, label: 'pickups.actions.confirmOn', show: receiver && pickup.awaiting === 'receiver' && can('provider.pickups.respond') },
+          { key: 'confirm', icon: 'edit_calendar', label: 'pickups.actions.otherDate', show: receiver && pickup.awaiting === 'receiver' && can('provider.pickups.respond') },
           { key: 'refuse', icon: 'block', danger: true, show: receiver && pickup.awaiting === 'receiver' && can('provider.pickups.respond') },
           { key: 'confirmTransport', icon: 'local_shipping', primary: true, show: carrier && pickup.awaiting === 'transporter' && can('provider.pickups.respond') },
           { key: 'refuseTransport', icon: 'block', danger: true, show: carrier && pickup.status === 'requested' && can('provider.pickups.respond') },
@@ -340,7 +402,8 @@ export class PickupDetailPage implements OnInit {
       : [
           { key: 'submit', icon: 'send', primary: true, show: pickup.status === 'draft' && can('pickups.request') },
           // Stages of a receiver without an account, recorded by the industrial.
-          { key: 'confirm', icon: 'event_available', primary: true, show: external && pickup.awaiting === 'receiver' && can('pickups.request') },
+          { key: 'confirmRequested', icon: 'event_available', primary: true, label: 'pickups.actions.confirmOn', show: external && pickup.awaiting === 'receiver' && can('pickups.request') },
+          { key: 'confirm', icon: 'edit_calendar', label: 'pickups.actions.otherDate', show: external && pickup.awaiting === 'receiver' && can('pickups.request') },
           { key: 'refuse', icon: 'block', danger: true, show: external && pickup.awaiting === 'receiver' && can('pickups.request') },
           { key: 'receive', icon: 'scale', primary: true, show: external && pickup.status === 'collected' && can('pickups.complete') },
           { key: 'treat', icon: 'recycling', primary: true, show: external && pickup.status === 'received' && has('received') && can('pickups.complete') },
@@ -349,7 +412,7 @@ export class PickupDetailPage implements OnInit {
           { key: 'acknowledge', icon: 'fact_check', primary: true, show: pickup.status === 'received' && this.next() === 'explain' && can('pickups.complete') },
           { key: 'authorize', icon: 'verified_user', primary: true, show: pickup.status === 'received' && this.next() === 'authorize' && can('pickups.complete') },
           { key: 'complete', icon: 'task_alt', primary: true, show: pickup.status === 'received' && !has('received') && (!pickup.variance_flagged || pickup.variance_acknowledged) && can('pickups.complete') },
-          { key: 'price', icon: 'payments', show: ['collected', 'received', 'completed'].includes(pickup.status) && can('pickups.price') },
+          { key: 'price', icon: 'payments', label: pickup.contract || pickup.marketplace_deal ? 'pickups.actions.fixPrices' : undefined, show: ['collected', 'received', 'completed'].includes(pickup.status) && can('pickups.price') },
           // Slips are issued once confirmed; afterwards — closed or not — again whenever a lot that left has none yet.
           { key: 'manifest', icon: 'assignment_late', show: can('documents.generate') && ((['confirmed', 'collected', 'received'].includes(pickup.status) && this.manifests().length === 0)
             || (['collected', 'received', 'completed'].includes(pickup.status) && (pickup.compliance?.lots_without_slip.length ?? 0) > 0)) },
@@ -375,6 +438,8 @@ export class PickupDetailPage implements OnInit {
     }).subscribe({
       next: ({ pickup, manifests, documents }) => {
         this.pickup.set(pickup);
+        // DAVI: "ce lot", "il", "cet enlèvement" mean the one on screen.
+        this.davi.setFocus(pickup.pickup_number ? { kind: 'pickup', number: pickup.pickup_number } : null);
         this.manifests.set((manifests as Page<Manifest> | null)?.data ?? []);
         this.documents.set((documents as Page<DocumentRecord> | null)?.data ?? []);
         this.loading.set(false);
@@ -436,6 +501,8 @@ export class PickupDetailPage implements OnInit {
 
         return comment ? this.call(this.api.post(`${base}/acknowledge-variance`, { comment }), 'pickups.done.acknowledged') : undefined;
       }
+      case 'confirmRequested':
+        return this.call(this.api.post(`${base}/confirm`, { confirmed_date: pickup.requested_date }), 'pickups.done.confirmed');
       case 'confirm': {
         const date = await firstValueFrom(this.dialog.open<ConfirmDateDialog, string, string>(ConfirmDateDialog, { data: pickup.requested_date }).afterClosed());
 

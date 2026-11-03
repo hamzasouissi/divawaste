@@ -16,10 +16,10 @@ import { DialogService } from 'primeng/dynamicdialog';
  */
 const DivaWastePreset = definePreset(Aura, {
   primitive: {
-    borderRadius: { none: '0', xs: '2px', sm: '4px', md: '6px', lg: '8px', xl: '10px' },
+    borderRadius: { none: '0', xs: '4px', sm: '6px', md: '8px', lg: '12px', xl: '16px' },
   },
   semantic: {
-    transitionDuration: '0.12s',
+    transitionDuration: '0.14s',
     focusRing: { width: '2px', style: 'solid', color: 'var(--dw-focus)', offset: '1px', shadow: 'none' },
     disabledOpacity: '0.55',
     iconSize: '14px',
@@ -28,8 +28,8 @@ const DivaWastePreset = definePreset(Aura, {
       600: '#176b64', 700: '#0f5c56', 800: '#0c4a45', 900: '#0a3c38', 950: '#052321',
     },
     formField: {
-      paddingX: '10px',
-      paddingY: '6px',
+      paddingX: '12px',
+      paddingY: '7px',
       sm: { fontSize: '12px', paddingX: '8px', paddingY: '4px' },
       lg: { fontSize: '15px', paddingX: '14px', paddingY: '10px' },
       borderRadius: '{border.radius.md}',
@@ -39,7 +39,7 @@ const DivaWastePreset = definePreset(Aura, {
       padding: '4px',
       gap: '1px',
       header: { padding: '6px 8px 4px' },
-      option: { padding: '6px 8px', borderRadius: '{border.radius.sm}' },
+      option: { padding: '8px 10px', borderRadius: '{border.radius.sm}' },
       optionGroup: { padding: '6px 8px', fontWeight: '600' },
     },
     navigation: {
@@ -84,10 +84,11 @@ const DivaWastePreset = definePreset(Aura, {
   components: {
     button: {
       root: {
-        gap: '6px',
-        paddingX: '12px',
-        iconOnlyWidth: '32px',
-        sm: { fontSize: '12px', paddingX: '9px', paddingY: '4px', iconOnlyWidth: '28px' },
+        gap: '7px',
+        paddingX: '14px',
+        iconOnlyWidth: '36px',
+        borderRadius: '{border.radius.md}',
+        sm: { fontSize: '12.5px', paddingX: '10px', paddingY: '5px', iconOnlyWidth: '30px' },
         lg: { fontSize: '15px', paddingX: '18px', paddingY: '10px', iconOnlyWidth: '44px' },
         label: { fontWeight: '550' },
       },
@@ -111,15 +112,15 @@ const DivaWastePreset = definePreset(Aura, {
       },
     },
     datatable: {
-      headerCell: { padding: '7px 12px', gap: '4px', background: '{surface.50}', color: '{surface.600}' },
-      columnTitle: { fontWeight: '600' },
-      bodyCell: { padding: '7px 12px', borderColor: '{surface.100}' },
+      headerCell: { padding: '10px 16px', gap: '4px', background: '{surface.50}', color: '{surface.500}' },
+      columnTitle: { fontWeight: '620' },
+      bodyCell: { padding: '12px 16px', borderColor: '{surface.100}' },
       row: { hoverBackground: '{surface.50}' },
       colorScheme: { light: { root: { borderColor: '{surface.200}' } } },
     },
     paginator: {
       root: { padding: '0', gap: '2px', background: 'transparent' },
-      navButton: { width: '28px', height: '28px', borderRadius: '{border.radius.md}' },
+      navButton: { width: '32px', height: '32px', borderRadius: '{border.radius.md}' },
     },
     dialog: {
       header: { padding: '14px 20px', gap: '8px' },
@@ -128,28 +129,28 @@ const DivaWastePreset = definePreset(Aura, {
       footer: { padding: '12px 20px', gap: '8px' },
     },
     tabs: {
-      tab: { padding: '10px 14px', fontWeight: '550' },
+      tab: { padding: '12px 16px', fontWeight: '560' },
       tabpanel: { padding: '0' },
       activeBar: { height: '2px', bottom: '-1px' },
     },
     tag: {
-      root: { fontSize: '11.5px', fontWeight: '600', padding: '2px 8px', borderRadius: '999px', gap: '5px' },
+      root: { fontSize: '12px', fontWeight: '560', padding: '2px 9px', borderRadius: '999px', gap: '6px' },
     },
     tooltip: {
-      root: { padding: '5px 8px', maxWidth: '260px', borderRadius: '{border.radius.sm}' },
+      root: { padding: '6px 10px', maxWidth: '280px', borderRadius: '{border.radius.sm}' },
       colorScheme: { light: { root: { background: '{surface.900}', color: '{surface.0}' } } },
     },
     checkbox: {
-      root: { width: '16px', height: '16px', borderRadius: '4px' },
+      root: { width: '18px', height: '18px', borderRadius: '5px' },
       icon: { size: '10px' },
     },
     toggleswitch: {
-      root: { width: '32px', height: '18px' },
-      handle: { size: '14px' },
+      root: { width: '36px', height: '20px' },
+      handle: { size: '16px' },
     },
-    select: { dropdown: { width: '30px' } },
-    multiselect: { dropdown: { width: '30px' } },
-    datepicker: { dropdown: { width: '32px' } },
+    select: { dropdown: { width: '34px' } },
+    multiselect: { dropdown: { width: '34px' } },
+    datepicker: { dropdown: { width: '36px' } },
     toast: { root: { width: '380px' }, summary: { fontSize: '13px', fontWeight: '600' }, detail: { fontSize: '13px', fontWeight: '400' }, content: { padding: '10px 12px', gap: '10px' } },
     message: { content: { padding: '8px 12px', gap: '8px' }, text: { fontSize: '13px', fontWeight: '500' } },
     progressbar: { root: { height: '3px', borderRadius: '0' } },

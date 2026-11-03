@@ -53,6 +53,19 @@ const loadable = (row: Row): boolean => valid(row.weight) || (row.weight.trim() 
       <dw-dialog-title>{{ t('pickups.actions.' + data.mode) }} — {{ data.pickup.pickup_number }}</dw-dialog-title>
       <div class="dw-dialog-body">
         <p class="dw-muted hint">{{ t('pickups.' + data.mode + 'Hint') }}</p>
+        <!-- PD-05: when nothing changed, one click instead of a figure per lot. -->
+        @if (data.mode === 'receive' || data.mode === 'collect') {
+          <div class="bulk"><button pButton text size="small" type="button" (click)="sameAsReference()"><dw-icon>done_all</dw-icon>{{ t(data.mode === 'receive' ? 'pickups.receiveAsDeparted' : 'pickups.collectAsDeclared') }}</button></div>
+        }
+        @if (data.mode === 'treat') {
+          <div class="bulk">
+            <span class="dw-faint">{{ t('pickups.sameChannel') }}</span>
+            <dw-select class="cell wide" [ngModel]="''" (ngModelChange)="allChannels($event)" [ariaLabel]="t('pickups.sameChannel')">
+              <dw-option value="" label="—" />
+              @for (channel of vocabulary()?.treatment_channels ?? []; track channel.code) { <dw-option [value]="channel.code" [label]="channel.name | dwLocalized" /> }
+            </dw-select>
+          </div>
+        }
         <div class="scroll">
           <table class="dw-table">
             <thead>
@@ -124,6 +137,7 @@ const loadable = (row: Row): boolean => valid(row.weight) || (row.weight.trim() 
     </ng-container>
   `,
   styles: `
+    .bulk { display: flex; align-items: center; gap: 10px; margin-block: -4px 10px; }
     .dw-dialog-body { min-width: min(820px, 88vw); } .hint { margin-block-end: var(--dw-3); font-size: 13px; }
     .scroll { overflow-x: auto; margin-inline: -20px; }
     td { padding-block: 4px; } tr.off td { color: var(--dw-ink-3); }
@@ -171,6 +185,20 @@ export class PickupLinesDialog {
   protected patch(index: number, change: Partial<Row>): void {
     this.rows.update((rows) => rows.map((row, position) => (position === index ? { ...row, ...change } : row)));
   }
+  /** Every lot as it left (reception) or as declared (loading): the figures of the previous stage, copied. */
+  protected sameAsReference(): void {
+    this.rows.update((rows) => rows.map((row) => {
+      const reference = this.reference(row.line).value;
+      return reference === null || reference === undefined ? row : { ...row, checked: true, weight: String(Number(reference)) };
+    }));
+  }
+
+  protected allChannels(channel: string): void {
+    if (channel) {
+      this.rows.update((rows) => rows.map((row) => ({ ...row, channel })));
+    }
+  }
+
 
   protected reference(line: PickupLine): { value: string | null; unit: string } {
     const stage = this.data.mode === 'collect' ? 'declared' : this.data.mode === 'receive' || measure(line, 'received').value === null ? 'departure' : 'received';

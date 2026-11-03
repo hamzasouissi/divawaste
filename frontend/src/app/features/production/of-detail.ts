@@ -12,11 +12,11 @@ import { Api } from '../../core/api/api';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
 import { DatePipe, KgPipe, LocalizedPipe, MoneyPipe, NumberPipe } from '../../core/format/pipes';
-import { Confirm } from '../../ui/confirm';
 import { DateComponent } from '../../ui/date';
 import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
 import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
+import { SegmentedComponent } from '../../ui/more';
 import { KpiComponent, PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { SELECT } from '../../ui/select';
 import { StateComponent } from '../../ui/state';
@@ -66,7 +66,7 @@ import {
                 </dw-select>
               </dw-field>
               <dw-field [label]="t('fields.date')"><dw-date formControlName="consumed_on" /></dw-field>
-              <button pButton text rounded severity="secondary" class="dw-icon-btn remove" type="button" (click)="lines.removeAt(i)" [attr.aria-label]="t('common.remove')"><dw-icon>close</dw-icon></button>
+              <button pButton text rounded severity="secondary" class="dw-icon-btn remove" type="button" (click)="lines.removeAt(i)" [attr.aria-label]="t('common.remove')" [title]="t('common.remove')"><dw-icon>close</dw-icon></button>
             </div>
           } @empty {
             <p class="dw-faint">{{ t('production.consumed.none') }}</p>
@@ -317,7 +317,7 @@ export class ExpenseDialog {
  * that cost and is worth.
  */
 @Component({
-  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KpiComponent, ButtonDirective, IconComponent, DatePipe, NumberPipe, MoneyPipe, KgPipe, LocalizedPipe],
+  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KpiComponent, ButtonDirective, IconComponent, DatePipe, NumberPipe, MoneyPipe, KgPipe, LocalizedPipe, SegmentedComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -346,20 +346,62 @@ export class ExpenseDialog {
             <dw-kpi [label]="t('production.of.producedPlanned')" [value]="(o.quantity_produced === null ? '—' : (o.quantity_produced | dwNumber)) + ' / ' + (o.quantity_planned | dwNumber)"
               [hint]="o.produced?.source === 'lots' ? t('production.of.fromLots', { count: liveLots() }) : t('production.of.typed')" />
             <dw-kpi [label]="t('production.of.wasteKpi')" [value]="o.waste?.kg | dwKg"
-              [hint]="o.waste?.waste_rate_pct !== null && o.waste?.waste_rate_pct !== undefined ? t('production.of.wasteRate', { pct: o.waste?.waste_rate_pct }) : t('production.of.wasteLots', { count: o.waste?.lots ?? 0 })" />
+              [hint]="o.waste?.waste_rate_pct !== null && o.waste?.waste_rate_pct !== undefined ? t('production.of.wasteRate', { pct: (o.waste?.waste_rate_pct | dwNumber: 1) }) : t('production.of.wasteLots', { count: o.waste?.lots ?? 0 })" />
             @if (o.finance; as f) {
               <dw-kpi [label]="t('production.finance.totalCost')" [value]="f.total_cost | dwMoney: f.currency" [tone]="f.cost_complete ? 'neutral' : 'warning'"
                 [hint]="f.cost_complete ? (f.unit_cost ? t('production.finance.perPiece', { amount: (f.unit_cost | dwMoney: f.currency) }) : '') : t('production.finance.incomplete')" />
               <dw-kpi [label]="t('production.finance.gain')" [value]="f.gain.amount === null ? t('production.finance.notCalculable') : (f.gain.amount | dwMoney: f.currency)"
                 [tone]="f.gain.amount === null ? 'neutral' : (+f.gain.amount >= 0 ? 'success' : 'danger')"
-                [hint]="f.gain.amount === null ? reasons(f.gain.missing) : t('production.finance.margin', { pct: f.gain.margin_pct })" />
+                [hint]="f.gain.amount === null ? reasons(f.gain.missing) : t('production.finance.margin', { pct: (f.gain.margin_pct | dwNumber: 1) })" />
             } @else {
               <dw-kpi [label]="t('production.consumed.title')" [value]="(o.materials ?? []).length" [hint]="t('production.consumed.materialsHint')" />
               <dw-kpi [label]="t('production.produced.title')" [value]="(o.produced_lots ?? []).length" [hint]="t('production.produced.deliveredHint', { count: o.produced?.delivered ?? 0 })" />
             }
           </div>
 
+          <!-- PRD-04: the OF in tabs; its waste first, since that is what DivaWaste is for. -->
+          <dw-segmented class="tabs" [options]="tabOptions(t, !!o.finance)" [value]="tab()" (valueChange)="tab.set($any($event))" [ariaLabel]="t('production.of.one')" />
           <div class="dw-stack">
+            @switch (tab()) {
+            @case ('waste') {
+            <!-- Waste lots: the existing waste workflow, seen from the OF. -->
+            <section class="dw-panel">
+              <div class="dw-panel-head">
+                <h2 class="dw-h2">{{ t('production.waste.title') }}</h2>
+                @if (canCreateLot) { <button pButton text size="small" type="button" (click)="waste(o)"><dw-icon>add</dw-icon>{{ t('production.waste.new') }}</button> }
+              </div>
+              <p class="dw-muted intro">{{ t('production.waste.intro') }}</p>
+              @if ((o.waste?.lots ?? 0) === 0 && (o.waste?.rows ?? []).length === 0) {
+                <p class="empty">{{ t('production.waste.empty') }}</p>
+              } @else if (!o.waste?.can_view_lots) {
+                <p class="empty">{{ t('production.waste.hidden', { count: o.waste?.lots ?? 0, kg: (o.waste?.kg | dwKg) }) }}</p>
+              } @else {
+                <div class="scroll">
+                  <table class="dw-table">
+                    <thead><tr><th>{{ t('lots.number') }}</th><th>{{ t('fields.wasteType') }}</th><th>{{ t('production.consumed.where') }}</th><th>{{ t('production.waste.source') }}</th><th>{{ t('fields.date') }}</th>
+                      <th class="num">{{ t('fields.weight') }}</th><th>{{ t('fields.status') }}</th></tr></thead>
+                    <tbody>
+                      @for (lot of o.waste?.rows; track lot.ulid) {
+                        <tr>
+                          <td><a class="dw-mono" [routerLink]="['/lots', lot.ulid]">{{ lot.lot_number }}</a></td>
+                          <td>{{ lot.waste_type }}</td>
+                          <td>{{ lot.step_name ? (lot.step_name | dwLocalized) : '—' }}<span class="dw-faint"> · {{ lot.site_name }}</span></td>
+                          <td>@if (lot.material) { <span class="dw-mono">{{ lot.material }}</span>@if (lot.batch_number) { · <span class="dw-mono">{{ lot.batch_number }}</span> } } @else { <span class="dw-faint">{{ t('production.waste.ofOnly') }}</span> }</td>
+                          <td>{{ lot.generated_at | dwDate }}</td>
+                          <td class="num">@if (lot.net_weight_kg === null) { <span class="dw-faint">{{ t('lots.toWeigh') }}</span> } @else { {{ lot.net_weight_kg | dwKg }} }</td>
+                          <td><dw-status kind="lot" [value]="lot.status" /></td>
+                        </tr>
+                      }
+                    </tbody>
+                    <tfoot><tr><td colspan="5">{{ t('production.waste.total', { count: o.waste?.lots ?? 0 }) }}</td><td class="num">{{ o.waste?.kg | dwKg }}</td>
+                      <td class="dw-faint">{{ o.waste?.waste_rate_pct === null ? t('production.waste.noRate') : t('production.of.wasteRate', { pct: (o.waste?.waste_rate_pct | dwNumber: 1) }) }}</td></tr></tfoot>
+                  </table>
+                </div>
+              }
+            </section>
+
+            }
+            @case ('make') {
             @if (o.steps.length > 0) {
               <section class="dw-panel">
                 <div class="dw-panel-head"><h2 class="dw-h2">{{ t('production.of.steps') }}</h2></div>
@@ -388,7 +430,7 @@ export class ExpenseDialog {
                       <span><small>{{ t('production.consumed.planned') }}</small>{{ m.planned === null ? '—' : (m.planned | dwNumber: 1) + ' ' + m.unit }}</span>
                       <span><small>{{ t('production.consumed.actual') }}</small><strong>{{ m.consumed | dwNumber: 1 }} {{ m.unit }}</strong></span>
                       <span [class.over]="(m.variance_pct ?? 0) > 0" [class.under]="(m.variance_pct ?? 0) < 0"><small>{{ t('production.consumed.variance') }}</small>
-                        {{ m.variance === null ? '—' : ((+m.variance > 0 ? '+' : '') + (m.variance | dwNumber: 1) + ' ' + m.unit + (m.variance_pct === null ? '' : ' (' + (m.variance_pct > 0 ? '+' : '') + m.variance_pct + ' %)')) }}</span>
+                        {{ m.variance === null ? '—' : ((+m.variance > 0 ? '+' : '') + (m.variance | dwNumber: 1) + ' ' + m.unit + (m.variance_pct === null ? '' : ' (' + (m.variance_pct > 0 ? '+' : '') + (m.variance_pct | dwNumber: 1) + ' %)')) }}</span>
                       @if (o.finance) { <span><small>{{ t('production.cost') }}</small><strong>{{ m.cost === null ? t('production.unknown') : (m.cost | dwMoney: o.finance.currency) }}</strong></span> }
                     </div>
                   </div>
@@ -430,6 +472,8 @@ export class ExpenseDialog {
               }
             </section>
 
+            }
+            @case ('produced') {
             <!-- Produced lots: finished goods, for the client of the OF. -->
             <section class="dw-panel">
               <div class="dw-panel-head">
@@ -464,42 +508,8 @@ export class ExpenseDialog {
               }
             </section>
 
-            <!-- Waste lots: the existing waste workflow, seen from the OF. -->
-            <section class="dw-panel">
-              <div class="dw-panel-head">
-                <h2 class="dw-h2">{{ t('production.waste.title') }}</h2>
-                @if (canCreateLot) { <button pButton text size="small" type="button" (click)="waste(o)"><dw-icon>add</dw-icon>{{ t('production.waste.new') }}</button> }
-              </div>
-              <p class="dw-muted intro">{{ t('production.waste.intro') }}</p>
-              @if ((o.waste?.lots ?? 0) === 0 && (o.waste?.rows ?? []).length === 0) {
-                <p class="empty">{{ t('production.waste.empty') }}</p>
-              } @else if (!o.waste?.can_view_lots) {
-                <p class="empty">{{ t('production.waste.hidden', { count: o.waste?.lots ?? 0, kg: (o.waste?.kg | dwKg) }) }}</p>
-              } @else {
-                <div class="scroll">
-                  <table class="dw-table">
-                    <thead><tr><th>{{ t('lots.number') }}</th><th>{{ t('fields.wasteType') }}</th><th>{{ t('production.consumed.where') }}</th><th>{{ t('production.waste.source') }}</th><th>{{ t('fields.date') }}</th>
-                      <th class="num">{{ t('fields.weight') }}</th><th>{{ t('fields.status') }}</th></tr></thead>
-                    <tbody>
-                      @for (lot of o.waste?.rows; track lot.ulid) {
-                        <tr>
-                          <td><a class="dw-mono" [routerLink]="['/lots', lot.ulid]">{{ lot.lot_number }}</a></td>
-                          <td>{{ lot.waste_type }}</td>
-                          <td>{{ lot.step_name ? (lot.step_name | dwLocalized) : '—' }}<span class="dw-faint"> · {{ lot.site_name }}</span></td>
-                          <td>@if (lot.material) { <span class="dw-mono">{{ lot.material }}</span>@if (lot.batch_number) { · <span class="dw-mono">{{ lot.batch_number }}</span> } } @else { <span class="dw-faint">{{ t('production.waste.ofOnly') }}</span> }</td>
-                          <td>{{ lot.generated_at | dwDate }}</td>
-                          <td class="num">@if (lot.net_weight_kg === null) { <span class="dw-faint">{{ t('lots.toWeigh') }}</span> } @else { {{ lot.net_weight_kg | dwKg }} }</td>
-                          <td><dw-status kind="lot" [value]="lot.status" /></td>
-                        </tr>
-                      }
-                    </tbody>
-                    <tfoot><tr><td colspan="5">{{ t('production.waste.total', { count: o.waste?.lots ?? 0 }) }}</td><td class="num">{{ o.waste?.kg | dwKg }}</td>
-                      <td class="dw-faint">{{ o.waste?.waste_rate_pct === null ? t('production.waste.noRate') : t('production.of.wasteRate', { pct: o.waste?.waste_rate_pct }) }}</td></tr></tfoot>
-                  </table>
-                </div>
-              }
-            </section>
-
+            }
+            @case ('money') {
             <!-- Costs, revenue and gain: every figure with what it is made of. -->
             @if (o.finance; as f) {
               <section class="dw-panel">
@@ -524,8 +534,8 @@ export class ExpenseDialog {
                           <small>{{ item.incurred_on | dwDate }}@if (item.supplier) { · {{ item.supplier.name }} }@if (item.reference) { · {{ item.reference }} }</small></dt>
                           <dd>{{ item.amount | dwMoney: item.currency_code }}
                             @if (canManageMoney) {
-                              <button pButton text rounded size="small" severity="secondary" class="dw-icon-btn" type="button" (click)="expense(o, item)" [attr.aria-label]="t('common.edit')"><dw-icon>edit</dw-icon></button>
-                              <button pButton text rounded size="small" severity="secondary" class="dw-icon-btn" type="button" (click)="removeExpense(item)" [attr.aria-label]="t('common.delete')"><dw-icon>delete</dw-icon></button>
+                              <button pButton text rounded size="small" severity="secondary" class="dw-icon-btn" type="button" (click)="expense(o, item)" [attr.aria-label]="t('common.edit')" [title]="t('common.edit')"><dw-icon>edit</dw-icon></button>
+                              <button pButton text rounded size="small" severity="secondary" class="dw-icon-btn" type="button" (click)="removeExpense(item)" [attr.aria-label]="t('common.delete')" [title]="t('common.delete')"><dw-icon>delete</dw-icon></button>
                             }</dd></div>
                       }
                       <div class="total"><dt>{{ t('production.finance.totalCost') }}@if (!f.cost_complete) { <small class="warn">{{ t('production.finance.incomplete') }}</small> }</dt><dd>{{ f.total_cost | dwMoney: f.currency }}</dd></div>
@@ -557,11 +567,13 @@ export class ExpenseDialog {
                   <div class="amount">
                     @if (f.gain.amount !== null) {
                       <span class="calc">{{ f.gain.revenue | dwMoney: f.currency }} − {{ f.gain.cost | dwMoney: f.currency }}</span>
-                      <strong>{{ f.gain.amount | dwMoney: f.currency }}</strong><span>{{ t('production.finance.margin', { pct: f.gain.margin_pct }) }}</span>
+                      <strong>{{ f.gain.amount | dwMoney: f.currency }}</strong><span>{{ t('production.finance.margin', { pct: (f.gain.margin_pct | dwNumber: 1) }) }}</span>
                     } @else { <strong>{{ t('production.finance.notCalculable') }}</strong> }
                   </div>
                 </div>
               </section>
+            }
+            }
             }
             @if (o.notes) { <section class="dw-panel"><div class="dw-panel-body"><strong>{{ t('fields.notes') }}</strong><p class="notes">{{ o.notes }}</p></div></section> }
           </div>
@@ -570,6 +582,7 @@ export class ExpenseDialog {
     </ng-container>
   `,
   styles: `
+    .tabs { margin-block-end: 16px; }
     .chain { display: flex; align-items: center; flex-wrap: wrap; gap: var(--dw-2); margin-block-end: var(--dw-4); padding: var(--dw-3) var(--dw-4); background: var(--dw-surface); border: 1px solid var(--dw-line); border-radius: var(--dw-radius); }
     .chain > dw-icon { color: var(--dw-ink-3); }
     .node { display: grid; padding: 4px 10px; border-radius: var(--dw-radius); } .node small { font-size: 11px; color: var(--dw-ink-3); text-transform: uppercase; letter-spacing: 0.04em; }
@@ -609,17 +622,31 @@ export class ExpenseDialog {
   `,
 })
 export class OfDetailPage implements OnInit {
+  protected readonly tab = signal<'waste' | 'make' | 'produced' | 'money'>('waste');
+
+  protected tabOptions(t: (key: string) => string, money: boolean): { value: string; label: string }[] {
+    return [
+      { value: 'waste', label: t('production.waste.title') },
+      { value: 'make', label: t('production.of.tabMake') },
+      { value: 'produced', label: t('production.produced.title') },
+      ...(money ? [{ value: 'money', label: t('production.of.tabMoney') }] : []),
+    ];
+  }
+
   readonly ulid = input.required<string>();
 
   private readonly api = inject(Api);
   private readonly dialog = inject(Dialogs);
   private readonly toast = inject(Toast);
-  private readonly confirm = inject(Confirm);
   private readonly transloco = inject(TranslocoService);
   private readonly session = inject(Session);
 
-  protected readonly canManage = this.session.can('production.manage');
-  protected readonly canManageMoney = this.canManage && this.session.can('production.finance.view');
+  protected get canManage(): boolean {
+    return this.session.canEditProduction();
+  }
+  protected get canManageMoney(): boolean {
+    return this.canManage && this.session.can('production.finance.view');
+  }
   protected readonly canCreateLot = this.session.sitesFor('lots.create').length > 0;
   protected readonly tone = statusTone;
   protected readonly of = signal<ManufacturingOrder | null>(null);
@@ -685,12 +712,24 @@ export class OfDetailPage implements OnInit {
     this.dialog.open(CreateLotDialog, { data: { production_order: of.ulid } }).afterClosed().subscribe((lot: unknown) => lot && this.load());
   }
 
+  /** G-09: deleted at once; "Annuler" records the same expense again. */
   protected async removeExpense(expense: OfExpense): Promise<void> {
-    if (!(await this.confirm.ask({ title: this.transloco.translate('production.expenses.deleteTitle', { description: expense.description }), confirmLabel: this.transloco.translate('common.delete'), danger: true }))) {
-      return;
-    }
+    const of = this.of();
     try {
       this.of.set(await firstValueFrom(this.api.delete<ManufacturingOrder>(`production/expenses/${expense.ulid}`)));
+      if (of) {
+        this.toast.undoable('production.expenses.deleted', () => void this.restoreExpense(of.ulid, expense), { description: expense.description });
+      }
+    } catch (error) {
+      this.toast.error(error);
+    }
+  }
+
+  private async restoreExpense(of: string, expense: OfExpense): Promise<void> {
+    const { category, description, amount, currency_code, incurred_on, reference, notes, supplier } = expense;
+    try {
+      this.of.set(await firstValueFrom(this.api.post<ManufacturingOrder>(`production/manufacturing-orders/${of}/expenses`,
+        { category, description, amount, currency_code, incurred_on, reference, notes, supplier: supplier?.ulid ?? null })));
     } catch (error) {
       this.toast.error(error);
     }

@@ -203,7 +203,7 @@ export class InvoiceDialog {
                             <td class="num">{{ item.kind === 'credit_note' ? '− ' : '' }}{{ item.amount | dwMoney: item.currency_code }}</td>
                             <td class="act">@if (canManage) {
                               <button pButton text size="small" type="button" (click)="invoice(o, item)">{{ t('common.edit') }}</button>
-                              <button pButton text rounded size="small" severity="secondary" class="dw-icon-btn" type="button" (click)="remove(item)" [attr.aria-label]="t('common.delete')"><dw-icon>delete</dw-icon></button>
+                              <button pButton text rounded size="small" severity="secondary" class="dw-icon-btn" type="button" (click)="remove(item)" [attr.aria-label]="t('common.delete')" [title]="t('common.delete')"><dw-icon>delete</dw-icon></button>
                             }</td>
                           </tr>
                         }
@@ -238,7 +238,9 @@ export class OrderDetailPage implements OnInit {
   private readonly session = inject(Session);
 
   protected readonly money = this.session.can('production.finance.view');
-  protected readonly canManage = this.session.can('production.manage');
+  protected get canManage(): boolean {
+    return this.session.canEditProduction();
+  }
   protected readonly tone = statusTone;
   protected readonly order = signal<CustomerOrder | null>(null);
   protected readonly loading = signal(true);

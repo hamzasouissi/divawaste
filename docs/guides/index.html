@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guides DivaWaste</title>
+<style>
+  :root { --ink: #10201e; --ink-2: #4a5b58; --line: #e3ebe9; --primary: #0f5c56; --soft: #eef6f4; --bg: #f6f9f8; --card: #fff; }
+  @media (prefers-color-scheme: dark) { :root { --ink: #e8f1ef; --ink-2: #a9bbb7; --line: #2a3a37; --primary: #6cc3b8; --soft: #1b2c29; --bg: #0f1716; --card: #152120; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--bg); }
+  main { max-width: 920px; margin: 0 auto; padding: 40px 16px 64px; }
+  h1 { margin: 0 0 6px; font-size: 28px; } .lead { margin: 0 0 28px; color: var(--ink-2); }
+  ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  li a { display: grid; grid-template-columns: 44px 1fr auto; gap: 4px 14px; align-items: center; padding: 16px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: inherit; text-decoration: none; }
+  li a:hover { border-color: var(--primary); box-shadow: 0 4px 16px rgba(15, 92, 86, .08); }
+  .n { grid-row: span 2; width: 44px; height: 44px; border-radius: 10px; background: var(--soft); color: var(--primary); display: grid; place-items: center; font-weight: 700; }
+  .t { font-weight: 650; } .w { grid-column: 2; color: var(--ink-2); font-size: 13.5px; }
+  .who { grid-row: 1; grid-column: 3; font-size: 12px; color: var(--primary); white-space: nowrap; }
+  .pdf { grid-row: 2; grid-column: 3; font-size: 12px; color: var(--ink-2); justify-self: end; }
+  footer { margin-top: 32px; font-size: 13px; color: var(--ink-2); }
+  footer a { color: var(--primary); }
+  @media (max-width: 600px) { li a { grid-template-columns: 40px 1fr; } .n { width: 40px; height: 40px; } .who, .pdf { grid-column: 2; grid-row: auto; justify-self: start; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Guides DivaWaste</h1>
+  <p class="lead">Dix guides pas à pas, avec des captures prises sur l'application. Chacun s'ouvre en PDF, à lire à l'écran ou à imprimer.</p>
+  <ol>
+    <li><a href="DivaWaste-Guide-1-Creer-votre-compte.pdf"><span class="n">1</span><span class="t">Créer votre compte</span><span class="who">Industriel</span><span class="w">Inscription, secteur, mise en route avec l'assistant, paramètres, import de lots par Excel, Bourse.</span><span class="pdf">PDF</span></a></li>
+    <li><a href="DivaWaste-Guide-2-Sans-ERP-avec-production.pdf"><span class="n">2</span><span class="t">Sans ERP, avec production</span><span class="who">Industriel</span><span class="w">Production saisie dans DivaWaste : ordres de fabrication, matières, lots reçus, déchets rattachés.</span><span class="pdf">PDF</span></a></li>
+    <li><a href="DivaWaste-Guide-3-Avec-ERP-avec-production.pdf"><span class="n">3</span><span class="t">Avec ERP, avec production</span><span class="who">Industriel</span><span class="w">Import des fichiers de l'ERP, colonnes retenues, imports de nuit, API.</span><span class="pdf">PDF</span></a></li>
+    <li><a href="DivaWaste-Guide-4-Reference.pdf"><span class="n">4</span><span class="t">Référence</span><span class="who">Administrateur</span><span class="w">Types de déchets, autorisations de sortie, cycle de vie d'un lot, chaque valeur de l'Accueil.</span><span class="pdf">PDF</span></a></li>
+    <li><a href="DivaWaste-Guide-5-Prestataire-et-Bourse.pdf"><span class="n">5</span><span class="t">Prestataire et Bourse</span><span class="who">Prestataire, vendeur</span><span class="w">Compte prestataire, agréments, profil, Bourse côté preneur et côté vendeur.</span><span class="pdf">PDF</span></a></li>
+    <li><a href="DivaWaste-Guide-6-Assistant-virtuel.pdf"><span class="n">6</span><span class="t">L'assistant virtuel</span><span class="who">Tous</span><span class="w">Ce que fait l'assistant, ce qu'il ne fait jamais, comment lui parler.</span><span class="pdf">PDF</span></a></li>
+    <li><a href="DivaWaste-Guide-7-Equipe-roles-et-acces.pdf"><span class="n">7</span><span class="t">Équipe, rôles et accès</span><span class="who">Administrateur</span><span class="w">Invitations, rôles et ce que chacun voit, rôles par site, rôles sur mesure, profil, double authentification.</span><span class="pdf">PDF</span></a></li>
+    <li><a href="DivaWaste-Guide-8-Application-atelier.pdf"><span class="n">8</span><span class="t">Application atelier</span><span class="who">Opérateur</span><span class="w">Créer, peser, ranger un lot sur téléphone, scanner, charger un enlèvement, hors ligne.</span><span class="pdf">PDF</span></a></li>
+    <li><a href="DivaWaste-Guide-9-Suivi-au-quotidien.pdf"><span class="n">9</span><span class="t">Le suivi au quotidien</span><span class="who">Responsable environnement</span><span class="w">Stock et limites, enlèvements, contrats, registre, bordereaux, déclaration annuelle, rapports, journal d'audit.</span><span class="pdf">PDF</span></a></li>
+    <li><a href="DivaWaste-Guide-10-Back-office.pdf"><span class="n">10</span><span class="t">Back-office</span><span class="who">Diva Software</span><span class="w">Inscriptions, agréments, virements, formules, factures, catalogue, rôles, activité.</span><span class="pdf">PDF</span></a></li>
+  </ol>
+  <footer>Exemples de documents utilisés par les guides : <a href="guide-4/declaration-douane-exemple.pdf">déclaration de douane</a>, <a href="guide-4/bordereau-signe-exemple.pdf">bordereau signé</a>, <a href="guide-5/agrement-exemple.pdf">agrément</a>, <a href="guide-1/registre-lots.xlsx">registre de lots (Excel)</a>. · <a href="/">Retour à DivaWaste</a></footer>
+</main>
+</body>
+</html>

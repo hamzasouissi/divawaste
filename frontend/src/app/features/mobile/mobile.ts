@@ -3,6 +3,8 @@ import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
+import { Davi } from '../../core/davi/davi';
+import { DaviPanelComponent } from '../../layout/davi-panel';
 
 import { Api, ApiError, openBlob } from '../../core/api/api';
 import { Lot, OpenOrder, Pickup, Site, WasteType, Zone } from '../../core/api/models';
@@ -15,6 +17,7 @@ import { StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
 import { QrScannerComponent } from './qr-scanner';
 import { IconComponent } from '../../ui/icon';
+import { DaviAvatarComponent } from '../../ui/davi-avatar';
 import { LanguageComponent } from '../../ui/language';
 import { zoneMismatch } from '../../ui/zone-fill';
 
@@ -50,7 +53,7 @@ const MOBILE_STYLES = `
 
 /** Frame of the workshop application: connection and synchronisation state are always in view. */
 @Component({
-  imports: [RouterOutlet, RouterLink, TranslocoDirective, IconComponent],
+  imports: [RouterOutlet, RouterLink, TranslocoDirective, IconComponent, DaviPanelComponent, DaviAvatarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   // Same components as the desktop, at the size of a gloved thumb.
   host: { class: 'dw-touch-scale' },
@@ -70,12 +73,17 @@ const MOBILE_STYLES = `
             </small>
           </span>
         </a>
+        <!-- DAVI: "pèse ce lot à 25 kg" by voice keyboard, confirmed with one tap; it needs the network. -->
+        @if (davi.available() && offline.online()) {
+          <button type="button" class="davi" [class.on]="davi.open()" (click)="davi.toggle()" [attr.aria-label]="t('davi.open')" [attr.aria-expanded]="davi.open()"><dw-davi-avatar [size]="30" [active]="davi.busy()" /></button>
+        }
         <a routerLink="/m/account" class="account" [attr.aria-label]="t('mobile.account.title')"><dw-icon aria-hidden="true">account_circle</dw-icon></a>
       </header>
       @if (offline.needsSignIn()) {
         <a class="signin" routerLink="/login" [queryParams]="{ next: '/m' }">{{ t('errors.UNAUTHENTICATED') }}</a>
       }
       <main><router-outlet /></main>
+      <dw-davi-panel />
     </ng-container>
   `,
   styles: `
@@ -86,6 +94,9 @@ const MOBILE_STYLES = `
     .account:hover { text-decoration: none; } .account:active { background: rgb(255 255 255 / 25%); }
     .account:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
     .account dw-icon { font-size: 32px; }
+    .davi { all: unset; box-sizing: border-box; flex: none; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 12px; color: #fff; cursor: pointer;
+      background: linear-gradient(135deg, var(--dw-primary), #3a9d8f); }
+    .davi dw-icon { font-size: 28px; } .davi.on { box-shadow: inset 0 0 0 3px rgb(255 255 255 / 60%); } .davi:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
     .sync { flex: 1; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 12px; border-radius: 12px; color: #fff; background: rgb(255 255 255 / 10%); }
     .sync:hover { text-decoration: none; }
     .sync strong { display: block; font-size: 15px; line-height: 18px; } .sync small { font-size: 12.5px; color: #cfe0dd; }
@@ -97,6 +108,7 @@ const MOBILE_STYLES = `
 export class MobileShellComponent {
   protected readonly offline = inject(Offline);
   private readonly session = inject(Session);
+  protected readonly davi = inject(Davi);
 
   protected readonly state = computed(() => (!this.offline.online() ? 'offline' : this.offline.problems() > 0 ? 'problem' : this.offline.pending() > 0 ? 'pending' : 'ok'));
   protected readonly icon = computed(() => ({ offline: 'cloud_off', problem: 'sync_problem', pending: 'sync', ok: 'cloud_done' })[this.state()]);
@@ -107,6 +119,7 @@ export class MobileShellComponent {
     if (company && me) {
       void this.offline.start(company.ulid, me.ulid);
     }
+    this.davi.check();
   }
 }
 
@@ -157,6 +170,15 @@ export class MobileHomePage {
 
 type Step = 'site' | 'zone' | 'of' | 'type' | 'weight' | 'done';
 const LAST_OF = 'dw.workshop.lastOf';
+const LAST_PLACE = 'dw.workshop.lastPlace';
+
+function readPlace(): { site: string; zone: string } | null {
+  try {
+    return JSON.parse(localStorage.getItem(LAST_PLACE) ?? 'null') as { site: string; zone: string } | null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * M2-01: site → zone → waste type → weight, one decision per screen, no keyboard until the weight (entered on
@@ -279,6 +301,7 @@ export class MobileNewLotPage {
   private readonly toast = inject(Toast);
 
   protected readonly keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '⌫'];
+  private readonly session = inject(Session);
   protected readonly sites = computed(() => this.offline.bootstrap()?.sites ?? []);
   protected readonly types = computed(() => this.offline.bootstrap()?.waste_types ?? []);
   protected readonly site = signal<Site | null>(null);
@@ -313,9 +336,21 @@ export class MobileNewLotPage {
     // opens (first visit on this device), hence an effect and not a one-time check.
     effect(() => {
       const sites = this.sites();
-      if (sites.length === 1 && untracked(() => this.site() === null)) {
-        untracked(() => this.pickSite(sites[0]));
+      if (untracked(() => this.site() !== null)) {
+        return;
       }
+      // M-01: the place used last is chosen again (the steps above stay one tap away); else a single site is.
+      const last = readPlace();
+      const site = sites.find((item) => item.ulid === last?.site) ?? (sites.length === 1 ? sites[0] : undefined);
+      const zone = site?.zones?.find((item) => item.ulid === last?.zone);
+      untracked(() => {
+        if (site && zone) {
+          this.site.set(site);
+          this.pickZone(zone);
+        } else if (site) {
+          this.pickSite(site);
+        }
+      });
     });
   }
 
@@ -341,7 +376,12 @@ export class MobileNewLotPage {
   protected pickZone(zone: Zone): void {
     this.zone.set(zone);
     this.order.set(null);
-    this.step.set(this.orders().length > 0 ? 'of' : 'type');
+    this.step.set(this.session.uses('production') && this.orders().length > 0 ? 'of' : 'type');
+    try {
+      localStorage.setItem(LAST_PLACE, JSON.stringify({ site: this.site()?.ulid, zone: zone.ulid }));
+    } catch {
+      // Private browsing: the place is simply not remembered.
+    }
   }
 
   /** The sheet of the OF carries its number, as a bar code or a QR code: the order with that number is chosen. */
@@ -471,6 +511,29 @@ export class MobileScanPage {
             @if ((l.status === 'created') && canMove(l)) {
               <button pButton type="button" class="big" [disabled]="busy()" (click)="store(l)"><dw-icon>move_down</dw-icon>{{ t('mobile.storeLot') }}</button>
             }
+            <!-- M-02: weigh it or move it from where it was scanned. -->
+            @if ((l.status === 'created' || l.status === 'stored') && session.can('lots.weigh', l.site?.ulid)) {
+              @if (weighing()) {
+                <div class="card">
+                  <label class="muted" for="m-weight">{{ t('fields.netWeight') }}</label>
+                  <input pInputText id="m-weight" class="weight-input" inputmode="decimal" [value]="newWeight()" (input)="newWeight.set($any($event.target).value)" />
+                  <button pButton type="button" class="big" [disabled]="busy() || !validWeight()" (click)="weigh(l)"><dw-icon>check</dw-icon>{{ t('common.save') }}</button>
+                </div>
+              } @else {
+                <button pButton severity="secondary" outlined type="button" class="big" (click)="weighing.set(true)"><dw-icon>scale</dw-icon>{{ t(l.net_weight_kg === null ? 'lots.weighNow' : 'lots.weigh') }}</button>
+              }
+            }
+            @if ((l.status === 'created' || l.status === 'stored') && canMove(l)) {
+              @if (moving()) {
+                <div class="zones">
+                  @for (zone of zonesOf(l); track zone.ulid) {
+                    <button pButton severity="secondary" outlined type="button" class="big" [disabled]="busy() || zone.ulid === l.zone?.ulid" (click)="moveTo(l, zone.ulid)">{{ zone.name }}</button>
+                  }
+                </div>
+              } @else {
+                <button pButton severity="secondary" outlined type="button" class="big" (click)="moving.set(true)"><dw-icon>swap_horiz</dw-icon>{{ t('lots.move') }}</button>
+              }
+            }
             @if (canPrint(l)) {
               <button pButton severity="secondary" outlined type="button" class="big" (click)="print(l)"><dw-icon>print</dw-icon>{{ t('mobile.printLabel') }}</button>
             }
@@ -483,11 +546,45 @@ export class MobileScanPage {
   styles: MOBILE_STYLES + `
     .card { display: grid; gap: 6px; justify-items: start; padding: 18px; background: var(--dw-surface); border: 2px solid var(--dw-line); border-radius: 14px; }
     .number { font: 700 26px var(--dw-mono); } .what { font-size: 18px; font-weight: 600; } .weight { font-size: 32px; font-weight: 700; }
+    .weight-input { width: 100%; font-size: 28px; font-weight: 700; text-align: end; padding: 12px 14px; } .zones { display: grid; gap: 10px; }
   `,
 })
 export class MobileLotPage implements OnInit {
+  private readonly davi = inject(Davi);
   private readonly api = inject(Api);
-  private readonly session = inject(Session);
+  protected readonly session = inject(Session);
+  protected readonly weighing = signal(false);
+  protected readonly moving = signal(false);
+  protected readonly newWeight = signal('');
+  protected readonly validWeight = computed(() => /^\d{1,6}([.,]\d{1,3})?$/.test(this.newWeight().trim()) && Number(this.newWeight().replace(',', '.')) > 0);
+
+  protected zonesOf(lot: Lot): Zone[] {
+    return this.offline.bootstrap()?.sites.find((site) => site.ulid === lot.site?.ulid)?.zones ?? [];
+  }
+
+  protected async weigh(lot: Lot): Promise<void> {
+    this.busy.set(true);
+    try {
+      await firstValueFrom(this.api.post(`lots/${lot.ulid}/weigh`, { net_weight_kg: this.newWeight().replace(',', '.'), estimated: false, version: lot.version }));
+      this.toast.success('lots.weighed');
+      this.weighing.set(false);
+      this.load();
+    } catch (error) {
+      this.toast.error(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  protected async moveTo(lot: Lot, zone: string): Promise<void> {
+    this.busy.set(true);
+    await this.offline.storeLot(lot, zone);
+    await this.offline.flush();
+    this.busy.set(false);
+    this.moving.set(false);
+    this.toast.success('lots.stored');
+    this.load();
+  }
   private readonly offline = inject(Offline);
   private readonly toast = inject(Toast);
 
@@ -510,6 +607,8 @@ export class MobileLotPage implements OnInit {
     this.api.get<Lot>(`lots/scan/${encodeURIComponent(this.tag())}`).subscribe({
       next: (lot) => {
         this.lot.set(lot);
+        // DAVI: "pèse-le", "range-le" mean the lot just scanned.
+        this.davi.setFocus({ kind: 'lot', number: lot.lot_number });
         this.loading.set(false);
       },
       error: (error: unknown) => {

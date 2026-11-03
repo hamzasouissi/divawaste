@@ -32,7 +32,7 @@ describe('Session', () => {
   const load = async (user: Me, rights: Access | null): Promise<void> => {
     const loading = session.reload();
     http.expectOne('/api/v1/me').flush({ data: user });
-    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve));
     if (user.memberships.length > 0) {
       const request = http.expectOne('/api/v1/me/access');
       if (rights) {
@@ -65,7 +65,8 @@ describe('Session', () => {
 
     expect(session.audience()).toBe('industrial');
     expect(session.home()).toBe('/m');
-    expect(navigationFor(session).flatMap((group) => group.items.map((item) => item.path))).toEqual(['/lots', '/m']);
+    // The workshop application is offered at the foot of the navigation, apart from the sections.
+    expect(navigationFor(session).flatMap((group) => group.items.map((item) => item.path))).toEqual(['/lots']);
   });
 
   it('sends a desktop user to the dashboard and shows only what the role allows', async () => {

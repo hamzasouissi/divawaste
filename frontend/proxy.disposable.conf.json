@@ -1,0 +1,6 @@
+{
+  "/api/v1/davi/**": { "target": "http://127.0.0.1:8033", "secure": false, "changeOrigin": false },
+  "/api/**": { "target": "http://127.0.0.1:8031", "secure": false, "changeOrigin": false },
+  "/sanctum/**": { "target": "http://127.0.0.1:8031", "secure": false, "changeOrigin": false },
+  "/docs": { "target": "http://127.0.0.1:8031", "secure": false, "changeOrigin": false }
+}

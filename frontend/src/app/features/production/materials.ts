@@ -77,7 +77,7 @@ import { COLOR } from '../../ui/swatch';
                     @for (fibre of vocabulary()?.materials ?? []; track fibre.code) { <dw-option [value]="fibre.code" [label]="fibre.name | dwLocalized" /> }
                   </dw-select>
                   <input pInputText formControlName="pct" inputmode="decimal" placeholder="%" [attr.aria-label]="'%'" />
-                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="composition.removeAt(i)" [attr.aria-label]="t('common.remove')"><dw-icon>close</dw-icon></button>
+                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="composition.removeAt(i)" [attr.aria-label]="t('common.remove')" [title]="t('common.remove')"><dw-icon>close</dw-icon></button>
                 </div>
               }
               <button pButton text type="button" class="add" (click)="addFibre()"><dw-icon>add</dw-icon>{{ t('production.materials.addFibre') }}</button>
@@ -202,7 +202,7 @@ export class MaterialDialog {
                     @for (material of options(); track material.ulid) { <dw-option [value]="material.ulid" [label]="material.reference + ' — ' + material.name + ' (' + material.unit + ')'" [disabled]="taken(material.ulid, i)" /> }
                   </dw-select>
                   <input pInputText formControlName="quantity_per_piece" inputmode="decimal" [placeholder]="t('production.articles.perPiece')" [attr.aria-label]="t('production.articles.perPiece')" />
-                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="materials.removeAt(i)" [attr.aria-label]="t('common.remove')"><dw-icon>close</dw-icon></button>
+                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="materials.removeAt(i)" [attr.aria-label]="t('common.remove')" [title]="t('common.remove')"><dw-icon>close</dw-icon></button>
                 </div>
               }
               <button pButton text type="button" class="add" (click)="addMaterial()"><dw-icon>add</dw-icon>{{ t('production.articles.addMaterial') }}</button>
@@ -286,7 +286,7 @@ export class ArticleDialog {
 @Component({
   imports: [
     HelpComponent,
-    TranslocoDirective, PageHeaderComponent, ...TABLE, StatusComponent, SearchComponent, FilterBarComponent, CheckboxComponent, ButtonDirective, IconComponent, CodePipe, ...COLOR,
+    TranslocoDirective, PageHeaderComponent, ...TABLE, StatusComponent, SearchComponent, FilterBarComponent, CheckboxComponent, ButtonDirective, IconComponent, CodePipe, NumberPipe, ...COLOR,
     Tabs, TabList, Tab, TabPanels, TabPanel,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -325,7 +325,7 @@ export class ArticleDialog {
                 [pageSize]="articles.perPage()" [clickable]="canManage" [emptyTitle]="t('production.articles.empty')" [emptyHint]="t('production.emptyHint')" emptyIcon="checkroom"
                 (page)="articles.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="editArticle($event)" (retry)="articles.reload()">
                 <ng-template dwCell="reference" let-a><span class="dw-mono">{{ a.reference }}</span></ng-template>
-                <ng-template dwCell="consumption" let-a>@for (line of a.materials; track line.material) { <div>{{ +line.quantity_per_piece }} {{ line.unit }} · <span class="dw-faint">{{ line.reference }}</span></div> } @empty { — }</ng-template>
+                <ng-template dwCell="consumption" let-a>@for (line of a.materials; track line.material) { <div>{{ line.quantity_per_piece | dwNumber: 3 }} {{ line.unit }} · <span class="dw-faint">{{ line.reference }}</span></div> } @empty { — }</ng-template>
                 <ng-template dwCell="status" let-a><dw-status kind="member" [value]="a.is_active ? 'active' : 'suspended'" [label]="t(a.is_active ? 'common.active' : 'common.inactive')" /></ng-template>
               </dw-data-table>
             </p-tabpanel>
@@ -341,7 +341,10 @@ export class MaterialsPage {
   private readonly dialog = inject(Dialogs);
   private readonly router = inject(Router);
 
-  protected readonly canManage = inject(Session).can('production.manage');
+  private readonly productionSession = inject(Session);
+  protected get canManage(): boolean {
+    return this.productionSession.canEditProduction();
+  }
   protected readonly materialSearch = signal('');
   protected readonly articleSearch = signal('');
   protected readonly inactive = signal(false);

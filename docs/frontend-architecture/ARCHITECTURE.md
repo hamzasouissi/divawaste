@@ -1,5 +1,7 @@
 # DivaWaste frontend architecture
 
+> **Status 2026-10-22.** Written in Phase 1–2 (2026-10-02/04), before the API was completed. Where it differs from the code, the code wins; current verified knowledge: [platform-intelligence](../platform-intelligence/README.md). Kept as history.
+
 ## Status, scope, and evidence
 
 Phase 1 architecture was approved; Phase 2 implementation is underway. An Angular 20 standalone application now exists under `frontend/`, including lazy routes, shared API/session/error boundaries, locale/direction switching, read workspaces, and the notification cursor/read workflow. No mock APIs or backend code have been added.

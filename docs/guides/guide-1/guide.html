@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Guide 1 — Créer votre compte DivaWaste</title>
+<style>
+  @page { size: A4; margin: 0; }
+  :root { --green: #0f5a4f; --green-2: #16796a; --soft: #e8f3f0; --ink: #16222b; --ink-2: #45525c; --line: #d9e2e0; --red: #c62f32; --amber: #9a5b00; --amber-soft: #fff4dc; --blue-soft: #eef3fb; --blue: #2f5ea8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", Inter, Arial, sans-serif; color: var(--ink); font-size: 11.4pt; line-height: 1.48; }
+  .page { width: 210mm; height: 297mm; overflow: hidden; padding: 15mm 17mm 14mm; page-break-after: always; position: relative; }
+  .page:last-child { page-break-after: auto; }
+  .foot { position: absolute; bottom: 8mm; left: 17mm; right: 17mm; display: flex; justify-content: space-between; font-size: 8.5pt; color: #7b8790; border-top: 1px solid var(--line); padding-top: 3mm; }
+
+  .cover { background: linear-gradient(160deg, #0b1c1f 0%, #0f3a35 60%, #16796a 100%); color: #fff; display: flex; flex-direction: column; padding: 22mm 20mm; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15pt; }
+  .brand .logo { width: 34px; height: 34px; border-radius: 9px; background: #2a8f7e; display: grid; place-items: center; font-weight: 800; }
+  .cover .kicker { margin-top: 30mm; font-size: 11pt; letter-spacing: .14em; text-transform: uppercase; color: #9fd8cc; font-weight: 700; }
+  .cover h1 { font-size: 29pt; line-height: 1.12; margin: 4mm 0 5mm; font-weight: 750; }
+  .cover .sub { font-size: 13.5pt; color: #d4ece6; max-width: 150mm; }
+  .robot-cover { position: absolute; right: 20mm; top: 18mm; width: 30mm; height: 30mm; }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8mm; }
+  .tag { padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 10.5pt; }
+  .need { margin-top: auto; background: rgba(255,255,255,.08); border-radius: 14px; padding: 7mm 8mm; }
+  .need h3 { margin: 0 0 3mm; font-size: 12pt; color: #9fd8cc; text-transform: uppercase; letter-spacing: .08em; }
+  .need ul { margin: 0; padding-left: 18px; columns: 2; column-gap: 10mm; }
+  .need li { margin-bottom: 1.5mm; break-inside: avoid; }
+
+  h2.part { font-size: 19pt; margin: 0 0 2mm; color: var(--green); }
+  h2.part small { display: block; font-size: 10.5pt; color: var(--ink-2); font-weight: 500; letter-spacing: .02em; }
+  .lead { color: var(--ink-2); margin: 0 0 5mm; }
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3.5mm; margin: 3mm 0 5mm; }
+  .map div { border: 1px solid var(--line); border-radius: 12px; padding: 3.5mm 5mm; }
+  .map div.extra { border-style: dashed; background: #fafcfc; }
+  .map b { display: block; color: var(--green); font-size: 11pt; } .map span { color: var(--ink-2); font-size: 10pt; }
+  .num { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: var(--green); color: #fff; font-size: 9.5pt; font-weight: 700; margin-right: 6px; }
+  .map .num { color: #fff; }
+  .extra .num { background: #7b8f8b; }
+
+  .step { margin-bottom: 6mm; }
+  .step h3 { display: flex; align-items: center; gap: 8px; font-size: 14pt; margin: 0 0 2.5mm; }
+  .step h3 .n { flex: none; display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 9px; background: var(--green); color: #fff; font-size: 11.5pt; }
+  .step.extra h3 .n { background: #7b8f8b; }
+  ol.do, ul.do { margin: 0 0 3mm; padding-left: 22px; } ol.do li, ul.do li { margin-bottom: 1.2mm; }
+  .shot { margin: 2mm 0 3mm; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; box-shadow: 0 3px 10px rgba(16, 40, 40, .08); }
+  .shot img { display: block; width: 100%; }
+  .shot.half { width: 72%; margin-left: auto; margin-right: auto; }
+  .shot.mid { width: 60%; margin-left: auto; margin-right: auto; }
+  .shot.small { width: 48%; margin-left: auto; margin-right: auto; }
+  .cap { font-size: 9pt; color: #6c7880; margin: -1.5mm 0 3mm; text-align: center; }
+  .box { border-radius: 10px; padding: 3mm 4.5mm; margin: 2mm 0 3mm; font-size: 10.5pt; }
+  .see { background: var(--soft); border-left: 4px solid var(--green); }
+  .see b:first-child { color: var(--green); }
+  .tip { background: #f3f6f8; border-left: 4px solid #8796a0; }
+  .warn { background: var(--amber-soft); border-left: 4px solid var(--amber); }
+  .info { background: var(--blue-soft); border-left: 4px solid var(--blue); }
+  .info b:first-child { color: var(--blue); }
+  .ring { color: var(--red); font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 10.2pt; margin: 2mm 0 3mm; }
+  th, td { text-align: left; padding: 2mm 3mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f3f6f6; font-size: 9.3pt; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  td.ans { font-weight: 700; color: var(--green); white-space: nowrap; }
+  table.xl { font-family: Calibri, "Segoe UI", Arial, sans-serif; font-size: 9.8pt; border: 1px solid #b7c4c1; }
+  table.xl th { background: #e6efe9; color: #1f3b33; text-transform: none; letter-spacing: 0; font-size: 9.8pt; border-right: 1px solid #c9d4d1; }
+  table.xl td { border-right: 1px solid #e0e6e4; padding: 1.4mm 2.5mm; }
+  .check td:first-child { width: 9mm; font-size: 13pt; color: var(--green); }
+  .check td { padding: 1.6mm 3mm; font-size: 9.8pt; }
+  .remarks { border: 1px dashed #b9c6c4; border-radius: 10px; height: 34mm; margin-top: 3mm; padding: 3mm 4mm; color: #9aa6ad; font-size: 10pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; align-items: start; }
+  .who { display: flex; gap: 4mm; align-items: center; }
+  .who svg { flex: none; width: 16mm; height: 16mm; }
+  .badge { display: inline-block; font-size: 8.5pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: #7b8f8b; border-radius: 6px; padding: 1px 7px; vertical-align: middle; margin-left: 6px; }
+</style>
+</head>
+<body>
+
+<!-- the assistant's face, as in the application -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="dg" x1="4" y1="2" x2="36" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1c8a7c"/><stop offset="0.55" stop-color="#0f5c56"/><stop offset="1" stop-color="#0b3f3b"/></linearGradient>
+    <linearGradient id="ds" x1="10" y1="11" x2="30" y2="31" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#bfeee1"/></linearGradient>
+    <symbol id="robot" viewBox="0 0 40 40">
+      <rect x="2" y="2" width="36" height="36" rx="12" fill="url(#dg)"/>
+      <clipPath id="tile"><rect x="2" y="2" width="36" height="36" rx="12"/></clipPath>
+      <rect x="11.5" y="31" width="17" height="10" rx="4.5" fill="#bfeee1" opacity="0.85" clip-path="url(#tile)"/>
+      <line x1="20" y1="7.8" x2="20" y2="11.5" stroke="#bfeee1" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="20" cy="6.6" r="2.1" fill="#7ff5d9"/>
+      <rect x="7" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="29.6" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="9.5" y="11" width="21" height="19.5" rx="6.5" fill="url(#ds)"/>
+      <rect x="12.3" y="14.6" width="15.4" height="10" rx="4.6" fill="#0b3f3b"/>
+      <rect x="15" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <rect x="21.7" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <path d="M17.6 27 Q20 28.5 22.4 27" fill="none" stroke="#0f5c56" stroke-width="1.3" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ============================================================ COVER -->
+<section class="page cover">
+  <div class="brand"><span class="logo">D</span> DivaWaste</div>
+  <svg class="robot-cover"><use href="#robot"/></svg>
+  <div class="kicker">Guide 1 · Pas à pas</div>
+  <h1>Créer votre compte<br>et mettre DivaWaste en route</h1>
+  <div class="sub">Pour une entreprise <b>sans ERP</b> et <b>sans suivi de production</b> : vous enregistrez vos déchets directement dans DivaWaste.</div>
+  <div class="tags"><span class="tag">⏱ 20 minutes</span><span class="tag">🖱 Tout se fait dans le navigateur</span><span class="tag">🤖 L'assistant virtuel vous guide</span></div>
+  <div class="need">
+    <h3>Avant de commencer, ayez sous la main</h3>
+    <ul>
+      <li>Le <b>matricule fiscal</b> de votre société</li>
+      <li>Une <b>adresse email</b> que vous consultez</li>
+      <li>Votre <b>secteur</b> (textile, agriculture, métallurgie…)</li>
+      <li>L'<b>adresse de votre usine</b> (ou entrepôt)</li>
+      <li>Les <b>ateliers</b> où naissent vos déchets</li>
+      <li>La liste de vos <b>déchets</b> (chutes, cartons…)</li>
+      <li>Le nom du <b>prestataire</b> qui enlève vos déchets</li>
+      <li>Si vous l'avez : votre <b>registre Excel</b> de lots</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ OVERVIEW -->
+<section class="page">
+  <h2 class="part">Le chemin en un coup d'œil</h2>
+  <p class="lead">D'abord vous créez le compte (5 minutes). Ensuite l'assistant virtuel vous conduit étape par étape dans la mise en route (10 minutes). Puis trois gestes utiles au quotidien. Les informations complémentaires, à la fin, sont facultatives.</p>
+  <div class="map">
+    <div><b><span class="num">A</span>Créer le compte</b><span>Votre société et son secteur, vous, la formule, l'email, la validation.</span></div>
+    <div><b><span class="num">1</span>Votre façon de travailler</b><span>Cinq questions : DivaWaste n'affiche que ce que vous utilisez.</span></div>
+    <div><b><span class="num">2</span>Votre site et ses zones</b><span>L'usine, ses ateliers et l'aire de stockage des déchets.</span></div>
+    <div><b><span class="num">3</span>Vos types de déchets</b><span>Activés en un clic dans le catalogue, avec leur code.</span></div>
+    <div><b><span class="num">4</span>Votre prestataire</b><span>Celui qui vient chercher vos déchets.</span></div>
+    <div><b><span class="num">C</span>Les Paramètres</b><span>Où retrouver et changer tous vos réglages.</span></div>
+    <div><b><span class="num">D</span>Importer vos lots depuis Excel</b><span>Votre registre entre d'un coup dans DivaWaste.</span></div>
+    <div><b><span class="num">E</span>Mettre un lot en Bourse</b><span>Vendre vos chutes valorisables aux prestataires.</span></div>
+    <div class="extra"><b><span class="num">+</span>Informations complémentaires</b><span>Prestataire sans compte · contrat · limites d'une zone.</span></div>
+    <div><b><span class="num">✓</span>Fiche de test</b><span>Cochez ce qui marche, notez ce qui gêne.</span></div>
+  </div>
+  <div class="box tip"><b>Comment lire ce guide.</b> Chaque étape dit quoi faire, montre l'écran — l'élément à cliquer est <span class="ring">entouré en rouge</span> — puis, dans un encadré vert, <b>ce que vous devez voir</b>. Si ce n'est pas le cas, notez-le sur la fiche de test.</div>
+  <div class="box see who"><svg><use href="#robot"/></svg><div><b>L'assistant virtuel, votre guide.</b> En haut de chaque page, sa carte vous dit à quelle étape vous êtes (« Étape 2 sur 7 »), pourquoi elle compte, et vous donne <b>un seul bouton</b> pour la faire. Une étape finie s'affiche en vert. Vous pouvez aussi lui écrire : bouton <b>Assistant</b> en haut de l'écran (ou Ctrl + J).</div></div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ A1-A2 -->
+<section class="page">
+  <h2 class="part">A. Créer le compte</h2>
+  <div class="step">
+    <h3><span class="n">A1</span>Ouvrez la page d'inscription</h3>
+    <ol class="do"><li>Ouvrez DivaWaste dans votre navigateur et cliquez sur <b>Créer un compte</b>.</li>
+      <li>En haut, gardez <b>Industriel (usine, atelier, exploitation)</b> : vous produisez des déchets. <i>« Prestataire » est pour les collecteurs, recycleurs et transporteurs.</i></li></ol>
+    <div class="shot"><img src="img2/01-register-empty.jpg"></div>
+  </div>
+  <div class="step">
+    <h3><span class="n">A2</span>Votre société et son secteur</h3>
+    <ol class="do"><li><b>Raison sociale</b> : le nom officiel de la société.</li>
+      <li><b>Pays</b> puis <b>Matricule fiscal</b> — respectez le format montré sous le champ (en Tunisie : 1234567/A/M/000).</li>
+      <li><b>Ville</b> et <b>Téléphone</b> (facultatifs).</li></ol>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <ol class="do" start="4"><li><b>Secteur d'activité</b> : ouvrez la liste et choisissez ce que fait votre usine (ici : <b>Textile et habillement</b>). Les zones et les déchets proposés plus tard suivent ce choix.</li>
+      <li>Textile seulement : <b>Vos métiers du textile</b> (facultatif) — ici : Confection.</li>
+      <li>Cliquez sur <b>Suivant</b>.</li></ol>
+    <div class="two">
+      <div class="shot"><img src="img2/02-sector.jpg"></div>
+      <div class="shot"><img src="img2/03-company-filled.jpg"></div>
+    </div>
+    <p class="cap">À gauche : la liste des secteurs. À droite : la société remplie, prête pour « Suivant ».</p>
+    <div class="box see"><b>✔ Vous devez voir</b> l'étape « 1 Votre société » cochée et l'étape « 2 Vous » ouverte. Un champ en rouge « Ce champ est obligatoire » ? Il reste à le remplir.</div>
+    <div class="box tip"><b>Pas sûr du secteur ?</b> Choisissez le plus proche : vous pourrez le changer pendant la mise en route (étape 1).</div>
+  </div>
+  <div class="step">
+    <h3><span class="n">A3</span>Vous</h3>
+    <ol class="do"><li><b>Prénom, Nom, Téléphone.</b></li>
+      <li><b>Adresse email</b> : la vôtre. Elle sert à vous connecter et à recevoir le lien de confirmation.</li>
+      <li><b>Mot de passe</b> : au moins 12 caractères, avec au moins une lettre et un chiffre. Puis <b>Suivant</b>.</li></ol>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="shot half"><img src="img2/04-you.jpg"></div>
+  <div class="box tip"><b>Bon à savoir.</b> Vous devenez l'<b>administrateur</b> du compte : c'est vous qui inviterez ensuite vos collègues.</div>
+  <div class="step">
+    <h3><span class="n">A4</span>Formule, conditions, et c'est créé</h3>
+    <ol class="do"><li><b>Formule</b> : « Essai gratuit 30 jours » est choisi d'office. Toutes les formules commencent par 30 jours gratuits, sans paiement.</li>
+      <li>Cochez <b>J'ai lu et j'accepte</b> (vous pouvez ouvrir « Lire les documents »).</li>
+      <li>Cliquez sur <b>Créer mon compte</b>.</li></ol>
+    <div class="shot half"><img src="img2/05-plan.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> « Vérifiez votre boîte mail », avec votre adresse email.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">A5</span>Confirmez votre adresse email</h3>
+    <ol class="do"><li>Ouvrez votre messagerie : un email de DivaWaste contient un <b>lien de confirmation</b>, valable <b>24 heures</b>.</li>
+      <li>Cliquez sur le lien. La page « Adresse email confirmée » s'ouvre.</li></ol>
+    <div class="two">
+      <div class="shot"><img src="img2/06-check-mail.jpg"></div>
+      <div class="shot"><img src="img2/07-confirmed.jpg"></div>
+    </div>
+    <p class="cap">À gauche : juste après la création. À droite : après le clic sur le lien de l'email.</p>
+    <div class="box warn"><b>Pas d'email ?</b> Regardez dans les courriers indésirables (spam). Le lien a expiré ? Connectez-vous : la page « État de votre compte » propose le bouton <b>Renvoyer le lien</b>.</div>
+  </div>
+  <div class="step">
+    <h3><span class="n">A6</span>Diva Software valide votre inscription</h3>
+    <ol class="do"><li>Cliquez sur <b>Se connecter</b>, saisissez votre email et votre mot de passe.</li>
+      <li>Tant que Diva Software n'a pas validé la société, vous voyez « <b>En attente de validation</b> ». Vous êtes prévenu par email quand c'est fait.</li>
+      <li>Une fois l'email reçu, cliquez sur <b>Actualiser</b> (ou reconnectez-vous).</li></ol>
+    <div class="two">
+      <div class="shot"><img src="img2/08-login.jpg"></div>
+      <div class="shot"><img src="img2/09-pending.jpg"></div>
+    </div>
+    <div class="box see"><b>✔ Vous devez voir</b> le tableau de bord « Bonjour [votre prénom] », avec la carte de l'assistant « Étape 1 sur 7 ».</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ B1 -->
+<section class="page">
+  <h2 class="part">B. La mise en route, avec l'assistant virtuel</h2>
+  <div class="step">
+    <h3><span class="n">1</span>Votre façon de travailler</h3>
+    <p>Sur le tableau de bord, la carte de l'assistant (le petit robot) annonce l'étape 1. Cliquez sur son bouton <b>Aller à : Accueil › Mise en route</b>.</p>
+    <div class="shot half"><img src="img2/10-dashboard.jpg"></div>
+    <p>Votre <b>secteur</b> est déjà choisi : c'est celui donné à l'inscription (ici <b>Textile et habillement</b>). Vérifiez-le ; changez-le si besoin d'un clic.</p>
+    <div class="shot half"><img src="img2/11-sector.jpg"></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <p>Répondez ensuite aux <b>cinq questions</b>. Pour une entreprise sans ERP et sans suivi de production :</p>
+    <table>
+      <tr><th>Question</th><th>Réponse</th><th>Pourquoi</th></tr>
+      <tr><td>Avez-vous un ERP (Sage, Odoo, SAP…) ?</td><td class="ans">Non</td><td>Vous saisissez ou importez vos déchets directement dans DivaWaste.</td></tr>
+      <tr><td>Suivez-vous la production (OF, matières premières) ?</td><td class="ans">Non</td><td>Le menu « Production » est masqué : l'écran reste simple.</td></tr>
+      <tr><td>Produisez-vous des déchets dangereux ?</td><td class="ans">Non *</td><td>* Oui si vous avez des solvants, huiles, résidus de teinture… : DivaWaste vous demandera leurs codes et autorisations.</td></tr>
+      <tr><td>Certains déchets sortent-ils sous autorisation de la douane ?</td><td class="ans">Non *</td><td>* Oui si vous travaillez sous régime douanier (entreprise totalement exportatrice).</td></tr>
+      <tr><td>Voulez-vous vendre des lots à des prestataires ?</td><td class="ans">Oui</td><td>Ouvre la « Bourse » pour vendre vos chutes valorisables (partie E).</td></tr>
+    </table>
+    <p>Cliquez sur <b>Enregistrer mes réponses</b>.</p>
+    <div class="shot half"><img src="img2/13-save-answers.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> l'étape 1 marquée <b>Terminé</b> ; à gauche, pas de menu « Production » (il n'apparaît que si vous suivez la production) ; l'assistant écrit « Vos réponses sur votre activité sont enregistrées » et passe à l'<b>étape 2 sur 7</b>.</div>
+    <div class="box tip"><b>Changer d'avis ?</b> Bouton <b>Modifier</b> sur cette étape, ou <b>Paramètres › Modules et fonctionnement</b> (partie C). Rien n'est figé.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ B2 -->
+<section class="page">
+  <div class="step">
+    <h3><span class="n">2</span>Votre site et ses zones</h3>
+    <div class="shot half"><img src="img2/14-step1-done.jpg"></div>
+    <p>Un <b>site</b> est l'usine ou l'entrepôt où vos déchets naissent et sont rangés. Une <b>zone</b> est un endroit du site : un atelier (coupe, confection…) ou l'aire de stockage des déchets.</p>
+    <ol class="do"><li>Dans la carte de l'assistant, cliquez sur <b>Aller à : Déchets › Sites et zones</b>, puis sur <b>Nouveau site</b>.</li></ol>
+    <div class="shot half"><img src="img2/15-sites-empty.jpg"></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <ol class="do" start="2"><li><b>Code</b> : un nom court pour reconnaître le site (ici « MON » pour Monastir). <b>Nom</b> : en clair (« Usine de Monastir »).</li>
+      <li><b>Nature</b> : « Production » pour une usine, « Entrepôt » pour un dépôt, « Mixte » si le site fait les deux.</li>
+      <li><b>Adresse, Ville, Code postal.</b></li>
+      <li><b>Identifiant réglementaire</b> : le numéro que l'administration a donné à ce site (autorisation d'exploitation…). Vous ne l'avez pas ? Laissez vide : il pourra être ajouté plus tard.</li>
+      <li><b>Zones à créer avec le site</b> : l'<b>Aire de stockage déchets</b> est toujours créée. Cliquez sur une zone pour la cocher ou la décocher : gardez seulement les ateliers où naissent vos déchets (ici <b>Confection</b> ; « Coupe », cochée d'office, a été décochée).</li>
+      <li>Cliquez sur <b>Enregistrer</b>.</li></ol>
+    <div class="two"><div class="shot"><img src="img2/16-site-form.jpg"></div>
+    <div class="shot"><img src="img2/17-site-zones.jpg"></div></div><p class="cap">À gauche : le site. À droite : les zones choisies, puis « Enregistrer ».</p>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <div class="shot half"><img src="img2/18-site-saved.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> la page « Usine de Monastir » ; l'assistant écrit « Vos zones sont en place » et passe directement à l'<b>étape 4 sur 7</b> (le site et ses zones comptent pour deux étapes) ; plus bas, la liste des zones :</div>
+    <div class="shot half"><img src="img2/19-zones.jpg"></div>
+    <div class="box tip"><b>Un autre atelier ?</b> <b>Ajouter une zone</b>. Une autre usine ? <b>Nouveau site</b>. Limiter la place d'une zone : voir les informations complémentaires (+3).</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ B3 -->
+<section class="page">
+  <div class="step">
+    <h3><span class="n">3</span>Vos types de déchets</h3>
+    <p>Le <b>type</b> d'un déchet fixe son unité (kg…), s'il est dangereux, et son <b>code réglementaire</b> — celui des bordereaux et de la déclaration annuelle. Le plus simple : les activer depuis le catalogue, où tout est déjà rempli.</p>
+    <ol class="do"><li>Dans la carte de l'assistant, cliquez sur <b>Aller à : Paramètres › Types de déchets</b>.</li>
+      <li>Ouvrez l'onglet <b>Catalogue de référence</b>.</li></ol>
+    <div class="shot half"><img src="img2/20-types-empty.jpg"></div>
+    <ol class="do" start="3"><li>Cliquez sur <b>Activer</b> pour chacun de vos déchets (ici : Chutes de coupe, Cartons, Films et sacs plastique). Un clic suffit.</li></ol>
+    <div class="shot half"><img src="img2/21-catalogue.jpg"></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <div class="shot half"><img src="img2/22-type-activated.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> « Activé » sur la ligne ; dès le premier type, l'assistant écrit « Vos types de déchets sont prêts » et passe à l'<b>étape 5 sur 7</b>. Dans l'onglet <b>Mes types</b>, vos types activés, avec leur code :</div>
+    <div class="shot half"><img src="img2/23-my-types.jpg"></div>
+    <div class="box tip"><b>Rien ne correspond ?</b> En haut du catalogue : « <b>Rien ne correspond ? Créer un type personnalisé</b> ». Un déchet d'un autre secteur ? « <b>Voir les déchets des autres secteurs</b> ».</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ B4 -->
+<section class="page">
+  <div class="step">
+    <h3><span class="n">4</span>Votre prestataire</h3>
+    <p>Le <b>prestataire</b> vient chercher vos déchets (collecteur, recycleur, transporteur). S'il est sur la plateforme, il confirme les enlèvements et signe les bordereaux en ligne.</p>
+    <ol class="do"><li>Dans la carte de l'assistant, cliquez sur <b>Aller à : Enlèvements › Prestataires</b>. L'annuaire s'ouvre.</li>
+      <li>Choisissez votre prestataire et cliquez sur <b>Ajouter à mes partenaires</b> sur sa carte (ici : Recyclage du Sahel, à droite).</li></ol>
+    <div class="shot half"><img src="img2/25-provider-card.jpg"></div>
+    <div class="box warn"><b>Attention.</b> Un prestataire marqué en rouge « <b>Ne peut pas être choisi pour un enlèvement — Agrément expiré ou absent</b> » ne pourra pas enlever vos déchets tant que son agrément n'est pas à jour. Choisissez un prestataire dont les agréments sont « Valide ».</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <div class="shot"><img src="img2/26-provider-added.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> « Prestataire ajouté à vos partenaires » ; l'assistant passe à l'<b>étape 6 sur 7</b> (votre premier lot). Sur l'onglet <b>Mes prestataires</b>, il apparaît avec le badge <b>Partenaire</b>.</div>
+    <div class="box tip"><b>Votre prestataire n'est pas sur la plateforme ?</b> Voir les informations complémentaires (+1). <b>Prix convenus avec lui ?</b> (+2).</div>
+  </div>
+  <h2 class="part" style="margin-top:8mm">✓ Votre espace est en place</h2>
+  <p class="lead">Société validée, activité décrite, site et zones, types de déchets, prestataire. Il reste les étapes 6 (premier lot) et 7 (premier enlèvement) : la partie D crée vos lots depuis Excel ; le premier enlèvement fera l'objet du prochain guide.</p>
+  <div class="box tip"><b>Votre équipe :</b> <b>Paramètres › Utilisateurs et rôles</b> — invitez le responsable environnement, les opérateurs d'atelier, la direction (chacun avec son compte et ses droits).</div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ C SETTINGS -->
+<section class="page">
+  <h2 class="part">C. Les Paramètres<small>Où retrouver tous vos réglages</small></h2>
+  <div class="step">
+    <ol class="do"><li>En bas du menu de gauche, cliquez sur <b>Paramètres</b> (la roue dentée).</li></ol>
+    <div class="shot half"><img src="img2/61-settings.jpg"></div>
+    <p>La page regroupe tout, en trois familles :</p>
+    <table>
+      <tr><th>Famille</th><th>Ce que vous y trouvez</th></tr>
+      <tr><td><b>Votre société</b></td><td><b>Société</b> (coordonnées, logo des rapports) · <b>Modules et fonctionnement</b> (avec ou sans ERP, modules affichés) · <b>Utilisateurs et rôles</b> · <b>Abonnement</b> · <b>Journal d'audit</b> (qui a fait quoi)</td></tr>
+      <tr><td><b>Référentiel</b></td><td><b>Sites et zones</b> · <b>Types de déchets</b> · <b>Réception et écarts</b> (écart de poids accepté) · <b>Conditionnements</b> (volume d'un sac, d'une balle) · <b>Couleurs</b></td></tr>
+      <tr><td><b>Données</b></td><td><b>Clés d'accès API</b> — seulement si un jour vous reliez un logiciel à DivaWaste.</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">C1</span>Allumer ou éteindre un module</h3>
+    <ol class="do"><li>Dans Paramètres, cliquez sur <b>Modules et fonctionnement</b>.</li>
+      <li>En haut, <b>Comment travaillez-vous ?</b> : « Sans ERP » est choisi (réponse de l'étape 1).</li>
+      <li>Plus bas, <b>Modules</b> : un interrupteur par module. Vert = affiché. Par exemple <b>Bourse</b> pour vendre vos lots (partie E), <b>Production</b> si un jour vous suivez vos OF.</li></ol>
+    <div class="shot half"><img src="img2/64-modules-list.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> le menu changer aussitôt : un module éteint disparaît des menus et des formulaires. Rien n'est supprimé — rallumez-le à tout moment.</div>
+    <div class="box tip"><b>Plus vite :</b> demandez à l'assistant « où sont les paramètres ? » ou « comment activer la Bourse ? » : il vous y emmène.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ D IMPORT -->
+<section class="page">
+  <h2 class="part">D. Importer vos lots depuis Excel<small>Votre registre entre d'un coup dans DivaWaste</small></h2>
+  <p>Un <b>lot</b> est un sac, une balle, un bac de déchets, suivi de sa création jusqu'à son départ. Vous tenez déjà un registre dans Excel ? Une ligne = un lot. Il faut au moins le <b>site</b> et le <b>type de déchet</b> ; le reste est facultatif.</p>
+  <table class="xl">
+    <tr><th>Date du lot</th><th>Site</th><th>Zone</th><th>Type de déchet</th><th>Poids (kg)</th><th>Votre référence du lot</th></tr>
+    <tr><td>26/10/2026</td><td>Usine de Monastir</td><td>Confection</td><td>Chutes de coupe</td><td>120</td><td>REG-0101</td></tr>
+    <tr><td>27/10/2026</td><td>Usine de Monastir</td><td>Confection</td><td>Chutes de coupe</td><td>95,5</td><td>REG-0102</td></tr>
+    <tr><td>28/10/2026</td><td>Usine de Monastir</td><td></td><td>Cartons</td><td>40</td><td>REG-0103</td></tr>
+    <tr><td>29/10/2026</td><td>Usine de Monastir</td><td></td><td>Films et sacs plastique</td><td>18</td><td>REG-0104</td></tr>
+  </table>
+  <p class="cap">Le fichier utilisé pour ce guide (registre-lots.xlsx). Sans zone, le lot va dans l'aire de stockage du site.</p>
+  <div class="step">
+    <h3><span class="n">D1</span>Ouvrez l'import</h3>
+    <ol class="do"><li>Menu <b>Déchets › Lots</b>, puis le bouton <b>Importer</b> (en haut à droite).</li></ol>
+    <div class="shot half"><img src="img2/70-lots-empty.jpg"></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">D2</span>Choisissez le fichier</h3>
+    <ol class="do"><li>Cliquez sur <b>Choisir le fichier</b> et prenez votre Excel (ou CSV). La première ligne doit contenir les titres des colonnes.</li>
+      <li>Pas de registre ? <b>Télécharger un modèle vide</b>, remplissez-le, puis revenez.</li></ol>
+    <div class="shot half"><img src="img2/74-import-choose.jpg"></div>
+    <h3 style="margin-top:4mm"><span class="n">D3</span>Vérifiez les colonnes</h3>
+    <ol class="do" start="3"><li>DivaWaste retrouve seul la colonne de chaque information (ici : Site, Zone, Type de déchet, Poids, Date, Référence). Une colonne mal reconnue ? Choisissez-la dans la liste. Les informations que votre fichier n'a pas restent « Absente du fichier ».</li></ol>
+    <div class="shot half"><img src="img2/75-import-columns.jpg"></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">D4</span>Vérifiez, puis importez</h3>
+    <ol class="do"><li><b>Vérifier sans importer</b> : DivaWaste lit tout sans rien créer et dit ce qu'il fera (« 4 à créer »). Une ligne en erreur est expliquée.</li>
+      <li><b>Importer</b> : les lots sont créés.</li></ol>
+    <div class="two"><div class="shot"><img src="img2/76-import-check.jpg"></div><div class="shot"><img src="img2/77-import-done.jpg"></div></div>
+    <p class="cap">À gauche : le résultat de la vérification. À droite : « Import terminé — 4 créée(s) ».</p>
+    <div class="box see"><b>✔ Vous devez voir</b> « Import terminé ». Cliquez sur <b>Voir les lots</b> : vos 4 lots, chacun avec son numéro L-2026-…, sa zone et son poids. L'assistant passe à l'<b>étape 7 sur 7</b>.</div>
+    <div class="shot half"><img src="img2/78-lots-list.jpg"></div>
+    <div class="box tip"><b>Importer deux fois le même fichier ?</b> Sans danger : une ligne dont « Votre référence du lot » a déjà été importée n'est pas créée deux fois.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">D5</span>Encore plus simple : avec l'assistant virtuel</h3>
+    <ol class="do"><li>Ouvrez l'assistant (bouton <b>Assistant</b> en haut, ou Ctrl + J).</li>
+      <li><b>Glissez votre fichier Excel</b> dans sa fenêtre (ou le trombone 📎).</li>
+      <li>Il lit chaque ligne et propose « <b>Importer 4 lots</b> ». <b>Colonnes lues</b> montre ce qu'il a compris. Rien n'est créé tant que vous ne cliquez pas sur <b>Confirmer</b>.</li></ol>
+    <div class="shot mid"><img src="img2/73-assistant-import.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> après « Confirmer » : le nombre de lots créés, et les lignes écartées avec la raison (type de déchet inconnu, site introuvable…).</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ E BOURSE -->
+<section class="page">
+  <h2 class="part">E. Mettre un lot en Bourse<small>Vendre vos chutes valorisables aux prestataires agréés</small></h2>
+  <div class="box info"><b>Avant :</b> la Bourse doit être allumée — réponse « Oui » à « Voulez-vous vendre des lots ? » (étape 1), ou <b>Paramètres › Modules et fonctionnement › Bourse</b> (partie C1).</div>
+  <div class="step">
+    <h3><span class="n">E1</span>Ouvrez le lot</h3>
+    <ol class="do"><li><b>Déchets › Lots</b>, cliquez sur le numéro du lot (ici L-2026-000001, Chutes de coupe, 120 kg).</li>
+      <li>En haut à droite : <b>Plus d'actions › Mettre en vente</b>.</li></ol>
+    <div class="shot mid"><img src="img2/81-lot-more.jpg"></div>
+  </div>
+  <div class="step">
+    <h3><span class="n">E2</span>Décrivez l'annonce</h3>
+    <ol class="do"><li><b>Titre</b> : déjà rempli (type, poids, site). <b>Description</b> : l'état, le tri, l'accès au site.</li>
+      <li><b>Prix demandé</b> (facultatif) : cochez la case, puis le montant — ici 60 TND <b>par tonne</b>, « Je reçois ». Sans prix, les preneurs font leur offre.</li>
+      <li><b>Conditions</b> (facultatif) : dès quand le lot peut être enlevé, date de clôture des offres.</li>
+      <li>Cliquez sur <b>Publier</b>.</li></ol>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="shot mid"><img src="img2/83-sell-filled.jpg"></div>
+  <div class="box tip"><b>Discrétion.</b> Les preneurs ne voient pas le nom de votre société, seulement la région du site — sauf si vous cochez « Afficher le nom de notre société ». Le nom est révélé au preneur dont l'offre est acceptée.</div>
+  <div class="shot half"><img src="img2/84-sell-published.jpg"></div>
+  <div class="box see"><b>✔ Vous devez voir</b> l'annonce <b>ANN-2026-0001</b> au statut <b>Publiée</b>, dans <b>Enlèvements › Bourse</b>. Les prestataires concernés sont prévenus ; leurs offres arrivent à droite (« Offres »). Vous pouvez <b>Modifier</b> ou <b>Retirer l'annonce</b>.</div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ + EXTRA -->
+<section class="page">
+  <h2 class="part">+ Informations complémentaires<small>Facultatif — quand vous en avez besoin</small></h2>
+  <div class="step extra">
+    <h3><span class="n">+1</span>Un prestataire sans compte sur la plateforme</h3>
+    <p>Votre collecteur, transporteur ou recycleur n'utilise pas DivaWaste ? Enregistrez-le vous-même. Vous saisirez ses étapes à sa place, et il signera le bordereau à la main.</p>
+    <ol class="do"><li><b>Enlèvements › Prestataires</b>, bloc <b>Partenaires sans compte</b> : <b>Ajouter un partenaire</b>.</li>
+      <li><b>Raison sociale</b>, puis <b>Activités</b> : Collecteur, Transporteur, Recycleur et/ou Trieur. Un <b>collecteur</b> vient chercher les déchets et les reçoit : pas besoin d'un transporteur en plus.</li>
+      <li><b>Coordonnées</b> (facultatif) : matricule, adresse, contact, n° d'autorisation et sa date d'expiration. Puis <b>Enregistrer</b>.</li></ol>
+    <div class="two"><div class="shot"><img src="img2/42-add-partner-roles.jpg"></div><div class="shot"><img src="img2/43-partner-added.jpg"></div></div>
+    <p class="cap">À gauche : les activités possibles. À droite : le partenaire dans la liste « Partenaires sans compte ».</p>
+    <div class="box warn"><b>Votre responsabilité.</b> La plateforme ne vérifie pas l'autorisation d'un partenaire sans compte. Pour des déchets dangereux, saisissez son n° d'autorisation et sa date d'expiration.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step extra">
+    <h3><span class="n">+2</span>Un contrat avec votre prestataire</h3>
+    <p>Le contrat garde ce que vous avez convenu : les prix, le rythme des enlèvements, la durée. Ses prix sont appliqués à chaque réception.</p>
+    <ol class="do"><li><b>Enlèvements › Prestataires</b> : bouton <b>Faire un contrat</b> sur la carte du prestataire (ou <b>Enlèvements › Contrats</b>). Trois écrans :</li>
+      <li><b>Qui et quand</b> : l'objet (« Collecte et recyclage des chutes et cartons »), le prestataire, la date de début (la fin est facultative). <b>Suivant</b>.</li></ol>
+    <div class="two"><div class="shot"><img src="img2/51-contract-who.jpg"></div><div class="shot"><img src="img2/52-contract-pickups.jpg"></div></div>
+    <ol class="do" start="3"><li><b>Enlèvements</b> : le rythme — à la demande, chaque semaine (ici le <b>jeudi</b>), chaque mois… <b>Suivant</b>.</li>
+      <li><b>Argent</b> : « Au poids des déchets », un prix par type — ici Chutes de coupe, <b>Je reçois 150 TND par tonne</b>. Des frais en plus (benne, pesée) ? <b>Ajouter un frais</b>.</li>
+      <li>Cliquez sur <b>Enregistrer et mettre en vigueur</b>.</li></ol>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="shot mid"><img src="img2/53-contract-money.jpg"></div>
+  <div class="box see"><b>✔ Vous devez voir</b> le contrat <b>CTR-2026-0001</b> « <b>En vigueur</b> », avec le prochain enlèvement prévu (le jeudi suivant) et le bouton <b>Demander le prochain enlèvement</b>.</div>
+  <div class="shot half"><img src="img2/54-contract-saved.jpg"></div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step extra">
+    <h3><span class="n">+3</span>Les limites d'une zone</h3>
+    <p>DivaWaste peut vous prévenir <b>avant</b> que l'aire de stockage soit pleine.</p>
+    <ol class="do"><li><b>Déchets › Sites et zones</b>, ouvrez le site, puis <b>Modifier</b> sur la ligne de la zone (ici « Aire de stockage déchets »).</li>
+      <li><b>Capacité</b> : « Place mesurée en » <b>Volume (m³)</b> (ou en nombre de colis), puis le volume de la zone — ici <b>20 m³</b>.</li>
+      <li><b>Plus de détails</b> (facultatif) : la <b>charge maximale</b> en kg (ici 3000), l'<b>alerte</b> à 90 % de la capacité, et les déchets auxquels la zone est <b>réservée</b>. Puis <b>Enregistrer</b>.</li></ol>
+    <div class="two"><div class="shot"><img src="img2/32-zone-capacity.jpg"></div><div class="shot"><img src="img2/33-zone-capacity-saved.jpg"></div></div>
+    <p class="cap">À gauche : la zone limitée à 20 m³ et 3 t. À droite : son remplissage dans la liste des zones.</p>
+    <div class="box see"><b>✔ Vous devez voir</b> dans la colonne <b>Remplissage de la zone</b> : « Place 0 m³ / 20 m³ » et « Charge 0 kg / 3 t », avec « Respecté ». Passé 90 % de la capacité, la zone est signalée en alerte.</div>
+    <div class="box tip"><b>Tout le site ?</b> Le site n'a pas de capacité à part : « <b>Fixer une limite sur le site</b> » (sur la page du site) surveille tout ce qu'il contient, en t, kg, m³, l ou colis.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ TEST SHEET -->
+<section class="page">
+  <h2 class="part">Fiche de test</h2>
+  <p class="lead" style="margin-bottom:2mm">Cochez chaque résultat obtenu, notez ce qui a gêné.</p>
+  <table class="check">
+    <tr><th></th><th>Étape</th><th>Résultat attendu</th></tr>
+    <tr><td>☐</td><td>A2 Société</td><td>Le secteur est demandé ; « Vos métiers du textile » n'apparaît que pour le textile ; un champ manquant est signalé en rouge.</td></tr>
+    <tr><td>☐</td><td>A3–A4</td><td>Mot de passe trop court refusé ; « Créer mon compte » demande d'accepter les conditions.</td></tr>
+    <tr><td>☐</td><td>A5–A6</td><td>L'email arrive ; le lien confirme ; « En attente de validation », puis le tableau de bord.</td></tr>
+    <tr><td>☐</td><td>1 Activité</td><td>Le secteur de l'inscription est déjà choisi ; « Terminé » ; pas de menu Production, ni avant ni après les réponses.</td></tr>
+    <tr><td>☐</td><td>2 Site et zones</td><td>Le site s'ouvre avec ses zones, dont une seule « Aire de stockage déchets ».</td></tr>
+    <tr><td>☐</td><td>3 Types</td><td>« Activé » en un clic ; « Mes types » les liste avec leur code.</td></tr>
+    <tr><td>☐</td><td>4 Prestataire</td><td>« Partenaire » sur sa carte ; l'assistant passe à l'étape 6.</td></tr>
+    <tr><td>☐</td><td>C Paramètres</td><td>Un module éteint disparaît du menu ; rallumé, il revient.</td></tr>
+    <tr><td>☐</td><td>D Import</td><td>« Vérifier » ne crée rien ; « Importer » crée les lots ; un second import ne les double pas.</td></tr>
+    <tr><td>☐</td><td>D5 Assistant</td><td>Le fichier glissé donne « Importer N lots » ; rien n'est créé avant « Confirmer ».</td></tr>
+    <tr><td>☐</td><td>E Bourse</td><td>L'annonce est « Publiée » ; le nom de la société reste caché.</td></tr>
+    <tr><td>☐</td><td>+1 Sans compte</td><td>Collecteur possible ; le partenaire apparaît dans « Partenaires sans compte ».</td></tr>
+    <tr><td>☐</td><td>+2 Contrat</td><td>« En vigueur », prochain enlèvement au bon jour.</td></tr>
+    <tr><td>☐</td><td>+3 Zone</td><td>« Place … / 20 m³ » et « Charge … / 3 t » dans la liste des zones.</td></tr>
+    <tr><td>☐</td><td>Assistant</td><td>Le robot et le nom « Assistant » partout ; sa carte dit l'étape et son bouton mène au bon endroit.</td></tr>
+  </table>
+  <div class="remarks">Mes remarques…</div>
+  <div class="foot"><span>DivaWaste · Guide 1 — Créer votre compte</span><span class="pg"></span></div>
+</section>
+
+<script>
+  document.querySelectorAll('.page').forEach((page, i) => { const pg = page.querySelector('.pg'); if (pg) pg.textContent = String(i + 1); });
+</script>
+</body>
+</html>

@@ -48,9 +48,20 @@ export interface Company {
   has_logo: boolean;
   activities: string[];
   weight_variance_threshold_pct: string;
+  /** Parts of the product the company uses: a module that is off hides its menu, fields and help. */
+  modules?: Record<CompanyModule, boolean>;
+  /** Answers to the first onboarding questions; null until answered. */
+  profile?: Record<CompanyProfileKey, boolean> | null;
+  /** What the company makes: its zones, waste families and catalogue follow it. */
+  industry?: CompanyIndustry;
   submitted_at: string | null;
   approved_at: string | null;
 }
+
+export type CompanyModule = 'production' | 'production_finance' | 'marketplace' | 'contracts' | 'authorizations' | 'colors' | 'workshop';
+export type CompanyProfileKey = 'erp' | 'production' | 'hazardous' | 'customs' | 'marketplace';
+export type CompanyIndustry = 'textile' | 'agriculture' | 'food' | 'metal' | 'plastics' | 'chemicals' | 'construction' | 'other';
+export const COMPANY_INDUSTRIES: readonly CompanyIndustry[] = ['textile', 'agriculture', 'food', 'metal', 'plastics', 'chemicals', 'construction', 'other'];
 
 export interface AccessSite {
   ulid: string;
@@ -324,6 +335,9 @@ export interface Lot {
   origin?: LotOrigin | null;
   grammage_gsm: string | null;
   composition_label: string | null;
+  /** Where the composition comes from: typed by a person, copied from a raw material, the defaults of the waste type
+   * (to be checked), averaged from grouped lots, kept from the lot split; null = not known. */
+  composition_source?: CompositionSource | null;
   notes: string | null;
   qr: string | null;
   label_print_count: number;
@@ -338,6 +352,8 @@ export interface Lot {
 
 export interface LotDetailMeta {
   composition: { material: string; name: Localized; pct: string }[];
+  /** The listing of the bourse the lot is offered in (draft or published); null otherwise. */
+  listing?: { ulid: string; listing_number: string; status: string } | null;
   parents: { ulid: string; lot_number: string; status: LotStatus; relation_type: string; quantity_kg: string }[];
   children: { ulid: string; lot_number: string; status: LotStatus; relation_type: string; quantity_kg: string }[];
   pickup: { ulid: string; pickup_number: string; status: PickupStatus; provider: string; line_status: string; received_weight_kg: string | null } | null;
@@ -412,12 +428,29 @@ export interface StockThreshold {
 
 export type PickupStatus = 'draft' | 'requested' | 'confirmed' | 'refused' | 'collected' | 'received' | 'completed' | 'cancelled';
 
+export type CompositionSource = 'entered' | 'raw_material' | 'waste_type' | 'grouping' | 'split';
+
+export interface MarketplaceDealSummary {
+  negotiation: string;
+  listing: string;
+  listing_number: string;
+  pricing_mode: 'per_kg' | 'per_tonne' | 'flat';
+  unit_price: string;
+  direction: 'revenue' | 'cost';
+  currency_code: string;
+  pickup_date: string | null;
+  commission_pct: string | null;
+  accepted_at: string | null;
+}
+
 export interface PickupLine {
   /** Lot identifier; only present for the industrial that owns the pickup. */
   lot: string | null;
   lot_number_snapshot: string;
   qr_tag_value_snapshot: string | null;
   waste_type_label_snapshot: string;
+  /** What the lot is made of, as it was put on the pickup; null when not known. */
+  composition?: { material: string; pct: string }[] | null;
   regulatory_code_snapshot: string | null;
   is_hazardous: boolean;
   line_status: 'planned' | 'loaded' | 'not_loaded' | 'received' | 'rejected' | 'treated';
@@ -491,6 +524,13 @@ export interface Pickup {
   variance_decision?: 'acknowledged' | 'authorized' | null;
   variance_comment: string | null;
   currency_code: string;
+  /** The deal of the bourse this pickup carries out: its agreed price is applied at reception. */
+  marketplace_deal?: MarketplaceDealSummary | null;
+  /** The contracts of the receiver and of the transporter this pickup falls under. */
+  contract?: { ulid: string; contract_number: string; title: string } | null;
+  transport_contract?: { ulid: string; contract_number: string; title: string } | null;
+  /** Their fees for this pickup, signed for the company (negative = it pays); written at reception. */
+  contract_fees_amount?: string | null;
   lots_count?: number;
   /** Lots of the pickup whose weight is not known: its weights are the sum of the others. */
   unweighed_lots?: number;
@@ -546,7 +586,7 @@ export interface ExternalPartner {
   phone: string | null;
   email: string | null;
   contact_name: string | null;
-  roles: ('transporter' | 'recycler' | 'eliminator')[];
+  roles: ('collector' | 'transporter' | 'recycler' | 'sorter')[];
   accreditation_reference: string | null;
   accreditation_expires_on: string | null;
   covers_hazardous: boolean;
@@ -707,6 +747,8 @@ export interface Manifest {
   /** `pending_signed_copy`: everyone has signed, at least one by hand; the scan of the signed slip is still to attach. */
   status: 'draft' | 'pending_producer_signature' | 'pending_transporter_signature' | 'pending_receiver_signature' | 'pending_signed_copy' | 'completed' | 'cancelled';
   pickup: { ulid: string; pickup_number: string } | null;
+  /** The archived document of a completed slip (the signed copy, or the signed PDF). */
+  document?: { ulid: string } | null;
   regulatory_code: string | null;
   is_hazardous: boolean;
   waste_type: string | null;
@@ -912,7 +954,7 @@ export interface Reference {
 export interface OnboardingState {
   completed: boolean;
   dismissed: boolean;
-  steps: { key: 'sites' | 'waste_types' | 'users' | 'providers'; done: boolean; skipped: boolean; count: number }[];
+  steps: { key: 'profile' | 'sites' | 'waste_types' | 'users' | 'providers'; done: boolean; skipped: boolean; count: number }[];
 }
 
 /** What a provider accepts and what it asks of a collection of it: a minimum in a unit, a packaging, and whether falling short refuses the request. */
@@ -973,4 +1015,40 @@ export interface PickupCompliance {
   missing_codes: { waste_type: string; code: string; name: string; lots: string[] }[];
   /** Lots that left and are on no slip yet for another reason. */
   lots_without_slip: string[];
+}
+
+/** An entry of the lists of authorised waste operators published by ANGed (the agency's word, not checked here). */
+export interface RegistryOperator {
+  ulid: string;
+  registry: string;
+  list: string;
+  list_title: string;
+  hazardous: boolean;
+  legal_name: string;
+  contact_name: string | null;
+  phone: string | null;
+  fax: string | null;
+  email: string | null;
+  head_office: string | null;
+  plant_address: string | null;
+  governorate: string | null;
+  activity: string | null;
+  waste: string | null;
+  roles: ('collector' | 'transporter' | 'recycler' | 'sorter' | 'storer')[];
+  authorization_number: string | null;
+  valid_from: string | null;
+  valid_until: string | null;
+  expired: boolean;
+  annual_tonnage: string | null;
+  collection_area: string | null;
+  withdrawal: string | null;
+  source_url: string | null;
+  extracted_on: string | null;
+}
+
+export interface RegistryLists {
+  lists: { code: string; title: string; hazardous: boolean; entries: number }[];
+  governorates: string[];
+  extracted_on: string | null;
+  total: number;
 }

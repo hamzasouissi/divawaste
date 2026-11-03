@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
@@ -177,6 +177,10 @@ export class RegisterPage {
                 <button pButton type="button" (click)="sign(m)"><dw-icon>draw</dw-icon>{{ t(m.awaiting_external ? 'compliance.manifests.record' : 'compliance.manifests.sign') }}</button>
               }
               <button pButton severity="secondary" outlined type="button" (click)="pdf(m)"><dw-icon>picture_as_pdf</dw-icon>{{ t('compliance.manifests.pdf') }}</button>
+              @if (m.status === 'completed' && m.document) {
+                <!-- beside the slip, the copy as it was attached (or the signed PDF), to check it at any time -->
+                <button pButton severity="secondary" outlined type="button" (click)="archived(m)"><dw-icon>verified</dw-icon>{{ t('compliance.manifests.viewSigned') }}</button>
+              }
             </div>
           </ng-template>
         </dw-data-table>
@@ -203,7 +207,11 @@ export class ManifestsPage {
   protected readonly company = this.session.company()?.ulid ?? null;
   protected readonly canSign = this.session.can('documents.sign') || this.session.can('provider.manifests.sign');
   protected readonly statuses: Manifest['status'][] = ['pending_producer_signature', 'pending_transporter_signature', 'pending_receiver_signature', 'pending_signed_copy', 'completed', 'cancelled'];
-  protected readonly list = new ListStore<Manifest, { status?: string | null }>((query) => this.api.list<Manifest>('manifests', query));
+  /** CR-02: opened from "À traiter" with its status, else on the slips waiting for this company's signature. */
+  private readonly asked = inject(ActivatedRoute).snapshot.queryParamMap.get('status');
+  protected readonly list = new ListStore<Manifest, { status?: string | null }>((query) => this.api.list<Manifest>('manifests', query), {
+    filter: { status: this.asked ?? (this.session.audience() === 'industrial' && this.session.can('documents.sign') ? 'pending_producer_signature' : null) },
+  });
 
   protected readonly columns: Column<Manifest>[] = [
     { key: 'number', header: 'compliance.manifests.number' },
@@ -226,6 +234,15 @@ export class ManifestsPage {
   protected async pdf(manifest: Manifest): Promise<void> {
     try {
       openBlob(await firstValueFrom(this.api.blob(`manifests/${manifest.ulid}/pdf`)));
+    } catch (error) {
+      this.toast.error(error);
+    }
+  }
+
+  /** The archived document of a completed slip: the copy signed by hand as attached, or the signed PDF. */
+  protected async archived(manifest: Manifest): Promise<void> {
+    try {
+      openBlob(await firstValueFrom(this.api.blob(`documents/${manifest.document?.ulid}/download`)));
     } catch (error) {
       this.toast.error(error);
     }
@@ -426,7 +443,11 @@ export class DeclarationsPage {
           [pageSize]="list.perPage()" emptyIcon="folder_open" [emptyTitle]="list.filtered() ? t('common.noResult') : t('compliance.documents.emptyTitle')"
           [emptyHint]="list.filtered() ? '' : t('compliance.documents.emptyHint')" (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (retry)="list.reload()">
           <ng-template dwCell="type" let-d>{{ t('compliance.documents.types.' + d.document_type) }}</ng-template>
-          <ng-template dwCell="title" let-d>{{ d.title }}<div class="dw-faint dw-mono">{{ d.reference_number }}</div></ng-template>
+          <ng-template dwCell="title" let-d>
+            <!-- The number once; the title only when it says more than the type and the number. -->
+            @if (d.reference_number) { <span class="dw-mono">{{ d.reference_number }}</span> } @else { {{ d.title }} }
+            @if (d.reference_number && d.title && !d.title.includes(d.reference_number)) { <div class="dw-faint">{{ d.title }}</div> }
+          </ng-template>
           <ng-template dwCell="pickup" let-d><span class="dw-mono">{{ d.pickup?.pickup_number ?? '—' }}</span></ng-template>
           <ng-template dwCell="issued" let-d>{{ d.issued_at ?? d.created_at | dwDate }}</ng-template>
           <ng-template dwCell="retention" let-d>{{ d.retention_until | dwDate }}</ng-template>

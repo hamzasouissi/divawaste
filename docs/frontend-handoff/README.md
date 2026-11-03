@@ -1,5 +1,7 @@
 # Backend-to-Frontend Handoff
 
+> **Status 2026-10-22.** Written in Phase 1–2 (2026-10-02/04), before the API was completed. Where it differs from the code, the code wins; current verified knowledge: [platform-intelligence](../platform-intelligence/README.md). Kept as history.
+
 This package records the API, domain, data, security, workflow, file, pagination, and error behavior that is evidenced by the checked-in Laravel backend as inspected on 2026-10-02. It is a backend discovery artifact, not a frontend design proposal.
 
 ## Read First

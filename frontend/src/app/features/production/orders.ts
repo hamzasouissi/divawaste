@@ -65,7 +65,7 @@ const tone = (status: string): string => (status === 'completed' ? 'approved' : 
                   </dw-select>
                   <input pInputText type="number" formControlName="quantity" min="1" [placeholder]="t('fields.quantity')" [attr.aria-label]="t('fields.quantity')" />
                   @if (money) { <input pInputText formControlName="unit_price" inputmode="decimal" [placeholder]="t('production.orders.unitPrice')" [attr.aria-label]="t('production.orders.unitPrice')" /> }
-                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="lines.removeAt(i)" [attr.aria-label]="t('common.remove')"><dw-icon>close</dw-icon></button>
+                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="lines.removeAt(i)" [attr.aria-label]="t('common.remove')" [title]="t('common.remove')"><dw-icon>close</dw-icon></button>
                 </div>
               }
               <button pButton text type="button" class="add" (click)="addLine()"><dw-icon>add</dw-icon>{{ t('production.orders.addLine') }}</button>
@@ -183,7 +183,9 @@ export class OrdersPage {
   private readonly router = inject(Router);
   private readonly session = inject(Session);
 
-  protected readonly canManage = this.session.can('production.manage');
+  protected get canManage(): boolean {
+    return this.session.canEditProduction();
+  }
   protected readonly statuses = ORDER_STATUSES;
   protected readonly tone = tone;
   protected readonly search = signal('');
@@ -254,7 +256,7 @@ export class OrdersPage {
                     @for (site of sites; track site.ulid) { <dw-option [value]="site.ulid" [label]="site.name" /> }
                   </dw-select>
                   <input pInputText type="number" formControlName="pieces_done" min="0" [placeholder]="t('production.of.piecesDone')" [attr.aria-label]="t('production.of.piecesDone')" />
-                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="steps.removeAt(i)" [attr.aria-label]="t('common.remove')"><dw-icon>close</dw-icon></button>
+                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="steps.removeAt(i)" [attr.aria-label]="t('common.remove')" [title]="t('common.remove')"><dw-icon>close</dw-icon></button>
                 </div>
               }
               <button pButton text type="button" class="add" (click)="addStep()"><dw-icon>add</dw-icon>{{ t('production.of.addStep') }}</button>
@@ -403,7 +405,9 @@ export class ManufacturingOrdersPage {
   private readonly router = inject(Router);
   private readonly session = inject(Session);
 
-  protected readonly canManage = this.session.can('production.manage');
+  protected get canManage(): boolean {
+    return this.session.canEditProduction();
+  }
   protected readonly statuses = OF_STATUSES;
   protected readonly sites = this.session.sitesFor('sites.view');
   protected readonly tone = tone;

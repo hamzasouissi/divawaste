@@ -49,7 +49,12 @@
     "collapseNavigation": "Réduire la navigation",
     "expandNavigation": "Déployer la navigation",
     "or": "ou",
-    "and": "et"
+    "and": "et",
+    "clearSelection": "Tout désélectionner",
+    "moreDetails": "Plus de détails",
+    "moreActions": "Plus d'actions",
+    "next": "Suivant",
+    "undo": "Annuler"
   },
   "paginator": {
     "perPage": "Lignes par page",
@@ -116,7 +121,12 @@
     "logout": "Se déconnecter",
     "backOffice": "Back-office",
     "operator": "Opérateur de la plateforme",
-    "platformSpace": "Administration de la plateforme"
+    "platformSpace": "Administration de la plateforme",
+    "erpNote": "Ces données viennent de votre ERP : modifiez-les dans l'ERP, le prochain import les mettra à jour ici.",
+    "erpUnlocked": "Correction ouverte : ce que vous changez ici sera remplacé si l'ERP renvoie la même donnée.",
+    "erpUnlock": "Corriger ici quand même",
+    "erpLock": "Terminer la correction",
+    "guides": "Guides d'utilisation"
   },
   "nav": {
     "groups": {
@@ -144,7 +154,7 @@
     "manifests": "Bordereaux de suivi",
     "declarations": "Déclarations annuelles",
     "documents": "Documents",
-    "reports": "Rapports et exports",
+    "reports": "Rapports",
     "sites": "Sites et zones",
     "wasteTypes": "Types de déchets",
     "users": "Utilisateurs et rôles",
@@ -167,15 +177,39 @@
     "authorizations": "Autorisations",
     "manufacturingOrders": "Ordres de fabrication",
     "orders": "Commandes",
-    "productionCatalog": "Matières et articles",
+    "productionCatalog": "Matières premières et articles",
     "productionPartners": "Clients et fournisseurs",
     "productionImport": "Import",
     "productionStats": "Statistiques",
     "productionFinance": "Coûts et gains",
-    "productionLots": "Lots reçus et fabriqués"
+    "productionLots": "Lots reçus et fabriqués",
+    "marketplace": "Bourse",
+    "contracts": "Contrats",
+    "home": "Accueil",
+    "waste": "Déchets",
+    "compliance": "Conformité",
+    "manufacturing": "Fabrication",
+    "productionReference": "Référentiel",
+    "productionAnalysis": "Analyse",
+    "providerSpace": "Mon entreprise",
+    "settings": "Paramètres",
+    "tabs": {
+      "lots": "Lots",
+      "requests": "Demandes",
+      "complianceOverview": "Ce qui manque",
+      "register": "Registre",
+      "manifests": "Bordereaux",
+      "declarations": "Déclarations",
+      "manufacturingOrders": "Ordres de fabrication",
+      "productionLots": "Lots reçus et fabriqués",
+      "providerProfile": "Profil et déchets acceptés",
+      "allDocuments": "Tous les documents",
+      "sitesZones": "Sites et zones"
+    },
+    "platformRegistry": "Liste ANGed"
   },
   "auth": {
-    "pitch": "Tracer, valoriser et déclarer vos déchets textiles.",
+    "pitch": "Tracer, valoriser et déclarer vos déchets industriels.",
     "point1": "Chaque lot suivi par QR code, du poste de travail à l'exutoire",
     "point2": "Registre, bordereaux et déclaration ANGed générés automatiquement",
     "point3": "Taux de valorisation et bilan économique en temps réel",
@@ -206,13 +240,16 @@
       "title": "Créer un compte",
       "lead": "Déjà inscrit ?",
       "accountType": "Type de compte",
-      "industrial": "Industriel textile",
+      "industrial": "Industriel (usine, atelier, exploitation)",
       "provider": "Prestataire (collecteur, recycleur, transporteur)",
-      "industrialHint": "Vous produisez des déchets textiles et souhaitez les tracer, les valoriser et les déclarer.",
+      "industrialHint": "Vous produisez des déchets et souhaitez les tracer, les valoriser et les déclarer.",
       "providerHint": "Vous collectez, transportez ou traitez des déchets. L'accès est gratuit, vos agréments sont vérifiés par la plateforme.",
       "company": "Société",
       "contact": "Contact principal (administrateur du compte)",
-      "activities": "Activités textiles",
+      "activities": "Vos métiers du textile (facultatif)",
+      "industry": "Secteur d'activité",
+      "industryPlaceholder": "Choisissez votre secteur",
+      "industryHint": "Les zones et les types de déchets proposés suivent votre secteur. Vous pourrez le changer pendant la configuration.",
       "plan": "Formule",
       "planHint": "Toutes les formules débutent par 30 jours d'essai gratuit, sans paiement.",
       "providerActivity": "Activité",
@@ -228,14 +265,24 @@
         "roles": "Choisissez au moins un rôle de prestataire.",
         "accreditations": "Complétez chaque agrément : type, numéro, date de début et date d'expiration.",
         "files": "Joignez le fichier PDF de chaque agrément.",
-        "activities": "Choisissez au moins une activité textile.",
+        "industry": "Choisissez votre secteur d'activité.",
         "accept": "Vous devez accepter les documents pour créer le compte."
+      },
+      "taxIdFormat": "Format attendu, par exemple : {{example}}",
+      "accreditationsNow": "Ajouter vos agréments maintenant (facultatif)",
+      "accreditationsLater": "Vous pourrez aussi les déposer après l'inscription, depuis votre espace.",
+      "steps": {
+        "company": "Votre société",
+        "you": "Vous",
+        "plan": "Formule et conditions",
+        "activity": "Activité et conditions"
       }
     },
     "verify": {
       "pending": "Confirmation de votre adresse en cours…",
       "doneTitle": "Adresse email confirmée",
       "doneBody": "Votre inscription est transmise à Diva Software pour validation. Vous recevrez un email dès qu'elle sera traitée.",
+      "doneApproved": "Votre compte est activé : vous pouvez vous connecter dès maintenant.",
       "failedTitle": "Lien invalide ou expiré",
       "failedBody": "Ce lien de confirmation n'est plus valable (durée de 24 heures). Connectez-vous pour en recevoir un nouveau."
     },
@@ -405,6 +452,28 @@
       "incomplete": "Bordereau manquant",
       "pending": "Signatures en attente",
       "complete": "Documents complets"
+    },
+    "listing": {
+      "draft": "Brouillon",
+      "published": "Publiée",
+      "sold": "Cédée",
+      "expired": "Expirée",
+      "cancelled": "Retirée"
+    },
+    "negotiation": {
+      "awaiting_seller": "Attend le vendeur",
+      "awaiting_buyer": "Attend le preneur",
+      "accepted": "Accord conclu",
+      "refused": "Refusée",
+      "withdrawn": "Retirée",
+      "closed": "Close"
+    },
+    "contract": {
+      "draft": "Brouillon",
+      "upcoming": "À venir",
+      "active": "En vigueur",
+      "expired": "Échu",
+      "terminated": "Résilié"
     }
   },
   "channels": {
@@ -467,7 +536,7 @@
     "INVALID_COMPANY_TRANSITION": "Cette société a déjà fait l'objet d'une décision.",
     "ACCREDITATION_ALREADY_REVIEWED": "Cet agrément a déjà ce statut.",
     "DEVICE_REVOKED": "Cet appareil a été révoqué par un administrateur.",
-    "COLOR_IN_USE": "Cette couleur est utilisée par des lots, des types de déchets, des matières ou des zones. Retirez-la de la liste à la place.",
+    "COLOR_IN_USE": "Cette couleur est utilisée par des lots, des types de déchets, des matières premières ou des zones. Retirez-la de la liste à la place.",
     "RECEIVED_LOT_IN_USE": "Le numéro d'un lot reçu ne peut plus changer une fois qu'un OF ou un lot de déchets le désigne.",
     "AUTHORIZATION_EXCEEDED": "L’autorisation ne couvre pas cet enlèvement : une de ses limites serait dépassée. Chaque limite est détaillée sur la page Autorisations.",
     "AUTHORIZATION_UNVERIFIABLE": "L’autorisation ne peut pas être vérifiée : des lots n’ont pas de poids mesuré. Pesez-les, puis recommencez.",
@@ -484,7 +553,31 @@
     "AWAITING_RECEIVER": "Le destinataire n’a pas encore fixé la date : le transporteur confirme après lui.",
     "NOT_THE_TRANSPORTER": "Cet enlèvement n’a pas d’autre transporteur que son destinataire.",
     "TRANSPORTER_REQUIRED": "Ce destinataire ne vient pas chercher les déchets : choisissez un transporteur.",
-    "PARTNER_ROLE_MISMATCH": "Ce prestataire ne peut pas tenir ce rôle : une société qui ne fait que transporter n’est jamais destinataire, et le transporteur doit être déclaré transporteur."
+    "PARTNER_ROLE_MISMATCH": "Ce prestataire ne peut pas tenir ce rôle : une société qui ne fait que transporter n’est jamais destinataire, et le transporteur doit être déclaré transporteur.",
+    "LOT_LISTED": "Ce lot est proposé à la bourse : retirez l'annonce, ou attendez son accord.",
+    "LISTING_LOTS_INVALID": "Les lots d'une annonce doivent exister et être sur son site.",
+    "LISTING_MIXED_WASTE": "Une annonce propose un seul type de déchet : faites une annonce par type.",
+    "LISTING_CLOSED": "Cette annonce est close : elle ne peut plus être modifiée.",
+    "LISTING_LOTS_FIXED": "Les lots d'une annonce publiée ne changent plus : retirez-la et publiez-en une autre.",
+    "LISTING_NOT_DRAFT": "Cette annonce est déjà publiée ou close.",
+    "LISTING_CLOSING_PASSED": "La date de clôture est passée : choisissez-en une autre, ou aucune.",
+    "LISTING_NOT_OPEN": "Cette annonce n'accepte plus d'offres.",
+    "NEGOTIATION_OPEN": "Vous négociez déjà cette annonce : répondez dans votre négociation.",
+    "NEGOTIATION_ENDED": "Cette négociation est terminée.",
+    "PROPOSAL_NOT_YOUR_TURN": "La dernière proposition est la vôtre : elle attend la réponse de l'autre partie.",
+    "PROPOSAL_SUPERSEDED": "Une nouvelle proposition est arrivée entre-temps : lisez-la avant de répondre.",
+    "PROPOSAL_EXPIRED": "Cette proposition n'est plus valable : répondez par une proposition de votre part.",
+    "PROPOSAL_OUTDATED": "Les lots ont changé depuis cette proposition : elle ne peut pas être acceptée telle quelle.",
+    "BUYER_NOT_ELIGIBLE": "Ce preneur ne peut pas prendre ce déchet aujourd'hui : agrément valide et déchet accepté requis.",
+    "NOT_THE_BUYER": "Seul le preneur retire son offre ; le vendeur la refuse.",
+    "PICKUP_DATE_TOO_EARLY": "Les lots ne sont pas encore enlevables à cette date.",
+    "LOT_COMPOSITION_FROZEN": "Ce lot a quitté le site : son enlèvement et son bordereau gardent la composition avec laquelle il est parti.",
+    "CONTRACT_TERMINATED": "Ce contrat est résilié : il ne peut plus être modifié.",
+    "CONTRACT_NOT_DRAFT": "Ce contrat est déjà en vigueur ou résilié.",
+    "CONTRACT_NOT_ACTIVE": "Ce contrat n'est pas en vigueur.",
+    "CONTRACT_OVERLAP": "Un autre contrat couvre déjà ce prestataire, dans ce rôle et sur ce site, sur une partie de ces dates : résiliez-le ou changez les dates.",
+    "CONTRACT_PRICE_TWICE": "Un type de déchet n'a qu'un prix par contrat (et une seule ligne « tout autre déchet »).",
+    "CONTRACT_PACE_DAYS": "Avec des jours choisis, il y a un enlèvement par jour choisi : le nombre d'enlèvements doit être celui des jours."
   },
   "notifications": {
     "title": "Notifications",
@@ -536,7 +629,17 @@
       "pickup.transport_requested": "Transport à confirmer (transporteur)",
       "pickup.awaiting_transporter": "Enlèvement en attente du transporteur",
       "pickup.transport_confirmed": "Transport confirmé par le transporteur",
-      "pickup.transport_refused": "Transport refusé par le transporteur"
+      "pickup.transport_refused": "Transport refusé par le transporteur",
+      "marketplace.listing_published": "Nouvelle annonce pour vos déchets",
+      "marketplace.offer_received": "Offre reçue sur une annonce",
+      "marketplace.counter_offer": "Contre-proposition reçue",
+      "marketplace.offer_accepted": "Accord conclu",
+      "marketplace.offer_refused": "Proposition refusée",
+      "marketplace.offer_withdrawn": "Offre retirée",
+      "marketplace.listing_closed": "Annonce close",
+      "contract.activated": "Contrat mis en vigueur",
+      "contract.ending_soon": "Contrat bientôt échu",
+      "contract.terminated": "Contrat résilié"
     },
     "types": {
       "stock.threshold_warning": {
@@ -706,16 +809,73 @@
       "pickup.transport_refused": {
         "title": "Transport de l’enlèvement {{number}} refusé",
         "body": "{{transporter}} : {{reason}}. Les lots reviennent en stock."
+      },
+      "marketplace.listing_published": {
+        "title": "Nouvelle annonce sur la bourse — {{title}}",
+        "body": "L'annonce {{number}} ({{waste_type}}) correspond aux déchets que vous acceptez."
+      },
+      "marketplace.offer_received": {
+        "title": "Nouvelle offre — {{number}}",
+        "body": "{{buyer}} a fait une offre sur « {{title}} »."
+      },
+      "marketplace.counter_offer": {
+        "title": "Contre-proposition — {{number}}",
+        "body": "Une proposition attend votre réponse sur « {{title}} »."
+      },
+      "marketplace.offer_accepted": {
+        "title": "Accord conclu — {{number}}",
+        "body": "L'accord sur « {{title}} » est conclu ; un enlèvement est préparé au prix convenu."
+      },
+      "marketplace.offer_refused": {
+        "title": "Proposition refusée — {{number}}",
+        "body": "La négociation sur « {{title}} » a été refusée."
+      },
+      "marketplace.offer_withdrawn": {
+        "title": "Offre retirée — {{number}}",
+        "body": "{{buyer}} a retiré son offre sur « {{title}} »."
+      },
+      "marketplace.listing_closed": {
+        "title": "Annonce close — {{number}}",
+        "body": "« {{title}} » est close : {{reason}}."
+      },
+      "contract.activated": {
+        "title": "Contrat {{number}} en vigueur",
+        "body": "{{company}} a mis en vigueur le contrat « {{title}} »."
+      },
+      "contract.ending_soon": {
+        "title": "Contrat {{number}} bientôt échu",
+        "body": "Le contrat « {{title}} » avec {{company}} prend fin le {{date}}."
+      },
+      "contract.terminated": {
+        "title": "Contrat {{number}} résilié",
+        "body": "{{company}} a mis fin au contrat « {{title}} » au {{date}}."
+      },
+      "contract.pickup_due": {
+        "title": "Enlèvement prévu {{when}} : contrat {{number}}",
+        "body": "Le contrat « {{title}} » avec {{partner}} prévoit un enlèvement le {{date}}, et aucun n'est demandé : préparez la demande."
       }
     },
-    "mailOnRequest": "E-mail envoyé seulement si vous le demandez : par défaut, les alertes de stock et de capacité partent par e-mail aux personnes qui gèrent les limites ou les zones du site. Vous les voyez toujours ici."
+    "mailOnRequest": "E-mail envoyé seulement si vous le demandez : par défaut, les alertes de stock et de capacité partent par e-mail aux personnes qui gèrent les limites ou les zones du site. Vous les voyez toujours ici.",
+    "more": "+{{count}}",
+    "byType": "Réglage par type de notification",
+    "areaCount": "{{count}} type(s) de notification",
+    "areas": {
+      "pickups": "Enlèvements",
+      "stock": "Stock et capacité",
+      "compliance": "Conformité et agréments",
+      "marketplace": "Bourse",
+      "contracts": "Contrats",
+      "reports": "Rapports",
+      "billing": "Abonnement et factures",
+      "other": "Autres"
+    }
   },
   "onboarding": {
     "bannerTitle": "Terminez la mise en route.",
     "bannerBody": "{{done}} étape(s) sur {{total}} réalisée(s).",
     "resume": "Reprendre",
     "title": "Mise en route",
-    "lead": "Quatre étapes pour rendre votre espace opérationnel. Chacune peut être passée et reprise plus tard.",
+    "lead": "Quelques étapes pour rendre votre espace opérationnel. Chacune peut être passée et reprise plus tard.",
     "done": "Terminé",
     "skipped": "Passée",
     "todo": "À faire",
@@ -743,7 +903,46 @@
         "title": "Vos prestataires",
         "body": "Choisissez dans l'annuaire les collecteurs et recycleurs avec lesquels vous travaillez.",
         "count": "{{count}} partenaire(s)"
+      },
+      "profile": {
+        "title": "Votre façon de travailler",
+        "body": "Cinq questions pour n'afficher que ce que vous utilisez. Vous pourrez tout changer dans Paramètres.",
+        "count": ""
       }
+    },
+    "saveAnswers": "Enregistrer mes réponses",
+    "questions": {
+      "erp": "Avez-vous un ERP (Sage, Odoo, SAP…) ?",
+      "production": "Suivez-vous la production (OF, matières premières) ?",
+      "hazardous": "Produisez-vous des déchets dangereux ?",
+      "customs": "Certains déchets sortent-ils sous autorisation de la douane ?",
+      "marketplace": "Voulez-vous vendre des lots à des prestataires ?"
+    },
+    "industryQuestion": "Dans quel secteur travaillez-vous ?",
+    "industries": {
+      "textile": "Textile et habillement",
+      "agriculture": "Agriculture et élevage",
+      "food": "Agroalimentaire",
+      "metal": "Métallurgie et mécanique",
+      "plastics": "Plastiques et caoutchouc",
+      "chemicals": "Chimie et cosmétique",
+      "construction": "Bâtiment et travaux publics",
+      "other": "Autre industrie"
+    },
+    "data": {
+      "title": "Comment vos données arrivent-elles ?",
+      "lead": "Vos données de production se saisissent dans DivaWaste, ou s'importent d'un tableau Excel que vous tenez déjà :",
+      "leadAny": "Vos données de production peuvent être saisies à la main, ou arriver toutes seules :",
+      "manual": "Les saisir dans DivaWaste",
+      "manualHint": "Vos ordres de fabrication (OF), articles et matières, au bureau ou depuis le téléphone de l'atelier.",
+      "fileHintSheet": "Téléchargez le modèle et remplissez-le, ou partez de votre tableau Excel, puis importez-le.",
+      "leadErp": "Votre ERP détient déjà vos données : reliez-le à DivaWaste, de la façon la plus simple pour vous.",
+      "file": "Importer un fichier Excel ou CSV",
+      "fileHint": "Téléchargez le modèle, remplissez-le ou exportez-le de votre ERP, puis importez-le.",
+      "nightly": "Chaque nuit, depuis votre ERP",
+      "nightlyHint": "Votre ERP dépose un export à une adresse : DivaWaste le lit chaque nuit vers 4 h.",
+      "api": "En direct, par l'API",
+      "apiHint": "Votre ERP envoie ses données à DivaWaste avec une clé d'accès, au fil de l'eau."
     }
   },
   "dashboard": {
@@ -788,7 +987,9 @@
     },
     "production": "Origine des déchets en production",
     "productionHint": "Les ordres de fabrication qui ont produit le plus de déchets sur la période.",
-    "seeAll": "Tout voir"
+    "seeAll": "Tout voir",
+    "greeting": "Bonjour {{name}}",
+    "period": "Sur la période"
   },
   "lots": {
     "title": "Lots de déchets",
@@ -826,7 +1027,7 @@
     "createTitle": "Nouveau lot",
     "created": "Lot {{number}} créé.",
     "stored": "Lot mis en stock.",
-    "weighed": "Poids mis à jour.",
+    "weighed": "Pesé",
     "splitDone": "Lot fractionné en {{count}} lots.",
     "groupDone": "Lots regroupés dans {{number}}.",
     "splitHint": "Le lot d'origine est clôturé et remplacé par les nouveaux lots, chacun avec sa propre étiquette.",
@@ -846,7 +1047,8 @@
       "split_from": "Issu d'un fractionnement",
       "grouped_into": "Regroupé",
       "grouped_from": "Issu d'un regroupement",
-      "packages_corrected": "Nombre de colis modifié"
+      "packages_corrected": "Nombre de colis modifié",
+      "composition_changed": "Composition modifiée"
     },
     "by": "par {{actor}}",
     "previousWeight": "poids précédent {{kg}} kg",
@@ -858,11 +1060,11 @@
     "production": "Origine en production",
     "productionOrder": "Ordre de fabrication",
     "noProductionOrder": "Sans OF",
-    "productionOrderHint": "Facultatif. L'étape est déduite de la zone, la matière de l'OF.",
+    "productionOrderHint": "Facultatif. L'étape est déduite de la zone, la matière première de l'OF.",
     "rawMaterial": "Matière première",
     "materialOfOrder": "Celle de l'OF",
     "editOrigin": "Origine",
-    "originHint": "D'où vient ce lot en production. Laissez vide ce que vous ne savez pas : l'étape est déduite de la zone, la matière de l'OF.",
+    "originHint": "D'où vient ce lot en production. Laissez vide ce que vous ne savez pas : l'étape est déduite de la zone, la matière première de l'OF.",
     "stepOfZone": "Celle de la zone",
     "quantityIn": "Quantité ({{unit}})",
     "countedHint": "Ce déchet se déclare en quantité, pas au poids.",
@@ -899,7 +1101,75 @@
     "groupPackages": "Nombre de colis du lot regroupé",
     "groupPackagesHint": "Comptez le résultat : trois lots mis dans une seule balle font un colis. Laissé vide : 1, par défaut.",
     "packagesChange": "{{from}} → {{to}} colis",
-    "afterDeparture": "après départ"
+    "afterDeparture": "après départ",
+    "compositionComplete": "Compléter à 100 %",
+    "compositionUnknown": "Composition non renseignée",
+    "compositionDefault": "Sans saisie, le lot prendra la composition du type : {{label}}.",
+    "compositionHint": "Ajoutez les matières si vous les connaissez (étiquette, fiche du fournisseur, connaissance de l'atelier). Sinon, laissez vide.",
+    "compositionUseType": "Partir de celle du type",
+    "editComposition": "Composition",
+    "compositionAdd": "Renseigner",
+    "compositionEditHint": "Ce dont le lot est fait, matière par matière, pour un total de 100 %. Inutile de suivre les matières premières ou la production : indiquez ce que vous savez du lot. Un enlèvement pas encore parti suit la nouvelle composition ; elle figure sur le bordereau de suivi.",
+    "compositionSource": {
+      "entered": "Saisie sur le lot",
+      "raw_material": "Reprise de la matière première",
+      "waste_type": "Composition par défaut du type — à vérifier",
+      "grouping": "Moyenne des lots regroupés",
+      "split": "Reprise du lot fractionné"
+    },
+    "where": "Site et zone",
+    "weightBasisLabel": "Comment connaissez-vous ce poids ?",
+    "estimated": "Estimé",
+    "fromType": "Celui du type de déchet",
+    "printOnCreate": "Imprimer l'étiquette",
+    "createAnother": "Créer et un autre",
+    "defaults": {
+      "packaging": "Conditionnement : {{name}}",
+      "composition": "Composition : {{label}}",
+      "none": "Conditionnement, couleur, composition, remarques"
+    },
+    "views": {
+      "label": "Lots affichés",
+      "onsite": "Sur site",
+      "gone": "Partis",
+      "all": "Tous"
+    },
+    "selection": "{{count}} lot(s) sélectionné(s)",
+    "selectedLabel": "lot(s) sélectionné(s)",
+    "differentSites": "Lots de plusieurs sites : choisissez-en d'un seul site",
+    "cannotGroup": "Seuls des lots du même site, du même type et de même dangerosité se regroupent.",
+    "cannotGroupShort": "Regroupement impossible",
+    "printLabels": "Imprimer les étiquettes",
+    "moveSelected": "Changer de zone ({{count}} lots)",
+    "movedCount": "{{count}} lot(s) déplacé(s).",
+    "factsWhat": "Quoi",
+    "factsWhere": "Où",
+    "factsTrace": "Traçabilité",
+    "splitRemaining": "reste {{kg}} kg à répartir",
+    "splitOver": "{{kg}} kg de trop",
+    "splitBalanced": "le compte est bon",
+    "requestPickup": "Demander un enlèvement",
+    "next": {
+      "created": "Rangez-le en stock, pesez-le s'il ne l'est pas, ou demandez son enlèvement",
+      "stored": "En stock : il attend une demande d'enlèvement ou une vente",
+      "awaiting_pickup": "Il partira avec l'enlèvement demandé",
+      "collected": "Parti : le destinataire va le recevoir et le traiter",
+      "treated": "Traité : il sera clôturé avec son enlèvement",
+      "closed": "Cycle terminé, de la production au traitement"
+    },
+    "partWhat": "Le déchet",
+    "partHowMuch": "La quantité",
+    "basisWeighed": "Pesé sur une balance",
+    "basisEstimated": "Estimé à vue",
+    "importButton": "Importer",
+    "import": {
+      "title": "Importer des lots",
+      "subtitle": "Depuis un registre tenu dans Excel ou un export de votre ERP, une ligne par lot.",
+      "step1": "1. Votre fichier",
+      "lead": "Une ligne par lot. Il faut au moins le site et le type de déchet ; le poids, la date, la zone, l'emballage et votre référence sont facultatifs. Sans zone, le lot va dans l'aire de stockage du site. Une ligne dont la référence a déjà été importée n'est pas créée deux fois.",
+      "daviTip": "Plus simple : glissez ce fichier dans l'assistant virtuel. Il vérifie chaque ligne et vous demande votre accord avant d'importer.",
+      "seeLots": "Voir les lots"
+    }
   },
   "stock": {
     "title": "Stock de déchets",
@@ -932,7 +1202,7 @@
     "defineLimit": "Définir",
     "waiting": "En attente d'enlèvement",
     "usage": "Utilisation",
-    "warnAt": "alerte à {{pct}} %",
+    "warnAt": "Prévenir à {{pct}} % de la limite",
     "limitsHint": "Une limite est une quantité maximale — en t, kg, m³, l ou colis — pour tout un site, une zone ou un type de déchet. Vous recevez une alerte à l’approche de la limite, puis une autre si elle est dépassée.",
     "limitIntro": "Choisissez ce que la limite surveille (un site, une zone, un type de déchet) et dans quelle unité : poids, pièces, volume ou nombre de colis. Un même stock peut avoir plusieurs limites, par exemple un poids et un nombre de sacs ; chacune est évaluée séparément.",
     "maxHint": "Quantité à ne pas dépasser, dans l’unité choisie.",
@@ -977,7 +1247,9 @@
     "limitPreviewAll": "{{where}} : alerte quand le stock, tous déchets confondus, dépasse {{max}} {{unit}}, et dès {{pct}} % de cette limite. Aucun lot n’est refusé.",
     "limitOutside": "{{count}} autre(s) lot(s) du périmètre en vrac ou dans un autre conditionnement que {{packaging}} : non concernés par cette limite.",
     "wholeSite": "Tout le site",
-    "noSiteLimit": "Aucune limite sur le site entier"
+    "noSiteLimit": "Aucune limite sur le site entier",
+    "setZoneLimit": "Fixer une limite",
+    "emptyZone": "Enlever les lots de la zone"
   },
   "sites": {
     "title": "Sites et zones",
@@ -1048,7 +1320,13 @@
     "siteLimitLink": "Fixer une limite sur le site",
     "siteLoadLots": "sur le site ({{count}} lot(s))",
     "sharedRoom": "Une seule place, partagée : la zone contient {{lines}}, ou un mélange — par exemple {{half}}. Chaque colis en prend sa part.",
-    "orMix": "ou un mélange (place partagée)"
+    "orMix": "ou un mélange (place partagée)",
+    "zonesToCreate": "Zones à créer avec le site",
+    "zonesToCreateHint": "Chaque zone choisie est créée avec le nom de son type ; vous les ajusterez ensuite sur la page du site.",
+    "zoneMoreSummary": "Charge maximale, alerte à {{pct}} %, zone réservée à certains déchets",
+    "closed": "Site « {{name}} » fermé : il reste dans l'historique et n'est plus proposé pour les nouveaux lots.",
+    "storageZone": "Aire de stockage déchets",
+    "storageAlways": "Créée avec chaque site : c'est là que les lots sont rangés."
   },
   "wasteTypes": {
     "title": "Types de déchets",
@@ -1097,7 +1375,15 @@
       "title": "Code réglementaire — {{name}}",
       "completeHint": "Ce type dangereux a été créé sans code. Le code choisi est enregistré une fois et ne change plus ; les lots de ce type qui n’en ont pas le reçoivent, et leurs bordereaux peuvent être établis. Les bordereaux existants ne sont pas modifiés.",
       "activateHint": "Ce déchet du catalogue est dangereux et n’a pas de code de votre pays : choisissez-le pour l’activer."
-    }
+    },
+    "add": "Ajouter un type",
+    "missingCodes": "{{count}} type(s) de déchet dangereux sans code déchet : les bordereaux ne peuvent pas être établis.",
+    "completeAll": "Compléter les codes",
+    "searchCatalog": "Chercher dans le catalogue : nom ou code déchet",
+    "nothingFits": "Rien ne correspond ? Créer un type personnalisé",
+    "moreSummary": "Mesure, filière, conditionnement, composition par défaut",
+    "allSectors": "Voir les déchets des autres secteurs",
+    "mySector": "Seulement mon secteur"
   },
   "pickups": {
     "title": "Enlèvements",
@@ -1144,13 +1430,23 @@
         "unverifiable": "l’autorisation {{reference}} est limitée en poids et ces lots n’ont pas de poids mesuré : {{lots}}. Pesez-les avant de demander l’enlèvement.",
         "blocked": "Demande bloquée — limite(s) en cause : {{limits}}."
       },
-      "transporterConfirms": "Ce transporteur a un compte : il confirmera la date après le destinataire."
+      "transporterConfirms": "Ce transporteur a un compte : il confirmera la date après le destinataire.",
+      "underContract": "Sous contrat",
+      "showOthers": "Voir les autres prestataires ({{count}}) qui ne peuvent pas prendre cet enlèvement",
+      "hideOthers": "Masquer les prestataires indisponibles",
+      "transportBy": "Transport : {{name}}",
+      "contract": {
+        "ok": "Cet enlèvement suivra le contrat {{number}} : ses prix et ses frais s'appliqueront.",
+        "ended": "Le contrat {{number}} avec ce prestataire a pris fin le {{date}} : cet enlèvement ne suivra aucun contrat (ni ses prix, ni ses frais).",
+        "terminated": "Le contrat {{number}} avec ce prestataire a été résilié (fin le {{date}}) : cet enlèvement ne suivra aucun contrat.",
+        "upcoming": "Le contrat {{number}} ne commence que le {{date}} : à cette date d'enlèvement, il ne s'appliquera pas encore."
+      }
     },
     "actions": {
       "submit": "Envoyer la demande",
       "cancel": "Annuler l'enlèvement",
       "collect": "Enregistrer le chargement",
-      "acknowledge": "Prendre en compte l'écart",
+      "acknowledge": "Traiter l'écart",
       "price": "Saisir les prix",
       "complete": "Clôturer",
       "confirm": "Confirmer une date",
@@ -1159,9 +1455,12 @@
       "treat": "Déclarer le traitement",
       "manifest": "Établir les bordereaux de suivi",
       "certificate": "Déposer un certificat",
-      "authorize": "Accepter l’écart",
+      "authorize": "Traiter l'écart",
       "confirmTransport": "Confirmer le transport",
-      "refuseTransport": "Refuser le transport"
+      "refuseTransport": "Refuser le transport",
+      "confirmOn": "Confirmer le {{date}}",
+      "otherDate": "Proposer une autre date",
+      "fixPrices": "Corriger les prix"
     },
     "cancelReason": "Motif de l'annulation",
     "refuseReason": "Motif du refus",
@@ -1260,7 +1559,55 @@
     "awaitingTransporter": "{{receiver}} a confirmé pour le {{date}}. L’enlèvement sera confirmé quand {{transporter}} aura confirmé le transport.",
     "refusedByTransporter": "Transport refusé par {{transporter}} : {{reason}}. Les lots sont revenus en stock ; demandez l’enlèvement avec un autre transporteur.",
     "transporterConfirmedOn": "confirmé le {{date}}",
-    "waitingTransporter": "En attente du transporteur"
+    "waitingTransporter": "En attente du transporteur",
+    "receiveAsDeparted": "Tout reçu comme parti",
+    "collectAsDeclared": "Tout chargé comme déclaré",
+    "sameChannel": "Même filière pour tous les lots :",
+    "steps": {
+      "label": "Étapes de l'enlèvement",
+      "draft": "Brouillon",
+      "requested": "Demandé",
+      "confirmed": "Date confirmée",
+      "collected": "Chargé",
+      "received": "Reçu",
+      "completed": "Clôturé",
+      "next": {
+        "draft": "À vous : envoyer la demande au prestataire",
+        "confirm": "{{receiver}} doit confirmer la date",
+        "confirmMine": "À vous : confirmer la date demandée",
+        "confirmTransport": "{{transporter}} doit confirmer le transport",
+        "confirmTransportMine": "À vous : confirmer le transport",
+        "loading": "Enlèvement prévu le {{date}} : enregistrez le chargement quand les lots partent",
+        "loadingProvider": "Enlèvement prévu le {{date}}",
+        "receive": "{{receiver}} doit enregistrer la réception",
+        "receiveMine": "À vous : enregistrer la réception",
+        "variance": "À vous : traiter l'écart de poids à la réception",
+        "varianceProvider": "Le client examine l'écart de poids à la réception",
+        "treat": "{{receiver}} doit déclarer le traitement",
+        "treatMine": "À vous : déclarer le traitement",
+        "close": "À vous : clôturer l'enlèvement",
+        "closeProvider": "Le client va clôturer l'enlèvement",
+        "completed": "Enlèvement clôturé",
+        "refused": "Refusé par {{receiver}}",
+        "refusedByTransporter": "Transport refusé par {{transporter}}",
+        "cancelled": "Enlèvement annulé"
+      }
+    },
+    "tabs": {
+      "label": "Enlèvements affichés",
+      "company": {
+        "todo": "À faire",
+        "waiting": "Chez le prestataire",
+        "done": "Terminés",
+        "all": "Tous"
+      },
+      "provider": {
+        "todo": "À traiter",
+        "waiting": "Planifiés",
+        "done": "Terminés",
+        "all": "Tous"
+      }
+    }
   },
   "providers": {
     "title": "Prestataires",
@@ -1270,7 +1617,7 @@
       "collector": "Collecteur",
       "transporter": "Transporteur",
       "recycler": "Recycleur",
-      "eliminator": "Éliminateur"
+      "sorter": "Trieur"
     },
     "serviceArea": "Zone d'intervention",
     "contact": "Contact",
@@ -1311,7 +1658,21 @@
     "wholeFamily": "Toute la famille",
     "addsToFamily": "S’ajoute à l’exigence de la famille",
     "addsToFamilyOn": "Les lots de ce type comptent aussi dans l’exigence de leur famille.",
-    "addsToFamilyOff": "Pour les lots de ce type, cette ligne remplace celle de la famille."
+    "addsToFamilyOff": "Pour les lots de ce type, cette ligne remplace celle de la famille.",
+    "tabs": {
+      "mine": "Mes prestataires",
+      "directory": "Annuaire"
+    },
+    "platformPartners": "Partenaires de la plateforme",
+    "makeContract": "Faire un contrat",
+    "sentence": {
+      "min": "Minimum",
+      "perPickup": "par enlèvement,",
+      "anyPackaging": "tout conditionnement",
+      "inPackaging": "en {{name}}"
+    },
+    "viewContract": "Voir le contrat {{number}}",
+    "anotherContract": "Nouveau contrat"
   },
   "compliance": {
     "register": {
@@ -1363,7 +1724,8 @@
       "copyTitle": "Exemplaire signé du bordereau {{number}}",
       "copyHint": "Toutes les parties ont signé, dont au moins une à la main. Joignez le scan du bordereau portant les signatures : il clôture le bordereau et devient le document archivé.",
       "copyFile": "Choisir le fichier (PDF, JPG ou PNG)",
-      "copyAttached": "Exemplaire signé joint. Bordereau clôturé."
+      "copyAttached": "Exemplaire signé joint. Bordereau clôturé.",
+      "viewSigned": "Voir l'exemplaire signé"
     },
     "declarations": {
       "title": "Déclarations annuelles",
@@ -1402,6 +1764,12 @@
       "uploadedBy": "Déposé par",
       "emptyTitle": "Aucun document",
       "emptyHint": "Les documents apparaissent ici dès qu'un certificat est déposé ou qu'un bordereau est signé."
+    },
+    "overview": {
+      "title": "Conformité",
+      "subtitle": "Ce qu'il manque pour être en règle. Le registre, les bordereaux, les documents et les déclarations sont dans les onglets.",
+      "missing": "Ce qui manque",
+      "clear": "Bordereaux signés, documents complets, codes déchet renseignés : rien ne manque."
     }
   },
   "reports": {
@@ -1425,7 +1793,25 @@
     "month": "Mois",
     "pieces": "Pièces produites",
     "productionSaved": "Production enregistrée.",
-    "language": "Langue"
+    "language": "Langue",
+    "custom": "Rapport personnalisé",
+    "presets": {
+      "rseYear": {
+        "title": "Bilan RSE de l'année",
+        "hint": "Depuis le 1er janvier, en PDF avec votre logo"
+      },
+      "registerMonth": {
+        "title": "Registre du mois dernier",
+        "hint": "Le registre chronologique, en Excel"
+      },
+      "balanceQuarter": {
+        "title": "Bilan économique du trimestre",
+        "hint": "Recettes et coûts des trois derniers mois, en PDF"
+      }
+    },
+    "monthly": "Recevoir chaque mois (le 1er, sur le mois écoulé)",
+    "monthlyOn": "Ce rapport sera généré le 1er de chaque mois.",
+    "monthlyOff": "Envoi mensuel arrêté."
   },
   "admin": {
     "users": {
@@ -1456,14 +1842,35 @@
       "invited": "Invitation envoyée.",
       "rolesSaved": "Rôles mis à jour.",
       "newRole": "Nouveau rôle",
-      "roleName": "Identifiant (lettres minuscules, chiffres, _)",
       "roleLabel": "Libellé",
       "systemRole": "Rôle standard",
       "customRole": "Rôle de la société",
       "systemHint": "Les rôles standard sont maintenus par Diva Software. Créez un rôle de société pour un besoin particulier.",
       "permissions": "Permissions",
       "roleSaved": "Rôle enregistré.",
-      "roleDeleted": "Rôle supprimé."
+      "roleDeleted": "Rôle supprimé.",
+      "pendingInvitations": "Invitations en attente ({{count}})",
+      "expires": "expire le {{date}}",
+      "roleHints": {
+        "client_admin": "Tout faire dans la société : équipe, sites, référentiel, abonnement, et toutes les opérations.",
+        "environment_manager": "Gérer les déchets de bout en bout : lots, stock, enlèvements, prestataires, conformité et rapports.",
+        "workshop_operator": "Créer, peser et ranger les lots, et charger les enlèvements, sur ses sites.",
+        "management_viewer": "Consulter le tableau de bord, les rapports et les chiffres, sans rien modifier.",
+        "auditor": "Lire le registre, les bordereaux, les documents et le journal d'audit, sans rien modifier.",
+        "provider_admin": "Gérer le profil, les agréments, l'équipe, et répondre aux demandes d'enlèvement.",
+        "provider_operator": "Répondre aux demandes d'enlèvement, enregistrer les réceptions et déposer les certificats.",
+        "super_admin": "Administrer la plateforme.",
+        "platform_support": "Aider les clients de la plateforme."
+      },
+      "detail": "Détail",
+      "levels": {
+        "none": "Aucun",
+        "view": "Voir",
+        "manage": "Gérer",
+        "custom": "Sur mesure",
+        "customCount": "{{count}} sur {{total}}"
+      },
+      "roleNameIs": "Identifiant : {{name}}"
     },
     "audit": {
       "title": "Journal d'audit",
@@ -1576,7 +1983,11 @@
       "published": "Profil publié dans l'annuaire",
       "unpublished": "Profil non publié (en attente de validation)",
       "addWaste": "Ajouter un déchet accepté",
-      "saved": "Profil enregistré."
+      "saved": "Profil enregistré.",
+      "familiesHint": "Cliquez sur les familles de déchets que vous prenez ; précisez ensuite, si besoin, un type, une filière ou ce que vous demandez par enlèvement.",
+      "requirements": "Ce que vous demandez par enlèvement",
+      "hasRequirement": "Minimum ou conditionnement demandé",
+      "noRequirement": "Aucune exigence"
     },
     "accreditations": {
       "title": "Mes agréments",
@@ -1649,7 +2060,11 @@
       "noHistory": "Aucune décision enregistrée.",
       "country": "Pays",
       "planRequested": "Formule demandée",
-      "inactiveSite": "Fermé"
+      "inactiveSite": "Fermé",
+      "tabs": {
+        "overview": "Aperçu",
+        "activity": "Sites, équipe et agréments"
+      }
     },
     "accreditations": {
       "title": "Agréments à valider",
@@ -2022,7 +2437,19 @@
       "subscription_plans": "Formule",
       "certificates": "Certificat",
       "stored_files": "Fichier",
-      "waste_tolerance_rules": "Règle de tolérance"
+      "waste_tolerance_rules": "Règle de tolérance",
+      "waste_authorizations": "Autorisation de sortie",
+      "production_clients": "Client",
+      "production_suppliers": "Fournisseur",
+      "raw_materials": "Matière première",
+      "articles": "Article",
+      "customer_orders": "Commande",
+      "production_orders": "Ordre de fabrication",
+      "external_partners": "Prestataire sans compte",
+      "contracts": "Contrat",
+      "marketplace_listings": "Annonce de la Bourse",
+      "user_invitations": "Invitation",
+      "marketplace_negotiations": "Négociation de la Bourse"
     },
     "events": {
       "created": "Création",
@@ -2087,7 +2514,276 @@
       "net_weight_kg": "Poids net (kg)",
       "zone_id": "Zone",
       "site_id": "Site",
-      "email": "Email"
+      "email": "Email",
+      "id": "Identifiant",
+      "ulid": "Identifiant",
+      "city": "Ville",
+      "phone": "Téléphone",
+      "tax_id": "Matricule fiscal",
+      "timezone": "Fuseau horaire",
+      "country_id": "Pays",
+      "legal_name": "Raison sociale",
+      "approved_at": "Approuvé le",
+      "company_type": "Type de société",
+      "submitted_at": "Envoyé le",
+      "address_line1": "Adresse",
+      "currency_code": "Devise",
+      "default_locale": "Langue",
+      "user_id": "Utilisateur",
+      "joined_at": "Arrivé le",
+      "company_id": "Société",
+      "role_id": "Rôle",
+      "is_sorter": "Trieur",
+      "description": "Description",
+      "is_recycler": "Recycleur",
+      "is_collector": "Collecteur",
+      "is_published": "Publié",
+      "published_at": "Publié le",
+      "service_area": "Zone desservie",
+      "public_contact_name": "Contact public",
+      "public_contact_email": "E-mail public",
+      "public_contact_phone": "Téléphone public",
+      "expires_on": "Expire le",
+      "valid_from": "Valable du",
+      "reviewed_at": "Examiné le",
+      "review_status": "Examen",
+      "stored_file_id": "Fichier",
+      "reference_number": "Référence",
+      "issuing_authority": "Autorité émettrice",
+      "accreditation_type_id": "Type d'agrément",
+      "primary_contact_user_id": "Contact principal",
+      "starts_at": "Début",
+      "is_current": "En cours",
+      "trial_ends_at": "Fin de l'essai",
+      "price_snapshot": "Prix retenu",
+      "trial_starts_at": "Début de l'essai",
+      "created_by_user_id": "Créé par",
+      "subscription_plan_id": "Formule",
+      "site_kind": "Nature du site",
+      "activated_at": "Activé le",
+      "zone_type_id": "Type de zone",
+      "is_waste_storage": "Stockage de déchets",
+      "capacity_alert_pct": "Alerte de capacité (%)",
+      "is_hazardous": "Dangereux",
+      "density_kg_m3": "Densité (kg/m³)",
+      "unit_weight_kg": "Poids unitaire (kg)",
+      "default_unit_id": "Unité",
+      "waste_family_id": "Famille de déchet",
+      "extra_attributes": "Autres informations",
+      "measurement_method": "Mesure",
+      "default_composition": "Composition par défaut",
+      "default_grammage_gsm": "Grammage par défaut (g/m²)",
+      "waste_catalog_item_id": "Déchet du catalogue",
+      "requires_authorization": "Sous autorisation",
+      "default_color_family_id": "Couleur par défaut",
+      "regulatory_waste_code_id": "Code déchet",
+      "default_packaging_type_id": "Conditionnement par défaut",
+      "default_treatment_channel_id": "Filière habituelle",
+      "notes": "Notes",
+      "unit_id": "Unité",
+      "quantity": "Quantité",
+      "lot_number": "N° de lot",
+      "color_label": "Couleur",
+      "origin_type": "Origine",
+      "generated_at": "Produit le",
+      "grammage_gsm": "Grammage (g/m²)",
+      "weight_basis": "Base du poids",
+      "package_count": "Nombre de colis",
+      "waste_type_id": "Type de déchet",
+      "tare_weight_kg": "Tare (kg)",
+      "color_family_id": "Couleur",
+      "gross_weight_kg": "Poids brut (kg)",
+      "raw_material_id": "Matière première",
+      "created_device_id": "Appareil",
+      "packaging_type_id": "Conditionnement",
+      "production_step_id": "Étape de production",
+      "production_order_id": "Ordre de fabrication",
+      "raw_material_batch_id": "Lot de matière première",
+      "package_count_confirmed": "Nombre de colis confirmé",
+      "started_at": "Commencé le",
+      "provider_company_id": "Prestataire",
+      "settings": "Réglages",
+      "is_transporter": "Transporteur",
+      "max_kg": "Limite (kg)",
+      "alert_pct": "Alerte (%)",
+      "issued_on": "Délivré le",
+      "reference": "Référence",
+      "valid_until": "Valable jusqu'au",
+      "contact_name": "Contact",
+      "country_code": "Pays",
+      "width_cm": "Laize (cm)",
+      "composition": "Composition",
+      "production_supplier_id": "Fournisseur",
+      "family": "Famille",
+      "production_client_id": "Client",
+      "due_on": "Échéance",
+      "ordered_on": "Commandé le",
+      "order_number": "N° de commande",
+      "article_id": "Article",
+      "started_on": "Commencé le",
+      "finished_on": "Terminé le",
+      "quantity_planned": "Quantité prévue",
+      "customer_order_id": "Commande",
+      "quantity_produced": "Quantité produite",
+      "postal_code": "Code postal",
+      "covers_hazardous": "Couvre les dangereux",
+      "accreditation_reference": "Référence de l'agrément",
+      "accreditation_expires_on": "Fin de l'agrément",
+      "unit_code": "Unité",
+      "measure_key": "Mesure",
+      "warning_pct": "Seuil d'alerte (%)",
+      "max_quantity": "Quantité maximale",
+      "title": "Titre",
+      "ends_on": "Fin",
+      "weekdays": "Jours",
+      "frequency": "Rythme",
+      "starts_on": "Début",
+      "party_role": "Rôle du prestataire",
+      "pickup_fee": "Frais d'enlèvement",
+      "contract_number": "N° de contrat",
+      "planned_pickups": "Enlèvements prévus",
+      "payment_terms_days": "Délai de paiement (jours)",
+      "pickups_per_period": "Enlèvements par période",
+      "external_partner_id": "Prestataire sans compte",
+      "pickup_fee_direction": "Sens des frais d'enlèvement",
+      "monthly_fee_direction": "Sens du forfait mensuel",
+      "contract_id": "Contrat",
+      "pickup_number": "N° d'enlèvement",
+      "requested_date": "Date demandée",
+      "variance_flagged": "Écart signalé",
+      "external_provider_id": "Destinataire sans compte",
+      "transport_contract_id": "Contrat de transport",
+      "transporter_company_id": "Transporteur",
+      "external_transporter_id": "Transporteur sans compte",
+      "awaiting_pickup_at": "En attente d'enlèvement le",
+      "updated_by_user_id": "Modifié par",
+      "requested_by_user_id": "Demandé par",
+      "confirmed_at": "Confirmé le",
+      "confirmed_date": "Date confirmée",
+      "confirmed_by_user_id": "Confirmé par",
+      "collected_at": "Enlevé le",
+      "departure_weight_kg": "Poids au départ (kg)",
+      "collected_by_user_id": "Chargé par",
+      "departure_weight_source": "Origine du poids au départ",
+      "received_at": "Reçu le",
+      "tolerance_status": "Écart",
+      "received_weight_kg": "Poids reçu (kg)",
+      "weight_variance_kg": "Écart de poids (kg)",
+      "received_by_user_id": "Reçu par",
+      "weight_variance_pct": "Écart de poids (%)",
+      "variance_threshold_pct": "Écart accepté (%)",
+      "contract_fees_amount": "Frais du contrat",
+      "treated_at": "Traité le",
+      "pickup_id": "Enlèvement",
+      "legal_hold": "Conservation légale",
+      "document_type": "Type de document",
+      "is_regulatory": "Réglementaire",
+      "shared_with_company_id": "Partagé avec",
+      "uploaded_by_company_id": "Déposé par",
+      "document_id": "Document",
+      "manifest_number": "N° de bordereau",
+      "producer_snapshot": "Producteur",
+      "receiver_snapshot": "Destinataire",
+      "declared_weight_kg": "Poids déclaré (kg)",
+      "receiver_company_id": "Destinataire",
+      "transporter_snapshot": "Transporteur",
+      "checksum_sha256": "Empreinte du fichier",
+      "source_snapshot": "Origine",
+      "issued_at": "Émis le",
+      "retention_until": "Conservé jusqu'au",
+      "variance_comment": "Commentaire sur l'écart",
+      "variance_decision": "Décision sur l'écart",
+      "variance_acknowledged_at": "Écart traité le",
+      "variance_acknowledged_by_user_id": "Écart traité par",
+      "closed_at": "Clôturé le",
+      "closed_reason": "Motif de clôture",
+      "completed_at": "Terminé le",
+      "completed_by_user_id": "Terminé par",
+      "basis": "Base",
+      "direction": "Sens",
+      "blocking_pct": "Seuil bloquant (%)",
+      "treatment_channel_id": "Filière de traitement",
+      "source": "Origine",
+      "period_month": "Mois",
+      "pieces_produced": "Pièces produites",
+      "entered_by_user_id": "Saisi par",
+      "ends_at": "Fin",
+      "payment_method": "Moyen de paiement",
+      "sites_quantity": "Nombre de sites",
+      "billing_interval": "Périodicité",
+      "replaced_by_subscription_id": "Remplacé par",
+      "due_date": "Échéance",
+      "period_end": "Fin de période",
+      "tax_amount": "TVA",
+      "amount_paid": "Montant payé",
+      "invoice_type": "Type de facture",
+      "period_start": "Début de période",
+      "total_amount": "Montant TTC",
+      "subtotal_amount": "Montant HT",
+      "stamp_duty_amount": "Timbre fiscal",
+      "company_subscription_id": "Abonnement",
+      "issue_date": "Date d'émission",
+      "buyer_snapshot": "Client facturé",
+      "invoice_number": "N° de facture",
+      "seller_snapshot": "Vendeur",
+      "issued_by_user_id": "Émis par",
+      "current_period_end": "Fin de la période en cours",
+      "current_period_start": "Début de la période en cours",
+      "amount": "Montant",
+      "method": "Moyen",
+      "invoice_id": "Facture",
+      "bank_reference": "Référence bancaire",
+      "declared_paid_on": "Payé le (déclaré)",
+      "declared_by_user_id": "Déclaré par",
+      "suspended_at": "Suspendu le",
+      "suspension_reason": "Motif de suspension",
+      "suspended_by_user_id": "Suspendu par",
+      "rejected_at": "Refusé le",
+      "rejection_reason": "Motif du refus",
+      "rejected_by_user_id": "Refusé par",
+      "trade_name": "Nom commercial",
+      "billing_email": "E-mail de facturation",
+      "approved_by_user_id": "Approuvé par",
+      "vat_number": "N° de TVA",
+      "region": "Gouvernorat",
+      "regulatory_identifier": "Identifiant réglementaire",
+      "space_method": "Mesure de la place",
+      "onboarding_state": "Mise en route",
+      "stored_at": "Stocké le",
+      "closes_at": "Clôture des offres",
+      "show_seller": "Vendeur affiché",
+      "available_from": "Disponible à partir du",
+      "listing_number": "N° d'annonce",
+      "asking_direction": "Sens du prix demandé",
+      "asking_unit_price": "Prix demandé",
+      "asking_pricing_mode": "Mode de prix",
+      "monthly_fee": "Forfait mensuel",
+      "cancellation_reason": "Motif d'annulation",
+      "message": "Message",
+      "site_ids": "Sites",
+      "last_name": "Nom",
+      "expires_at": "Expire le",
+      "first_name": "Prénom",
+      "send_count": "Envois",
+      "last_sent_at": "Dernier envoi",
+      "pending_flag": "En attente",
+      "invited_by_user_id": "Invité par",
+      "logo_stored_file_id": "Logo",
+      "capacity_kg": "Capacité (kg)",
+      "capacity_m3": "Capacité (m³)",
+      "category": "Catégorie",
+      "max_lots": "Nombre maximal de lots",
+      "shared_packaging_allowance": "Place partagée des colis",
+      "ended_at": "Terminé le",
+      "refused_by": "Refusé par",
+      "end_message": "Message de fin",
+      "marketplace_listing_id": "Annonce",
+      "accepted_at": "Accepté le",
+      "commission_pct": "Commission (%)",
+      "accepted_by_user_id": "Accepté par",
+      "accepted_proposal_id": "Proposition acceptée",
+      "accepted_negotiation_id": "Négociation retenue",
+      "marketplace_negotiation_id": "Négociation"
     }
   },
   "permissions": {
@@ -2164,11 +2860,19 @@
     "production.stats.view": "Voir les statistiques de production",
     "production.finance.view": "Voir les prix, les coûts et les gains de production",
     "pickups.authorize_variance": "Accepter un écart au-dessus du seuil bloquant",
-    "pickups.override_provider_requirements": "Envoyer une demande malgré une exigence bloquante du destinataire (minimum, conditionnement), avec un motif"
+    "pickups.override_provider_requirements": "Envoyer une demande malgré une exigence bloquante du destinataire (minimum, conditionnement), avec un motif",
+    "marketplace.view": "Voir les annonces de la bourse et leurs offres",
+    "marketplace.manage": "Préparer, publier, retirer une annonce ; contre-proposer",
+    "marketplace.accept": "Accepter ou refuser une offre (engage la société)",
+    "provider.marketplace.view": "Voir les annonces de la bourse",
+    "provider.marketplace.offer": "Faire, négocier, accepter ou retirer des offres",
+    "contracts.view": "Voir les contrats avec les prestataires",
+    "contracts.manage": "Rédiger, mettre en vigueur et résilier les contrats",
+    "provider.contracts.view": "Voir les contrats conclus avec nos clients"
   },
   "colors": {
     "title": "Couleurs",
-    "hint": "Les couleurs proposées sur les lots, les types de déchets, les matières et les zones. Les couleurs par défaut sont communes à tous ; les vôtres ne sont visibles que par votre société.",
+    "hint": "Les couleurs proposées sur les lots, les types de déchets, les matières premières et les zones. Les couleurs par défaut sont communes à tous ; les vôtres ne sont visibles que par votre société.",
     "new": "Ajouter une couleur",
     "edit": "Modifier la couleur",
     "default": "Par défaut",
@@ -2192,7 +2896,7 @@
     "withdrawn": "retirée",
     "lockedHint": "Cette couleur vient du catalogue : sa référence et sa teinte ne se modifient pas. Vous pouvez la renommer.",
     "deleteTitle": "Supprimer « {{name}} » ?",
-    "deleteMessage": "Une couleur déjà utilisée par un lot, un type de déchet, une matière ou une zone ne peut pas être supprimée : retirez-la de la liste à la place.",
+    "deleteMessage": "Une couleur déjà utilisée par un lot, un type de déchet, une matière première ou une zone ne peut pas être supprimée : retirez-la de la liste à la place.",
     "disclaimer": "Les teintes affichées sont des approximations pour écran, non vérifiées : elles ne remplacent pas un nuancier physique. PANTONE® est une marque de Pantone LLC, sans lien avec DivaWaste.",
     "collections": {
       "coated": "Couché (C)",
@@ -2273,7 +2977,24 @@
     "Lots reçus et fabriqués": "Lots reçus et fabriqués",
     "Coûts et gains": "Coûts et gains",
     "Commande": "Commande",
-    "Ordre de fabrication": "Ordre de fabrication"
+    "Ordre de fabrication": "Ordre de fabrication",
+    "Matières premières et articles": "Matières premières et articles",
+    "Annonce": "Annonce",
+    "Bourse": "Bourse",
+    "Clés d’accès API": "Clés d’accès API",
+    "Conditionnements": "Conditionnements",
+    "Conformité": "Conformité",
+    "Contrat": "Contrat",
+    "Contrats": "Contrats",
+    "Couleurs": "Couleurs",
+    "Entraîner l'assistant": "Entraîner l'assistant",
+    "Importer des lots": "Importer des lots",
+    "Journal d'audit": "Journal d'audit",
+    "Modules": "Modules",
+    "Paramètres": "Paramètres",
+    "Réception et écarts": "Réception et écarts",
+    "DivaWaste": "DivaWaste",
+    "Liste ANGed": "Liste ANGed"
   },
   "partners": {
     "title": "Partenaires sans compte",
@@ -2324,7 +3045,9 @@
       "count": "{{count}} exigence(s) par enlèvement, saisie(s) par votre société",
       "toReviewCount": "{{count}} à revoir",
       "internalNoteLinked": "Ces exigences ont été saisies par votre société, d’après un contrat ou un échange, quand le partenaire n’avait pas de compte. Il ne les a pas confirmées, et chaque demande d’enlèvement le rappelle. Chaque ajout, modification ou retrait est conservé dans le journal d’audit avec son auteur."
-    }
+    },
+    "contactDetails": "Coordonnées",
+    "contactSummary": "Matricule, adresse, contact, remarques"
   },
   "authorizations": {
     "title": "Autorisations de sortie des déchets",
@@ -2361,7 +3084,9 @@
     "shared": "Le document indique une seule quantité commune à ces conditionnements (« 40 balles ou 100 sacs »)",
     "sharedOn": "Une seule limite : chaque conditionnement en consomme sa part, et les parts s’additionnent (20 balles sur 40 et 50 sacs sur 100 l’épuisent).",
     "sharedOff": "Une limite par conditionnement : chacune est vérifiée séparément, et en dépasser une seule bloque la demande. Ne cochez la case que si le document le dit.",
-    "sharedTag": "quantité commune"
+    "sharedTag": "quantité commune",
+    "fileFirst": "Commencez par la déclaration signée par la douane : la référence, les dates et les quantités sont dessus.",
+    "fileFirstDavi": "Joignez le document en premier : l'assistant le lit et remplit le formulaire, vous vérifiez."
   },
   "production": {
     "reference": "Référence",
@@ -2388,21 +3113,21 @@
       "empty": "Aucun fournisseur"
     },
     "catalog": {
-      "title": "Matières et articles",
-      "subtitle": "Les matières premières consommées et les articles fabriqués. La composition et la couleur d'une matière sont reprises sur les déchets qui en proviennent."
+      "title": "Matières premières et articles",
+      "subtitle": "Les matières premières consommées et les articles fabriqués. La composition et la couleur d'une matière première sont reprises sur les déchets qui en proviennent."
     },
     "materials": {
       "title": "Matières premières",
       "one": "Matière première",
-      "new": "Nouvelle matière",
-      "edit": "Modifier la matière",
+      "new": "Nouvelle matière première",
+      "edit": "Modifier la matière première",
       "empty": "Aucune matière première",
       "unit": "Unité",
       "colorLabel": "Coloris ou référence Pantone",
       "addFibre": "Ajouter une fibre",
       "total": "Le total doit faire 100 % (actuellement {{total}} %).",
       "batches": "Lots reçus",
-      "batchesHint": "Chaque livraison de la matière. Un déchet ou une consommation peut ensuite désigner le lot exact.",
+      "batchesHint": "Chaque livraison de la matière première. Un déchet ou une consommation peut ensuite désigner le lot exact.",
       "batchNumber": "N° de lot",
       "receivedOn": "Reçu le",
       "width": "Laize (cm)",
@@ -2416,9 +3141,9 @@
       "empty": "Aucun article",
       "family": "Famille",
       "consumption": "Consommation par pièce",
-      "consumptionHint": "Ce qu'une pièce doit consommer de chaque matière. Sert à comparer le prévu et le réel d'un OF.",
+      "consumptionHint": "Ce qu'une pièce doit consommer de chaque matière première. Sert à comparer le prévu et le réel d'un OF.",
       "perPiece": "Par pièce",
-      "addMaterial": "Ajouter une matière"
+      "addMaterial": "Ajouter une matière première"
     },
     "orders": {
       "title": "Commandes",
@@ -2467,7 +3192,7 @@
       "step": "Étape",
       "piecesDone": "Pièces réalisées",
       "addStep": "Ajouter une étape",
-      "consumption": "Matières consommées",
+      "consumption": "Matières premières consommées",
       "expected": "prévu",
       "consumed": "consommé",
       "anyBatch": "Lot non précisé",
@@ -2478,9 +3203,11 @@
       "fromLots": "somme de {{count}} lot(s) fabriqué(s)",
       "typed": "saisi sur l’OF",
       "wasteKpi": "Déchets",
-      "wasteRate": "{{pct}} % de la matière consommée",
+      "wasteRate": "{{pct}} % de la matière première consommée",
       "wasteLots": "{{count}} lot(s) de déchets",
-      "producedHint": "Dès que l’OF a des lots fabriqués, cette quantité est leur somme."
+      "producedHint": "Dès que l’OF a des lots fabriqués, cette quantité est leur somme.",
+      "tabMake": "Étapes et consommations",
+      "tabMoney": "Coûts et gain"
     },
     "ofStatus": {
       "planned": "Prévu",
@@ -2517,29 +3244,59 @@
         "clients": "Clients",
         "suppliers": "Fournisseurs",
         "received_lots": "Lots reçus",
-        "consumptions": "Matières consommées",
+        "consumptions": "Matières premières consommées",
         "produced_lots": "Lots fabriqués",
         "expenses": "Dépenses de production",
-        "invoices": "Factures clients"
+        "invoices": "Factures clients",
+        "waste_lots": "Lots de déchets"
       },
       "hints": {
         "manufacturing_orders": "OF, article, quantités, étapes par site, consommations. Crée au besoin le client, la commande et l'article.",
         "orders": "Une ligne par article commandé. Crée au besoin le client et l'article.",
-        "articles": "Référence, client, et la consommation par pièce de chaque matière.",
+        "articles": "Référence, client, et la consommation par pièce de chaque matière première.",
         "materials": "Référence, catégorie, fournisseur par défaut, unité.",
         "clients": "Nom, code, contact.",
         "suppliers": "Nom, code, contact.",
-        "received_lots": "Matière, n° de lot, fournisseur de la livraison, quantité, prix. La matière doit exister.",
-        "consumptions": "OF, matière, quantité et lot reçu (ou vide = lot non précisé). L’OF, la matière et le lot doivent exister.",
+        "received_lots": "Matière première, n° de lot, fournisseur de la livraison, quantité, prix. La matière première doit exister.",
+        "consumptions": "OF, matière première, quantité et lot reçu (ou vide = lot non précisé). L’OF, la matière première et le lot doivent exister.",
         "produced_lots": "N° de lot, OF, quantité, date, statut. L’OF doit exister.",
         "expenses": "OF, pièce justificative, libellé, montant, catégorie.",
-        "invoices": "N° de facture, commande, montant, facture ou avoir."
+        "invoices": "N° de facture, commande, montant, facture ou avoir.",
+        "waste_lots": "Un registre de lots : site, déchet, poids, date"
       },
-      "expected": "attendu : {{example}}"
+      "expected": "attendu : {{example}}",
+      "erpTitle": "Connexion ERP et import",
+      "byFile": "Par fichier",
+      "byFileHint": "Un export Excel ou CSV de votre ERP : les colonnes choisies une fois sont retrouvées les fois suivantes.",
+      "byApi": "Par l'API",
+      "byApiHint": "Votre ERP peut envoyer ses OF, commandes et matières directement à DivaWaste.",
+      "apiDocs": "Documentation de l'API",
+      "remembered": "Colonnes retrouvées depuis le dernier import de ce type de fichier.",
+      "feeds": {
+        "title": "Chaque nuit, depuis une adresse",
+        "hint": "Votre ERP publie un export à une adresse https : DivaWaste le lit chaque nuit, sans fichier à envoyer.",
+        "lead": "Chaque export est lu vers 4 h avec les colonnes choisies lors de votre dernier import de ce type de fichier. Les lignes en erreur sont ignorées et signalées dans « À traiter ».",
+        "address": "Adresse de l'export (https://…)",
+        "add": "Lire chaque nuit",
+        "runNow": "Lire maintenant",
+        "nightly": "Lire chaque nuit",
+        "never": "Pas encore lu",
+        "lastResult": "Dernière lecture : {{created}} créé(s), {{updated}} mis à jour, {{errors}} ligne(s) en erreur",
+        "guessed": "Colonnes devinées d'après les titres : importez ce fichier une fois à la main pour les fixer.",
+        "removed": "Import automatique supprimé.",
+        "errors": {
+          "address": "Adresse refusée : elle doit être en https et mener à un serveur public.",
+          "download": "L'adresse n'a pas pu être lue (serveur injoignable ou réponse en erreur).",
+          "too_large": "Le fichier dépasse 10 Mo.",
+          "unreadable": "Le fichier reçu n'est pas un tableau lisible (Excel ou CSV).",
+          "columns": "Une colonne obligatoire est introuvable : importez ce fichier une fois à la main pour choisir les colonnes.",
+          "rights": "La personne qui a programmé cet import n'a plus les droits nécessaires : programmez-le à nouveau."
+        }
+      }
     },
     "stats": {
       "title": "Statistiques de production",
-      "subtitle": "D'où viennent les déchets de la période : par OF, client, article, étape, matière et fournisseur.",
+      "subtitle": "D'où viennent les déchets de la période : par OF, client, article, étape, matière première et fournisseur.",
       "export": "Exporter (Excel)",
       "waste": "Déchets générés",
       "measured": "Mesuré",
@@ -2554,16 +3311,16 @@
       "lots": "Lots",
       "total": "Total",
       "rate": "Taux de chute",
-      "rateHint": "Part de la matière consommée devenue déchet. Calculé quand la consommation de l'OF est connue en kg, ou en mètres avec la laize et le grammage de la matière.",
+      "rateHint": "Part de la matière première consommée devenue déchet. Calculé quand la consommation de l'OF est connue en kg, ou en mètres avec la laize et le grammage de la matière première.",
       "balance": "Bilan",
       "empty": "Aucun déchet rattaché sur la période.",
-      "method": "Méthode : « mesuré » = le lot désigne son OF. « Estimé » (≈, hachuré) = le lot n'indique que son étape ; son poids est réparti entre les OF présents à cette étape, sur ce site, ce jour-là, au prorata des pièces réalisées. « Non attribué » = le lot n'indique rien, ou aucun OF n'était à son étape. Seuls les lots créés sont comptés (pas ceux issus d'un fractionnement ou d'un regroupement). Cliquez un OF ou une matière pour voir ses lots.",
+      "method": "Méthode : « mesuré » = le lot désigne son OF. « Estimé » (≈, hachuré) = le lot n'indique que son étape ; son poids est réparti entre les OF présents à cette étape, sur ce site, ce jour-là, au prorata des pièces réalisées. « Non attribué » = le lot n'indique rien, ou aucun OF n'était à son étape. Seuls les lots créés sont comptés (pas ceux issus d'un fractionnement ou d'un regroupement). Cliquez un OF ou une matière première pour voir ses lots.",
       "sections": {
         "by_order": "OF",
         "by_client": "Clients",
         "by_article": "Articles",
         "by_step": "Étapes",
-        "by_material": "Matières",
+        "by_material": "Matières premières",
         "by_supplier": "Fournisseurs"
       },
       "monthly": "Évolution mensuelle"
@@ -2577,13 +3334,13 @@
       "no_order": "l'OF n'est rattaché à aucune commande",
       "no_price": "prix de vente manquant sur la commande",
       "no_production": "quantité fabriquée non saisie",
-      "unknown_material_cost": "coût de certaines matières inconnu",
-      "no_consumption": "consommation de matière non saisie",
+      "unknown_material_cost": "coût de certaines matières premières inconnu",
+      "no_consumption": "consommation de matière première non saisie",
       "expense_currency": "une dépense est dans une autre devise",
       "order_currency": "la commande est dans une autre devise"
     },
     "costReason": {
-      "no_price": "Ni ce lot ni aucun autre lot de cette matière n'a de prix.",
+      "no_price": "Ni ce lot ni aucun autre lot de cette matière première n'a de prix.",
       "currency": "Le prix de ce lot est dans une autre devise que celle de la société."
     },
     "producedStatus": {
@@ -2605,7 +3362,7 @@
     },
     "lots": {
       "title": "Lots reçus et lots fabriqués",
-      "subtitle": "Les matières reçues de vos fournisseurs, et les pièces fabriquées pour vos clients. Les lots de déchets sont dans Opérations."
+      "subtitle": "Les matières premières reçues de vos fournisseurs, et les pièces fabriquées pour vos clients. Les lots de déchets sont dans Opérations."
     },
     "material": {
       "overview": "Aperçu",
@@ -2623,11 +3380,11 @@
       "averagePrice": "Prix moyen par {{unit}}",
       "unpriced": "{{count}} lot(s) sans prix",
       "purchased": "{{amount}} achetés",
-      "waste": "Déchets issus de cette matière",
+      "waste": "Déchets issus de cette matière première",
       "wasteLots": "{{count}} lot(s) de déchets",
-      "historyIntro": "Où cette matière a été consommée : les 200 dernières consommations, avec l’OF et le lot reçu dont elles viennent.",
-      "historyEmpty": "Aucun OF n’a encore consommé cette matière.",
-      "pricesIntro": "Le coût de chaque livraison, livraison comprise. Une même matière peut avoir un prix différent selon le fournisseur et la date.",
+      "historyIntro": "Où cette matière première a été consommée : les 200 dernières consommations, avec l’OF et le lot reçu dont elles viennent.",
+      "historyEmpty": "Aucun OF n’a encore consommé cette matière première.",
+      "pricesIntro": "Le coût de chaque livraison, livraison comprise. Une même matière première peut avoir un prix différent selon le fournisseur et la date.",
       "pricesEmpty": "Aucun lot reçu n’a de prix.",
       "versusAverage": "Écart au prix moyen",
       "weightedAverage": "Prix moyen pondéré par les quantités"
@@ -2640,7 +3397,7 @@
       "number": "N° de lot reçu",
       "receivedOn": "Reçu le",
       "supplier": "Fournisseur",
-      "supplierHint": "Celui de cette livraison. Il peut être différent du fournisseur par défaut de la matière.",
+      "supplierHint": "Celui de cette livraison. Il peut être différent du fournisseur par défaut de la matière première.",
       "supplierReference": "N° de lot du fournisseur",
       "quantity": "Quantité reçue ({{unit}})",
       "deliveryNote": "Bon de livraison",
@@ -2652,9 +3409,9 @@
       "deliveryCostHint": "Transport, douane… répartis sur la quantité du lot.",
       "taxRate": "TVA (%)",
       "invoice": "Facture fournisseur",
-      "intro": "Chaque livraison de la matière, avec son fournisseur et son prix. Ce n’est pas un stock : « consommé » est ce que les OF ont déclaré prendre dans le lot.",
+      "intro": "Chaque livraison de la matière première, avec son fournisseur et son prix. Ce n’est pas un stock : « consommé » est ce que les OF ont déclaré prendre dans le lot.",
       "empty": "Aucun lot reçu",
-      "emptyHint": "Ajoutez un lot reçu depuis la fiche d’une matière, ou importez-les.",
+      "emptyHint": "Ajoutez un lot reçu depuis la fiche d’une matière première, ou importez-les.",
       "received": "Reçu",
       "consumed": "Consommé par les OF",
       "unitCost": "Coût unitaire",
@@ -2662,25 +3419,25 @@
       "consumedValue": "Valeur consommée",
       "documents": "BL / facture",
       "overConsumed": "Les OF déclarent avoir consommé plus que ce que le lot contenait : vérifiez les quantités.",
-      "search": "N° de lot, référence ou matière",
+      "search": "N° de lot, référence ou matière première",
       "price": "Prix",
       "withPrice": "Avec prix",
       "withoutPrice": "Sans prix"
     },
     "consumed": {
-      "title": "Matières consommées",
+      "title": "Matières premières consommées",
       "edit": "Modifier les consommations",
-      "editHint": "Une ligne par matière et par lot reçu : 12 kg du lot A et 8 kg du lot B font deux lignes. Si vous ne savez pas de quel lot vient la matière, laissez « Lot non précisé ».",
+      "editHint": "Une ligne par matière première et par lot reçu : 12 kg du lot A et 8 kg du lot B font deux lignes. Si vous ne savez pas de quel lot vient la matière première, laissez « Lot non précisé ».",
       "none": "Aucune consommation saisie.",
-      "intro": "OF → matière consommée → lot reçu → fournisseur. Le prévu vient de la consommation par pièce de l’article.",
-      "empty": "Aucune matière prévue ni consommée pour cet OF.",
+      "intro": "OF → matière première consommée → lot reçu → fournisseur. Le prévu vient de la consommation par pièce de l’article.",
+      "empty": "Aucune matière première prévue ni consommée pour cet OF.",
       "planned": "Prévu",
       "actual": "Consommé",
       "variance": "Écart",
       "where": "Étape · site",
       "notYet": "Rien de consommé pour l’instant.",
-      "materialsHint": "matière(s) prévue(s) ou consommée(s)",
-      "averageHint": "Lot non précisé : valorisé au prix moyen des lots de cette matière.",
+      "materialsHint": "matière première(s) prévue(s) ou consommée(s)",
+      "averageHint": "Lot non précisé : valorisé au prix moyen des lots de cette matière première.",
       "unallocated": "{{quantity}} {{unit}} sans lot précisé ; l’origine de {{known}} {{unit}} est connue."
     },
     "produced": {
@@ -2708,7 +3465,7 @@
       "intro": "Les déchets rattachés à cet OF. Ce sont les lots de déchets habituels : registre, enlèvements et bordereaux s’appliquent comme toujours.",
       "empty": "Aucun lot de déchets ne désigne cet OF.",
       "hidden": "{{count}} lot(s), {{kg}} : vous n’avez pas le droit de consulter les lots de déchets.",
-      "source": "Matière · lot reçu",
+      "source": "Matière première · lot reçu",
       "ofOnly": "OF seulement",
       "total": "{{count}} lot(s) généré(s)",
       "noRate": "Taux de chute non calculable"
@@ -2723,7 +3480,8 @@
       "payee": "Fournisseur / bénéficiaire",
       "reference": "Pièce justificative",
       "referenceHint": "N° de facture, de devis ou de reçu.",
-      "deleteTitle": "Supprimer la dépense « {{description}} » ?"
+      "deleteTitle": "Supprimer la dépense « {{description}} » ?",
+      "deleted": "Dépense « {{description}} » supprimée."
     },
     "invoices": {
       "title": "Factures et avoirs",
@@ -2748,14 +3506,14 @@
       "revenue": "Chiffre d’affaires",
       "amount": "Montant",
       "value": "Valeur",
-      "plannedMaterial": "Coût matière prévu",
-      "plannedMaterialHint": "Consommation prévue × prix moyen de chaque matière",
-      "materialKnown": "Coût matière réel",
+      "plannedMaterial": "Coût matière première prévu",
+      "plannedMaterialHint": "Consommation prévue × prix moyen de chaque matière première",
+      "materialKnown": "Coût matière première réel",
       "materialKnownHint": "Quantité consommée × coût du lot reçu",
-      "materialEstimated": "Coût matière estimé",
-      "materialEstimatedHint": "Lots non précisés, au prix moyen de la matière",
+      "materialEstimated": "Coût matière première estimé",
+      "materialEstimatedHint": "Lots non précisés, au prix moyen de la matière première",
       "materialUnknown": "{{count}} consommation(s) sans prix",
-      "materialUnknownHint": "Aucun lot de la matière n’a de prix : coût inconnu, pas zéro",
+      "materialUnknownHint": "Aucun lot de la matière première n’a de prix : coût inconnu, pas zéro",
       "totalCost": "Coût de production enregistré",
       "unitCost": "Coût par pièce",
       "perPiece": "{{amount}} par pièce",
@@ -2779,9 +3537,9 @@
       "uninvoicedHint": "Valeur de la commande − facturé",
       "gain": "Gain enregistré",
       "margin": "marge {{pct}} %",
-      "gainFormula": "Valeur de la production − coûts de production enregistrés (matières + autres dépenses). Marge brute sur les coûts saisis : ce n’est pas un résultat comptable.",
+      "gainFormula": "Valeur de la production − coûts de production enregistrés (matières premières + autres dépenses). Marge brute sur les coûts saisis : ce n’est pas un résultat comptable.",
       "gainMissing": "Il manque :",
-      "gainEstimated": "Une partie du coût matière est estimée au prix moyen (lots non précisés)."
+      "gainEstimated": "Une partie du coût matière première est estimée au prix moyen (lots non précisés)."
     },
     "report": {
       "title": "Coûts et gains",
@@ -2789,14 +3547,14 @@
       "export": "Exporter (Excel)",
       "byOrder": "Par OF",
       "byClient": "Par client",
-      "byMaterial": "Par matière",
+      "byMaterial": "Par matière première",
       "bySupplier": "Par fournisseur",
-      "material": "Matières",
+      "material": "Matières premières",
       "produced": "Pièces fabriquées",
       "empty": "Aucun OF sur cette période.",
       "noClient": "Sans client",
       "noLot": "Lot non précisé",
-      "costSplit": "matières {{material}} · dépenses {{expenses}}",
+      "costSplit": "matières premières {{material}} · dépenses {{expenses}}",
       "invoicedHint": "Factures enregistrées, avoirs déduits",
       "gainHint": "calculé pour {{counted}} OF sur {{total}}",
       "missingTitle": "Des gains ne sont pas calculables",
@@ -2809,11 +3567,11 @@
       "unpricedLines": "{{count}} sans prix",
       "materialIntro": "Prévu contre consommé, pour les OF de la période qui ont déclaré une consommation.",
       "supplierIntro": "Une consommation est attribuée au fournisseur du lot reçu dont elle vient. Sans lot précisé, le fournisseur est inconnu.",
-      "method": "Méthode : coût matière réel = quantité consommée × coût du lot reçu (prix payé, frais de livraison répartis). Lot non précisé = prix moyen pondéré de la matière, compté comme « estimé ». Le gain n’est additionné que pour les OF où il est calculable. Un OF appartient à la période par sa date de fin, à défaut de début, à défaut de création. Montants hors taxes."
+      "method": "Méthode : coût matière première réel = quantité consommée × coût du lot reçu (prix payé, frais de livraison répartis). Lot non précisé = prix moyen pondéré de la matière première, compté comme « estimé ». Le gain n’est additionné que pour les OF où il est calculable. Un OF appartient à la période par sa date de fin, à défaut de début, à défaut de création. Montants hors taxes."
     }
   },
   "help": {
-    "show": "Aide sur cette page",
+    "show": "Comment ça marche ?",
     "hide": "Masquer",
     "stock": {
       "title": "Comment lire le stock",
@@ -2865,7 +3623,7 @@
     },
     "productionCatalog": {
       "title": "Matières premières et articles",
-      "text": "Une matière première porte sa composition et sa couleur : les déchets qui en proviennent les reprennent automatiquement.\nRenseignez la laize et le grammage d'un tissu pour obtenir le taux de chute de vos OF.\nUn article indique ce qu'une pièce doit consommer de chaque matière : c'est la base de la comparaison prévu / réel."
+      "text": "Une matière première porte sa composition et sa couleur : les déchets qui en proviennent les reprennent automatiquement.\nRenseignez la laize et le grammage d'un tissu pour obtenir le taux de chute de vos OF.\nUn article indique ce qu'une pièce doit consommer de chaque matière première : c'est la base de la comparaison prévu / réel."
     },
     "productionOrders": {
       "title": "Les commandes",
@@ -2890,6 +3648,18 @@
     "productionFinance": {
       "title": "Comment lire les coûts et les gains",
       "text": "Coût matière réel : quantité consommée × coût du lot reçu dont elle vient. Un lot utilisé par plusieurs OF est réparti selon ce que chacun a consommé.\nCoût matière estimé : quand le lot n'est pas précisé, la quantité est valorisée au prix moyen de la matière — et comptée à part.\nValeur de la production : pièces fabriquées × prix convenu sur la commande. Ce n'est pas ce qui a été facturé.\nGain enregistré : valeur de la production − coûts enregistrés (matières + autres dépenses). Il n'est calculé que si tout est connu ; sinon ce qui manque est indiqué.\nCe n'est pas un résultat comptable : ni frais généraux, ni main-d'œuvre sauf si elle est saisie en dépense. Montants hors taxes."
+    },
+    "marketplace": {
+      "title": "Comment fonctionne la bourse",
+      "text": "Une annonce regroupe des lots en stock d'un même site et d'un même type de déchet. Dès le brouillon, ces lots sont réservés.\nPubliée, elle est visible des seuls prestataires qui acceptent ce déchet et ont un agrément valide. Votre nom reste caché, sauf si vous choisissez de l'afficher.\nChaque preneur négocie avec vous en privé : il ne voit jamais les offres des autres. Vous acceptez, refusez ou faites une contre-proposition.\nLe prix peut être une recette (le preneur paie) ou un coût (vous payez le preneur), à la tonne, au kilo ou au forfait.\nAccepter crée un enlèvement en brouillon vers ce preneur ; le prix convenu est appliqué à la réception, sur le poids reçu."
+    },
+    "marketplaceBuyer": {
+      "title": "Comment fonctionne la bourse",
+      "text": "Vous voyez les annonces des déchets que vous acceptez, tant que votre agrément est valide.\nLe vendeur reste anonyme jusqu'à l'accord, sauf s'il choisit d'afficher son nom.\nVotre offre n'est vue que du vendeur. Chacun répond à la dernière proposition de l'autre : accepter, contre-proposer ou refuser.\nUne fois l'accord conclu, le vendeur vous adresse une demande d'enlèvement comme d'habitude, au prix convenu."
+    },
+    "contracts": {
+      "title": "Comment fonctionnent les contrats",
+      "text": "Un contrat lie votre société à un destinataire (collecteur, recycleur, trieur) ou à un transporteur, de la plateforme ou sans compte.\nIl fixe les prix par type de déchet (recette ou coût, à la tonne, au kilo ou par lot), les frais par enlèvement et le forfait mensuel.\nIl fixe aussi le rythme des enlèvements : on suit ce qui est fait, ce qui reste, et l'enlèvement en retard.\nEn vigueur, il s'applique de lui-même aux enlèvements de ce prestataire pour ce site entre ses dates : ses prix à la réception, ses frais ajoutés.\nUn prestataire ne peut avoir qu'un contrat en vigueur à la fois pour un même rôle et un même site."
     }
   },
   "units": {
@@ -2990,7 +3760,8 @@
       "fallback": "Tout autre cas",
       "history": "Une règle modifiée s’applique aux prochaines réceptions. Les réceptions déjà enregistrées gardent la règle qui leur a été appliquée, et chaque modification figure au journal d’audit.",
       "deleteTitle": "Supprimer cette règle ?",
-      "deleteHint": "Les prochaines réceptions retomberont sur la règle plus générale. Les décisions déjà prises ne changent pas."
+      "deleteHint": "Les prochaines réceptions retomberont sur la règle plus générale. Les décisions déjà prises ne changent pas.",
+      "deleted": "Règle supprimée : les prochaines réceptions suivent la règle plus générale."
     },
     "byType": {
       "title": "Écarts à la réception par type de déchet",
@@ -3095,5 +3866,724 @@
     "explainHint": "Le prestataire lira ce motif. Le chargement reste enregistré tel qu’il a eu lieu.",
     "explainReason": "Pourquoi ces lots sont-ils partis ainsi ?",
     "explained": "Explication enregistrée."
+  },
+  "marketplace": {
+    "title": "Bourse",
+    "subtitle": "Proposez vos lots aux prestataires agréés pour ce déchet. Chaque preneur négocie avec vous en privé ; l'accord devient un enlèvement au prix convenu.",
+    "sellLot": "Mettre en vente",
+    "lotReserved": "Ce lot est réservé à l'annonce : il ne peut ni partir dans un autre enlèvement, ni être fractionné ou regroupé tant qu'elle est ouverte.",
+    "newListing": "Mettre en vente",
+    "editListing": "Modifier l'annonce {{number}}",
+    "lotsToSell": "Lots proposés",
+    "noLotInStock": "Aucun lot en stock de ce type sur ce site.",
+    "pickedLots": "{{count}} lot(s) sélectionné(s)",
+    "listingTitle": "Titre",
+    "titlePlaceholder": "Par défaut : le type de déchet et le nombre de lots",
+    "description": "Description",
+    "descriptionPlaceholder": "État, tri, conditionnement, accès au site, contraintes de chargement…",
+    "askingPrice": "Prix demandé",
+    "setAskingPrice": "Indiquer un prix demandé (sinon, les preneurs proposent)",
+    "direction": "Qui paie ?",
+    "directions": {
+      "revenue": "le preneur paie",
+      "cost": "nous payons le preneur"
+    },
+    "pricingMode": "Prix",
+    "modes": {
+      "per_tonne": "à la tonne",
+      "per_kg": "au kilo",
+      "flat": "forfait pour l'ensemble"
+    },
+    "per": {
+      "per_tonne": " / t",
+      "per_kg": " / kg",
+      "flat": " (forfait)"
+    },
+    "unitPrice": "Montant ({{currency}})",
+    "conditions": "Conditions",
+    "availableFrom": "Enlevable à partir du",
+    "closesAt": "Clôture des offres",
+    "closesAtHint": "Sans date, l'annonce reste ouverte jusqu'à ce que vous la cédiez ou la retiriez.",
+    "showSeller": "Afficher le nom de notre société aux preneurs",
+    "anonymousHint": "Les preneurs ne voient pas le nom de votre société, seulement la région du site. Il est révélé au preneur dont l'offre est acceptée.",
+    "shownHint": "Les preneurs voient le nom de votre société.",
+    "saveDraft": "Enregistrer le brouillon",
+    "draftSaved": "Brouillon {{number}} enregistré.",
+    "estimateRevenue": "Soit environ {{amount}} reçus, sur {{weight}} connus.",
+    "estimateCost": "Soit environ {{amount}} payés au preneur, sur {{weight}} connus.",
+    "estimateRevenueTaker": "Soit environ {{amount}} à payer au vendeur, sur {{weight}} connus.",
+    "estimateCostTaker": "Soit environ {{amount}} reçus du vendeur, sur {{weight}} connus.",
+    "unweighedLeftOut": "{{count}} lot(s) non pesé(s) ne sont pas comptés : le prix sera appliqué au poids réceptionné.",
+    "noWeightYet": "Aucun lot n'est pesé : le montant sera calculé sur le poids réceptionné.",
+    "pickupDate": "Date d'enlèvement souhaitée",
+    "validUntil": "Valable jusqu'au",
+    "validUntilHint": "Par défaut 7 jours, et jamais après la clôture.",
+    "message": "Message",
+    "send": "Envoyer",
+    "sent": "Proposition envoyée.",
+    "yourTurn": "À vous de répondre",
+    "waitingBuyer": "En attente de la réponse du preneur",
+    "waitingSeller": "En attente de la réponse du vendeur",
+    "dealDone": "Accord conclu",
+    "dealPickup": "Enlèvement préparé :",
+    "commission": "Commission de la plateforme : {{pct}} %",
+    "closedReasons": {
+      "sold_to_another": "Les lots ont été cédés à un autre preneur.",
+      "listing_cancelled": "Le vendeur a retiré l'annonce.",
+      "listing_expired": "La date de clôture de l'annonce est passée."
+    },
+    "withdrawnBy": "L'offre a été retirée.",
+    "refusedByYou": "Vous avez refusé.",
+    "refusedByOther": "L'autre partie a refusé.",
+    "you": "Vous",
+    "seller": "Le vendeur",
+    "buyer": "{{name}}",
+    "amountRevenue": "≈ {{amount}} pour le vendeur",
+    "amountCost": "≈ {{amount}} payés par le vendeur",
+    "amountPartial": "sur les lots pesés",
+    "pickupOn": "Enlèvement le {{date}}",
+    "expired": "Expirée",
+    "validUntilDate": "Valable jusqu'au {{date}}",
+    "outdated": "Lots modifiés depuis",
+    "accept": "Accepter",
+    "counter": "Contre-proposer",
+    "refuse": "Refuser",
+    "withdraw": "Retirer mon offre",
+    "outdatedHint": "Les lots ont changé depuis cette proposition (pesée, colis ou composition) : répondez par une nouvelle proposition.",
+    "expiredHint": "Cette proposition n'est plus valable : répondez par une proposition de votre part.",
+    "acceptTitle": "Accepter cette proposition ?",
+    "acceptSellerMessage": "L'accord engage votre société. Les lots sont cédés à ce preneur, les autres négociations sont closes, et un enlèvement en brouillon est préparé au prix convenu : il vous reste à l'envoyer.",
+    "acceptBuyerMessage": "L'accord engage votre société : vous prenez ces lots au prix convenu. Le vendeur vous adressera la demande d'enlèvement.",
+    "accepted": "Accord conclu.",
+    "counterTitle": "Contre-proposition — {{number}}",
+    "refuseTitle": "Refuser et terminer la négociation ?",
+    "refuseReason": "Motif (communiqué à l’autre partie)",
+    "refused": "Négociation refusée.",
+    "withdrawTitle": "Retirer votre offre ?",
+    "withdrawMessage": "La négociation se termine. Vous pourrez faire une nouvelle offre tant que l'annonce est ouverte.",
+    "withdrawn": "Offre retirée.",
+    "offer": "Ce qui est proposé",
+    "notWeighed": "Non pesé",
+    "plusUnweighed": "+ {{count}} lot(s) non pesé(s), non comptés",
+    "lots": "Lots",
+    "compositionPerLot": "Voir lot par lot",
+    "forTheWhole": "≈ {{amount}} pour l'ensemble pesé",
+    "noAskingPrice": "Aucun : les preneurs proposent",
+    "now": "Dès maintenant",
+    "noClosing": "Aucune",
+    "lotsOfListing": "Lots de l'annonce",
+    "emptyTitle": "Aucune annonce",
+    "emptyHint": "Mettez en vente des lots en stock : les prestataires qui acceptent ce déchet pourront faire une offre.",
+    "number": "N°",
+    "unweighedShort": "non pesé(s)",
+    "openPrice": "Prix libre",
+    "toAnswer": "{{count}} à traiter",
+    "offers": "Offres",
+    "cancelListing": "Retirer l'annonce",
+    "publish": "Publier",
+    "draftHint": "Brouillon : seuls vous le voyez. Les lots sont déjà réservés. Publiez l'annonce pour la montrer aux prestataires.",
+    "soldHint": "Cédée. L'enlèvement préparé au prix convenu :",
+    "cancelledBecause": "Retirée : {{reason}}",
+    "offersCount": "Offres ({{count}})",
+    "noOfferYet": "Pas encore d'offre. Les prestataires concernés ont été prévenus.",
+    "noOffer": "Aucune offre.",
+    "negotiationWith": "Négociation avec {{name}}",
+    "publishTitle": "Publier l'annonce ?",
+    "publishMessage": "Les prestataires qui acceptent ce déchet et ont un agrément valide la verront et seront prévenus. Les lots ne pourront plus être changés.",
+    "published": "Annonce publiée.",
+    "cancelTitle": "Retirer l'annonce ?",
+    "cancelReason": "Motif",
+    "cancelled": "Annonce retirée : les lots reviennent en stock.",
+    "catalogTitle": "Bourse",
+    "catalogSubtitle": "Les lots proposés par les industriels, pour les déchets que vous acceptez. Faites une offre, le vendeur répond en privé.",
+    "searchPlaceholder": "Titre ou numéro",
+    "mineOnly": "Mes négociations",
+    "catalogEmptyTitle": "Aucune annonce pour vos déchets",
+    "catalogEmptyHint": "Les annonces apparaissent ici pour les déchets que vous acceptez (votre profil) et tant que votre agrément est valide.",
+    "anonymousSeller": "Vendeur anonyme",
+    "myOffer": "Mon offre",
+    "myNegotiation": "Ma négociation",
+    "newOffer": "Faire une nouvelle offre",
+    "makeOffer": "Faire une offre",
+    "offerHint": "Votre offre n'est vue que du vendeur. Il peut l'accepter, la refuser ou vous faire une contre-proposition.",
+    "offerAsking": "Proposer le prix demandé",
+    "offerOther": "Proposer un prix",
+    "offerTitle": "Offre — {{number}}",
+    "dealOfListing": "Accord de la bourse ({{number}})",
+    "dealAppliedAtReception": "Prix appliqué automatiquement à la réception, sur le poids reçu.",
+    "askedPrice": "Prix demandé",
+    "next": {
+      "draft": "Publiez l'annonce pour la montrer aux prestataires agréés",
+      "published": "Les prestataires font leurs offres : répondez dans les négociations",
+      "sold": "Cédée : l'enlèvement suit l'accord",
+      "expired": "Clôturée sans accord : les lots sont revenus en stock",
+      "cancelled": "Retirée : les lots sont revenus en stock"
+    }
+  },
+  "contracts": {
+    "title": "Contrats",
+    "subtitle": "Ce que vous avez convenu avec vos destinataires et transporteurs : prix par type de déchet, frais, nombre et rythme des enlèvements, durée.",
+    "providerSubtitle": "Les contrats que vos clients ont conclus avec vous : prix, frais, rythme des enlèvements.",
+    "new": "Nouveau contrat",
+    "edit": "Modifier le contrat {{number}}",
+    "titleField": "Objet du contrat",
+    "titlePlaceholder": "Ex. : Collecte et recyclage des chutes de coupe",
+    "role": "Rôle du prestataire",
+    "roles": {
+      "receiver": "Destinataire (collecte, recyclage, tri)",
+      "transporter": "Transporteur"
+    },
+    "party": "Prestataire",
+    "reference": "Référence du contrat",
+    "startsOn": "Début",
+    "endsOn": "Fin",
+    "endsOnHint": "Sans date, le contrat court jusqu'à sa résiliation.",
+    "schedule": "Enlèvements",
+    "frequency": "Rythme",
+    "frequencies": {
+      "on_demand": "À la demande",
+      "weekly": "Chaque semaine",
+      "biweekly": "Toutes les deux semaines",
+      "monthly": "Chaque mois",
+      "quarterly": "Chaque trimestre"
+    },
+    "perPeriod": "Enlèvements par période",
+    "weekdays": "Jours prévus",
+    "days": {
+      "mon": "Lundi",
+      "tue": "Mardi",
+      "wed": "Mercredi",
+      "thu": "Jeudi",
+      "fri": "Vendredi",
+      "sat": "Samedi",
+      "sun": "Dimanche"
+    },
+    "plannedPickups": "Nombre d'enlèvements prévus au total",
+    "plannedHint": "Facultatif : sert à suivre ce qui reste à faire.",
+    "prices": "Prix par type de déchet",
+    "anyWaste": "Tout autre déchet",
+    "directions": {
+      "revenue": "le prestataire nous paie",
+      "cost": "nous payons le prestataire"
+    },
+    "perLot": "par lot",
+    "lot": "lot",
+    "addPrice": "Ajouter un prix",
+    "fees": "Frais",
+    "pickupFee": "Frais par enlèvement ({{currency}})",
+    "monthlyFee": "Forfait mensuel ({{currency}})",
+    "feeWho": "Qui paie ?",
+    "paymentTerms": "Délai de paiement (jours)",
+    "saveDraft": "Enregistrer le brouillon",
+    "draftSaved": "Brouillon {{number}} enregistré.",
+    "emptyTitle": "Aucun contrat",
+    "emptyHint": "Enregistrez les contrats signés avec vos prestataires : leurs prix s'appliquent d'eux-mêmes aux enlèvements.",
+    "providerEmptyHint": "Les contrats que vos clients enregistrent avec vous apparaissent ici.",
+    "number": "N°",
+    "period": "Durée",
+    "pickupsDone": "Enlèvements faits",
+    "openEnded": "sans fin",
+    "timesPerPeriod": "{{count}} fois",
+    "late": "Enlèvement en retard",
+    "nextDue": "Prochain le {{date}}",
+    "activate": "Mettre en vigueur",
+    "activateTitle": "Mettre le contrat en vigueur ?",
+    "activateMessage": "Les enlèvements demandés à ce prestataire, pour ce site et entre ces dates, suivront ce contrat : ses prix s'appliqueront à la réception et ses frais seront ajoutés. Un prestataire de la plateforme devient partenaire et est prévenu.",
+    "activated": "Contrat en vigueur.",
+    "terminate": "Résilier",
+    "terminateTitle": "Résilier le contrat ?",
+    "terminateReason": "Motif de la résiliation",
+    "terminated": "Contrat résilié : les enlèvements demandés après aujourd’hui ne le suivent plus.",
+    "draftHint": "Brouillon : il ne s'applique à aucun enlèvement tant qu'il n'est pas mis en vigueur.",
+    "lateHint": "L'enlèvement prévu pour le {{date}} n'a pas eu lieu et aucun n'est demandé : planifiez-le.",
+    "remaining": "Reste {{count}}",
+    "thisPeriod": "Cette période",
+    "since": "depuis le {{date}}",
+    "nextDueLabel": "Prochain enlèvement prévu",
+    "lastPickup": "Dernier le {{date}}",
+    "noPickupYet": "Aucun enlèvement encore",
+    "balance": "Bilan du contrat",
+    "balanceHint": "Lots facturés + frais par enlèvement + forfaits mensuels ; positif = recette, négatif = coût.",
+    "balanceProviderHint": "Du point de vue de votre client : positif = il reçoit, négatif = il paie.",
+    "terms": "Conditions",
+    "pickupFeeLabel": "Frais par enlèvement",
+    "monthlyFeeLabel": "Forfait mensuel",
+    "days30": "{{days}} jours",
+    "terminatedBecause": "Motif de la résiliation",
+    "noPrice": "Aucun prix : les lots sont tarifés à la main.",
+    "pickupsUnder": "Enlèvements du contrat ({{count}})",
+    "pickupsHint": "Un enlèvement suit le contrat quand il est demandé à ce prestataire, pour ce site, entre ses dates.",
+    "ofPickup": "Contrat",
+    "feesOfPickup": "Frais du contrat",
+    "appliedAtReception": "Prix et frais du contrat appliqués à la réception.",
+    "steps": {
+      "who": "Qui et quand",
+      "pickups": "Enlèvements",
+      "money": "Argent"
+    },
+    "moreSummary": "Référence, site, remarques",
+    "pricesHint": "Un prix par type de déchet ; « tout autre déchet » s'applique au reste. Je reçois : le prestataire vous paie.",
+    "perPickupFee": "Forfait par enlèvement",
+    "perMonthFee": "Forfait mensuel",
+    "saveAndActivate": "Enregistrer et mettre en vigueur",
+    "requestNext": "Demander le prochain enlèvement",
+    "ended": "Terminé",
+    "next": {
+      "draft": "Vérifiez les conditions, puis mettez le contrat en vigueur",
+      "upcoming": "En vigueur à partir de sa date de début",
+      "active": "Les enlèvements de ce prestataire suivent ce contrat",
+      "expired": "Arrivé à son terme",
+      "terminated": "Résilié : il ne s'applique plus"
+    },
+    "weekdaysHint": "Le prochain enlèvement tombe sur l'un de ces jours ; la veille et le jour même, si rien n'est demandé, vous êtes prévenu. Aucun jour choisi : n'importe quel jour.",
+    "charges": "Autres frais",
+    "chargesHint": "Tout ce que le contrat prévoit en plus des prix : location de benne, pesée, frais de dossier, prime… Autant de lignes que nécessaire.",
+    "chargeLabel": "Nom du frais (ex. location de benne)",
+    "chargeBasis": "Quand",
+    "addCharge": "Ajouter un frais",
+    "bases": {
+      "per_pickup": "par enlèvement",
+      "per_tonne": "par tonne reçue",
+      "per_month": "par mois",
+      "once": "une seule fois"
+    },
+    "frequencyQuestion": "À quel rythme les enlèvements ont-ils lieu ?",
+    "frequencyHints": {
+      "on_demand": "Quand vous le demandez",
+      "weekly": "Les jours choisis, chaque semaine",
+      "biweekly": "Les jours choisis, une semaine sur deux",
+      "monthly": "Un nombre d'enlèvements par mois",
+      "quarterly": "Un nombre d'enlèvements par trimestre"
+    },
+    "daysWeekly": "Quels jours de la semaine ?",
+    "daysBiweekly": "Quels jours, une semaine sur deux ?",
+    "paceWeekly": "{{count}} enlèvement(s) par semaine, un par jour choisi.",
+    "paceBiweekly": "{{count}} enlèvement(s) toutes les deux semaines, un par jour choisi.",
+    "paceNoDay": "Choisissez au moins un jour.",
+    "perMonth": "Combien d'enlèvements par mois ?",
+    "perQuarter": "Combien d'enlèvements par trimestre ?",
+    "regime": "Régime de paiement",
+    "regimeQuestion": "Comment ce contrat est-il payé ?",
+    "regimes": {
+      "weight": "Au poids des déchets",
+      "flat": "Au forfait",
+      "both": "Les deux"
+    },
+    "regimeHints": {
+      "weight": "Un prix au kg, à la tonne ou au lot, par type de déchet, appliqué à la réception",
+      "flat": "Des montants fixes : par enlèvement, par mois, par tonne ou une fois",
+      "both": "Des prix par type de déchet, plus des montants fixes"
+    },
+    "chargesFlat": "Les montants du forfait",
+    "chargesFlatHint": "Chaque ligne : ce que c'est, le montant, qui paie qui, et quand (par enlèvement, par tonne reçue, par mois, une fois).",
+    "chargesExtra": "Frais en plus (facultatif)",
+    "chargesExtraHint": "Location de benne, pesée, frais de dossier… Laissez vide s'il n'y en a pas.",
+    "flatNeedsAmount": "Un forfait demande au moins un montant.",
+    "paymentTermsHint": "Nombre de jours pour payer après la facture."
+  },
+  "search": {
+    "placeholder": "Rechercher un lot, un enlèvement, un contrat…",
+    "label": "Recherche",
+    "empty": "Aucun résultat pour « {{query}} ».",
+    "kinds": {
+      "lot": "Lot",
+      "pickup": "Enlèvement",
+      "contract": "Contrat",
+      "listing": "Annonce",
+      "manifest": "Bordereau",
+      "provider": "Prestataire",
+      "partner": "Partenaire",
+      "waste_type": "Type de déchet",
+      "site": "Site"
+    }
+  },
+  "attention": {
+    "clearTitle": "Tout est en ordre",
+    "clear": "Rien n'attend de décision pour le moment.",
+    "slips_to_sign": "{{count}} bordereau(x) de suivi à signer",
+    "signed_copies": "{{count}} bordereau(x) signé(s) à la main dont l'exemplaire scanné manque",
+    "documents_outstanding": "{{count}} enlèvement(s) parti(s) dont les documents ne sont pas complets",
+    "missing_codes": "{{count}} type(s) de déchet dangereux sans code déchet",
+    "declarations_due": "{{count}} déclaration(s) annuelle(s) {{year}} à valider",
+    "permits_expired": "{{count}} autorisation(s) de sortie expirée(s) encore en vigueur",
+    "permits_expiring": "{{count}} autorisation(s) de sortie expirent dans les 30 jours",
+    "variances": "{{count}} enlèvement(s) avec écart à la réception à traiter",
+    "awaiting_provider": "{{count}} demande(s) d'enlèvement en attente de réponse du prestataire",
+    "drafts": "{{count}} demande(s) d'enlèvement en brouillon, jamais envoyée(s)",
+    "accreditation_expired": "Agrément de {{provider}} expiré : il ne peut plus être choisi",
+    "accreditation_expiring": "Agrément de {{provider}} : expire dans {{days}} jour(s)",
+    "contracts_late": "{{count}} contrat(s) en retard sur le rythme des enlèvements",
+    "contracts_ending": "{{count}} contrat(s) se terminent dans les 30 jours",
+    "erp_feeds_failed": "{{count}} import(s) automatique(s) de l'ERP en échec cette nuit",
+    "types_without_permit": "{{count}} type(s) de déchet sans autorisation de sortie en vigueur : leurs lots ne peuvent pas partir",
+    "pickups_date_passed": "{{count}} enlèvement(s) confirmé(s) dont la date est passée sans chargement",
+    "lots_unweighed_in_pickup": "{{count}} lot(s) sans poids dans un enlèvement prévu : prix, limite et écart ne pourront pas être calculés",
+    "lots_unweighed_long": "{{count}} lot(s) sur site sans poids depuis plus de 7 jours",
+    "lots_packages_unconfirmed": "{{count}} lot(s) dont le nombre de colis n'a jamais été vérifié",
+    "lots_not_stored": "{{count}} lot(s) créé(s) depuis plus d'un jour sans être rangés dans une zone",
+    "setup_sites_without_zones": "{{count}} site(s) sans zone : aucun lot ne peut y être créé",
+    "setup_no_waste_types": "Aucun type de déchet activé : commencez par choisir vos types",
+    "setup_no_stock_limit": "Aucune limite de stock : fixez-en une pour être prévenu avant que le stockage soit plein",
+    "marketplace_offers": "{{count}} offre(s) sur vos annonces de la Bourse attendent votre réponse",
+    "provider_requests": "{{count}} demande(s) d'enlèvement à accepter ou refuser",
+    "provider_to_receive": "{{count}} enlèvement(s) en route : à réceptionner à l'arrivée",
+    "provider_to_treat": "{{count}} enlèvement(s) réceptionné(s) dont le traitement reste à déclarer",
+    "provider_offers": "{{count}} négociation(s) de la Bourse où le vendeur vous a répondu",
+    "own_accreditation_expired": "Un de vos agréments a expiré : les industriels ne peuvent plus vous choisir pour ces déchets",
+    "own_accreditation_expiring": "Un de vos agréments expire dans {{days}} jour(s) : déposez le renouvellement",
+    "own_accreditation_pending": "{{count}} agrément(s) en cours de vérification par Diva Software",
+    "platform_signups": "{{count}} inscription(s) à valider",
+    "platform_accreditations": "{{count}} agrément(s) de prestataire à vérifier",
+    "platform_payments": "{{count}} virement(s) déclaré(s) à rapprocher du relevé bancaire",
+    "platform_plan_requests": "{{count}} formule(s) demandée(s) par des clients, à activer"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "subtitle": "Votre société, votre équipe et les listes de référence de votre activité.",
+    "groups": {
+      "company": "Votre société",
+      "reference": "Référentiel",
+      "data": "Données"
+    },
+    "cards": {
+      "company": {
+        "title": "Société",
+        "hint": "Coordonnées et logo imprimé sur les rapports"
+      },
+      "modules": {
+        "title": "Modules et fonctionnement",
+        "hint": "Ce que vous utilisez dans DivaWaste, avec ou sans ERP"
+      },
+      "users": {
+        "title": "Utilisateurs et rôles",
+        "hint": "Inviter l'équipe, donner un rôle par site"
+      },
+      "subscription": {
+        "title": "Abonnement",
+        "hint": "Formule, factures et paiements"
+      },
+      "audit": {
+        "title": "Journal d'audit",
+        "hint": "Qui a créé, modifié ou supprimé quoi"
+      },
+      "sites": {
+        "title": "Sites et zones",
+        "hint": "Ateliers et zones de stockage, et leur capacité"
+      },
+      "wasteTypes": {
+        "title": "Types de déchets",
+        "hint": "Les déchets que vous produisez et leur code"
+      },
+      "reception": {
+        "title": "Réception et écarts",
+        "hint": "Écart de poids accepté entre le départ et la réception"
+      },
+      "packaging": {
+        "title": "Conditionnements",
+        "hint": "Volume d'un sac, d'une balle, d'un big bag une fois stocké"
+      },
+      "colors": {
+        "title": "Couleurs",
+        "hint": "Vos couleurs et références Pantone"
+      },
+      "erp": {
+        "title": "Connexion ERP et import",
+        "hint": "Importer vos OF, commandes et matières depuis votre ERP ou un fichier"
+      },
+      "apiKeys": {
+        "title": "Clés d'accès API",
+        "hint": "Relier votre ERP ou vos outils à DivaWaste"
+      }
+    },
+    "modules": {
+      "title": "Modules et fonctionnement",
+      "subtitle": "Choisissez ce que vous utilisez : le reste disparaît des menus et des formulaires. Rien n'est supprimé, vous pouvez le réactiver à tout moment.",
+      "howTitle": "Comment travaillez-vous ?",
+      "withErp": "Avec un ERP",
+      "withErpHint": "Vos ordres de fabrication, commandes et matières viennent de votre ERP : DivaWaste les importe et les affiche.",
+      "withoutErp": "Sans ERP",
+      "withoutErpHint": "Vous saisissez dans DivaWaste, au bureau ou sur le téléphone de l'atelier.",
+      "listTitle": "Modules",
+      "saved": "Modules enregistrés.",
+      "items": {
+        "production": {
+          "title": "Production",
+          "hint": "Ordres de fabrication, commandes, matières premières : d'où vient chaque déchet"
+        },
+        "production_finance": {
+          "title": "Coûts et gains",
+          "hint": "Prix d'achat, dépenses et chiffre d'affaires des OF (nécessite Production)"
+        },
+        "marketplace": {
+          "title": "Bourse",
+          "hint": "Mettre vos lots en vente auprès des prestataires agréés"
+        },
+        "contracts": {
+          "title": "Contrats",
+          "hint": "Prix, frais et rythme convenus avec vos prestataires"
+        },
+        "authorizations": {
+          "title": "Autorisations de sortie",
+          "hint": "Déchets qui ne sortent que sous autorisation de la douane"
+        },
+        "colors": {
+          "title": "Couleurs Pantone",
+          "hint": "Couleurs et références Pantone sur les lots, zones et matières"
+        },
+        "workshop": {
+          "title": "Application atelier",
+          "hint": "Créer et scanner les lots depuis un téléphone"
+        }
+      }
+    },
+    "reception": {
+      "title": "Réception et écarts",
+      "subtitle": "L'écart de poids accepté entre le départ et la réception, par défaut et par type de déchet.",
+      "defaultTitle": "Écart accepté par défaut"
+    },
+    "packaging": {
+      "volume": "Volume d'un colis stocké",
+      "unknown": "Non renseigné"
+    }
+  },
+  "price": {
+    "who": "Qui paie ?",
+    "amount": "Montant",
+    "per": "Par",
+    "receive": "Je reçois",
+    "pay": "Je paie",
+    "payMine": "Je paie",
+    "receiveMine": "Je reçois",
+    "modes": {
+      "per_tonne": "par tonne",
+      "per_kg": "par kg",
+      "flat": "forfait"
+    }
+  },
+  "davi": {
+    "name": "Assistant virtuel",
+    "short": "Assistant",
+    "tagline": "Votre assistant DivaWaste",
+    "open": "Ouvrir l'assistant virtuel",
+    "askHere": "Demander à l'assistant",
+    "hello": "Bonjour, que puis-je faire pour vous ?",
+    "helloHint": "Posez votre question avec vos mots, ou dites ce que vous voulez faire : je prépare, vous confirmez.",
+    "focus": {
+      "lot": "Je parle du lot {{number}} affiché à l'écran.",
+      "pickup": "Je parle de l'enlèvement {{number}} affiché à l'écran."
+    },
+    "newConversation": "Nouvelle conversation",
+    "thinking": "L'assistant réfléchit…",
+    "preview": "Action à confirmer",
+    "done": "C'est fait",
+    "yes": "Confirmer",
+    "no": "Annuler",
+    "sources": "D'après {{count}} source(s) vérifiée(s)",
+    "chart": "Graphique des chiffres",
+    "send": "Envoyer",
+    "placeholder": "Posez une question ou dites ce que vous voulez faire…",
+    "placeholderPending": "Confirmez ci-dessus, ou posez une autre question…",
+    "fine": "L'assistant agit avec vos droits et ne fait rien sans votre confirmation.",
+    "permit": {
+      "reading": "L'assistant lit le document…",
+      "filled": "L'assistant a rempli {{count}} champ(s) à partir du document :",
+      "check": "Vérifiez ces valeurs avant d'enregistrer.",
+      "nothing": "L'assistant n'a trouvé aucune valeur à reprendre dans ce document.",
+      "scanned": "Document scanné : l'assistant ne lit que le texte des PDF. Saisissez les valeurs ci-dessous.",
+      "unreadable": "L'assistant n'a pas pu ouvrir ce document.",
+      "not_pdf": "L'assistant ne lit que les documents PDF.",
+      "fields": {
+        "reference": "Référence",
+        "valid_from": "Valable du",
+        "valid_until": "Valable jusqu'au",
+        "issued_on": "Délivrée le",
+        "max_kg": "Quantité maximale",
+        "max_lots": "Nombre de lots",
+        "waste_type": "Type de déchet"
+      }
+    },
+    "canDo": "Je peux le faire pour vous",
+    "canAsk": "Vous pouvez me demander",
+    "bigText": "Texte plus grand",
+    "showMe": "Me montrer le bouton « {{button}} »",
+    "hint": {
+      "label": "L'assistant vous guide",
+      "later": "Plus tard",
+      "help": "Comment marche cette page ?",
+      "helpHide": "Masquer l'explication",
+      "steps": "Mise en route : {{done}} étape(s) sur {{total}}",
+      "state": {
+        "done": "Fait",
+        "skipped": "Passée",
+        "current": "Étape en cours",
+        "todo": "À faire"
+      },
+      "notShown": "Le bouton « {{button}} » n'est pas visible sur cette page : demandez à l'assistant, il vous guidera."
+    },
+    "onPage": "Sur la page : {{page}}",
+    "helloName": "Bonjour {{name}}, que puis-je faire pour vous ?",
+    "nowHere": "En ce moment",
+    "retry": "Réessayer",
+    "toConfirm": "À confirmer",
+    "wasProposed": "Proposé",
+    "irreversible": "Cette action ne pourra pas être annulée ensuite.",
+    "change": "Modifier",
+    "openThing": "Ouvrir {{number}}",
+    "moreDetail": "Plus de détails",
+    "lessDetail": "Moins de détails",
+    "working": {
+      "reading": "Je lis votre question…",
+      "searching": "Je cherche dans DivaWaste et dans vos données…",
+      "thinking": "Je prépare la réponse…",
+      "almost": "Encore un instant, j'y suis presque…"
+    },
+    "new": "Nouvelle",
+    "history": "Conversations",
+    "forget": "Supprimer la conversation",
+    "noHistory": "Vos conversations avec l'assistant apparaîtront ici.",
+    "messagesCount": "{{count}} message(s)",
+    "import": {
+      "attach": "Importer des lots depuis un fichier Excel ou CSV",
+      "tip": "Un registre de lots dans Excel ? Glissez le fichier ici, cliquez sur le trombone ou collez ses lignes : je le vérifie, puis j'importe après votre accord.",
+      "pasted": "Lignes collées depuis un tableur",
+      "kind": "Je lis les fichiers Excel (.xlsx, .xls) et CSV. Enregistrez votre fichier dans l'un de ces formats, puis redonnez-le-moi.",
+      "missing": "Je n'ai pas trouvé dans votre fichier la colonne : {{fields}}. Choisissez-la sur la page d'import : votre fichier y est déjà.",
+      "choose": "Choisir les colonnes",
+      "already": "Ces {{count}} lots sont déjà dans DivaWaste : je n'ai rien de nouveau à créer.",
+      "alreadyOne": "Ce lot est déjà dans DivaWaste : je n'ai rien de nouveau à créer.",
+      "nothing": "Aucune ligne de ce fichier ne peut devenir un lot pour l'instant. Voici pourquoi :",
+      "nothingOne": "Aucune ligne de ce fichier ne peut devenir un lot pour l'instant. Voici pourquoi :",
+      "preview": "Je peux créer {{count}} lots à partir de votre fichier ({{total}} lignes lues). Rien n'est enregistré tant que vous ne confirmez pas.",
+      "previewOne": "Je peux créer 1 lot à partir de votre fichier ({{total}} lignes lues). Rien n'est enregistré tant que vous ne confirmez pas.",
+      "unchanged": "{{count}} lignes sont déjà dans DivaWaste : je les laisse telles quelles.",
+      "unchangedOne": "1 ligne est déjà dans DivaWaste : je la laisse telle quelle.",
+      "skipped": "{{count}} lignes ont un problème : je les mets de côté (détail ci-dessous).",
+      "skippedOne": "1 ligne a un problème : je la mets de côté (détail ci-dessous).",
+      "label": "Importer {{count}} lots",
+      "labelOne": "Importer 1 lot",
+      "cancelled": "D'accord, je n'importe rien.",
+      "done": "C'est fait : {{count}} lots créés, chacun avec son numéro et son étiquette.",
+      "doneOne": "C'est fait : 1 lot créé, avec son numéro et son étiquette.",
+      "notDone": "{{count}} lignes n'ont pas été importées (détail ci-dessous).",
+      "notDoneOne": "1 ligne n'a pas été importée (détail ci-dessous).",
+      "seeLots": "Voir les lots",
+      "toPage": "J'ouvre la page d'import avec votre fichier : choisissez les colonnes, vérifiez, puis importez.",
+      "columns": "Colonnes lues",
+      "problems": "Lignes mises de côté",
+      "line": "Ligne {{line}} :",
+      "drop": "Déposez votre fichier de lots",
+      "dropHint": "Excel ou CSV. Je vérifie chaque ligne avant de vous demander votre accord."
+    },
+    "train": "Entraîner l'assistant (le jeu des questions)",
+    "good": "Bonne réponse",
+    "bad": "Réponse à revoir",
+    "rated": "Merci, c'est noté.",
+    "remarkPlaceholder": "Qu'est-ce qui n'allait pas ? Qu'attendiez-vous ?",
+    "remarkSend": "Envoyer"
+  },
+  "apiKeys": {
+    "title": "Clés d'accès API",
+    "subtitle": "Pour que votre ERP ou vos outils envoient leurs données à DivaWaste directement.",
+    "howTitle": "Comment ça marche",
+    "how1": "Créez une clé ci-dessous et donnez-la à la personne qui relie votre ERP.",
+    "how2": "Chaque requête porte l'en-tête",
+    "how3": "à l'adresse de l'API :",
+    "rights": "Une clé agit avec vos droits, pour cette société seulement, pendant un an. Révoquez-la dès qu'elle ne sert plus.",
+    "name": "Nom de la clé",
+    "namePlaceholder": "ex. ERP Divatex",
+    "create": "Créer une clé",
+    "owner": "Créée par",
+    "lastUsed": "Dernière utilisation",
+    "expires": "Expire le",
+    "never": "Jamais",
+    "revoke": "Révoquer",
+    "none": "Aucune clé pour l'instant.",
+    "createdTitle": "Clé « {{name}} » créée",
+    "copy": "Copier",
+    "copied": "Clé copiée.",
+    "copyByHand": "Sélectionnez la clé et copiez-la.",
+    "onlyOnce": "Copiez-la maintenant : elle ne sera plus jamais affichée.",
+    "revokeConfirm": "Révoquer la clé « {{name}} » ?",
+    "revokeHint": "Ce qui l'utilise ne pourra plus envoyer de données."
+  },
+  "daviTrain": {
+    "title": "Entraîner l'assistant",
+    "subtitle": "Une mission, votre question avec vos mots, la réponse de l'assistant, votre verdict. Chaque question sert à son prochain entraînement.",
+    "scores": "Vos scores",
+    "points": "points",
+    "questions": "questions posées",
+    "found": "erreurs trouvées",
+    "rate": "réponses justes",
+    "streak": "jours d'affilée",
+    "kind": "Type de mission",
+    "kinds": {
+      "all": "Au hasard",
+      "where": "Pages et boutons",
+      "action": "Actions",
+      "knowledge": "Savoir",
+      "lookup": "Données"
+    },
+    "played": "déjà {{count}} question(s)",
+    "placeholder": "Votre question à l'assistant, comme elle vous vient…",
+    "ask": "Demander à l'assistant",
+    "working": "L'assistant réfléchit…",
+    "prepared": "Action préparée : {{action}} (jamais confirmée ici)",
+    "expected": "Ce que la mission attendait",
+    "judged": {
+      "right": "L'assistant semble avoir trouvé",
+      "wrong": "L'assistant semble s'être trompé"
+    },
+    "right": "L'assistant a bien répondu",
+    "wrong": "L'assistant s'est trompé",
+    "other": "J'ai demandé autre chose",
+    "remark": "Une remarque ? (facultatif : ce qui manque, ce qui gêne…)",
+    "savedRight": "Noté : +1 point.",
+    "savedWrong": "Erreur trouvée : +3 points. C'est exactement ce dont l'assistant a besoin.",
+    "savedOther": "Noté, sans compter cette question.",
+    "again": "La demander autrement",
+    "next": "Mission suivante",
+    "skip": "Passer cette mission",
+    "none": "Plus aucune mission de ce type pour l'instant.",
+    "fine": "Vos questions restent sur ce serveur ; l'assistant n'exécute rien ici.",
+    "back": "Retour au tableau de bord"
+  },
+  "registry": {
+    "open": "Liste ANGed",
+    "title": "Opérateurs autorisés (liste ANGed)",
+    "intro": "Les sociétés que l'ANGed publie comme autorisées à collecter, transporter, recycler ou traiter des déchets en Tunisie. C'est la parole de l'agence : DivaWaste ne la vérifie pas.",
+    "pickIntro": "Choisissez une société dans les listes publiées par l'ANGed : ses coordonnées et son autorisation remplissent la fiche du partenaire. Vérifiez-les avec lui : la liste peut dater.",
+    "platformSubtitle": "Les listes publiées par l'ANGed : les collecteurs, transporteurs et recycleurs autorisés que la plateforme peut inviter.",
+    "search": "Rechercher",
+    "searchHint": "Nom, déchet, ville, n° d'autorisation, téléphone…",
+    "list": "Liste",
+    "allLists": "Toutes les listes",
+    "role": "Activité",
+    "anyRole": "Toutes",
+    "governorate": "Gouvernorat",
+    "allGovernorates": "Tous",
+    "hazardousOnly": "Déchets dangereux seulement (autorisations du ministère)",
+    "source": "{{total}} entrées des listes ANGed (déchets dangereux : autorisations ; non dangereux : cahiers des charges).",
+    "readOn": "Lues sur anged.nat.tn le {{date}}.",
+    "notLoaded": "Les listes ANGed ne sont pas encore chargées sur ce serveur (php artisan registry:import-anged).",
+    "none": "Aucune entrée ne correspond.",
+    "hazardous": "Déchets dangereux",
+    "expired": "Autorisation échue",
+    "authorization": "Autorisation n° {{number}}",
+    "until": "jusqu'au {{date}}",
+    "tonnage": "{{value}} t/an",
+    "page": "Page {{page}} sur {{pages}} · {{total}} entrées",
+    "use": "Utiliser",
+    "addAsPartner": "Ajouter comme partenaire",
+    "fill": "Remplir depuis la liste ANGed",
+    "fillHint": "Le partenaire figure peut-être dans les listes de l'ANGed : ses coordonnées et son autorisation y sont.",
+    "filledFrom": "Rempli depuis la liste ANGed « {{list}} » : vérifiez les coordonnées avec le partenaire.",
+    "noteFrom": "Liste ANGed : {{list}}",
+    "roles": {
+      "collector": "Collecte",
+      "transporter": "Transport",
+      "recycler": "Recyclage / traitement",
+      "sorter": "Tri",
+      "storer": "Stockage"
+    }
   }
 }

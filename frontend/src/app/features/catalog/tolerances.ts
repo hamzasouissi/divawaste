@@ -14,7 +14,6 @@ import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
 import { LocalizedPipe, NumberPipe } from '../../core/format/pipes';
 import { CheckboxComponent } from '../../ui/checkbox';
-import { Confirm } from '../../ui/confirm';
 import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
 import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
@@ -216,7 +215,6 @@ export class ToleranceRuleDialog {
 export class TolerancesComponent implements OnInit {
   private readonly api = inject(Api);
   private readonly dialog = inject(Dialogs);
-  private readonly confirm = inject(Confirm);
   private readonly toast = inject(Toast);
 
   protected readonly canManage = inject(Session).can('waste_types.manage');
@@ -254,12 +252,21 @@ export class TolerancesComponent implements OnInit {
     this.dialog.open<ToleranceRuleDialog, ToleranceRule | null, ToleranceRule>(ToleranceRuleDialog, { data: rule }).afterClosed().subscribe((saved) => saved && this.load());
   }
 
+  /** G-09: deleted at once; "Annuler" puts the same rule back. */
   protected async remove(rule: ToleranceRule): Promise<void> {
-    if (!(await this.confirm.ask({ title: this.toast.text('tolerance.rules.deleteTitle'), message: this.toast.text('tolerance.rules.deleteHint'), danger: true }))) {
-      return;
-    }
     try {
       await firstValueFrom(this.api.delete(`tolerance-rules/${rule.ulid}`));
+      this.load();
+      this.toast.undoable('tolerance.rules.deleted', () => void this.restore(rule));
+    } catch (error) {
+      this.toast.error(error);
+    }
+  }
+
+  private async restore(rule: ToleranceRule): Promise<void> {
+    const { waste_type, treatment_channel, warning_pct, blocking_pct, direction, basis, reference, notes, is_active } = rule;
+    try {
+      await firstValueFrom(this.api.post('tolerance-rules', { waste_type: waste_type?.ulid ?? null, treatment_channel, warning_pct, blocking_pct, direction, basis, reference, notes, is_active }));
       this.load();
     } catch (error) {
       this.toast.error(error);

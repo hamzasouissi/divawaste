@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
@@ -20,6 +20,7 @@ import { CheckboxComponent } from '../../ui/checkbox';
 import { DateComponent } from '../../ui/date';
 import { FIELD } from '../../ui/field';
 import { IconComponent } from '../../ui/icon';
+import { MoreComponent } from '../../ui/more';
 import { SELECT } from '../../ui/select';
 
 function today(): string {
@@ -35,9 +36,20 @@ function today(): string {
  * A provider that cannot be chosen (no valid accreditation, not a partner, or not approved for hazardous waste
  * when the selection needs it) is shown with the reason instead of being hidden (M4-02).
  */
+/** What the pickup form needs of a contract: with whom, in which role, from when to when. */
+interface ContractLine {
+  contract_number: string;
+  status: 'draft' | 'active' | 'terminated';
+  state: string;
+  party_role: string;
+  party: { ulid: string } | null;
+  starts_on: string;
+  ends_on: string | null;
+}
+
 @Component({
   imports: [
-    FormsModule, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KnownWeightPipe, LotMeasurePipe, IconComponent, ButtonDirective, ...FIELD, ...SELECT, CheckboxComponent, DateComponent, LimitsComponent, RequirementsComponent, Textarea,
+    FormsModule, RouterLink, TranslocoDirective, MoreComponent, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KnownWeightPipe, LotMeasurePipe, IconComponent, ButtonDirective, ...FIELD, ...SELECT, CheckboxComponent, DateComponent, LimitsComponent, RequirementsComponent, Textarea,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -98,10 +110,11 @@ function today(): string {
               }
             }
 
+            <!-- PC-02: the providers under contract first, then the partners; who cannot take this waste is folded away. -->
             <div class="providers" role="radiogroup" [attr.aria-label]="t('pickups.provider')">
-              @for (item of platformReceivers(); track item.ulid) {
+              @for (item of orderedReceivers(); track item.ulid) {
                 <button type="button" role="radio" class="provider" [attr.aria-checked]="provider() === 'c:' + item.ulid" [class.on]="provider() === 'c:' + item.ulid" [disabled]="!choosable(item)" (click)="choose('c:' + item.ulid)">
-                  <span class="name">{{ item.legal_name }}</span>
+                  <span class="name">{{ item.legal_name }}@if (contracted().has(item.ulid)) { <span class="badge">{{ t('pickups.create.underContract') }}</span> }</span>
                   <span class="dw-faint">{{ item.city }} · {{ item.channels.length > 0 ? channelNames(item, t) : '—' }}</span>
                   @if (!choosable(item)) {
                     <dw-status kind="accreditation" value="expired" [label]="item.blocked_reason ? t('pickups.create.notSelectable.' + item.blocked_reason) : t('providers.hazardousOnly')" />
@@ -110,12 +123,16 @@ function today(): string {
                   }
                 </button>
               }
-              @for (item of receivers(); track item.ulid) {
+              @for (item of orderedPartners(); track item.ulid) {
                 <button type="button" role="radio" class="provider" [attr.aria-checked]="provider() === 'x:' + item.ulid" [class.on]="provider() === 'x:' + item.ulid" [disabled]="blocked(item) !== null" (click)="choose('x:' + item.ulid)">
-                  <span class="name">{{ item.legal_name }} <dw-status kind="member" value="suspended" tone="neutral" [label]="t('partners.noAccount')" /></span>
+                  <span class="name">{{ item.legal_name }} <dw-status kind="member" value="suspended" tone="neutral" [label]="t('partners.noAccount')" />@if (contracted().has(item.ulid)) { <span class="badge">{{ t('pickups.create.underContract') }}</span> }</span>
                   <span class="dw-faint">{{ item.city }} · @for (role of item.roles; track role; let last = $last) { {{ t('providers.role.' + role) }}@if (!last) { , } }</span>
                   @if (blocked(item); as reason) { <dw-status kind="accreditation" value="expired" [label]="t('pickups.create.notSelectable.' + reason)" /> }
                 </button>
+              }
+              @if (hiddenCount() > 0) {
+                <button type="button" class="others" (click)="showOthers.set(!showOthers())" [attr.aria-expanded]="showOthers()">
+                  <dw-icon>{{ showOthers() ? 'expand_less' : 'expand_more' }}</dw-icon>{{ t(showOthers() ? 'pickups.create.hideOthers' : 'pickups.create.showOthers', { count: hiddenCount() }) }}</button>
               }
               @if (platformReceivers().length === 0 && receivers().length === 0) {
                 <p class="dw-muted">{{ t('pickups.create.noReceiver') }} <a routerLink="/providers">{{ t('nav.providers') }}</a></p>
@@ -138,6 +155,20 @@ function today(): string {
               }
             }
 
+            <dw-field [label]="t('pickups.requestedDate')">
+              <dw-date [ngModel]="date()" (ngModelChange)="date.set($event)" [min]="minDate" required />
+            </dw-field>
+            <!-- The contract this pickup will follow with this receiver on this date, or why none (ended, not started yet). -->
+            @if (contractNote(); as note) {
+              <p class="contract-note" [class.warn]="note.kind !== 'ok'" role="status">
+                <dw-icon aria-hidden="true">{{ note.kind === 'ok' ? 'handshake' : 'warning' }}</dw-icon>
+                <span>{{ t('pickups.create.contract.' + note.kind, { number: note.number, date: (note.date | dwDate) }) }}</span>
+              </p>
+            }
+
+            <!-- PC-03: the receiver transports and each waste type keeps its usual channel, unless said otherwise here. -->
+            <dw-more [grid]="false" [summary]="moreSummary(t)" [open]="transporterRequired() || transporter() !== '' || channel() !== ''">
+            <div class="dw-stack-sm">
             <dw-field [label]="t('pickups.transporter')">
               <dw-select [ngModel]="transporter()" (ngModelChange)="transporter.set($event)">
                 <dw-option value="" [label]="t('pickups.receiverTransports')" />
@@ -154,14 +185,12 @@ function today(): string {
               </dw-select>
               <small dwHint>{{ t('pickups.plannedChannelHint') }}</small>
             </dw-field>
-
-            <dw-field [label]="t('pickups.requestedDate')">
-              <dw-date [ngModel]="date()" (ngModelChange)="date.set($event)" [min]="minDate" required />
-            </dw-field>
+            </div>
+            </dw-more>
 
             <div class="dw-form-actions">
-              <button pButton severity="secondary" outlined type="button" [disabled]="!ready() || busy()" (click)="save(false)">{{ t('pickups.create.saveDraft') }}</button>
-              <button pButton type="button" [disabled]="!sendable() || busy()" (click)="save(true)"><dw-icon>send</dw-icon>{{ t('pickups.create.send') }}</button>
+              <button pButton text type="button" [disabled]="!ready() || busy()" (click)="save(false)">{{ t('pickups.create.saveDraft') }}</button>
+              <button pButton type="button" size="large" [disabled]="!sendable() || busy()" (click)="save(true)"><dw-icon>send</dw-icon>{{ t('pickups.create.send') }}</button>
             </div>
           </div>
         </section>
@@ -170,7 +199,14 @@ function today(): string {
   `,
   styles: `
     .site { width: 220px; }
-    .dw-form-actions { flex-wrap: wrap; } .dw-form-actions > * { flex: 1 1 auto; }
+    .contract-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; line-height: 20px;
+      background: var(--dw-success-soft); color: var(--dw-ink); }
+    .contract-note dw-icon { flex: none; font-size: 18px; color: var(--dw-success); }
+    .contract-note.warn { background: var(--dw-warning-soft); } .contract-note.warn dw-icon { color: var(--dw-warning); }
+    .dw-form-actions { flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+    .badge { margin-inline-start: 8px; padding: 1px 8px; border-radius: 999px; background: var(--dw-primary-soft); color: var(--dw-primary); font-size: 11.5px; font-weight: 650; vertical-align: 1px; }
+    .others { all: unset; display: inline-flex; align-items: center; gap: 4px; padding: 6px 2px; font-size: 13px; font-weight: 580; color: var(--dw-primary); cursor: pointer; }
+    .others:focus-visible { outline: 2px solid var(--dw-focus); outline-offset: 2px; }
     .pick tbody tr { cursor: pointer; } .pick tbody tr:hover td { background: var(--dw-surface-2); } .pick tr.on td, .pick tr.on:hover td { background: var(--dw-primary-soft); }
     .pick th:first-child, .pick td:first-child { width: 40px; padding-inline-end: 0; }
     .hazard { font-size: 15px; width: 15px; height: 15px; color: var(--dw-warning); vertical-align: -2px; }
@@ -196,9 +232,15 @@ export class PickupCreatePage {
   private readonly toast = inject(Toast);
   private readonly router = inject(Router);
 
-  protected readonly sites = inject(Session).sitesFor('pickups.request');
+  private readonly session = inject(Session);
+  protected readonly sites = this.session.sitesFor('pickups.request');
   protected readonly minDate = today();
-  protected readonly site = signal(this.sites[0]?.ulid ?? '');
+  /** PC-01: opened from a lot, a selection of lots or a full zone, the request arrives with them chosen. */
+  private readonly params = inject(ActivatedRoute).snapshot.queryParamMap;
+  private preselect: { lots: string[]; zone: string | null } | null = this.params.get('lots') || this.params.get('zone')
+    ? { lots: (this.params.get('lots') ?? '').split(',').filter(Boolean), zone: this.params.get('zone') }
+    : null;
+  protected readonly site = signal(this.sites.find((site) => site.ulid === this.params.get('site'))?.ulid ?? this.sites[0]?.ulid ?? '');
   protected readonly lots = signal<Lot[]>([]);
   protected readonly loadingLots = signal(false);
   protected readonly lotsError = signal<unknown>(null);
@@ -219,16 +261,59 @@ export class PickupCreatePage {
   protected readonly overrideReason = signal('');
   private asked = 0;
   /** The chosen receiver: `c:` + a provider of the platform, or `x:` + a partner without an account. */
-  protected readonly provider = signal('');
+  protected readonly provider = signal(this.params.get('provider') ?? '');
+  private readonly contracts = signal<ContractLine[]>([]);
+  /**
+   * The receiver's contract on the chosen date: the one this pickup will follow, or — when the only contracts with it
+   * ended, were terminated or start later — a warning that it will follow none (neither its prices nor its fees).
+   */
+  protected readonly contractNote = computed((): { kind: 'ok' | 'ended' | 'terminated' | 'upcoming'; number: string; date: string | null } | null => {
+    const party = this.provider().slice(2);
+    const date = this.date();
+    const mine = this.contracts().filter((contract) => contract.party?.ulid === party && contract.party_role === 'receiver' && contract.status !== 'draft');
+    // No date yet (the field was cleared): nothing to say about the contract until one is chosen.
+    if (!party || !date || mine.length === 0) {
+      return null;
+    }
+    const covers = mine.find((contract) => contract.status === 'active' && contract.starts_on <= date && (contract.ends_on === null || contract.ends_on >= date));
+    if (covers) {
+      return { kind: 'ok', number: covers.contract_number, date: null };
+    }
+    const later = mine.find((contract) => contract.status === 'active' && contract.starts_on > date);
+    if (later) {
+      return { kind: 'upcoming', number: later.contract_number, date: later.starts_on };
+    }
+    const last = [...mine].sort((a, b) => (b.ends_on ?? '').localeCompare(a.ends_on ?? ''))[0];
+
+    return { kind: last.status === 'terminated' ? 'terminated' : 'ended', number: last.contract_number, date: last.ends_on };
+  });
   /** The chosen transporter, written the same way; empty = the receiver transports. */
   protected readonly transporter = signal('');
-  protected readonly date = signal(today());
+  /** A date asked by the link (a contract's next pickup), never before today. */
+  protected readonly date = signal(this.params.get('date') && (this.params.get('date') as string) > today() ? (this.params.get('date') as string) : today());
   /** What the receiver is to do with the waste, when it is not what each waste type plans: it selects the tolerance at reception. */
   protected readonly channel = signal('');
   protected readonly channels = ['reuse', 'recycling', 'energy_recovery', 'incineration', 'other_treatment', 'landfill'];
   protected readonly busy = signal(false);
 
   private readonly chosen = computed(() => this.lots().filter((lot) => this.selected().includes(lot.ulid)));
+  /** Receivers under an active contract with the company (PC-02). */
+  protected readonly contracted = signal<Set<string>>(new Set());
+  protected readonly showOthers = signal(false);
+  private readonly rank = (ulid: string, open: boolean): number => (open ? 0 : 2) + (this.contracted().has(ulid) ? 0 : 1);
+  protected readonly orderedReceivers = computed(() => [...this.platformReceivers()]
+    .filter((item) => this.showOthers() || this.choosable(item) || this.provider() === `c:${item.ulid}`)
+    .sort((a, b) => this.rank(a.ulid, this.choosable(a)) - this.rank(b.ulid, this.choosable(b))));
+  protected readonly orderedPartners = computed(() => [...this.receivers()]
+    .filter((item) => this.showOthers() || this.blocked(item) === null || this.provider() === `x:${item.ulid}`)
+    .sort((a, b) => this.rank(a.ulid, this.blocked(a) === null) - this.rank(b.ulid, this.blocked(b) === null)));
+  /** Providers that cannot take this collection, folded under "Voir les autres". */
+  protected readonly hiddenCount = computed(() => this.platformReceivers().filter((item) => !this.choosable(item)).length + this.receivers().filter((item) => this.blocked(item) !== null).length);
+
+  protected moreSummary(t: (key: string, params?: Record<string, unknown>) => string): string {
+    const transporter = this.transporters().find((item) => item.key === this.transporter())?.label;
+    return `${transporter ? t('pickups.create.transportBy', { name: transporter }) : t('pickups.receiverTransports')} · ${this.channel() ? t('channels.' + this.channel()) : t('pickups.plannedChannelDefault')}`;
+  }
   protected readonly selectedKg = computed(() => this.chosen().reduce((sum, lot) => sum + Number(lot.net_weight_kg ?? 0), 0));
   /** Selected lots nobody weighed: said beside the total, never added to it as zeros. */
   protected readonly unweighed = computed(() => this.chosen().filter((lot) => lot.net_weight_kg === null).length);
@@ -263,6 +348,15 @@ export class PickupCreatePage {
 
   constructor() {
     this.loadLots();
+    if (this.session.uses('contracts') && this.session.can('contracts.view')) {
+      this.api.list<ContractLine>('contracts', { per_page: 100 }).subscribe({
+        next: (page) => {
+          this.contracts.set(page.data);
+          this.contracted.set(new Set(page.data.filter((contract) => contract.state === 'active' && contract.party_role === 'receiver' && contract.party !== null).map((contract) => contract.party?.ulid ?? '')));
+        },
+        error: () => undefined,
+      });
+    }
     this.api.get<DirectoryProvider[]>('providers/directory', { filter: { partners_only: true } }).subscribe({ next: (providers) => this.providers.set(providers), error: (error: unknown) => this.toast.error(error) });
     // A partner that has opened an account is chosen among the providers of the platform from then on.
     this.api.get<ExternalPartner[]>('external-partners').subscribe({ next: (partners) => this.externals.set(partners.filter((partner) => !partner.linked_company)), error: (error: unknown) => this.toast.error(error) });
@@ -352,6 +446,11 @@ export class PickupCreatePage {
       next: (page) => {
         this.lots.set(page.data);
         this.loadingLots.set(false);
+        const wanted = this.preselect;
+        if (wanted) {
+          this.preselect = null;
+          this.selected.set(page.data.filter((lot) => wanted.lots.includes(lot.ulid) || (wanted.zone !== null && lot.zone?.ulid === wanted.zone)).map((lot) => lot.ulid));
+        }
       },
       error: (error: unknown) => {
         this.lotsError.set(error);

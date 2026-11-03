@@ -9,6 +9,7 @@ import { Textarea } from 'primeng/textarea';
 import { ToggleSwitch } from 'primeng/toggleswitch';
 import { firstValueFrom } from 'rxjs';
 
+import { Confirm } from '../../ui/confirm';
 import { Api } from '../../core/api/api';
 import { Localized } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
@@ -46,7 +47,7 @@ const eventLabel = (event: string, t: (key: string) => string): string => (EVENT
  * transfers, plan requests), then the size of the customer base and what was decided recently.
  */
 @Component({
-  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, KpiComponent, StateComponent, DatePipe, IconComponent],
+  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, KpiComponent, StateComponent, DatePipe, IconComponent, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -95,10 +96,18 @@ const eventLabel = (event: string, t: (key: string) => string): string => (EVENT
                 <div class="dw-panel-head"><h2 class="dw-h2">{{ t('platform.overview.queue') }}</h2></div>
                 <ul class="rows">
                   @for (company of d.pending_companies; track company.ulid) {
-                    <li><a [routerLink]="['/platform/companies', company.ulid]">
+                    <li class="decide"><a [routerLink]="['/platform/companies', company.ulid]">
                       <span class="dw-spacer"><strong>{{ company.legal_name }}</strong><small>{{ t('platform.companies.types.' + company.company_type) }}@if (company.city) { · {{ company.city }} }</small></span>
-                      <small>{{ company.submitted_at | dwDate }}</small><dw-icon class="go">chevron_right</dw-icon>
-                    </a></li>
+                      <small>{{ company.submitted_at | dwDate }}</small>
+                    </a>
+                      <!-- PL-02: decided from the queue, as agréments and transfers are. -->
+                      @if (canReview) {
+                        <span class="acts">
+                          <button pButton text size="small" severity="secondary" type="button" [disabled]="busy()" (click)="decide(company, 'reject')">{{ t('platform.companies.reject') }}</button>
+                          <button pButton size="small" type="button" [disabled]="busy()" (click)="decide(company, 'approve')">{{ t('platform.companies.approve') }}</button>
+                        </span>
+                      }
+                    </li>
                   } @empty { <li class="none">{{ t('platform.overview.queueEmpty') }}</li> }
                 </ul>
               </section>
@@ -145,6 +154,7 @@ const eventLabel = (event: string, t: (key: string) => string): string => (EVENT
     .rows li + li { border-block-start: 1px solid var(--dw-line-soft); }
     .rows a, .rows .line { display: flex; align-items: center; gap: var(--dw-3); min-height: 44px; padding: 6px var(--dw-3) 6px var(--dw-4); color: var(--dw-ink); }
     .rows a:hover { background: var(--dw-surface-2); text-decoration: none; }
+    .rows li.decide { display: flex; align-items: center; } .rows li.decide a { flex: 1; min-width: 0; } .acts { display: flex; gap: 4px; padding-inline-end: 12px; }
     .rows .dw-spacer { display: flex; flex-direction: column; min-width: 0; }
     .rows small { font-size: 12px; color: var(--dw-ink-3); }
     .none { padding: var(--dw-4); color: var(--dw-ink-3); }
@@ -156,6 +166,31 @@ const eventLabel = (event: string, t: (key: string) => string): string => (EVENT
 })
 export class PlatformOverviewPage {
   private readonly api = inject(Api);
+  private readonly confirm = inject(Confirm);
+  private readonly toast = inject(Toast);
+  protected readonly busy = signal(false);
+  protected readonly canReview = inject(Session).canPlatform('platform.companies.review');
+
+  protected async decide(company: { ulid: string; legal_name: string }, action: 'approve' | 'reject'): Promise<void> {
+    const reject = action === 'reject';
+    const answer = await this.confirm.ask({
+      title: `${this.toast.text('platform.companies.' + action)} — ${company.legal_name}`, danger: reject,
+      reasonLabel: reject ? this.toast.text('platform.companies.rejectReason') : undefined,
+    });
+    if (answer === null) {
+      return;
+    }
+    this.busy.set(true);
+    try {
+      await firstValueFrom(this.api.post(`platform/companies/${company.ulid}/${action}`, reject ? { reason: answer } : {}));
+      this.toast.success(`platform.companies.${reject ? 'rejected' : 'approved'}`);
+      this.load();
+    } catch (error) {
+      this.toast.error(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
 
   protected readonly data = signal<Overview | null>(null);
   protected readonly error = signal<unknown>(null);

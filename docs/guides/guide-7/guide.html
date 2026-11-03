@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Guide 7 — Équipe, rôles et accès</title>
+<style>
+  @page { size: A4; margin: 0; }
+  :root { --green: #0f5a4f; --green-2: #16796a; --soft: #e8f3f0; --ink: #16222b; --ink-2: #45525c; --line: #d9e2e0; --red: #c62f32; --amber: #9a5b00; --amber-soft: #fff4dc; --blue-soft: #eef3fb; --blue: #2f5ea8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", Inter, Arial, sans-serif; color: var(--ink); font-size: 11.4pt; line-height: 1.48; }
+  .page { width: 210mm; height: 297mm; overflow: hidden; padding: 15mm 17mm 14mm; page-break-after: always; position: relative; }
+  .page:last-child { page-break-after: auto; }
+  .foot { position: absolute; bottom: 8mm; left: 17mm; right: 17mm; display: flex; justify-content: space-between; font-size: 8.5pt; color: #7b8790; border-top: 1px solid var(--line); padding-top: 3mm; }
+
+  .cover { background: linear-gradient(160deg, #0b1c1f 0%, #0f3a35 60%, #16796a 100%); color: #fff; display: flex; flex-direction: column; padding: 22mm 20mm; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15pt; }
+  .brand .logo { width: 34px; height: 34px; border-radius: 9px; background: #2a8f7e; display: grid; place-items: center; font-weight: 800; }
+  .cover .kicker { margin-top: 30mm; font-size: 11pt; letter-spacing: .14em; text-transform: uppercase; color: #9fd8cc; font-weight: 700; }
+  .cover h1 { font-size: 29pt; line-height: 1.12; margin: 4mm 0 5mm; font-weight: 750; }
+  .cover .sub { font-size: 13.5pt; color: #d4ece6; max-width: 150mm; }
+  .robot-cover { position: absolute; right: 20mm; top: 18mm; width: 30mm; height: 30mm; }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8mm; }
+  .tag { padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 10.5pt; }
+  .need { margin-top: auto; background: rgba(255,255,255,.08); border-radius: 14px; padding: 7mm 8mm; }
+  .need h3 { margin: 0 0 3mm; font-size: 12pt; color: #9fd8cc; text-transform: uppercase; letter-spacing: .08em; }
+  .need ul { margin: 0; padding-left: 18px; columns: 2; column-gap: 10mm; }
+  .need li { margin-bottom: 1.5mm; break-inside: avoid; }
+
+  h2.part { font-size: 19pt; margin: 0 0 2mm; color: var(--green); }
+  h2.part small { display: block; font-size: 10.5pt; color: var(--ink-2); font-weight: 500; letter-spacing: .02em; }
+  .lead { color: var(--ink-2); margin: 0 0 5mm; }
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3.5mm; margin: 3mm 0 5mm; }
+  .map div { border: 1px solid var(--line); border-radius: 12px; padding: 3.5mm 5mm; }
+  .map div.extra { border-style: dashed; background: #fafcfc; }
+  .map b { display: block; color: var(--green); font-size: 11pt; } .map span { color: var(--ink-2); font-size: 10pt; }
+  .num { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: var(--green); color: #fff; font-size: 9.5pt; font-weight: 700; margin-right: 6px; }
+  .map .num { color: #fff; }
+  .extra .num { background: #7b8f8b; }
+
+  .step { margin-bottom: 6mm; }
+  .step h3 { display: flex; align-items: center; gap: 8px; font-size: 14pt; margin: 0 0 2.5mm; }
+  .step h3 .n { flex: none; display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 9px; background: var(--green); color: #fff; font-size: 11.5pt; }
+  .step.extra h3 .n { background: #7b8f8b; }
+  ol.do, ul.do { margin: 0 0 3mm; padding-left: 22px; } ol.do li, ul.do li { margin-bottom: 1.2mm; }
+  .shot { margin: 2mm 0 3mm; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; box-shadow: 0 3px 10px rgba(16, 40, 40, .08); }
+  .shot img { display: block; width: 100%; }
+  .shot.half { width: 72%; margin-left: auto; margin-right: auto; }
+  .shot.mid { width: 60%; margin-left: auto; margin-right: auto; }
+  .shot.small { width: 48%; margin-left: auto; margin-right: auto; }
+  .cap { font-size: 9pt; color: #6c7880; margin: -1.5mm 0 3mm; text-align: center; }
+  .box { border-radius: 10px; padding: 3mm 4.5mm; margin: 2mm 0 3mm; font-size: 10.5pt; }
+  .see { background: var(--soft); border-left: 4px solid var(--green); }
+  .see b:first-child { color: var(--green); }
+  .tip { background: #f3f6f8; border-left: 4px solid #8796a0; }
+  .warn { background: var(--amber-soft); border-left: 4px solid var(--amber); }
+  .info { background: var(--blue-soft); border-left: 4px solid var(--blue); }
+  .info b:first-child { color: var(--blue); }
+  .ring { color: var(--red); font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 10.2pt; margin: 2mm 0 3mm; }
+  th, td { text-align: left; padding: 2mm 3mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f3f6f6; font-size: 9.3pt; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  td.ans { font-weight: 700; color: var(--green); white-space: nowrap; }
+  table.xl { font-family: Calibri, "Segoe UI", Arial, sans-serif; font-size: 9.8pt; border: 1px solid #b7c4c1; }
+  table.xl th { background: #e6efe9; color: #1f3b33; text-transform: none; letter-spacing: 0; font-size: 9.8pt; border-right: 1px solid #c9d4d1; }
+  table.xl td { border-right: 1px solid #e0e6e4; padding: 1.4mm 2.5mm; }
+  .check td:first-child { width: 9mm; font-size: 13pt; color: var(--green); }
+  .check td { padding: 1.6mm 3mm; font-size: 9.8pt; }
+  .remarks { border: 1px dashed #b9c6c4; border-radius: 10px; height: 34mm; margin-top: 3mm; padding: 3mm 4mm; color: #9aa6ad; font-size: 10pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; align-items: start; }
+  .who { display: flex; gap: 4mm; align-items: center; }
+  .who svg { flex: none; width: 16mm; height: 16mm; }
+  .badge { display: inline-block; font-size: 8.5pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: #7b8f8b; border-radius: 6px; padding: 1px 7px; vertical-align: middle; margin-left: 6px; }
+  .phones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; margin: 2mm 0 3mm; }
+  .phones .shot { margin: 0; } .phones .cap { margin: 1.5mm 0 0; }
+  .phones.four { grid-template-columns: repeat(4, 1fr); gap: 4mm; }
+  .crop img { height: 100mm; object-fit: cover; object-position: top; }
+  .crop.short img { height: 80mm; }
+</style>
+</head>
+<body>
+
+<!-- the assistant's face, as in the application -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="dg" x1="4" y1="2" x2="36" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1c8a7c"/><stop offset="0.55" stop-color="#0f5c56"/><stop offset="1" stop-color="#0b3f3b"/></linearGradient>
+    <linearGradient id="ds" x1="10" y1="11" x2="30" y2="31" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#bfeee1"/></linearGradient>
+    <symbol id="robot" viewBox="0 0 40 40">
+      <rect x="2" y="2" width="36" height="36" rx="12" fill="url(#dg)"/>
+      <clipPath id="tile"><rect x="2" y="2" width="36" height="36" rx="12"/></clipPath>
+      <rect x="11.5" y="31" width="17" height="10" rx="4.5" fill="#bfeee1" opacity="0.85" clip-path="url(#tile)"/>
+      <line x1="20" y1="7.8" x2="20" y2="11.5" stroke="#bfeee1" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="20" cy="6.6" r="2.1" fill="#7ff5d9"/>
+      <rect x="7" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="29.6" y="17.5" width="3.4" height="7.5" rx="1.7" fill="#bfeee1"/>
+      <rect x="9.5" y="11" width="21" height="19.5" rx="6.5" fill="url(#ds)"/>
+      <rect x="12.3" y="14.6" width="15.4" height="10" rx="4.6" fill="#0b3f3b"/>
+      <rect x="15" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <rect x="21.7" y="17.4" width="3.3" height="4.4" rx="1.65" fill="#7ff5d9"/>
+      <path d="M17.6 27 Q20 28.5 22.4 27" fill="none" stroke="#0f5c56" stroke-width="1.3" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ============================================================ COVER -->
+<section class="page cover">
+  <div class="brand"><span class="logo">D</span> DivaWaste</div>
+  <svg class="robot-cover"><use href="#robot"/></svg>
+  <div class="kicker">Guide 7 · Pas à pas</div>
+  <h1>Votre équipe,<br>ses rôles et ses accès</h1>
+  <div class="sub">Inviter vos collègues, donner à chacun <b>le bon rôle sur le bon site</b>, comprendre ce que chaque rôle voit et peut faire, et régler <b>votre propre compte</b> : profil, mot de passe, double authentification, notifications.</div>
+  <div class="tags"><span class="tag">⏱ 15 minutes</span><span class="tag">🏭 Exemple : Textile du Cap Bon</span><span class="tag">👤 Pour l'administrateur de la société</span></div>
+  <div class="need">
+    <h3>Avant de commencer, ayez sous la main</h3>
+    <ul>
+      <li>L'<b>adresse email</b> de chaque personne à inviter</li>
+      <li>Ce que chacun <b>fait</b> au quotidien (pèse, signe, consulte…)</li>
+      <li>Sur <b>quels sites</b> chacun travaille</li>
+      <li>Un <b>téléphone</b> avec une application d'authentification (pour la double authentification)</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ OVERVIEW -->
+<section class="page">
+  <h2 class="part">Le chemin en un coup d'œil</h2>
+  <div class="map">
+    <div><b><span class="num">A</span>Inviter l'équipe</b><span>Une invitation par personne, avec son rôle et ses sites.</span></div>
+    <div><b><span class="num">B</span>Les rôles</b><span>Les sept rôles d'une société, et ce que chacun voit.</span></div>
+    <div><b><span class="num">C</span>Modifier, suspendre, retirer</b><span>Changer un rôle, en ajouter un sur un autre site, couper un accès.</span></div>
+    <div><b><span class="num">D</span>Rôles sur mesure</b><span>La matrice des permissions, et un rôle à vous pour un besoin particulier.</span></div>
+    <div><b><span class="num">E</span>Votre compte</b><span>Profil, langue, mot de passe, double authentification, notifications.</span></div>
+    <div><b><span class="num">F</span>Prestataires et Diva Software</b><span>Les rôles côté prestataire et côté plateforme.</span></div>
+    <div><b><span class="num">✓</span>Fiche de test</b><span>Cochez ce qui marche, notez ce qui gêne.</span></div>
+  </div>
+  <div class="box info"><b>Où ?</b> Tout se passe dans <b>Paramètres › Utilisateurs et rôles</b> (menu de gauche, en bas). Seul un <b>Administrateur client</b> peut inviter, changer les rôles ou retirer quelqu'un ; le Responsable environnement voit la liste mais ne la modifie pas.</div>
+  <div class="box tip"><b>Un principe à retenir.</b> Un rôle se donne <b>par site</b> : la même personne peut être Opérateur atelier à Nabeul et Responsable environnement à Korba. Ce que l'écran cache, le serveur le refuse aussi : un rôle n'est jamais « contourné » par une adresse tapée à la main.</div>
+  <div class="box tip"><b>Comment lire ce guide.</b> L'élément à cliquer est <span class="ring">entouré en rouge</span> ; l'encadré vert dit <b>ce que vous devez voir</b>.</div>
+  <div class="foot"><span>DivaWaste · Guide 7 — Équipe, rôles et accès</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ A -->
+<section class="page">
+  <h2 class="part">A. Inviter l'équipe</h2>
+  <div class="step">
+    <h3><span class="n">A1</span>La page Utilisateurs et rôles</h3>
+    <ol class="do"><li>Menu <b>Paramètres</b> › carte <b>Utilisateurs et rôles</b>.</li>
+      <li>En haut : les <b>invitations en attente</b> (avec <b>Renvoyer</b> et <b>Annuler l'invitation</b>). Dessous : les <b>membres</b>, avec leurs rôles par site, la double authentification, la dernière connexion et le statut.</li></ol>
+    <div class="shot"><img src="img7/01-users.jpg"></div>
+    <div class="box see"><b>Vous devez voir</b> chaque membre avec une étiquette « <i>Rôle · Site</i> », par exemple « Opérateur atelier · Usine de Nabeul ». « Tous les sites » veut dire : le rôle vaut partout, y compris pour un site créé plus tard.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 7 — Équipe, rôles et accès</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">A2</span>Inviter une personne</h3>
+    <ol class="do"><li>Cliquez <b>Inviter un utilisateur</b>.</li>
+      <li><b>Email</b> (obligatoire), <b>Prénom</b> et <b>Nom</b> (facultatifs : la personne pourra les corriger).</li>
+      <li><b>Rôle</b> : sous la liste, une phrase dit ce que le rôle permet. Exemple : <i>Opérateur atelier — créer, peser et ranger les lots, et charger les enlèvements, sur ses sites</i>.</li>
+      <li><b>Sites</b> : laissez vide pour <b>tous les sites</b>, ou choisissez-en un ou plusieurs. Ici, Youssef ne travaille qu'à <span class="ring">Usine de Nabeul</span>.</li>
+      <li>Un <b>message d'accompagnement</b> s'il le faut, puis <b>Inviter un utilisateur</b>.</li></ol>
+    <div class="shot half"><img src="img7/03-invite-filled.jpg"></div>
+    <div class="box see"><b>Vous devez voir</b> « Invitation envoyée. » et la personne dans <b>Invitations en attente</b>, avec la date d'expiration : le lien vaut <b>7 jours</b>.</div>
+  </div>
+  <div class="step">
+    <h3><span class="n">A3</span>Si l'email n'arrive pas</h3>
+    <ul class="do"><li><b>Renvoyer</b> envoie un nouveau lien (l'ancien ne marche plus) ; le compteur « envoyée n fois » le garde en mémoire.</li>
+      <li><b>Annuler l'invitation</b> si l'adresse est fausse : la personne ne pourra plus l'accepter. Invitez ensuite la bonne adresse.</li>
+      <li>Vérifiez les courriers indésirables : l'email vient de DivaWaste, avec le nom de votre société et votre message.</li></ul>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 7 — Équipe, rôles et accès</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">A4</span>Ce que fait la personne invitée <span class="badge">Invité</span></h3>
+    <ol class="do"><li>Elle ouvre le lien de l'email : la page <b>Accepter l'invitation</b> s'ouvre, sans compte à créer avant.</li>
+      <li>Elle vérifie son <b>prénom</b> et son <b>nom</b>, choisit un <b>mot de passe</b> (12 caractères au moins, avec une lettre et un chiffre).</li>
+      <li>Elle coche les <b>Conditions générales</b> et la <b>Politique de confidentialité</b>, puis <span class="ring">Accepter l'invitation</span>.</li>
+      <li>Elle arrive sur la page de connexion, avec le message « Invitation acceptée » : elle se connecte avec son email et son nouveau mot de passe.</li></ol>
+    <div class="shot half"><img src="img7/05-invitation-page.jpg"></div>
+    <div class="box see"><b>Vous devez voir</b>, côté administrateur, la personne passer des invitations aux <b>membres</b>, avec son rôle et son site. Son email est confirmé d'office : c'est en ouvrant le lien qu'elle l'a prouvé.</div>
+    <div class="box tip"><b>Elle a déjà un compte DivaWaste</b> (dans une autre société) ? Elle garde son mot de passe : l'invitation ajoute votre société à son compte. Elle choisit ensuite la société dans le menu de son nom.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 7 — Équipe, rôles et accès</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ B -->
+<section class="page">
+  <h2 class="part">B. Les rôles d'une société industrielle</h2>
+  <p class="lead">Cinq rôles standard, maintenus par Diva Software. Choisissez le plus petit qui suffit au travail de la personne.</p>
+  <table>
+    <tr><th style="width:27%">Rôle</th><th>Ce qu'il fait</th><th style="width:26%">Ce qu'il ne fait pas</th></tr>
+    <tr><td><b>Administrateur client</b></td><td>Tout : équipe et rôles, sites, référentiel, modules, clés API, abonnement et factures, et toutes les opérations (lots, enlèvements, contrats, Bourse, conformité, production).</td><td>—</td></tr>
+    <tr><td><b>Responsable environnement</b></td><td>Les déchets de bout en bout : lots, stock, enlèvements, prestataires, contrats, Bourse, bordereaux, déclarations, autorisations, rapports, production ; les réglages de la société et les clés API.</td><td>Inviter ou retirer quelqu'un, changer les rôles, l'abonnement et les factures.</td></tr>
+    <tr><td><b>Opérateur atelier</b></td><td>L'<b>application atelier</b> (téléphone, tablette) : créer, peser, compter les colis, ranger, déplacer, diviser ou regrouper les lots, imprimer l'étiquette, voir le stock, <b>charger</b> un enlèvement — sur ses sites.</td><td>La version bureau : il est envoyé vers l'application atelier (Guide 8).</td></tr>
+    <tr><td><b>Direction (lecture)</b></td><td>Tout <b>consulter</b> : tableau de bord, lots, stock, enlèvements, contrats, conformité, production, coûts ; exporter les rapports.</td><td>Rien modifier : aucun bouton d'action ne s'affiche.</td></tr>
+    <tr><td><b>Auditeur</b></td><td>Lire les <b>lots</b>, les <b>enlèvements</b>, le <b>registre</b>, les <b>bordereaux</b>, les <b>documents</b>, les <b>rapports</b> et le <b>journal d'audit</b>.</td><td>Le tableau de bord, les prix, la production ; rien modifier.</td></tr>
+  </table>
+  <div class="box info"><b>Rôle et site.</b> Un rôle donné sur un site ne vaut que pour ce site : Youssef (Opérateur atelier · Usine de Nabeul) ne voit ni ne crée de lots à Korba. Pour un rôle partout, laissez le site vide.</div>
+  <div class="box warn"><b>Au moins un administrateur.</b> DivaWaste refuse de suspendre, de retirer ou de changer le rôle du dernier Administrateur client. Gardez-en deux : en cas d'absence de l'un, l'autre peut agir.</div>
+  <div class="foot"><span>DivaWaste · Guide 7 — Équipe, rôles et accès</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <h2 class="part">B. Ce que chaque rôle voit <small>Les mêmes données, des écrans différents</small></h2>
+  <div class="two">
+    <div><div class="shot"><img src="img7/20-viewer.jpg"></div><p class="cap"><b>Direction (lecture)</b> : l'Accueil complet, sans « Nouveau lot » ni « Nouvelle demande ».</p></div>
+    <div><div class="shot"><img src="img7/21-auditor.jpg"></div><p class="cap"><b>Auditeur</b> : arrive sur les lots ; menus Déchets, Enlèvements, Conformité, Rapports.</p></div>
+    <div><div class="shot"><img src="img7/22-auditor-audit.jpg"></div><p class="cap"><b>Auditeur</b> : le <b>journal d'audit</b>, qui a créé, modifié ou supprimé quoi.</p></div>
+    <div><div class="shot"><img src="img7/24-envmanager-settings.jpg"></div><p class="cap"><b>Responsable environnement</b> : Paramètres sans Abonnement ; Utilisateurs en lecture.</p></div>
+  </div>
+  <div class="two" style="grid-template-columns: 1fr 3fr; align-items:center">
+    <div class="shot crop short" style="width:42mm"><img src="img7/23-operator-phone.jpg" style="height:62mm"></div>
+    <div><p><b>Opérateur atelier</b> : il se connecte avec le même lien que les autres et arrive directement dans l'<b>application atelier</b> : Nouveau lot, Scanner, Charger un enlèvement. S'il tape l'adresse d'un écran de bureau, il est renvoyé ici.</p>
+      <div class="box tip"><b>Le menu suit le rôle.</b> Un menu qui n'apparaît pas n'est pas un oubli : le rôle n'y a pas droit. Si quelqu'un a besoin d'un écran, changez son rôle (C) plutôt que de lui prêter un compte.</div></div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 7 — Équipe, rôles et accès</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ C -->
+<section class="page">
+  <h2 class="part">C. Modifier, suspendre, retirer</h2>
+  <div class="step">
+    <h3><span class="n">C1</span>Changer les rôles d'un membre</h3>
+    <ol class="do"><li>Cliquez sur la <b>ligne</b> du membre (ou sur <b>⋯</b> au bout de la ligne, puis <b>Modifier les rôles</b>).</li>
+      <li>Une ligne par rôle : <b>Rôle</b> et <b>Site</b> (vide = tous les sites). <b>Ajouter un rôle</b> pour un autre site ; la corbeille enlève une ligne.</li>
+      <li><b>Enregistrer</b> : le changement vaut dès la page suivante de la personne.</li></ol>
+    <div class="two"><div class="shot"><img src="img7/13-member-menu.jpg"></div><div class="shot"><img src="img7/08-member.jpg"></div></div>
+  </div>
+  <div class="step">
+    <h3><span class="n">C2</span>Couper un accès</h3>
+    <table>
+      <tr><th style="width:28%">Action</th><th>Effet</th></tr>
+      <tr><td><b>Suspendre</b></td><td>La personne ne peut plus se connecter à votre société ; ses rôles sont gardés. <b>Réactiver</b> les lui rend tels quels. Pour une absence longue, un prestataire de passage…</td></tr>
+      <tr><td><b>Retirer de la société</b></td><td>Elle perd tout accès à votre société. Son compte personnel reste (elle peut appartenir à d'autres sociétés). Ce qu'elle a fait reste à son nom dans le journal d'audit.</td></tr>
+    </table>
+    <div class="box warn"><b>Un départ ?</b> Suspendez ou retirez la personne le jour même : ses accès ouverts à votre société sont coupés aussitôt, sur le bureau comme sur l'application atelier.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 7 — Équipe, rôles et accès</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ D -->
+<section class="page">
+  <h2 class="part">D. La matrice des permissions et les rôles sur mesure</h2>
+  <div class="step">
+    <h3><span class="n">D1</span>Lire un rôle</h3>
+    <ol class="do"><li>Onglet <b>Rôles et permissions</b> : à gauche les rôles, à droite ce qu'ils permettent, par domaine (Lots de déchets, Enlèvements, Documents, Production…).</li>
+      <li>Chaque domaine dit <b>Aucun</b>, <b>Voir</b>, <b>Gérer</b> ou <b>Sur mesure</b> (« 3 sur 5 ») ; <b>Détail</b> montre chaque permission.</li></ol>
+    <div class="shot half"><img src="img7/07-roles.jpg"></div>
+  </div>
+  <div class="step">
+    <h3><span class="n">D2</span>Créer un rôle de la société</h3>
+    <ol class="do"><li><b>Nouveau rôle</b> : un libellé (« Chef d'équipe Korba »), puis les domaines à <b>Voir</b> ou <b>Gérer</b>.</li>
+      <li><b>Enregistrer</b> : le rôle apparaît dans la liste des rôles à l'invitation et dans « Modifier les rôles ».</li></ol>
+    <div class="box info"><b>Rôles standard et rôles de la société.</b> Les rôles standard sont les mêmes pour toutes les sociétés et suivent les nouvelles versions de DivaWaste. Un rôle de société est à vous seul : il ne reçoit pas tout seul les permissions des nouveaux écrans.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 7 — Équipe, rôles et accès</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ E -->
+<section class="page">
+  <h2 class="part">E. Votre compte <small>Pour tout le monde, quel que soit le rôle</small></h2>
+  <div class="step">
+    <h3><span class="n">E1</span>Le menu de votre nom</h3>
+    <p>En haut à droite : <b>Mon profil</b>, <b>Sécurité du compte</b>, <b>Se déconnecter</b> ; et, si vous appartenez à plusieurs sociétés, le choix de la société. Les boutons <b>FR / EN</b> changent la langue de l'écran tout de suite.</p>
+    <div class="two"><div class="shot"><img src="img7/12-user-menu.jpg"></div><div class="shot"><img src="img7/09-profile.jpg"></div></div>
+    <p class="cap"><b>Mon profil</b> : prénom, nom, téléphone, langue de l'écran, et <b>langue des documents générés</b> (étiquettes, bordereaux, déclarations, rapports, factures).</p>
+  </div>
+  <div class="step">
+    <h3><span class="n">E2</span>Mot de passe et double authentification</h3>
+    <ol class="do"><li><b>Sécurité du compte</b> › <b>Changer le mot de passe</b> : l'actuel, puis le nouveau (12 caractères, une lettre et un chiffre).</li>
+      <li><b>Double authentification (TOTP)</b> › <b>Activer</b> : scannez le QR code avec une application d'authentification (Google Authenticator, Microsoft Authenticator…), tapez le code à 6 chiffres, et <b>gardez les codes de secours</b> affichés.</li>
+      <li>Ensuite, chaque connexion demande le code de l'application. Téléphone perdu : un code de secours, une seule fois chacun.</li></ol>
+    <div class="box tip"><b>Recommandé</b> pour les administrateurs et ceux qui signent les bordereaux. La colonne <b>Double authentification</b> de la liste des membres montre qui l'a activée.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 7 — Équipe, rôles et accès</span><span class="pg"></span></div>
+</section>
+
+<section class="page">
+  <div class="step">
+    <h3><span class="n">E3</span>Les notifications</h3>
+    <ol class="do"><li>La cloche en haut : le nombre de messages non lus. Cliquez pour les voir ; <b>Tout marquer comme lu</b>.</li>
+      <li><b>Préférences de notification</b> (à droite) : pour chaque famille (Stock et capacité, Enlèvements, Bourse, Contrats, Conformité…), recevoir <b>dans l'application</b> et/ou <b>par email</b>.</li></ol>
+    <div class="shot half"><img src="img7/11-notifications.jpg"></div>
+    <div class="box see"><b>Chaque notification mène à sa page</b> : « Bordereau BSD-2026-0019 à signer » ouvre les bordereaux ; « Limite de stock non vérifiable » ouvre le stock.</div>
+  </div>
+  <div class="step">
+    <h3><span class="n">E4</span>Mot de passe oublié</h3>
+    <p>Sur la page de connexion : <b>Mot de passe oublié ?</b>, votre email, puis le lien reçu (valable une heure). Après cinq essais faux, le compte est bloqué quelques minutes : attendez, ou utilisez « Mot de passe oublié ».</p>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 7 — Équipe, rôles et accès</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ F -->
+<section class="page">
+  <h2 class="part">F. Côté prestataire, et côté Diva Software</h2>
+  <table>
+    <tr><th style="width:30%">Rôle</th><th>Ce qu'il fait</th></tr>
+    <tr><td><b>Administrateur prestataire</b></td><td>Le profil dans l'annuaire, les déchets acceptés, les agréments, l'équipe ; répondre aux demandes, réceptionner, déclarer le traitement, signer, la Bourse (Guide 5).</td></tr>
+    <tr><td><b>Opérateur prestataire</b></td><td>Voir les demandes, <b>enregistrer les réceptions</b> (poids reçus) et <b>déposer les certificats</b>. Ni profil, ni agréments, ni Bourse.</td></tr>
+    <tr><td><b>Administrateur plateforme</b></td><td>Diva Software : valider les inscriptions et les agréments, les virements, les formules, le catalogue de référence, la matrice des rôles (Guide 10).</td></tr>
+    <tr><td><b>Support plateforme</b></td><td>Diva Software : consulter l'activité de la plateforme pour aider un client, sans rien décider.</td></tr>
+  </table>
+  <div class="box info"><b>Un prestataire invite son équipe</b> exactement comme en A : Paramètres › Utilisateurs et rôles › Inviter un utilisateur, rôle Administrateur ou Opérateur prestataire.</div>
+  <h3 style="margin-top:6mm">Questions fréquentes</h3>
+  <table>
+    <tr><td><b>« Je ne vois pas le menu Production. »</b></td><td>Le module Production n'est pas activé pour la société (Paramètres › Modules), ou votre rôle n'y a pas droit.</td></tr>
+    <tr><td><b>« Le bouton Signer n'apparaît pas. »</b></td><td>Il faut le droit de signer les bordereaux sur ce site (Administrateur client ou Responsable environnement).</td></tr>
+    <tr><td><b>« Mon opérateur ne voit pas Korba. »</b></td><td>Son rôle est donné sur Nabeul seulement : ajoutez une ligne Opérateur atelier · Atelier de Korba (C1).</td></tr>
+    <tr><td><b>« Qui a supprimé ce lot ? »</b></td><td>Paramètres › Journal d'audit : filtrez sur Lot de déchets et l'action Suppression (Guide 9).</td></tr>
+  </table>
+  <div class="foot"><span>DivaWaste · Guide 7 — Équipe, rôles et accès</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ TEST -->
+<section class="page">
+  <h2 class="part">Fiche de test</h2>
+  <table class="check">
+    <tr><td>☐</td><td>J'invite une personne avec un rôle et un site ; elle apparaît dans « Invitations en attente » avec sa date d'expiration.</td></tr>
+    <tr><td>☐</td><td>« Renvoyer » envoie un nouveau lien ; « Annuler l'invitation » le rend inutilisable.</td></tr>
+    <tr><td>☐</td><td>La personne accepte avec son mot de passe, puis se connecte ; elle passe dans « Membres ».</td></tr>
+    <tr><td>☐</td><td>Un Opérateur atelier arrive dans l'application atelier et ne voit que les zones de son site.</td></tr>
+    <tr><td>☐</td><td>La Direction (lecture) voit l'Accueil et les rapports, sans aucun bouton d'action.</td></tr>
+    <tr><td>☐</td><td>L'Auditeur ouvre le registre, les bordereaux et le journal d'audit.</td></tr>
+    <tr><td>☐</td><td>Cliquer sur la ligne d'un membre ouvre « Modifier les rôles » ; j'ajoute un rôle sur un autre site.</td></tr>
+    <tr><td>☐</td><td>« Suspendre » empêche la connexion ; « Réactiver » rend les mêmes rôles.</td></tr>
+    <tr><td>☐</td><td>Je crée un rôle de la société et je le donne à quelqu'un.</td></tr>
+    <tr><td>☐</td><td>Je change ma langue et la langue des documents dans Mon profil.</td></tr>
+    <tr><td>☐</td><td>J'active la double authentification ; la connexion suivante demande le code.</td></tr>
+    <tr><td>☐</td><td>Je règle une famille de notifications « par email » seulement.</td></tr>
+  </table>
+  <div class="remarks">Remarques, questions, ce qui gêne :</div>
+  <div class="foot"><span>DivaWaste · Guide 7 — Équipe, rôles et accès</span><span class="pg"></span></div>
+</section>
+<script>
+  document.querySelectorAll('.page').forEach((page, i) => { const pg = page.querySelector('.pg'); if (pg) pg.textContent = String(i + 1); });
+</script>
+</body>
+</html>

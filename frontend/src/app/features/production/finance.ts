@@ -103,7 +103,7 @@ interface FinanceReport {
                               <td class="num">{{ row.produced_value === null ? '—' : (row.produced_value | dwMoney: r.currency) }}</td>
                               <td class="num">
                                 @if (row.gain === null) { <span class="warn" [title]="reasons(row.missing)">{{ t('production.finance.notCalculable') }}</span><div class="dw-faint why">{{ reasons(row.missing) }}</div> }
-                                @else { <strong [class.bad]="+row.gain < 0" [class.good]="+row.gain >= 0">{{ row.gain | dwMoney: r.currency }}</strong><div class="dw-faint">{{ row.margin_pct }} %@if (row.estimated) { · {{ t('production.estimated') }} }</div> }
+                                @else { <strong [class.bad]="+row.gain < 0" [class.good]="+row.gain >= 0">{{ row.gain | dwMoney: r.currency }}</strong><div class="dw-faint">{{ row.margin_pct | dwNumber: 1 }} %@if (row.estimated) { · {{ t('production.estimated') }} }</div> }
                               </td>
                             </tr>
                           }
@@ -138,7 +138,7 @@ interface FinanceReport {
                         @for (row of r.by_material; track row.material) {
                           <tr><td><a [routerLink]="['/production/catalog', row.material]"><strong class="dw-mono">{{ row.reference }}</strong></a> {{ row.name }}</td>
                             <td class="num">{{ row.planned === null ? '—' : (row.planned | dwNumber: 1) + ' ' + row.unit }}</td><td class="num">{{ row.consumed | dwNumber: 1 }} {{ row.unit }}</td>
-                            <td class="num" [class.bad]="(row.variance_pct ?? 0) > 0" [class.good]="(row.variance_pct ?? 0) < 0">{{ row.variance_pct === null ? '—' : (row.variance_pct > 0 ? '+' : '') + row.variance_pct + ' %' }}</td>
+                            <td class="num" [class.bad]="(row.variance_pct ?? 0) > 0" [class.good]="(row.variance_pct ?? 0) < 0">{{ row.variance_pct === null ? '—' : (row.variance_pct > 0 ? '+' : '') + (row.variance_pct | dwNumber: 1) + ' %' }}</td>
                             <td class="num" [class.warn]="+row.unallocated > 0">{{ row.unallocated | dwNumber: 1 }} {{ row.unit }}</td>
                             <td class="num">{{ add(row.cost_known, row.cost_estimated) | dwMoney: r.currency }}@if (+row.unknown_quantity > 0) { <div class="warn">{{ t('production.report.unknownQuantity', { quantity: (row.unknown_quantity | dwNumber: 1), unit: row.unit }) }}</div> }</td></tr>
                         } @empty { <tr><td colspan="6" class="empty">{{ t('production.report.empty') }}</td></tr> }
