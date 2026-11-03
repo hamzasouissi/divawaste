@@ -55,6 +55,10 @@ legal documents. A provider also gives its activity and at least one accreditati
 
 Then: confirm the email (link valid 24 hours) → wait for Diva Software's approval → sign in.
 
+**Test mode** (demonstration server: `AUTO_VERIFY_EMAILS` and `AUTO_APPROVE_SIGNUPS` on): no email to confirm and no
+approval to wait for. The page says "Votre compte est prêt" right after "Créer mon compte", and the contact signs in
+at once. With `AUTO_VERIFY_EMAILS` alone, the registration goes straight to Diva Software's review.
+
 | Screen | When |
 |---|---|
 | ![Mail sent](screenshots/onboarding/03-register-done.png) | Right after registration |
@@ -66,7 +70,8 @@ Then: confirm the email (link valid 24 hours) → wait for Diva Software's appro
 ### Invitation — `/invitation` (link received by email)
 
 Colleagues do not register: the administrator invites them (see [Utilisateurs](#utilisateurs-et-rôles--adminusers)).
-The link is valid 7 days; the person chooses a password and accepts the terms.
+The link is valid 7 days; the person chooses a password and accepts the terms. In test mode the link is also shown
+to the administrator who invites ("Lien d'invitation", **Copier le lien**), to pass on by hand.
 
 ### Sign-in — `/login`
 
@@ -250,6 +255,17 @@ combination), the tax ID, the contact and, optionally, the authorisation number 
 covers hazardous waste. Such a partner is visible to your company only; the platform does not review its
 authorisation. For its pickups you record the stages yourself and it signs the tracking slip by hand. A partner
 you stop using is switched off ("Utilisé" unticked), never deleted.
+
+**Liste ANGed** (beside "Ajouter un partenaire"): the lists of authorised waste operators published by ANGed
+(5,653 entries read on anged.nat.tn on 2026-11-03): 11 hazardous-waste lists — the ministry's authorisation, its
+number, dates, tonnage and collection area — and 17 non-hazardous lists (textile, carton, plastics, metals…) — the
+companies that filed the specifications, without a number. Search by name, waste, town, authorisation number or
+phone; filter by list, activity (collection, transport, recycling / treatment, sorting, storage), governorate, and
+"Déchets dangereux seulement". **Ajouter comme partenaire** opens "Ajouter un partenaire" already filled (name,
+activities, address, town, contact, phone, and for an authorisation "ANGed <number>" with its end date and the
+hazardous box); in the form itself, **Remplir depuis la liste ANGed** does the same. The list is the agency's word:
+the platform does not check it, it may be out of date, and it gives no tax ID. A company listed for several wastes
+has one entry per list. Users without "providers.partnerships.manage" can browse the list but not add from it.
 
 When such a partner later opens an account on the platform and publishes its profile with the **same tax ID**, its
 line says so and offers **Associer à ce compte**. The provider then becomes one of your platform partners: the next

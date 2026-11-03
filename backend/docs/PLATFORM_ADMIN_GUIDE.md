@@ -117,6 +117,11 @@ the plan asked at registration, usage (sites, users, lots) and, for a provider, 
 
 ## 4. Scenario A — a company registers and you approve it
 
+> **Test mode.** With `AUTO_VERIFY_EMAILS=true` and `AUTO_APPROVE_SIGNUPS=true` in the API's `.env` (the demonstration
+> server), steps 2 to 5 below happen on their own: the email counts as confirmed and the company is approved at once
+> (trial started, approval email sent, the audit records an approval without a reviewer). Nothing waits in
+> "En attente de validation". Set both to `false` and run `php artisan config:cache` before opening to real clients.
+
 This is the real sequence, executed while writing this guide with a new company, *Maille Bizerte SARL*.
 
 ### Step 1 — the company registers (public page `/register`)
@@ -368,6 +373,12 @@ queue. The status filter shows "À valider", "Approuvé" and "Rejeté".
 être choisi pour un enlèvement — Agrément expiré ou absent", and cannot be selected in a pickup request:
 
 ![Directory seen by a client](screenshots/client/17-providers.png)
+
+**The ANGed lists** — back office › **Liste ANGed**: the lists of authorised operators published by ANGed (11
+hazardous-waste authorisation lists, 17 non-hazardous "cahier des charges" lists; 5,653 entries read on 2026-11-03).
+Use them to check an accreditation's number and dates against the agency's own list, and to find collectors,
+carriers and recyclers to invite. Clients see the same lists from Prestataires. A new edition of the lists is loaded
+by the technical team (`scripts/anged/extract.py`, then `php artisan registry:import-anged`; DEVELOPER_RUNBOOK.md).
 
 ## 10. Reference waste catalogue
 
