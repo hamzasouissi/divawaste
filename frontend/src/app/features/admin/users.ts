@@ -194,9 +194,10 @@ export class InviteDialog {
     this.busy.set(true);
     try {
       const value = this.form.getRawValue();
-      await firstValueFrom(this.api.post('invitations', { ...value, first_name: value.first_name || null, last_name: value.last_name || null, message: value.message || null }));
+      const sent = await firstValueFrom(this.api.post<{ accept_url?: string }>('invitations', { ...value, first_name: value.first_name || null, last_name: value.last_name || null, message: value.message || null }));
       this.toast.success('admin.users.invited');
-      this.ref.close(true);
+      // Emails confirmed by the platform (tests, demo): the link comes back, to pass on by hand.
+      this.ref.close(sent?.accept_url ?? true);
     } catch (error) {
       if (!this.toast.applyValidation(this.form, error)) {
         this.toast.error(error);
@@ -569,6 +570,27 @@ export class UsersPage {
     if (sent) {
       this.loadInvitations();
     }
+    if (typeof sent === 'string') {
+      await this.offerLink(sent);
+    }
+  }
+
+  /** The invitation's link, shown when the platform confirms emails itself: copied for the person invited. */
+  private async offerLink(url: string): Promise<void> {
+    if (await this.confirm.ask({ title: this.toast.text('admin.users.linkTitle'), message: `${this.toast.text('admin.users.linkHint')} ${url}`, confirmLabel: this.toast.text('admin.users.copyLink') })) {
+      // The clipboard API needs HTTPS; the demo server is plain HTTP, where only the older copy command works.
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        const area = document.createElement('textarea');
+        area.value = url;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand('copy');
+        area.remove();
+      }
+      this.toast.success('admin.users.linkCopied');
+    }
   }
 
   protected async editRoles(member: Member): Promise<void> {
@@ -590,7 +612,11 @@ export class UsersPage {
   }
 
   protected async resend(invitation: Invitation): Promise<void> {
-    await this.run(() => firstValueFrom(this.api.post(`invitations/${invitation.ulid}/resend`)), 'admin.users.invited', () => this.loadInvitations());
+    let url: string | undefined;
+    await this.run(async () => { url = (await firstValueFrom(this.api.post<{ accept_url?: string }>(`invitations/${invitation.ulid}/resend`)))?.accept_url; }, 'admin.users.invited', () => this.loadInvitations());
+    if (url) {
+      await this.offerLink(url);
+    }
   }
 
   protected async revoke(invitation: Invitation): Promise<void> {
