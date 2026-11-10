@@ -48,6 +48,8 @@ export interface Company {
   has_logo: boolean;
   activities: string[];
   weight_variance_threshold_pct: string;
+  /** The marker efficiency (%) a fabric is cut with when its article does not say its own. */
+  cutting_efficiency_pct: string;
   /** Parts of the product the company uses: a module that is off hides its menu, fields and help. */
   modules?: Record<CompanyModule, boolean>;
   /** Answers to the first onboarding questions; null until answered. */
