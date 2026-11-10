@@ -682,9 +682,23 @@ gain could not be calculated and why; totals only add the gains that exist. **Ex
     (marker length ÷ pieces in the marker): the waste is inside it. Supplies (buttons, labels, threads) and materials
     without laize or grammage give no estimate rather than a wrong one. The efficience also comes in with the
     composition file (column "Efficience").
+- **Grilles de tailles** — third tab of `/production/catalog`: a company's lists of sizes, in order ("Adulte : S M L
+  XL", "Enfant : 2A 4A …"), created once and reused. A size that an OF gave quantities to cannot leave its grid.
 - **Commandes** — `/production/orders`: number, client, dates, status, and the articles ordered with quantities.
 - **Ordres de fabrication** — `/production/manufacturing-orders`: number, article (one of the order's when an order is
   chosen), planned and produced quantities, dates, status, then:
+  - **Tailles**: the OF may follow a grid and give its quantity of each size; the planned quantity is then their total.
+  - **Coupe** (tab of the OF): one line per **matelas** (spread) — the fabric (in metres), optionally its received lot,
+    the **length** and **efficience** of the placement, the **pieces of each size per layer**, the **couches prévues**
+    then, after cutting, the **couches réalisées** (and optionally the spread ends, in cm per layer). For each matelas:
+    pieces = couches × pieces per layer (by size), fabric = couches × length (m, then kg with laize and grammage),
+    chute estimée = fabric × (100 − efficience) %. The garments are counted on the **main fabric** (most metres): an
+    interlining or a lining adds its fabric and its waste, not pieces. "Par taille" sets ordered, planned and cut
+    pieces side by side (cut below ordered in red) and shares each matelas's waste by its pieces (an estimate).
+    "Coupé et consommé" sets the metres cut beside the consumption entered; the button on a matelas records its
+    metres cut as a consumption of the OF, once and only when asked.
+    As soon as an OF has matelas, its estimated waste (Déchets tab, statistics) comes from them — couches prévues,
+    then réalisées — instead of the article's estimate.
   - **Étapes**: the stages the OF goes through, **each on its own site** (cut on one site, sewn on another), with
     the pieces done at each. The stages offered are the platform's (coupe, confection, lavage, teinture, finition,
     contrôle qualité, emballage) plus the ones the company adds;

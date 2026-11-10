@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class ProductionStats
 {
-    public function __construct(private readonly TenantContext $context, private readonly CuttingWaste $cutting) {}
+    public function __construct(private readonly TenantContext $context, private readonly CuttingWaste $cutting, private readonly CuttingPlan $plan) {}
 
     /**
      * @return array<string, mixed>
@@ -40,6 +40,8 @@ final class ProductionStats
         $steps = DB::table('production_steps')->get(['id', 'code', 'name'])->keyBy('id');
         // The cutting waste one piece of each article is expected to leave (its fabrics' placements).
         $expectedPerPiece = $this->cutting->perPiece($orders->pluck('article_id')->unique()->map(fn ($id) => (int) $id)->values()->all());
+        // An OF whose spreads were cut says its own: the waste of its layers really cut, with each placement's efficiency.
+        $expectedCut = $this->plan->cutWasteByOrder($orders->keys()->map(fn ($id) => (int) $id)->values()->all());
 
         // What each order consumed, in kilograms when it can be known (kg, or metres of a fabric whose width and weight are given).
         $consumedKg = [];
@@ -103,7 +105,7 @@ final class ProductionStats
         }
 
         // $expected: the rows are orders, clients or articles, whose pieces say what cutting waste was expected.
-        $group = function (callable $key, callable $describe, bool $expected = false) use ($shares, $orders, $consumedKg, $expectedPerPiece) {
+        $group = function (callable $key, callable $describe, bool $expected = false) use ($shares, $orders, $consumedKg, $expectedPerPiece, $expectedCut) {
             $rows = [];
             foreach ($shares as [$orderId, $stepId, $materialId, $kg, $measured, $count, $amount]) {
                 $k = $key($orderId === null ? null : ($orders[$orderId] ?? null), $stepId, $materialId);
@@ -119,7 +121,7 @@ final class ProductionStats
                 }
             }
 
-            return collect($rows)->map(function (array $row, $k) use ($describe, $orders, $consumedKg, $expected, $expectedPerPiece) {
+            return collect($rows)->map(function (array $row, $k) use ($describe, $orders, $consumedKg, $expected, $expectedPerPiece, $expectedCut) {
                 $total = bcadd($row['measured_kg'], $row['estimated_kg'], 3);
                 // Pieces and consumption of the orders behind the row: the ones that produced this waste.
                 $pieces = 0;
@@ -128,7 +130,9 @@ final class ProductionStats
                 foreach (array_keys($row['orders']) as $orderId) {
                     $pieces += (int) ($orders[$orderId]->quantity_produced ?? 0);
                     $perPiece = $expectedPerPiece[(int) $orders[$orderId]->article_id]['waste_kg'] ?? null;
-                    if ($expected && $perPiece !== null && $orders[$orderId]->quantity_produced !== null) {
+                    if ($expected && isset($expectedCut[(int) $orderId])) {
+                        $cutting = bcadd($cutting ?? '0', $expectedCut[(int) $orderId], 6);
+                    } elseif ($expected && $perPiece !== null && $orders[$orderId]->quantity_produced !== null) {
                         $cutting = bcadd($cutting ?? '0', bcmul($perPiece, (string) $orders[$orderId]->quantity_produced, 6), 6);
                     }
                     $consumed = $consumed === null || ! isset($consumedKg[$orderId]) ? null : bcadd($consumed, $consumedKg[$orderId], 3);

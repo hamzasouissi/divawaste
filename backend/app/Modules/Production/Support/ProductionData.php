@@ -31,7 +31,7 @@ final class ProductionData
         'b.delivery_cost', 'b.currency_code', 'b.tax_rate_pct', 'b.delivery_note', 'b.invoice_reference', 'b.external_reference', 'b.import_source', 'b.notes',
         's.ulid as supplier_ulid', 's.code as supplier_code', 's.name as supplier_name'];
 
-    public function __construct(private readonly ReferenceCodes $codes, private readonly ProductionFinance $finance, private readonly AccessResolver $access, private readonly CuttingWaste $cutting) {}
+    public function __construct(private readonly ReferenceCodes $codes, private readonly ProductionFinance $finance, private readonly AccessResolver $access, private readonly CuttingWaste $cutting, private readonly CuttingPlan $plan) {}
 
     /**
      * Stages a company may use: the defaults and its own.
@@ -263,6 +263,10 @@ final class ProductionData
             // The client of the order, or the client the article is made for.
             'client' => $this->named('production_clients', $order->production_client_id ?? $article->production_client_id),
             'quantity_planned' => $of->quantity_planned, 'quantity_produced' => $of->quantity_produced,
+            // The sizes it makes, in the order of its grid, and how many of each.
+            'size_grid' => ($grid = $of->getAttribute('size_grid_id') === null ? null : DB::table('size_grids')->where('id', $of->getAttribute('size_grid_id'))->first(['ulid', 'name', 'sizes'])) === null
+                ? null : ['ulid' => $grid->ulid, 'name' => $grid->name, 'sizes' => json_decode((string) $grid->sizes, true)],
+            'sizes' => $of->size_quantities ?? [],
             'started_on' => $of->started_on?->toDateString(), 'finished_on' => $of->finished_on?->toDateString(), 'status' => $of->status, 'notes' => $of->notes,
             'steps' => $steps,
         ];
@@ -285,6 +289,7 @@ final class ProductionData
 
         $produced = $this->producedLots()->where('p.production_order_id', $of->id)->orderBy('p.produced_on')->orderBy('p.id')->get();
         unset($figures['materials']);
+        $cutting = $this->plan->forOrder($of);
 
         return $data + [
             'materials' => $materials,
@@ -296,7 +301,8 @@ final class ProductionData
                 ->map(fn (array $row) => ['material' => $row['material'], 'reference' => $row['reference'], 'name' => $row['name'], 'unit' => $row['unit'], 'planned' => $row['planned'], 'consumed' => $row['consumed']])->values(),
             'produced_lots' => $produced->map(fn ($lot) => $this->producedLot($lot)),
             'produced' => $figures['produced'],
-            'waste' => $this->waste($of) + ['estimated' => $this->estimatedWaste($of)],
+            'waste' => $this->waste($of) + ['estimated' => $this->estimatedWaste($of, $cutting)],
+            'cutting' => $cutting === null ? null : array_diff_key($cutting, ['by_type' => 0]),
             'expenses' => ! $money ? [] : DB::table('production_order_expenses as e')->leftJoin('production_suppliers as s', 's.id', '=', 'e.production_supplier_id')
                 ->where('e.production_order_id', $of->id)->orderBy('e.incurred_on')->orderBy('e.id')
                 ->get(['e.ulid', 'e.category', 'e.description', 'e.amount', 'e.currency_code', 'e.incurred_on', 'e.reference', 'e.notes', 's.ulid as supplier', 's.name as supplier_name'])
@@ -391,10 +397,37 @@ final class ProductionData
      * By type of waste, the estimate is set beside the lots of the OF of that same type only: packaging or threads
      * weighed on the OF are not cutting scraps.
      *
+     * Once the OF has its spreads (matelas), they say it instead (source "cutting"): what the layers planned leave, then
+     * what the layers really cut leave, with the efficiency of each placement.
+     *
+     * @param  array<string, mixed>|null  $cutting
      * @return array<string, mixed>|null
      */
-    private function estimatedWaste(ProductionOrder $of): ?array
+    private function estimatedWaste(ProductionOrder $of, ?array $cutting = null): ?array
     {
+        $weighed = DB::table('waste_lots')->where('production_order_id', $of->id)->whereNull('deleted_at')->where('origin_type', 'created')->groupBy('waste_type_id')
+            ->selectRaw('waste_type_id, COUNT(*) as lots, COALESCE(SUM(net_weight_kg), 0) as kg, COALESCE(SUM(net_weight_kg IS NULL), 0) as unweighed')->get()->keyBy('waste_type_id');
+        $against = fn (int $typeId) => [
+            'weighed_kg' => $typeId === 0 || ! isset($weighed[$typeId]) ? null : bcadd((string) $weighed[$typeId]->kg, '0', 3),
+            'lots' => $typeId === 0 ? 0 : (int) ($weighed[$typeId]->lots ?? 0),
+            'unweighed_lots' => $typeId === 0 ? 0 : (int) ($weighed[$typeId]->unweighed ?? 0),
+        ];
+        if ($cutting !== null && $cutting['totals']['planned']['waste_kg'] !== null) {
+            $pieces = $cutting['totals']['planned']['pieces'];
+            $done = $cutting['totals']['done'];
+
+            return [
+                'source' => 'cutting',
+                'per_piece_kg' => $pieces > 0 ? CuttingWaste::round(bcdiv($cutting['totals']['planned']['waste_kg'], (string) $pieces, 8), 4) : null,
+                'planned_kg' => $cutting['totals']['planned']['waste_kg'], 'planned_pieces' => $pieces,
+                'produced_kg' => $done['waste_kg'] ?? null, 'produced_pieces' => $done['pieces'] ?? null,
+                'by_type' => collect($cutting['by_type'])->filter(fn (array $row) => $row['planned_kg'] !== null)->map(fn (array $row) => [
+                    'waste_type' => $this->cutting->type($row['type_id'] === 0 ? null : $row['type_id']),
+                    'per_piece_kg' => $pieces > 0 ? CuttingWaste::round(bcdiv($row['planned_kg'], (string) $pieces, 8), 4) : null,
+                    'planned_kg' => CuttingWaste::round($row['planned_kg'], 3), 'produced_kg' => $row['done_kg'] === null ? null : CuttingWaste::round($row['done_kg'], 3),
+                ] + $against($row['type_id']))->sortByDesc(fn (array $row) => (float) $row['planned_kg'])->values()->all(),
+            ];
+        }
         $piece = $this->cutting->perPiece([(int) $of->article_id])[(int) $of->article_id] ?? null;
         if ($piece === null) {
             return null;
@@ -405,9 +438,10 @@ final class ProductionData
             ->selectRaw('waste_type_id, COUNT(*) as lots, COALESCE(SUM(net_weight_kg), 0) as kg, COALESCE(SUM(net_weight_kg IS NULL), 0) as unweighed')->get()->keyBy('waste_type_id');
 
         return [
+            'source' => 'article',
             'per_piece_kg' => CuttingWaste::round($piece['waste_kg'], 4),
-            'planned_kg' => $times($piece['waste_kg'], (int) $of->quantity_planned),
-            'produced_kg' => $times($piece['waste_kg'], $produced),
+            'planned_kg' => $times($piece['waste_kg'], (int) $of->quantity_planned), 'planned_pieces' => (int) $of->quantity_planned,
+            'produced_kg' => $times($piece['waste_kg'], $produced), 'produced_pieces' => $produced,
             'by_type' => collect($piece['by_type'])->map(fn (string $kg, int $typeId) => [
                 'waste_type' => $this->cutting->type($typeId === 0 ? null : $typeId),
                 'per_piece_kg' => CuttingWaste::round($kg, 4),

@@ -18,10 +18,10 @@ class ProductionOrder extends Model
     use BelongsToCompany;
     use HasPublicUlid;
 
-    protected $fillable = ['ulid', 'order_number', 'article_id', 'customer_order_id', 'quantity_planned', 'quantity_produced', 'started_on', 'finished_on', 'status', 'notes'];
+    protected $fillable = ['ulid', 'order_number', 'article_id', 'customer_order_id', 'quantity_planned', 'quantity_produced', 'size_grid_id', 'size_quantities', 'started_on', 'finished_on', 'status', 'notes'];
 
     protected function casts(): array
     {
-        return ['started_on' => 'date', 'finished_on' => 'date', 'quantity_planned' => 'integer', 'quantity_produced' => 'integer'];
+        return ['started_on' => 'date', 'finished_on' => 'date', 'quantity_planned' => 'integer', 'quantity_produced' => 'integer', 'size_quantities' => 'array'];
     }
 }
