@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Catalog\Models\WasteType;
 use App\Modules\Catalog\Support\Colors;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Support\DocumentLanguage;
@@ -154,6 +155,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
         'composition.*.pct' => ['required', 'decimal:0,2', 'gt:0', 'lte:100'],
         'notes' => ['nullable', 'string', 'max:1000'],
         'is_active' => ['sometimes', 'boolean'],
+        // The waste it leaves when used; empty: a fabric leaves the company's cutting scraps.
+        'waste_type' => ['sometimes', 'nullable', 'string', new TenantExists(WasteType::class)],
     ];
     $materialAttributes = function (array $input, ReferenceCodes $codes) use ($id) {
         $composition = $input['composition'] ?? [];
@@ -166,7 +169,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
             'unit_id' => $codes->id('units', $input['unit']), 'color_family_id' => $codes->id('color_families', $input['color_family'] ?? null),
             'color_label' => $input['color_label'] ?? null, 'grammage_gsm' => $input['grammage_gsm'] ?? null, 'width_cm' => $input['width_cm'] ?? null, 'composition' => $composition === [] ? null : $composition,
             'notes' => $input['notes'] ?? null, 'is_active' => (bool) ($input['is_active'] ?? true),
-        ];
+            // Not sent: left as it is (an older screen does not know it).
+        ] + (array_key_exists('waste_type', $input) ? ['waste_type_id' => $id(WasteType::class, $input['waste_type'])] : []);
     };
 
     Route::get('materials', function (Request $request, ProductionData $data) use ($view, $like, $page, $paged) {
@@ -328,6 +332,13 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
 
         return response()->json(['data' => $data->article($saveArticle(new Article, $request->validate($articleRules())))], 201);
     })->name('production.articles.store');
+
+    // An article with its composition: what each piece consumes, and what its cutting is expected to leave.
+    Route::get('articles/{article}', function (Request $request, Article $article, ProductionData $data) use ($view) {
+        $view($request);
+
+        return response()->json(['data' => $data->article($article)]);
+    })->name('production.articles.show');
 
     Route::put('articles/{article}', function (Request $request, Article $article, ProductionData $data) use ($manage, $articleRules, $saveArticle) {
         $manage($request);

@@ -98,6 +98,7 @@ final class ProductionData
         $rows = $this->batches()->where('b.raw_material_id', $material->id)->orderByDesc('b.received_on')->orderByDesc('b.id')->get();
         $consumed = $this->finance->consumedPerLot($rows->pluck('id')->all());
         $average = ProductionFinance::averageUnitCost($rows, $this->finance->currency());
+        $applied = $material->getAttribute('waste_type_id') ?? ($this->isFabric($material) ? $this->cutting->scrapsType() : null);
         $data = [
             'ulid' => $material->ulid, 'reference' => $material->reference, 'name' => $material->name, 'category' => $material->getAttribute('category'),
             // The supplier proposed for a new received lot; each lot keeps its own.
@@ -105,6 +106,10 @@ final class ProductionData
             'unit' => $this->codes->code('units', $material->unit_id),
             'color_family' => $this->codes->code('color_families', $material->color_family_id), 'color_label' => $material->color_label,
             'grammage_gsm' => $material->grammage_gsm, 'width_cm' => $material->width_cm, 'composition' => $material->composition ?? [],
+            // The waste it leaves: its own, or for a fabric the company's cutting scraps (waste_type_inherited).
+            'waste_type' => $this->cutting->type($material->getAttribute('waste_type_id')),
+            'waste_type_applied' => $this->cutting->type($applied),
+            'waste_type_inherited' => $material->getAttribute('waste_type_id') === null && $applied !== null,
             'notes' => $material->notes, 'is_active' => $material->is_active,
             'batches' => $rows->map(fn ($batch) => $this->batch($batch, $consumed)),
             'average_unit_cost' => $this->money() && $average !== null ? bcadd($average, '0', 4) : null,
@@ -151,12 +156,15 @@ final class ProductionData
         $default = $this->cutting->defaultEfficiency();
         // What one piece is expected to consume, and for a fabric the waste its cutting is expected to leave.
         $materials = DB::table('article_materials as am')->join('raw_materials as m', 'm.id', '=', 'am.raw_material_id')->where('am.article_id', $article->id)->orderBy('am.id')
-            ->get(['m.ulid', 'm.reference', 'm.name', 'm.unit_id', 'm.width_cm', 'm.grammage_gsm', 'am.quantity_per_piece', 'am.efficiency_pct'])
+            ->get(['m.ulid', 'm.reference', 'm.name', 'm.unit_id', 'm.width_cm', 'm.grammage_gsm', 'm.waste_type_id', 'm.composition', 'am.quantity_per_piece', 'am.efficiency_pct'])
             ->map(function ($row) use ($default) {
                 $unit = $this->codes->code('units', (int) $row->unit_id);
-                $cut = $this->cutting->line((string) $row->quantity_per_piece, $unit, $row->width_cm, $row->grammage_gsm, $row->efficiency_pct, $default);
+                $cut = $this->cutting->line((string) $row->quantity_per_piece, $unit, $row->width_cm, $row->grammage_gsm, $row->efficiency_pct, $default, $row->waste_type_id);
 
                 return ['material' => $row->ulid, 'reference' => $row->reference, 'name' => $row->name, 'unit' => $unit, 'quantity_per_piece' => (string) $row->quantity_per_piece,
+                    'width_cm' => $row->width_cm === null ? null : (string) $row->width_cm, 'grammage_gsm' => $row->grammage_gsm === null ? null : (string) $row->grammage_gsm,
+                    'composition' => $row->composition === null ? [] : json_decode((string) $row->composition, true),
+                    'waste_type' => $cut['waste_kg'] === null ? null : $this->cutting->type($cut['waste_type_id']), 'waste_type_inherited' => $cut['inherited'],
                     'efficiency_pct' => $cut['efficiency_pct'], 'efficiency_applied' => $cut['efficiency_applied'],
                     'fabric_kg_per_piece' => $cut['fabric_kg'] === null ? null : CuttingWaste::round($cut['fabric_kg'], 4), 'waste_kg_per_piece' => $cut['waste_kg'] === null ? null : CuttingWaste::round($cut['waste_kg'], 4),
                     'fabric_kg_exact' => $cut['fabric_kg'], 'waste_kg_exact' => $cut['waste_kg']];
@@ -173,6 +181,11 @@ final class ProductionData
                 'default_efficiency_pct' => $default,
                 'fabric_kg_per_piece' => $total('fabric_kg_exact'),
                 'waste_kg_per_piece' => $total('waste_kg_exact'),
+                // The same waste by the type it is, the heaviest first.
+                'by_type' => $cut->groupBy(fn (array $line) => $line['waste_type']['ulid'] ?? '')
+                    ->map(fn ($lines) => ['waste_type' => $lines->first()['waste_type'], 'lines' => $lines->count(),
+                        'waste_kg_per_piece' => CuttingWaste::round($lines->reduce(fn (string $sum, array $line) => bcadd($sum, $line['waste_kg_exact'], 6), '0'), 4)])
+                    ->sortByDesc(fn (array $group) => (float) $group['waste_kg_per_piece'])->values(),
             ],
         ];
     }
@@ -366,7 +379,8 @@ final class ProductionData
                 'material' => $lot->material, 'batch_number' => $lot->batch_number]),
             'can_view_lots' => $siteIds !== [],
             'consumed_kg' => $consumedKg,
-            'waste_rate_pct' => $consumedKg === null ? null : round((float) $totals->kg / (float) $consumedKg * 100, 1),
+            // Only from what was weighed: lots waiting for their weight are not a rate of 0 %.
+            'waste_rate_pct' => $consumedKg === null || bccomp((string) $totals->kg, '0', 3) <= 0 ? null : round((float) $totals->kg / (float) $consumedKg * 100, 1),
         ];
     }
 
@@ -374,17 +388,43 @@ final class ProductionData
      * The cutting waste the OF is expected to leave: what one piece of its article leaves, for the pieces planned
      * (and for those produced, once some are). Null when no fabric of the article has its laize and grammage.
      *
-     * @return array{per_piece_kg: string, planned_kg: string, produced_kg: string|null}|null
+     * By type of waste, the estimate is set beside the lots of the OF of that same type only: packaging or threads
+     * weighed on the OF are not cutting scraps.
+     *
+     * @return array<string, mixed>|null
      */
     private function estimatedWaste(ProductionOrder $of): ?array
     {
         $piece = $this->cutting->perPiece([(int) $of->article_id])[(int) $of->article_id] ?? null;
+        if ($piece === null) {
+            return null;
+        }
+        $times = fn (string $kg, ?int $pieces) => $pieces === null ? null : CuttingWaste::round(bcmul($kg, (string) $pieces, 6), 3);
+        $produced = $of->quantity_produced === null ? null : (int) $of->quantity_produced;
+        $weighed = DB::table('waste_lots')->where('production_order_id', $of->id)->whereNull('deleted_at')->where('origin_type', 'created')->groupBy('waste_type_id')
+            ->selectRaw('waste_type_id, COUNT(*) as lots, COALESCE(SUM(net_weight_kg), 0) as kg, COALESCE(SUM(net_weight_kg IS NULL), 0) as unweighed')->get()->keyBy('waste_type_id');
 
-        return $piece === null ? null : [
+        return [
             'per_piece_kg' => CuttingWaste::round($piece['waste_kg'], 4),
-            'planned_kg' => CuttingWaste::round(bcmul($piece['waste_kg'], (string) $of->quantity_planned, 6), 3),
-            'produced_kg' => $of->quantity_produced === null ? null : CuttingWaste::round(bcmul($piece['waste_kg'], (string) $of->quantity_produced, 6), 3),
+            'planned_kg' => $times($piece['waste_kg'], (int) $of->quantity_planned),
+            'produced_kg' => $times($piece['waste_kg'], $produced),
+            'by_type' => collect($piece['by_type'])->map(fn (string $kg, int $typeId) => [
+                'waste_type' => $this->cutting->type($typeId === 0 ? null : $typeId),
+                'per_piece_kg' => CuttingWaste::round($kg, 4),
+                'planned_kg' => $times($kg, (int) $of->quantity_planned),
+                'produced_kg' => $times($kg, $produced),
+                // What was weighed of that type on the OF; lots not yet weighed are counted apart, never as 0 kg.
+                'weighed_kg' => $typeId === 0 || ! isset($weighed[$typeId]) ? null : bcadd((string) $weighed[$typeId]->kg, '0', 3),
+                'lots' => $typeId === 0 ? 0 : (int) ($weighed[$typeId]->lots ?? 0),
+                'unweighed_lots' => $typeId === 0 ? 0 : (int) ($weighed[$typeId]->unweighed ?? 0),
+            ])->sortByDesc(fn (array $row) => (float) $row['per_piece_kg'])->values()->all(),
         ];
+    }
+
+    /** A fabric is cut from a placement: counted in metres, with its laize and its grammage. */
+    private function isFabric(RawMaterial $material): bool
+    {
+        return $this->codes->code('units', (int) $material->unit_id) === 'm' && $material->width_cm !== null && $material->grammage_gsm !== null;
     }
 
     /**

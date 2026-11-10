@@ -12,7 +12,7 @@ return [
         'clients' => ['code' => 'Code', 'name' => 'Nom', 'country_code' => 'Pays (code)', 'contact_name' => 'Contact', 'email' => 'Email', 'phone' => 'Téléphone'],
         'suppliers' => ['code' => 'Code', 'name' => 'Nom', 'country_code' => 'Pays (code)', 'contact_name' => 'Contact', 'email' => 'Email', 'phone' => 'Téléphone'],
         'materials' => [
-            'reference' => 'Référence', 'name' => 'Désignation', 'category' => 'Catégorie', 'supplier' => 'Fournisseur par défaut', 'unit' => 'Unité (m, kg, pièce)', 'color_label' => 'Couleur',
+            'reference' => 'Référence', 'name' => 'Désignation', 'category' => 'Catégorie', 'supplier' => 'Fournisseur par défaut', 'unit' => 'Unité (m, kg, pièce)', 'color_label' => 'Couleur', 'waste_type' => 'Type de déchet produit',
             'grammage_gsm' => 'Grammage (g/m²)', 'width_cm' => 'Laize (cm)', 'batch_number' => 'N° de lot reçu', 'received_on' => 'Date de réception', 'batch_quantity' => 'Quantité reçue',
         ],
         'articles' => [
