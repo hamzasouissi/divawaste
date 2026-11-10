@@ -22,7 +22,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     $industrial = fn () => app(TenantContext::class)->companyType() === CompanyType::Industrial;
     $read = fn (Request $request) => abort_unless($industrial() ? $request->user()->can('contracts.view') : $request->user()->can('provider.contracts.view'), 403);
     $manage = fn (Request $request) => abort_unless($industrial() && $request->user()->can('contracts.manage'), 403);
-    $direction = Rule::in(['revenue', 'cost']);
+    // Written as text: a rule object held by the routes does not survive the route cache.
+    $direction = 'in:revenue,cost';
     $rules = fn (bool $creating) => [
         // The other party: a provider of the platform, or a partner without an account. Exactly one of the two.
         'provider' => [$creating ? 'required_without:external_partner' : 'sometimes', 'prohibits:external_partner', 'nullable', 'string',
