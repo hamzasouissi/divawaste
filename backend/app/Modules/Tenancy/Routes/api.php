@@ -99,15 +99,18 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'email' => ['nullable', 'email', 'max:191'],
             'billing_email' => ['nullable', 'email', 'max:191'],
             'weight_variance_threshold_pct' => ['nullable', 'decimal:0,2', 'gt:0', 'lte:100'],
+            // The placement efficiency a fabric of an article is cut with when the article does not say its own.
+            'cutting_efficiency_pct' => ['nullable', 'decimal:0,2', 'gt:0', 'lte:100'],
         ]);
 
         // Legal name, tax ID and country identify the contracting party: they change through the platform only.
         $company = $current();
-        $threshold = $input['weight_variance_threshold_pct'] ?? null;
-        unset($input['weight_variance_threshold_pct']);
+        $settings = array_filter(['weight_variance_threshold_pct' => $input['weight_variance_threshold_pct'] ?? null, 'cutting_efficiency_pct' => $input['cutting_efficiency_pct'] ?? null],
+            fn ($value) => $value !== null);
+        unset($input['weight_variance_threshold_pct'], $input['cutting_efficiency_pct']);
         $company->fill($input);
-        if ($threshold !== null) {
-            $company->forceFill(['settings' => ['weight_variance_threshold_pct' => $threshold] + ($company->settings ?? [])]);
+        if ($settings !== []) {
+            $company->forceFill(['settings' => $settings + ($company->settings ?? [])]);
         }
         $company->save();
 

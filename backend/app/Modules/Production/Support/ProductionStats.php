@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class ProductionStats
 {
-    public function __construct(private readonly TenantContext $context) {}
+    public function __construct(private readonly TenantContext $context, private readonly CuttingWaste $cutting) {}
 
     /**
      * @return array<string, mixed>
@@ -38,6 +38,8 @@ final class ProductionStats
         $materials = DB::table('raw_materials as m')->leftJoin('production_suppliers as s', 's.id', '=', 'm.production_supplier_id')->leftJoin('units as u', 'u.id', '=', 'm.unit_id')
             ->where('m.company_id', $companyId)->get(['m.id', 'm.ulid', 'm.reference', 'm.name', 'm.grammage_gsm', 'm.width_cm', 'u.code as unit', 's.id as supplier_id', 's.name as supplier'])->keyBy('id');
         $steps = DB::table('production_steps')->get(['id', 'code', 'name'])->keyBy('id');
+        // The cutting waste one piece of each article is expected to leave (its fabrics' placements).
+        $expectedPerPiece = $this->cutting->perPiece($orders->pluck('article_id')->unique()->map(fn ($id) => (int) $id)->values()->all());
 
         // What each order consumed, in kilograms when it can be known (kg, or metres of a fabric whose width and weight are given).
         $consumedKg = [];
@@ -100,7 +102,8 @@ final class ProductionStats
             }
         }
 
-        $group = function (callable $key, callable $describe) use ($shares, $orders, $consumedKg) {
+        // $expected: the rows are orders, clients or articles, whose pieces say what cutting waste was expected.
+        $group = function (callable $key, callable $describe, bool $expected = false) use ($shares, $orders, $consumedKg, $expectedPerPiece) {
             $rows = [];
             foreach ($shares as [$orderId, $stepId, $materialId, $kg, $measured, $count, $amount]) {
                 $k = $key($orderId === null ? null : ($orders[$orderId] ?? null), $stepId, $materialId);
@@ -116,13 +119,18 @@ final class ProductionStats
                 }
             }
 
-            return collect($rows)->map(function (array $row, $k) use ($describe, $orders, $consumedKg) {
+            return collect($rows)->map(function (array $row, $k) use ($describe, $orders, $consumedKg, $expected, $expectedPerPiece) {
                 $total = bcadd($row['measured_kg'], $row['estimated_kg'], 3);
                 // Pieces and consumption of the orders behind the row: the ones that produced this waste.
                 $pieces = 0;
                 $consumed = '0';
+                $cutting = null;
                 foreach (array_keys($row['orders']) as $orderId) {
                     $pieces += (int) ($orders[$orderId]->quantity_produced ?? 0);
+                    $perPiece = $expectedPerPiece[(int) $orders[$orderId]->article_id]['waste_kg'] ?? null;
+                    if ($expected && $perPiece !== null && $orders[$orderId]->quantity_produced !== null) {
+                        $cutting = bcadd($cutting ?? '0', bcmul($perPiece, (string) $orders[$orderId]->quantity_produced, 6), 6);
+                    }
                     $consumed = $consumed === null || ! isset($consumedKg[$orderId]) ? null : bcadd($consumed, $consumedKg[$orderId], 3);
                 }
                 $consumed = $row['orders'] === [] ? null : $consumed;
@@ -135,13 +143,15 @@ final class ProductionStats
                     // The share of the consumed material that ended as waste.
                     'waste_rate_pct' => $consumed !== null && bccomp($consumed, '0', 3) > 0 ? round((float) $total / (float) $consumed * 100, 1) : null,
                     'net_amount' => $row['net_amount'],
+                    // What the placements of the pieces produced were expected to leave as cutting waste.
+                    'expected_cutting_kg' => $cutting === null ? null : CuttingWaste::round($cutting, 3),
                 ];
             })->sortByDesc(fn (array $row) => (float) $row['total_kg'])->values()->all();
         };
         $stepName = fn ($id) => json_decode((string) ($steps[$id]->name ?? '{}'), true);
 
         $byOrder = $group(fn ($order) => $order?->id, fn ($id) => ['key' => $orders[$id]->ulid, 'label' => $orders[$id]->order_number,
-            'sublabel' => trim($orders[$id]->reference.' · '.($orders[$id]->client ?? ''), ' ·'), 'status' => $orders[$id]->status]);
+            'sublabel' => trim($orders[$id]->reference.' · '.($orders[$id]->client ?? ''), ' ·'), 'status' => $orders[$id]->status], true);
         $measured = array_reduce($shares, fn (string $sum, array $s) => $s[4] ? bcadd($sum, $s[3], 3) : $sum, '0');
         $estimated = array_reduce($shares, fn (string $sum, array $s) => ! $s[4] && $s[0] !== null ? bcadd($sum, $s[3], 3) : $sum, '0');
         $total = bcadd(bcadd($measured, $estimated, 3), $unattributed['kg'], 3);
@@ -157,9 +167,9 @@ final class ProductionStats
                 'g_per_piece' => $pieces > 0 ? round((float) $attributed * 1000 / $pieces, 1) : null,
             ],
             'by_order' => $byOrder,
-            'by_client' => $group(fn ($order) => $order?->client_id, fn ($id) => ['key' => (string) $id, 'label' => (string) $orders->firstWhere('client_id', $id)?->client, 'sublabel' => null]),
+            'by_client' => $group(fn ($order) => $order?->client_id, fn ($id) => ['key' => (string) $id, 'label' => (string) $orders->firstWhere('client_id', $id)?->client, 'sublabel' => null], true),
             'by_article' => $group(fn ($order) => $order?->article_id, fn ($id) => ['key' => (string) $id, 'label' => (string) $orders->firstWhere('article_id', $id)?->reference,
-                'sublabel' => $orders->firstWhere('article_id', $id)?->article_name]),
+                'sublabel' => $orders->firstWhere('article_id', $id)?->article_name], true),
             'by_step' => $group(fn ($order, $stepId) => $stepId, fn ($id) => ['key' => $steps[$id]->code ?? (string) $id, 'label' => $stepName($id), 'sublabel' => null]),
             'by_material' => $group(fn ($order, $stepId, $materialId) => $materialId, fn ($id) => ['key' => $materials[$id]->ulid, 'label' => $materials[$id]->reference,
                 'sublabel' => trim($materials[$id]->name.' · '.($materials[$id]->supplier ?? ''), ' ·')]),
