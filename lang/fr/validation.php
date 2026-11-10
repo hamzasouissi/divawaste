@@ -59,6 +59,11 @@ return [
         'production' => [
             'amount_mismatch' => 'Le montant ne correspond pas à la quantité multipliée par le prix unitaire.',
             'batch_of_material' => 'Ce lot reçu n\'est pas un lot de cette matière.',
+            'size_not_in_grid' => 'La taille « :size » n\'est pas dans la grille de tailles de l\'OF.',
+            'size_in_use' => 'La taille « :size » a des quantités sur un OF : elle ne peut pas quitter la grille.',
+            'spread_fabric' => 'Un matelas se coupe dans un tissu compté en mètres.',
+            'spread_ratio' => 'Indiquez au moins une pièce par couche.',
+            'spread_consumption' => 'Matelas : :layers couches coupées',
         ],
         'tolerance' => ['order' => 'Le seuil bloquant ne peut pas être inférieur au seuil d\'alerte.', 'duplicate' => 'Une règle existe déjà pour ce type de déchet et cette filière.'],
         'measure' => ['unit' => 'Ce type de déchet se déclare en :unit : indiquez la quantité dans cette unité.', 'weight' => 'Le poids net est obligatoire pour un déchet pesé.'],
