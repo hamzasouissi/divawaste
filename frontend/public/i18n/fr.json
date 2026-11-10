@@ -3150,7 +3150,15 @@
       "consumption": "Consommation par pièce",
       "consumptionHint": "Ce qu'une pièce doit consommer de chaque matière première. Sert à comparer le prévu et le réel d'un OF.",
       "perPiece": "Par pièce",
-      "addMaterial": "Ajouter une matière première"
+      "addMaterial": "Ajouter une matière première",
+      "efficiency": "Efficience %",
+      "efficiencyHint": "Pour un tissu : l'efficience du placement (%). Vide : celle de l'entreprise ({{pct}} %).",
+      "cuttingWaste": "Chute de coupe estimée",
+      "cuttingWastePerPiece": "{{g}} g / pièce",
+      "cuttingWasteNone": "Aucun tissu avec sa laize et son grammage : pas d'estimation.",
+      "defaultEfficiency": "Chutes de coupe estimées avec une efficience de placement de {{pct}} % pour les tissus dont l'article ne précise pas la sienne.",
+      "defaultEfficiencyLabel": "Efficience par défaut (%)",
+      "cuttingFormula": "Chute par pièce = consommation (m) × laize × grammage × (100 − efficience) %. Seuls les tissus en mètres avec laize et grammage comptent."
     },
     "orders": {
       "title": "Commandes",
@@ -3330,7 +3338,8 @@
         "by_material": "Matières premières",
         "by_supplier": "Fournisseurs"
       },
-      "monthly": "Évolution mensuelle"
+      "monthly": "Évolution mensuelle",
+      "expectedCutting": "Chute de coupe estimée"
     },
     "currency": "Devise",
     "unknown": "Inconnu",
@@ -3475,7 +3484,9 @@
       "source": "Matière première · lot reçu",
       "ofOnly": "OF seulement",
       "total": "{{count}} lot(s) généré(s)",
-      "noRate": "Taux de chute non calculable"
+      "noRate": "Taux de chute non calculable",
+      "estimated": "Chutes de coupe estimées : {{kg}} pour {{pieces}} pièces prévues ({{g}} g / pièce).",
+      "estimatedProduced": "Pour les {{pieces}} pièces produites : {{expected}} estimés, {{measured}} pesés."
     },
     "expenses": {
       "title": "Autres dépenses",

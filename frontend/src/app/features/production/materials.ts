@@ -25,6 +25,7 @@ import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { SearchComponent } from '../../ui/search';
 import { SELECT } from '../../ui/select';
 import { Article, DECIMAL, ProductionLists, RawMaterial, blankToNull, decimal } from './production-data';
+import { Company } from '../../core/api/models';
 import { HelpComponent } from '../../ui/help';
 import { COLOR } from '../../ui/swatch';
 
@@ -202,10 +203,15 @@ export class MaterialDialog {
                     @for (material of options(); track material.ulid) { <dw-option [value]="material.ulid" [label]="material.reference + ' — ' + material.name + ' (' + material.unit + ')'" [disabled]="taken(material.ulid, i)" /> }
                   </dw-select>
                   <input pInputText formControlName="quantity_per_piece" inputmode="decimal" [placeholder]="t('production.articles.perPiece')" [attr.aria-label]="t('production.articles.perPiece')" />
+                  @if (isFabric(line.value.material)) {
+                    <input pInputText formControlName="efficiency_pct" inputmode="decimal" [placeholder]="t('production.articles.efficiency')" [attr.aria-label]="t('production.articles.efficiency')"
+                      [title]="t('production.articles.efficiencyHint', { pct: defaultEfficiency })" />
+                  } @else { <span></span> }
                   <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="materials.removeAt(i)" [attr.aria-label]="t('common.remove')" [title]="t('common.remove')"><dw-icon>close</dw-icon></button>
                 </div>
               }
               <button pButton text type="button" class="add" (click)="addMaterial()"><dw-icon>add</dw-icon>{{ t('production.articles.addMaterial') }}</button>
+              <p class="dw-faint">{{ t('production.articles.efficiencyHint', { pct: defaultEfficiency }) }}</p>
             </section>
 
             <dw-field class="dw-span-2" [label]="t('fields.notes')"><textarea pTextarea formControlName="notes" rows="2" maxlength="1000"></textarea></dw-field>
@@ -222,7 +228,8 @@ export class MaterialDialog {
   styles: `
     .dw-dialog-body { inline-size: min(640px, 86vw); }
     .part { display: grid; gap: var(--dw-2); } .part p { margin: 0; font-size: 13px; }
-    .line { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: var(--dw-2); align-items: center; }
+    .line { display: grid; grid-template-columns: minmax(0, 1fr) 120px 110px auto; gap: var(--dw-2); align-items: center; }
+    @media (max-width: 560px) { .line { grid-template-columns: minmax(0, 1fr) 90px 80px auto; } }
     .add { justify-self: start; }
   `,
 })
@@ -237,7 +244,9 @@ export class ArticleDialog {
   protected readonly clients = toSignal(this.lists.clients(), { initialValue: [] });
   protected readonly options = toSignal(this.lists.materials(), { initialValue: [] });
   protected readonly busy = signal(false);
-  protected readonly materials = this.fb.array((this.data?.materials ?? []).map((line) => this.line(line.material, line.quantity_per_piece)));
+  private readonly session = inject(Session);
+  protected readonly defaultEfficiency = +(this.session.company()?.cutting_efficiency_pct ?? '80');
+  protected readonly materials = this.fb.array((this.data?.materials ?? []).map((line) => this.line(line.material, line.quantity_per_piece, line.efficiency_pct ?? '')));
   protected readonly form = this.fb.nonNullable.group({
     reference: [this.data?.reference ?? '', Validators.required],
     name: [this.data?.name ?? '', Validators.required],
@@ -248,8 +257,16 @@ export class ArticleDialog {
     materials: this.materials,
   });
 
-  private line(material = '', quantity = ''): FormGroup {
-    return this.fb.nonNullable.group({ material: [material, Validators.required], quantity_per_piece: [quantity, [Validators.required, DECIMAL]] });
+  private line(material = '', quantity = '', efficiency = ''): FormGroup {
+    return this.fb.nonNullable.group({ material: [material, Validators.required], quantity_per_piece: [quantity, [Validators.required, DECIMAL]],
+      efficiency_pct: [efficiency ? String(+efficiency) : '', Validators.pattern(/^\d{1,3}([.,]\d{1,2})?$/)] });
+  }
+
+  /** A fabric is cut from a placement: counted in metres, with its width and its weight per m². */
+  protected isFabric(ulid: string): boolean {
+    const material = this.options().find((m) => m.ulid === ulid);
+
+    return !!material && material.unit === 'm' && material.width_cm !== null && material.grammage_gsm !== null;
   }
 
   protected addMaterial(): void {
@@ -268,7 +285,8 @@ export class ArticleDialog {
     }
     this.busy.set(true);
     const value = this.form.getRawValue();
-    const body = blankToNull({ ...value, materials: value.materials.map((line) => ({ material: line['material'] as string, quantity_per_piece: decimal(line['quantity_per_piece'] as string) })) });
+    const body = blankToNull({ ...value, materials: value.materials.map((line) => ({ material: line['material'] as string, quantity_per_piece: decimal(line['quantity_per_piece'] as string),
+      efficiency_pct: this.isFabric(line['material'] as string) && line['efficiency_pct'] ? decimal(line['efficiency_pct'] as string) : null })) });
     try {
       this.ref.close(await firstValueFrom(this.data ? this.api.put<Article>(`production/articles/${this.data.ulid}`, body) : this.api.post<Article>('production/articles', body)));
       this.toast.success('common.saved');
@@ -287,7 +305,7 @@ export class ArticleDialog {
   imports: [
     HelpComponent,
     TranslocoDirective, PageHeaderComponent, ...TABLE, StatusComponent, SearchComponent, FilterBarComponent, CheckboxComponent, ButtonDirective, IconComponent, CodePipe, NumberPipe, ...COLOR,
-    Tabs, TabList, Tab, TabPanels, TabPanel,
+    Tabs, TabList, Tab, TabPanels, TabPanel, InputText,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -321,11 +339,26 @@ export class ArticleDialog {
                 <span class="dw-spacer"></span>
                 @if (canManage) { <button pButton type="button" (click)="editArticle(null)"><dw-icon>add</dw-icon>{{ t('production.articles.new') }}</button> }
               </dw-filter-bar>
+              <!-- The efficiency a fabric is cut with when its article does not say its own. -->
+              <div class="efficiency">
+                @if (editingDefault()) {
+                  <label class="dw-faint" for="default-efficiency">{{ t('production.articles.defaultEfficiencyLabel') }}</label>
+                  <input pInputText id="default-efficiency" inputmode="decimal" class="pct" [value]="defaultEfficiency()" (input)="draftEfficiency.set($any($event.target).value)" />
+                  <button pButton type="button" size="small" [disabled]="savingDefault()" (click)="saveDefault()">{{ t('common.save') }}</button>
+                  <button pButton text size="small" type="button" severity="secondary" (click)="editingDefault.set(false)">{{ t('common.cancel') }}</button>
+                } @else {
+                  <span class="dw-faint" [title]="t('production.articles.cuttingFormula')">{{ t('production.articles.defaultEfficiency', { pct: defaultEfficiency() }) }}</span>
+                  @if (session.can('company.update')) { <button pButton text size="small" type="button" (click)="draftEfficiency.set(defaultEfficiency()); editingDefault.set(true)"><dw-icon>edit</dw-icon>{{ t('common.edit') }}</button> }
+                }
+              </div>
               <dw-data-table [columns]="articleColumns" [rows]="articles.rows()" [loading]="articles.loading()" [error]="articles.error()" [total]="articles.total()" [pageIndex]="articles.page() - 1"
                 [pageSize]="articles.perPage()" [clickable]="canManage" [emptyTitle]="t('production.articles.empty')" [emptyHint]="t('production.emptyHint')" emptyIcon="checkroom"
                 (page)="articles.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="editArticle($event)" (retry)="articles.reload()">
                 <ng-template dwCell="reference" let-a><span class="dw-mono">{{ a.reference }}</span></ng-template>
                 <ng-template dwCell="consumption" let-a>@for (line of a.materials; track line.material) { <div>{{ line.quantity_per_piece | dwNumber: 3 }} {{ line.unit }} · <span class="dw-faint">{{ line.reference }}</span></div> } @empty { — }</ng-template>
+                <ng-template dwCell="cutting" let-a>@if (a.cutting_waste.waste_kg_per_piece; as kg) {
+                    <span [title]="t('production.articles.cuttingFormula')">{{ t('production.articles.cuttingWastePerPiece', { g: (+kg * 1000 | dwNumber: 1) }) }}</span>
+                  } @else { <span class="dw-faint" [title]="t('production.articles.cuttingWasteNone')">—</span> }</ng-template>
                 <ng-template dwCell="status" let-a><dw-status kind="member" [value]="a.is_active ? 'active' : 'suspended'" [label]="t(a.is_active ? 'common.active' : 'common.inactive')" /></ng-template>
               </dw-data-table>
             </p-tabpanel>
@@ -334,10 +367,16 @@ export class ArticleDialog {
       </div>
     </ng-container>
   `,
-  styles: '.chip { display: inline-block; margin-inline-end: 4px; padding: 1px 8px; border-radius: 999px; background: var(--dw-surface-2); font-size: 12px; }',
+  styles: `
+    .chip { display: inline-block; margin-inline-end: 4px; padding: 1px 8px; border-radius: 999px; background: var(--dw-surface-2); font-size: 12px; }
+    .efficiency { display: flex; flex-wrap: wrap; align-items: center; gap: var(--dw-2); margin-block: var(--dw-2); font-size: 13px; }
+    .efficiency .pct { inline-size: 90px; }
+  `,
 })
 export class MaterialsPage {
   private readonly api = inject(Api);
+  private readonly toast = inject(Toast);
+  protected readonly session = inject(Session);
   private readonly dialog = inject(Dialogs);
   private readonly router = inject(Router);
 
@@ -348,6 +387,10 @@ export class MaterialsPage {
   protected readonly materialSearch = signal('');
   protected readonly articleSearch = signal('');
   protected readonly inactive = signal(false);
+  protected readonly editingDefault = signal(false);
+  protected readonly savingDefault = signal(false);
+  protected readonly draftEfficiency = signal('');
+  protected readonly defaultEfficiency = (): string => String(+(this.session.company()?.cutting_efficiency_pct ?? '80'));
   protected readonly materials = new ListStore<RawMaterial>((query) => this.api.list<RawMaterial>('production/materials', { ...query, search: this.materialSearch(), with_inactive: this.inactive() }));
   protected readonly articles = new ListStore<Article>((query) => this.api.list<Article>('production/articles', { ...query, search: this.articleSearch(), with_inactive: this.inactive() }));
   protected readonly materialColumns: Column<RawMaterial>[] = [
@@ -366,8 +409,26 @@ export class MaterialsPage {
     { key: 'family', header: 'production.articles.family', value: (a) => a.family ?? '—', hideBelow: 900 },
     { key: 'client', header: 'production.clients.one', value: (a) => a.client?.name ?? '—', hideBelow: 700 },
     { key: 'consumption', header: 'production.articles.consumption', hideBelow: 1100 },
+    { key: 'cutting', header: 'production.articles.cuttingWaste', align: 'end', hideBelow: 700 },
     { key: 'status', header: 'fields.status' },
   ];
+
+  /** The company's usual placement efficiency: every fabric line without its own follows it. */
+  protected async saveDefault(): Promise<void> {
+    // The API checks it (a percentage above 0, at most 100) and says what is wrong.
+    const value = this.draftEfficiency().trim().replace(',', '.');
+    this.savingDefault.set(true);
+    try {
+      this.session.setCompany(await firstValueFrom(this.api.put<Company>('company', { cutting_efficiency_pct: value })));
+      this.editingDefault.set(false);
+      this.articles.reload();
+      this.toast.success('common.saved');
+    } catch (error) {
+      this.toast.error(error);
+    } finally {
+      this.savingDefault.set(false);
+    }
+  }
 
   /** The page of the material: its received lots, its consumption, its prices. */
   protected openMaterial(material: RawMaterial): void {

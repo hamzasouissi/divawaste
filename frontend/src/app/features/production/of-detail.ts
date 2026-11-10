@@ -371,6 +371,14 @@ export class ExpenseDialog {
                 @if (canCreateLot) { <button pButton text size="small" type="button" (click)="waste(o)"><dw-icon>add</dw-icon>{{ t('production.waste.new') }}</button> }
               </div>
               <p class="dw-muted intro">{{ t('production.waste.intro') }}</p>
+              <!-- Before anything is weighed: what the placements of the article are expected to leave. -->
+              @if (o.waste?.estimated; as e) {
+                <p class="estimate" [title]="t('production.articles.cuttingFormula')">
+                  <dw-icon>straighten</dw-icon>
+                  <span>{{ t('production.waste.estimated', { kg: (e.planned_kg | dwKg), pieces: (o.quantity_planned | dwNumber), g: (+e.per_piece_kg * 1000 | dwNumber: 1) }) }}
+                    @if (e.produced_kg !== null) { {{ t('production.waste.estimatedProduced', { pieces: (o.quantity_produced | dwNumber), expected: (e.produced_kg | dwKg), measured: (o.waste?.kg | dwKg) }) }} }</span>
+                </p>
+              }
               @if ((o.waste?.lots ?? 0) === 0 && (o.waste?.rows ?? []).length === 0) {
                 <p class="empty">{{ t('production.waste.empty') }}</p>
               } @else if (!o.waste?.can_view_lots) {
@@ -589,6 +597,8 @@ export class ExpenseDialog {
     .node.current { background: var(--dw-primary-soft, var(--dw-surface-2)); } .dates { margin-inline-start: auto; font-size: 13px; }
     .kpis { margin-block-end: var(--dw-4); }
     .intro { margin: 0; padding: var(--dw-2) var(--dw-4) var(--dw-3); font-size: 13px; }
+    .estimate { display: flex; align-items: flex-start; gap: var(--dw-2); margin: 0 var(--dw-4) var(--dw-3); padding: var(--dw-2) var(--dw-3); border-radius: var(--dw-radius);
+      background: var(--dw-surface-2); font-size: 13px; } .estimate dw-icon { color: var(--dw-ink-3); flex: none; }
     .empty { margin: 0; padding: var(--dw-5) var(--dw-4); text-align: center; color: var(--dw-ink-3); }
     .steps { display: flex; align-items: center; flex-wrap: wrap; gap: var(--dw-3); padding: var(--dw-3) var(--dw-4); }
     .step { display: grid; gap: 1px; padding: 8px 12px; border: 1px solid var(--dw-line); border-radius: var(--dw-radius); font-size: 13px; }

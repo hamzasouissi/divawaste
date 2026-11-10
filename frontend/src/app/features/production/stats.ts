@@ -31,6 +31,8 @@ interface StatRow {
   consumed_kg: string | null;
   waste_rate_pct: number | null;
   net_amount: string;
+  /** Orders, clients and articles: the cutting waste the placements of the pieces produced were expected to leave. */
+  expected_cutting_kg?: string | null;
 }
 
 type Section = 'by_order' | 'by_client' | 'by_article' | 'by_step' | 'by_material' | 'by_supplier';
@@ -151,6 +153,7 @@ export class OriginLotsDialog {
                               <tr>
                                 <th>{{ t('production.stats.sections.' + item) }}</th><th class="dw-num">{{ t('production.stats.lots') }}</th>
                                 <th class="dw-num">{{ t('production.stats.measured') }}</th><th class="dw-num">{{ t('production.stats.estimated') }}</th><th>{{ t('production.stats.total') }}</th>
+                                @if (expectedFor(item)) { <th class="dw-num" [title]="t('production.articles.cuttingFormula')">{{ t('production.stats.expectedCutting') }}</th> }
                                 <th class="dw-num">{{ t('production.stats.piecesShort') }}</th><th class="dw-num">{{ t('production.stats.perPiece') }}</th>
                                 <th class="dw-num" [title]="t('production.stats.rateHint')">{{ t('production.stats.rate') }}</th><th class="dw-num">{{ t('production.stats.balance') }}</th>
                               </tr>
@@ -166,6 +169,7 @@ export class OriginLotsDialog {
                                     <div class="bar" [attr.aria-label]="row.total_kg | dwKg"><span class="m" [style.inline-size.%]="share(row.measured_kg, s[item])"></span><span class="e" [style.inline-size.%]="share(row.estimated_kg, s[item])"></span></div>
                                     <strong>{{ row.total_kg | dwKg }}</strong>
                                   </td>
+                                  @if (expectedFor(item)) { <td class="dw-num dw-faint">{{ row.expected_cutting_kg ? (row.expected_cutting_kg | dwKg) : '—' }}</td> }
                                   <td class="dw-num">{{ row.pieces | dwNumber }}</td>
                                   <td class="dw-num">{{ row.g_per_piece === null ? '—' : (row.g_per_piece | dwNumber: 1) + ' g' }}</td>
                                   <td class="dw-num">{{ row.waste_rate_pct === null ? '—' : (row.waste_rate_pct | dwNumber: 1) + ' %' }}</td>
@@ -228,6 +232,9 @@ export class OriginLotsDialog {
   `,
 })
 export class ProductionStatsPage {
+  /** The sections whose rows are pieces made, so the cutting waste they were expected to leave is known. */
+  protected readonly expectedFor = (item: Section): boolean => item === 'by_order' || item === 'by_client' || item === 'by_article';
+
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
   private readonly dialog = inject(Dialogs);

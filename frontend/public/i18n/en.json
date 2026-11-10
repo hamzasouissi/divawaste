@@ -3150,7 +3150,15 @@
       "consumption": "Consumption per piece",
       "consumptionHint": "What one piece should consume of each raw material. Used to compare planned and actual on a manufacturing order.",
       "perPiece": "Per piece",
-      "addMaterial": "Add a raw material"
+      "addMaterial": "Add a raw material",
+      "efficiency": "Efficiency %",
+      "efficiencyHint": "For a fabric: the marker efficiency (%). Empty: the company's ({{pct}} %).",
+      "cuttingWaste": "Expected cutting waste",
+      "cuttingWastePerPiece": "{{g}} g / piece",
+      "cuttingWasteNone": "No fabric with its width and weight: no estimate.",
+      "defaultEfficiency": "Cutting waste is estimated with a marker efficiency of {{pct}} % for the fabrics whose article does not give its own.",
+      "defaultEfficiencyLabel": "Default efficiency (%)",
+      "cuttingFormula": "Waste per piece = consumption (m) × width × weight × (100 − efficiency) %. Only fabrics in metres with a width and a weight count."
     },
     "orders": {
       "title": "Orders",
@@ -3330,7 +3338,8 @@
         "by_material": "Raw materials",
         "by_supplier": "Suppliers"
       },
-      "monthly": "Monthly trend"
+      "monthly": "Monthly trend",
+      "expectedCutting": "Expected cutting waste"
     },
     "currency": "Currency",
     "unknown": "Unknown",
@@ -3475,7 +3484,9 @@
       "source": "Raw material · received lot",
       "ofOnly": "Order only",
       "total": "{{count}} lot(s) generated",
-      "noRate": "Waste rate not calculable"
+      "noRate": "Waste rate not calculable",
+      "estimated": "Expected cutting waste: {{kg}} for {{pieces}} pieces planned ({{g}} g / piece).",
+      "estimatedProduced": "For the {{pieces}} pieces produced: {{expected}} expected, {{measured}} weighed."
     },
     "expenses": {
       "title": "Other expenses",

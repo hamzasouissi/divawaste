@@ -97,8 +97,11 @@ export interface Article {
   client: PartyRef | null;
   notes: string | null;
   is_active: boolean;
-  /** What one piece is expected to consume. */
-  materials: { material: string; reference: string; name: string; unit: string; quantity_per_piece: string }[];
+  /** What one piece is expected to consume; for a fabric, the waste its cutting is expected to leave (kg per piece). */
+  materials: { material: string; reference: string; name: string; unit: string; quantity_per_piece: string;
+    efficiency_pct: string | null; efficiency_applied: string | null; fabric_kg_per_piece: string | null; waste_kg_per_piece: string | null }[];
+  /** Null figures: no fabric of the article has its width and weight. */
+  cutting_waste: { default_efficiency_pct: string; fabric_kg_per_piece: string | null; waste_kg_per_piece: string | null };
 }
 
 export type OrderStatus = 'open' | 'in_progress' | 'completed' | 'cancelled';
@@ -239,6 +242,8 @@ export interface OfWaste {
   can_view_lots: boolean;
   consumed_kg: string | null;
   waste_rate_pct: number | null;
+  /** The cutting waste the placements of the article are expected to leave; null without a fabric to compute it for. */
+  estimated: { per_piece_kg: string; planned_kg: string; produced_kg: string | null } | null;
 }
 
 export type OfStatus = 'planned' | 'in_progress' | 'completed' | 'cancelled';
