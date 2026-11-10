@@ -3519,7 +3519,10 @@
       "typeUnknown": "Type à définir",
       "noLotOfType": "Aucun lot de ce type",
       "notWeighed": "{{count}} lot(s) pas encore pesé(s)",
-      "stillToWeigh": "+ {{count}} à peser"
+      "stillToWeigh": "+ {{count}} à peser",
+      "aboveEstimate": "+{{kg}} (+{{pct}} %) au-dessus de l'estimé",
+      "belowEstimate": "−{{kg}} (−{{pct}} %) en dessous de l'estimé",
+      "asEstimated": "Égal à l'estimé"
     },
     "expenses": {
       "title": "Autres dépenses",

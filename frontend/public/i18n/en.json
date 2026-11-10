@@ -3519,7 +3519,10 @@
       "typeUnknown": "Type to define",
       "noLotOfType": "No lot of this type",
       "notWeighed": "{{count}} lot(s) not weighed yet",
-      "stillToWeigh": "+ {{count}} to weigh"
+      "stillToWeigh": "+ {{count}} to weigh",
+      "aboveEstimate": "+{{kg}} (+{{pct}} %) above the estimate",
+      "belowEstimate": "−{{kg}} (−{{pct}} %) below the estimate",
+      "asEstimated": "As estimated"
     },
     "expenses": {
       "title": "Other expenses",
