@@ -53,7 +53,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
     // Prices, expenses, invoices and gains: read by who may see money, written by who may also manage production.
     $seeMoney = fn (Request $request) => abort_unless($request->user()->can('production.finance.view'), 403);
     $manageMoney = fn (Request $request) => abort_unless($request->user()->can('production.manage') && $request->user()->can('production.finance.view'), 403);
-    $currencyRule = ['nullable', 'string', 'size:3', Rule::exists('currencies', 'code')];
+    // Written as text: a rule object held by the routes does not survive the route cache (only closures are restored).
+    $currencyRule = ['nullable', 'string', 'size:3', 'exists:currencies,code'];
     $stepRule = fn () => Rule::exists('production_steps', 'code')->where(fn ($query) => $query->whereNull('company_id')->orWhere('company_id', app(TenantContext::class)->companyId()));
     $like = fn (string $value) => '%'.addcslashes($value, '%_\\').'%';
     $page = fn (Request $request) => min((int) $request->integer('per_page', 25), 200);
@@ -758,7 +759,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
     /*
      * Import from any spreadsheet: the user says in which column each piece of information is.
      */
-    $targetRule = ['required', Rule::in(array_keys(ImportEngine::TARGETS))];
+    $targetRule = ['required', 'in:'.implode(',', array_keys(ImportEngine::TARGETS))];
     $fileRule = ['required', 'file', 'mimes:xlsx,xls,csv,txt', 'max:10240'];
     $fields = fn (string $target) => collect(ImportEngine::TARGETS[$target])->map(fn (array $definition, string $field) => [
         'field' => $field, 'label' => __("imports.fields.{$target}.{$field}"), 'type' => $definition[0], 'required' => $definition[1],
