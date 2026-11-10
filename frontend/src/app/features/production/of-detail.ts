@@ -23,7 +23,7 @@ import { StateComponent } from '../../ui/state';
 import { CreateLotDialog } from '../lots/lot-dialogs';
 import { ManufacturingOrderDialog } from './orders';
 import {
-  AMOUNT, ConsumedMaterial, DECIMAL, EXPENSE_CATEGORIES, ManufacturingOrder, OfExpense, ProducedLot, ProducedLotStatus, ProductionLists, blankToNull, decimal, statusTone,
+  AMOUNT, ConsumedMaterial, DECIMAL, EXPENSE_CATEGORIES, ManufacturingOrder, OfExpense, OfWaste, ProducedLot, ProducedLotStatus, ProductionLists, blankToNull, decimal, statusTone,
 } from './production-data';
 
 /**
@@ -393,7 +393,17 @@ export class ExpenseDialog {
                             <td class="num">
                               @if (row.lots === 0) { <span class="dw-faint">{{ t('production.waste.noLotOfType') }}</span> }
                               @else if (row.weighed_kg === null || +row.weighed_kg === 0) { <span class="dw-faint">{{ t('production.waste.notWeighed', { count: row.unweighed_lots }) }}</span> }
-                              @else { <strong>{{ row.weighed_kg | dwKg }}</strong>@if (row.unweighed_lots > 0) { <div class="dw-faint">{{ t('production.waste.stillToWeigh', { count: row.unweighed_lots }) }}</div> } }
+                              @else {
+                                @let g = gap(row);
+                                <strong [class.over]="g?.tone === 'over'" [class.under]="g?.tone === 'under'">{{ row.weighed_kg | dwKg }}</strong>
+                                @if (g?.tone) {
+                                  <div class="gap" [class.over]="g!.tone === 'over'" [class.under]="g!.tone === 'under'">
+                                    <dw-icon>{{ g!.tone === 'over' ? 'arrow_upward' : 'arrow_downward' }}</dw-icon>{{ t(g!.tone === 'over' ? 'production.waste.aboveEstimate' : 'production.waste.belowEstimate',
+                                      { kg: (g!.kg | dwKg), pct: (g!.pct | dwNumber: 0) }) }}
+                                  </div>
+                                } @else if (g?.tone === null && g?.kg === 0) { <div class="gap under">{{ t('production.waste.asEstimated') }}</div> }
+                                @if (row.unweighed_lots > 0) { <div class="dw-faint">{{ t('production.waste.stillToWeigh', { count: row.unweighed_lots }) }}</div> }
+                              }
                             </td>
                           </tr>
                         }
@@ -623,6 +633,8 @@ export class ExpenseDialog {
     .intro { margin: 0; padding: var(--dw-2) var(--dw-4) var(--dw-3); font-size: 13px; }
     .estimate { margin: 0 var(--dw-4) var(--dw-3); padding: var(--dw-2) var(--dw-3) var(--dw-3); border-radius: var(--dw-radius); background: var(--dw-surface-2); font-size: 13px; }
     .estimate p { margin: 0 0 var(--dw-2); } .estimate table { background: var(--dw-surface); }
+    .estimate .over { color: var(--dw-danger); } .estimate .under { color: var(--dw-success); }
+    .gap { display: flex; justify-content: flex-end; align-items: center; gap: 2px; margin-block-start: 2px; font-size: 12px; font-weight: 600; } .gap dw-icon { font-size: 14px; }
     .empty { margin: 0; padding: var(--dw-5) var(--dw-4); text-align: center; color: var(--dw-ink-3); }
     .steps { display: flex; align-items: center; flex-wrap: wrap; gap: var(--dw-3); padding: var(--dw-3) var(--dw-4); }
     .step { display: grid; gap: 1px; padding: 8px 12px; border: 1px solid var(--dw-line); border-radius: var(--dw-radius); font-size: 13px; }
@@ -690,6 +702,21 @@ export class OfDetailPage implements OnInit {
 
   ngOnInit(): void {
     this.load();
+  }
+
+  /**
+   * What was weighed of a type against what was expected (for the pieces produced, else those planned): above is
+   * red, below green. Below while lots are still to weigh says nothing yet — their weight is still to come.
+   */
+  protected gap(row: NonNullable<OfWaste['estimated']>['by_type'][number]): { kg: number; pct: number; tone: 'over' | 'under' | null } | null {
+    const expected = Number(row.produced_kg ?? row.planned_kg);
+    if (row.weighed_kg === null || !(expected > 0)) {
+      return null;
+    }
+    const kg = Math.round((Number(row.weighed_kg) - expected) * 1000) / 1000;
+    const tone = kg > 0 ? 'over' : kg < 0 && row.unweighed_lots === 0 ? 'under' : null;
+
+    return { kg: Math.abs(kg), pct: (Math.abs(kg) / expected) * 100, tone };
   }
 
   protected load(): void {
