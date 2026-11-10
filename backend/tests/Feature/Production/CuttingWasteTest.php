@@ -2,11 +2,14 @@
 
 namespace Tests\Feature\Production;
 
+use App\Modules\Catalog\Models\WasteType;
 use App\Modules\Identity\Models\User;
+use App\Modules\Sites\Models\Zone;
 use App\Modules\Tenancy\Models\Company;
 use Database\Seeders\AuthorizationSeeder;
 use Database\Seeders\ReferenceDataSeeder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Tests\Concerns\InteractsWithTenants;
 use Tests\TestCase;
 
@@ -95,8 +98,77 @@ class CuttingWasteTest extends TestCase
             ->assertJsonPath('data.0.materials.0.efficiency_pct', '75.00')->assertJsonPath('data.0.materials.0.waste_kg_per_piece', '0.0602');
     }
 
+    public function test_each_fabric_says_the_waste_it_leaves_and_the_of_compares_like_with_like(): void
+    {
+        $site = $this->makeSite($this->company, 'NAB');
+        [$scraps, $selvedges, $films, $zone] = $this->tenant()->runAs($this->company, fn () => [
+            $this->type('CUTTING_SCRAPS', 'Chutes de coupe', 'cutting_scraps'), $this->type('SELVEDGES', 'Lisières', 'selvedges'), $this->type('FILMS', 'Films', 'plastic_films_bags'),
+            Zone::query()->create(['site_id' => $site->id, 'zone_type_id' => DB::table('zone_types')->value('id'), 'code' => 'COUPE', 'name' => 'Coupe']),
+        ]);
+        // A cotton that says nothing leaves the company's cutting scraps; an interlining says its own waste.
+        $cotton = $this->material(['reference' => 'F22-G1', 'unit' => 'm', 'width_cm' => '150', 'grammage_gsm' => '200', 'composition' => [['material' => 'CO', 'pct' => '100']]]);
+        $this->assertSame('Chutes de coupe', $cotton['waste_type_applied']['name']);
+        $this->assertNull($cotton['waste_type']);
+        $this->assertTrue($cotton['waste_type_inherited']);
+        $interlining = $this->material(['reference' => 'VESLINE', 'unit' => 'm', 'width_cm' => '150', 'grammage_gsm' => '40', 'waste_type' => $selvedges->ulid]);
+        $this->assertSame('Lisières', $interlining['waste_type_applied']['name']);
+        $this->assertFalse($interlining['waste_type_inherited']);
+        $label = $this->material(['reference' => 'LABEL', 'unit' => 'piece']);
+        $this->assertNull($label['waste_type_applied']);
+
+        $article = $this->client()->postJson('/api/v1/production/articles', ['reference' => 'IKA', 'name' => 'Veste', 'materials' => [
+            ['material' => $cotton['ulid'], 'quantity_per_piece' => '1.5'], ['material' => $interlining['ulid'], 'quantity_per_piece' => '0.5'], ['material' => $label['ulid'], 'quantity_per_piece' => '1'],
+        ]])->assertCreated()->json('data');
+        // 1.5 × 1.5 × 200 g × 20 % = 90 g of cotton scraps; 0.5 × 1.5 × 40 g × 20 % = 6 g of selvedges.
+        $this->client()->getJson("/api/v1/production/articles/{$article['ulid']}")->assertOk()
+            ->assertJsonPath('data.materials.0.waste_type.name', 'Chutes de coupe')->assertJsonPath('data.materials.0.waste_type_inherited', true)
+            ->assertJsonPath('data.materials.0.composition.0.material', 'CO')->assertJsonPath('data.materials.0.width_cm', '150.00')
+            ->assertJsonPath('data.materials.1.waste_type.name', 'Lisières')->assertJsonPath('data.materials.2.waste_type', null)
+            ->assertJsonPath('data.cutting_waste.waste_kg_per_piece', '0.0960')
+            ->assertJsonPath('data.cutting_waste.by_type.0.waste_type.name', 'Chutes de coupe')->assertJsonPath('data.cutting_waste.by_type.0.waste_kg_per_piece', '0.0900')
+            ->assertJsonPath('data.cutting_waste.by_type.1.waste_type.name', 'Lisières')->assertJsonPath('data.cutting_waste.by_type.1.waste_kg_per_piece', '0.0060');
+
+        $of = $this->client()->postJson('/api/v1/production/manufacturing-orders', ['order_number' => 'PO-18', 'article' => $article['ulid'], 'quantity_planned' => 110, 'quantity_produced' => 100,
+            'consumptions' => [['material' => $cotton['ulid'], 'quantity' => '174']]])->assertCreated()->json('data');
+        $lot = fn (WasteType $type, ?string $kg) => $this->client()->postJson('/api/v1/lots', ['site' => $site->ulid, 'zone' => $zone->ulid, 'waste_type' => $type->ulid,
+            'production_order' => $of['ulid'], 'raw_material' => $cotton['ulid']] + ($kg === null ? [] : ['net_weight_kg' => $kg]))->assertCreated();
+        $lot($scraps, null);
+        $waste = $this->client()->getJson("/api/v1/production/manufacturing-orders/{$of['ulid']}")->assertOk()
+            // Not weighed yet: no rate rather than 0 %.
+            ->assertJsonPath('data.waste.waste_rate_pct', null)
+            ->assertJsonPath('data.waste.estimated.by_type.0.waste_type.name', 'Chutes de coupe')->assertJsonPath('data.waste.estimated.by_type.0.planned_kg', '9.900')
+            ->assertJsonPath('data.waste.estimated.by_type.0.produced_kg', '9.000')->assertJsonPath('data.waste.estimated.by_type.0.unweighed_lots', 1)
+            ->assertJsonPath('data.waste.estimated.by_type.1.produced_kg', '0.600')->assertJsonPath('data.waste.estimated.by_type.1.weighed_kg', null)->json('data.waste');
+        $this->assertSame('0.000', $waste['estimated']['by_type'][0]['weighed_kg']);
+
+        // Packaging weighed on the OF is not set against the cutting scraps.
+        $lot($scraps, '8.5');
+        $lot($films, '3');
+        $this->client()->getJson("/api/v1/production/manufacturing-orders/{$of['ulid']}")->assertOk()
+            ->assertJsonPath('data.waste.estimated.by_type.0.weighed_kg', '8.500')->assertJsonPath('data.waste.estimated.by_type.0.lots', 2)
+            ->assertJsonPath('data.waste.kg', '11.500');
+
+        // The waste type comes in with the materials file, by its name or its code; an unknown one is refused on its line.
+        $csv = implode("\n", ['Reference;Unite;Type de dechet', 'F22-G1;m;SELVEDGES', 'NEW-1;m;Inconnu']);
+        $this->client()->post('/api/v1/production/imports/run', ['target' => 'materials', 'file' => UploadedFile::fake()->createWithContent('mp.csv', $csv),
+            'mapping' => ['reference' => 0, 'unit' => 1, 'waste_type' => 2]], ['Accept' => 'application/json'])->assertOk()->assertJsonPath('data.updated', 1)->assertJsonCount(1, 'data.errors');
+        $this->client()->getJson("/api/v1/production/materials/{$cotton['ulid']}")->assertOk()->assertJsonPath('data.waste_type.name', 'Lisières');
+        // A form that does not send the waste type leaves it as it is; sent empty, the fabric is back to the cutting scraps.
+        $this->client()->putJson("/api/v1/production/materials/{$cotton['ulid']}", ['reference' => 'F22-G1', 'name' => 'F22-G1', 'unit' => 'm', 'width_cm' => '150', 'grammage_gsm' => '200'])
+            ->assertOk()->assertJsonPath('data.waste_type.name', 'Lisières');
+        $this->client()->putJson("/api/v1/production/materials/{$cotton['ulid']}", ['reference' => 'F22-G1', 'name' => 'F22-G1', 'unit' => 'm', 'width_cm' => '150', 'grammage_gsm' => '200', 'waste_type' => null])
+            ->assertOk()->assertJsonPath('data.waste_type', null)->assertJsonPath('data.waste_type_applied.name', 'Chutes de coupe');
+    }
+
+    private function type(string $code, string $name, string $catalog): WasteType
+    {
+        return WasteType::query()->create(['code' => $code, 'name' => $name, 'waste_family_id' => DB::table('waste_families')->value('id'),
+            'waste_catalog_item_id' => DB::table('waste_catalog_items')->where('code', $catalog)->value('id'),
+            'default_unit_id' => DB::table('units')->where('code', 'kg')->value('id'), 'activated_at' => now()]);
+    }
+
     /**
-     * @param  array<string, string>  $values
+     * @param  array<string, mixed>  $values
      * @return array<string, mixed>
      */
     private function material(array $values): array

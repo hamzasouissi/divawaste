@@ -59,7 +59,7 @@ final class ImportEngine
         'clients' => ['code' => ['text', false], 'name' => ['text', true], 'country_code' => ['text', false], 'contact_name' => ['text', false], 'email' => ['text', false], 'phone' => ['text', false]],
         'suppliers' => ['code' => ['text', false], 'name' => ['text', true], 'country_code' => ['text', false], 'contact_name' => ['text', false], 'email' => ['text', false], 'phone' => ['text', false]],
         'materials' => ['reference' => ['text', true], 'name' => ['text', false], 'category' => ['text', false], 'supplier' => ['text', false], 'unit' => ['text', false], 'color_label' => ['text', false],
-            'grammage_gsm' => ['decimal', false], 'width_cm' => ['decimal', false], 'batch_number' => ['text', false], 'received_on' => ['date', false], 'batch_quantity' => ['decimal', false]],
+            'grammage_gsm' => ['decimal', false], 'width_cm' => ['decimal', false], 'waste_type' => ['text', false], 'batch_number' => ['text', false], 'received_on' => ['date', false], 'batch_quantity' => ['decimal', false]],
         'articles' => ['reference' => ['text', true], 'name' => ['text', false], 'family' => ['text', false], 'client' => ['text', false], 'material' => ['text', false], 'quantity_per_piece' => ['decimal', false],
             'efficiency_pct' => ['decimal', false]],
         'orders' => ['order_number' => ['text', true], 'client' => ['text', true], 'article' => ['text', true], 'quantity' => ['integer', true], 'unit_price' => ['decimal', false],
@@ -373,6 +373,9 @@ final class ImportEngine
             'production_supplier_id' => $v['supplier'] === null ? null : $this->party(ProductionSupplier::class, $v['supplier'], 'suppliers', $also),
             'unit_id' => $unit === null && $existing !== null ? null : DB::table('units')->where('code', $unit ?? 'm')->value('id'),
             'color_label' => $v['color_label'], 'grammage_gsm' => $v['grammage_gsm'], 'width_cm' => $v['width_cm'], 'category' => $v['category'],
+            // A type of waste of the company, by its code or its name: never created from a file.
+            'waste_type_id' => $v['waste_type'] === null ? null : (WasteType::query()->where('code', $v['waste_type'])->orWhere('name', $v['waste_type'])->value('id')
+                ?? throw new RuntimeException(__('imports.errors.unknown', ['what' => __('imports.fields.materials.waste_type'), 'value' => $v['waste_type']]))),
         ], fn ($value) => $value !== null));
 
         if ($v['batch_number'] !== null) {

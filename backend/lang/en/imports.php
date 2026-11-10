@@ -12,7 +12,7 @@ return [
         'clients' => ['code' => 'Code', 'name' => 'Name', 'country_code' => 'Country (code)', 'contact_name' => 'Contact', 'email' => 'Email', 'phone' => 'Phone'],
         'suppliers' => ['code' => 'Code', 'name' => 'Name', 'country_code' => 'Country (code)', 'contact_name' => 'Contact', 'email' => 'Email', 'phone' => 'Phone'],
         'materials' => [
-            'reference' => 'Reference', 'name' => 'Description', 'category' => 'Category', 'supplier' => 'Default supplier', 'unit' => 'Unit (m, kg, piece)', 'color_label' => 'Colour',
+            'reference' => 'Reference', 'name' => 'Description', 'category' => 'Category', 'supplier' => 'Default supplier', 'unit' => 'Unit (m, kg, piece)', 'color_label' => 'Colour', 'waste_type' => 'Waste type produced',
             'grammage_gsm' => 'Weight (g/m²)', 'width_cm' => 'Width (cm)', 'batch_number' => 'Received batch no.', 'received_on' => 'Reception date', 'batch_quantity' => 'Quantity received',
         ],
         'articles' => [
