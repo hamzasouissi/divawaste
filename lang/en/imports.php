@@ -18,6 +18,7 @@ return [
         'articles' => [
             'reference' => 'Reference', 'name' => 'Description', 'family' => 'Family', 'client' => 'Client', 'material' => 'Raw material',
             'quantity_per_piece' => 'Consumption per piece',
+            'efficiency_pct' => 'Marker efficiency (%)',
         ],
         'orders' => [
             'order_number' => 'Order no.', 'client' => 'Client', 'article' => 'Article', 'quantity' => 'Quantity', 'unit_price' => 'Unit selling price excl. tax',
@@ -67,6 +68,7 @@ return [
         'column_required' => 'Say which column holds ":field".',
         'required' => '":field" is empty.',
         'unknown' => 'Unknown :what: ":value".',
+        'efficiency' => 'Invalid efficiency: “:value” (expected: a percentage between 0 and 100).',
         'unit' => 'Unknown unit: ":value" (expected: m, kg or piece).',
         'unexpected' => 'This line could not be saved.',
         'site_rights' => 'You may not create lots on the site ":site".',

@@ -295,6 +295,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
         'materials' => ['sometimes', 'array', 'max:50'],
         'materials.*.material' => ['required', 'string', 'distinct', new TenantExists(RawMaterial::class)],
         'materials.*.quantity_per_piece' => ['required', 'decimal:0,4', 'gt:0'],
+        // The placement efficiency of a fabric (%); empty: the company's default.
+        'materials.*.efficiency_pct' => ['nullable', 'decimal:0,2', 'gt:0', 'lte:100'],
     ];
     $saveArticle = function (Article $article, array $input) use ($id) {
         return DB::transaction(function () use ($article, $input, $id) {
@@ -303,7 +305,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
             if (array_key_exists('materials', $input)) {
                 DB::table('article_materials')->where('article_id', $article->id)->delete();
                 DB::table('article_materials')->insert(array_map(fn (array $line) => ['company_id' => $article->company_id, 'article_id' => $article->id,
-                    'raw_material_id' => $id(RawMaterial::class, $line['material']), 'quantity_per_piece' => $line['quantity_per_piece'], 'created_at' => now(), 'updated_at' => now()], $input['materials']));
+                    'raw_material_id' => $id(RawMaterial::class, $line['material']), 'quantity_per_piece' => $line['quantity_per_piece'], 'efficiency_pct' => $line['efficiency_pct'] ?? null,
+                    'created_at' => now(), 'updated_at' => now()], $input['materials']));
             }
 
             return $article;

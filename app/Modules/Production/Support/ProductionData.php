@@ -31,7 +31,7 @@ final class ProductionData
         'b.delivery_cost', 'b.currency_code', 'b.tax_rate_pct', 'b.delivery_note', 'b.invoice_reference', 'b.external_reference', 'b.import_source', 'b.notes',
         's.ulid as supplier_ulid', 's.code as supplier_code', 's.name as supplier_name'];
 
-    public function __construct(private readonly ReferenceCodes $codes, private readonly ProductionFinance $finance, private readonly AccessResolver $access) {}
+    public function __construct(private readonly ReferenceCodes $codes, private readonly ProductionFinance $finance, private readonly AccessResolver $access, private readonly CuttingWaste $cutting) {}
 
     /**
      * Stages a company may use: the defaults and its own.
@@ -148,15 +148,32 @@ final class ProductionData
      */
     public function article(Article $article): array
     {
+        $default = $this->cutting->defaultEfficiency();
+        // What one piece is expected to consume, and for a fabric the waste its cutting is expected to leave.
+        $materials = DB::table('article_materials as am')->join('raw_materials as m', 'm.id', '=', 'am.raw_material_id')->where('am.article_id', $article->id)->orderBy('am.id')
+            ->get(['m.ulid', 'm.reference', 'm.name', 'm.unit_id', 'm.width_cm', 'm.grammage_gsm', 'am.quantity_per_piece', 'am.efficiency_pct'])
+            ->map(function ($row) use ($default) {
+                $unit = $this->codes->code('units', (int) $row->unit_id);
+                $cut = $this->cutting->line((string) $row->quantity_per_piece, $unit, $row->width_cm, $row->grammage_gsm, $row->efficiency_pct, $default);
+
+                return ['material' => $row->ulid, 'reference' => $row->reference, 'name' => $row->name, 'unit' => $unit, 'quantity_per_piece' => (string) $row->quantity_per_piece,
+                    'efficiency_pct' => $cut['efficiency_pct'], 'efficiency_applied' => $cut['efficiency_applied'],
+                    'fabric_kg_per_piece' => $cut['fabric_kg'] === null ? null : CuttingWaste::round($cut['fabric_kg'], 4), 'waste_kg_per_piece' => $cut['waste_kg'] === null ? null : CuttingWaste::round($cut['waste_kg'], 4),
+                    'fabric_kg_exact' => $cut['fabric_kg'], 'waste_kg_exact' => $cut['waste_kg']];
+            });
+        $cut = $materials->filter(fn (array $line) => $line['waste_kg_exact'] !== null);
+        $total = fn (string $key) => $cut->isEmpty() ? null : CuttingWaste::round($cut->reduce(fn (string $sum, array $line) => bcadd($sum, $line[$key], 6), '0'), 4);
+
         return [
             'ulid' => $article->ulid, 'reference' => $article->reference, 'name' => $article->name, 'family' => $article->family,
             'client' => $this->named('production_clients', $article->production_client_id),
             'notes' => $article->notes, 'is_active' => $article->is_active,
-            // What one piece is expected to consume.
-            'materials' => DB::table('article_materials as am')->join('raw_materials as m', 'm.id', '=', 'am.raw_material_id')->where('am.article_id', $article->id)->orderBy('am.id')
-                ->get(['m.ulid', 'm.reference', 'm.name', 'm.unit_id', 'am.quantity_per_piece'])
-                ->map(fn ($row) => ['material' => $row->ulid, 'reference' => $row->reference, 'name' => $row->name, 'unit' => $this->codes->code('units', (int) $row->unit_id),
-                    'quantity_per_piece' => (string) $row->quantity_per_piece]),
+            'materials' => $materials->map(fn (array $line) => array_diff_key($line, ['fabric_kg_exact' => 0, 'waste_kg_exact' => 0]))->values(),
+            'cutting_waste' => [
+                'default_efficiency_pct' => $default,
+                'fabric_kg_per_piece' => $total('fabric_kg_exact'),
+                'waste_kg_per_piece' => $total('waste_kg_exact'),
+            ],
         ];
     }
 
@@ -266,7 +283,7 @@ final class ProductionData
                 ->map(fn (array $row) => ['material' => $row['material'], 'reference' => $row['reference'], 'name' => $row['name'], 'unit' => $row['unit'], 'planned' => $row['planned'], 'consumed' => $row['consumed']])->values(),
             'produced_lots' => $produced->map(fn ($lot) => $this->producedLot($lot)),
             'produced' => $figures['produced'],
-            'waste' => $this->waste($of),
+            'waste' => $this->waste($of) + ['estimated' => $this->estimatedWaste($of)],
             'expenses' => ! $money ? [] : DB::table('production_order_expenses as e')->leftJoin('production_suppliers as s', 's.id', '=', 'e.production_supplier_id')
                 ->where('e.production_order_id', $of->id)->orderBy('e.incurred_on')->orderBy('e.id')
                 ->get(['e.ulid', 'e.category', 'e.description', 'e.amount', 'e.currency_code', 'e.incurred_on', 'e.reference', 'e.notes', 's.ulid as supplier', 's.name as supplier_name'])
@@ -350,6 +367,23 @@ final class ProductionData
             'can_view_lots' => $siteIds !== [],
             'consumed_kg' => $consumedKg,
             'waste_rate_pct' => $consumedKg === null ? null : round((float) $totals->kg / (float) $consumedKg * 100, 1),
+        ];
+    }
+
+    /**
+     * The cutting waste the OF is expected to leave: what one piece of its article leaves, for the pieces planned
+     * (and for those produced, once some are). Null when no fabric of the article has its laize and grammage.
+     *
+     * @return array{per_piece_kg: string, planned_kg: string, produced_kg: string|null}|null
+     */
+    private function estimatedWaste(ProductionOrder $of): ?array
+    {
+        $piece = $this->cutting->perPiece([(int) $of->article_id])[(int) $of->article_id] ?? null;
+
+        return $piece === null ? null : [
+            'per_piece_kg' => CuttingWaste::round($piece['waste_kg'], 4),
+            'planned_kg' => CuttingWaste::round(bcmul($piece['waste_kg'], (string) $of->quantity_planned, 6), 3),
+            'produced_kg' => $of->quantity_produced === null ? null : CuttingWaste::round(bcmul($piece['waste_kg'], (string) $of->quantity_produced, 6), 3),
         ];
     }
 

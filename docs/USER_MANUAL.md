@@ -670,6 +670,13 @@ gain could not be calculated and why; totals only add the gains that exist. **Ex
   - a **matière première** has a reference, a supplier, a unit (metre, kilogram or piece), a colour or Pantone
     reference, a composition (must total 100 %) and its **lots reçus** (deliveries: batch number, date, quantity);
   - an **article** has a reference, a family, a client, and its **consommation par pièce** of each material.
+    For a fabric (a material in metres with its **laize** and **grammage**), the line also takes the **efficience** of
+    its placement (%); empty, the company's default applies (80 % until changed, "Modifier" above the list of articles).
+    The list then shows the **chute de coupe estimée** per piece:
+    consumption (m) × laize × grammage × (100 − efficience) %. The consumption is the gross one, from the placement
+    (marker length ÷ pieces in the marker): the waste is inside it. Supplies (buttons, labels, threads) and materials
+    without laize or grammage give no estimate rather than a wrong one. The efficience also comes in with the
+    composition file (column "Efficience").
 - **Commandes** — `/production/orders`: number, client, dates, status, and the articles ordered with quantities.
 - **Ordres de fabrication** — `/production/manufacturing-orders`: number, article (one of the order's when an order is
   chosen), planned and produced quantities, dates, status, then:
@@ -678,6 +685,9 @@ gain could not be calculated and why; totals only add the gains that exist. **Ex
     contrôle qualité, emballage) plus the ones the company adds;
   - **Matières consommées**: what the OF really consumed, optionally from which received batch. The form shows
     the expected quantity (planned quantity × consumption per piece) next to the real one, in red when it is above.
+  - **Déchets**: before anything is weighed, the **chutes de coupe estimées** of the OF (per piece × planned
+    quantity); once pieces are produced, the estimate for them next to the waste really weighed. The production
+    statistics add the same estimate by OF, client and article.
 
 ![Manufacturing order](screenshots/production/02-manufacturing-order.png)
 

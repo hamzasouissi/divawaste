@@ -60,7 +60,8 @@ final class ImportEngine
         'suppliers' => ['code' => ['text', false], 'name' => ['text', true], 'country_code' => ['text', false], 'contact_name' => ['text', false], 'email' => ['text', false], 'phone' => ['text', false]],
         'materials' => ['reference' => ['text', true], 'name' => ['text', false], 'category' => ['text', false], 'supplier' => ['text', false], 'unit' => ['text', false], 'color_label' => ['text', false],
             'grammage_gsm' => ['decimal', false], 'width_cm' => ['decimal', false], 'batch_number' => ['text', false], 'received_on' => ['date', false], 'batch_quantity' => ['decimal', false]],
-        'articles' => ['reference' => ['text', true], 'name' => ['text', false], 'family' => ['text', false], 'client' => ['text', false], 'material' => ['text', false], 'quantity_per_piece' => ['decimal', false]],
+        'articles' => ['reference' => ['text', true], 'name' => ['text', false], 'family' => ['text', false], 'client' => ['text', false], 'material' => ['text', false], 'quantity_per_piece' => ['decimal', false],
+            'efficiency_pct' => ['decimal', false]],
         'orders' => ['order_number' => ['text', true], 'client' => ['text', true], 'article' => ['text', true], 'quantity' => ['integer', true], 'unit_price' => ['decimal', false],
             'ordered_on' => ['date', false], 'due_on' => ['date', false]],
         'manufacturing_orders' => ['order_number' => ['text', true], 'article' => ['text', true], 'quantity_planned' => ['integer', true], 'quantity_produced' => ['integer', false],
@@ -97,7 +98,7 @@ final class ImportEngine
 
     /** What a cell of each column looks like, shown next to the column in the wizard. */
     public const EXAMPLES = [
-        'reference' => 'DEN-12OZ', 'batch_number' => 'R-2026-0412', 'supplier' => 'Tissages du Nord', 'supplier_batch_reference' => 'TN-88541', 'received_on' => '12/03/2026',
+        'efficiency_pct' => '82', 'reference' => 'DEN-12OZ', 'batch_number' => 'R-2026-0412', 'supplier' => 'Tissages du Nord', 'supplier_batch_reference' => 'TN-88541', 'received_on' => '12/03/2026',
         'batch_quantity' => '1250,5', 'unit_price' => '8,450', 'total_amount' => '10566,725', 'delivery_cost' => '120', 'currency' => 'TND', 'delivery_note' => 'BL-4471',
         'invoice_reference' => 'FA-2026-118', 'manufacturing_order' => 'OF-2026-014', 'material' => 'DEN-12OZ', 'consumed_quantity' => '842,3', 'consumed_on' => '18/03/2026',
         'lot_number' => 'LF-2026-014-A', 'quantity' => '1200', 'produced_on' => '25/03/2026', 'status' => 'livré', 'delivered_on' => '28/03/2026', 'step' => 'Coupe', 'site' => 'NAB',
@@ -124,6 +125,7 @@ final class ImportEngine
         'quantity_planned' => ['quantite prevue', 'qte prevue', 'quantite lancee', 'qte lancee', 'planned', 'quantite', 'qte', 'quantity', 'qty'],
         'quantity_produced' => ['quantite produite', 'qte produite', 'produit', 'produced', 'realise', 'quantite realisee'],
         'quantity_per_piece' => ['consommation', 'conso', 'consommation par piece', 'consumption', 'per piece'],
+        'efficiency_pct' => ['efficience', 'efficience placement', 'efficience matelas', 'efficiency', 'marker efficiency', 'rendement', 'taux d utilisation'],
         'consumed_quantity' => ['consommation', 'conso', 'quantite consommee', 'qte consommee', 'consumed', 'consumption'],
         'pieces_done' => ['pieces', 'pieces realisees', 'pieces done', 'quantite etape'],
         'ordered_on' => ['date', 'date commande', 'order date'],
@@ -404,7 +406,11 @@ final class ImportEngine
             }
             $article = Article::query()->where('reference', $v['reference'])->firstOrFail();
             $materialId = RawMaterial::query()->where('reference', $v['material'])->value('id') ?? throw new RuntimeException(__('imports.errors.unknown', ['what' => __('imports.fields.articles.material'), 'value' => $v['material']]));
-            $changed = $this->sync('article_materials', ['article_id' => $article->id, 'raw_material_id' => $materialId], ['quantity_per_piece' => $v['quantity_per_piece']], ['company_id' => $article->company_id]);
+            if ($v['efficiency_pct'] !== null && (bccomp((string) $v['efficiency_pct'], '0', 2) <= 0 || bccomp((string) $v['efficiency_pct'], '100', 2) > 0)) {
+                throw new RuntimeException(__('imports.errors.efficiency', ['value' => $v['efficiency_pct']]));
+            }
+            $changed = $this->sync('article_materials', ['article_id' => $article->id, 'raw_material_id' => $materialId],
+                array_filter(['quantity_per_piece' => $v['quantity_per_piece'], 'efficiency_pct' => $v['efficiency_pct']], fn ($value) => $value !== null), ['company_id' => $article->company_id]);
             $outcome = $outcome === 'unchanged' && $changed ? 'updated' : $outcome;
         }
 
