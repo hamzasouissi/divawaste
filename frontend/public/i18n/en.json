@@ -3138,7 +3138,11 @@
       "batchNumber": "Batch no.",
       "receivedOn": "Received on",
       "width": "Width (cm)",
-      "widthHint": "With the weight per m², converts metres consumed into kg and gives the waste rate."
+      "widthHint": "With the weight per m², converts metres consumed into kg and gives the waste rate.",
+      "wasteType": "Waste produced",
+      "wasteTypeDefault": "Default (cutting scraps for a fabric)",
+      "wasteTypeHint": "The type of waste this material leaves when cut. Empty: a fabric (in metres, with width and weight) gives the company's cutting scraps.",
+      "wasteTypeInherited": "Default: fabric in metres with width and weight."
     },
     "articles": {
       "title": "Articles",
@@ -3158,7 +3162,27 @@
       "cuttingWasteNone": "No fabric with its width and weight: no estimate.",
       "defaultEfficiency": "Cutting waste is estimated with a marker efficiency of {{pct}} % for the fabrics whose article does not give its own.",
       "defaultEfficiencyLabel": "Default efficiency (%)",
-      "cuttingFormula": "Waste per piece = consumption (m) × width × weight × (100 − efficiency) %. Only fabrics in metres with a width and a weight count."
+      "cuttingFormula": "Waste per piece = consumption (m) × width × weight × (100 − efficiency) %. Only fabrics in metres with a width and a weight count.",
+      "materialsHeader": "Materials",
+      "materialsCount": "{{count}} RM",
+      "perPieceShort": "Per piece",
+      "fabricUsed": "Fabric / piece",
+      "wastePerPiece": "Waste / piece",
+      "summaryTitle": "Expected cutting waste per piece",
+      "summaryNone": "No fabric of the article has its width and weight: no estimate.",
+      "missingData": "In metres without width or weight, so not counted: {{names}}. If it is a fabric, fill in its width and weight on the material.",
+      "ofFabric": "of {{g}} g of fabric consumed ({{pct}} %)",
+      "wasteProduced": "Waste produced",
+      "typesCount": "{{count}} types",
+      "fabricsCount": "{{count}} fabric(s)",
+      "suppliesCount": "{{count}} supply and packaging item(s)",
+      "fabricsTitle": "Fabrics and cutting waste",
+      "fabricsIntro": "For one piece: the fabric consumed, the share the marker does not keep (100 − efficiency), and the type of waste these scraps are.",
+      "fabric": "Fabric",
+      "default": "default",
+      "perPieceTotal": "Total per piece",
+      "suppliesTitle": "Supplies and packaging ({{count}})",
+      "suppliesHint": "no placement, no expected cutting waste"
     },
     "orders": {
       "title": "Orders",
@@ -3486,7 +3510,16 @@
       "total": "{{count}} lot(s) generated",
       "noRate": "Waste rate not calculable",
       "estimated": "Expected cutting waste: {{kg}} for {{pieces}} pieces planned ({{g}} g / piece).",
-      "estimatedProduced": "For the {{pieces}} pieces produced: {{expected}} expected, {{measured}} weighed."
+      "estimatedProduced": "For the {{pieces}} pieces produced: {{expected}} expected, {{measured}} weighed.",
+      "estimatedIntro": "Cutting waste expected from the placements of the article, set beside the lots of the same type weighed on this MO.",
+      "perPiece": "Per piece",
+      "forPlanned": "For {{pieces}} planned",
+      "forProduced": "For {{pieces}} produced",
+      "weighed": "Weighed",
+      "typeUnknown": "Type to define",
+      "noLotOfType": "No lot of this type",
+      "notWeighed": "{{count}} lot(s) not weighed yet",
+      "stillToWeigh": "+ {{count}} to weigh"
     },
     "expenses": {
       "title": "Other expenses",
