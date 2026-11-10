@@ -26,6 +26,7 @@ import { SearchComponent } from '../../ui/search';
 import { SELECT } from '../../ui/select';
 import { Article, DECIMAL, ProductionLists, RawMaterial, blankToNull, decimal } from './production-data';
 import { Company } from '../../core/api/models';
+import { SizeGridsComponent } from './cutting';
 import { HelpComponent } from '../../ui/help';
 import { COLOR } from '../../ui/swatch';
 
@@ -314,7 +315,7 @@ export class ArticleDialog {
   imports: [
     HelpComponent,
     TranslocoDirective, PageHeaderComponent, ...TABLE, StatusComponent, SearchComponent, FilterBarComponent, CheckboxComponent, ButtonDirective, IconComponent, CodePipe, NumberPipe, ...COLOR,
-    Tabs, TabList, Tab, TabPanels, TabPanel, InputText,
+    Tabs, TabList, Tab, TabPanels, TabPanel, InputText, SizeGridsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -323,7 +324,7 @@ export class ArticleDialog {
       <dw-help topic="productionCatalog" />
       <div class="dw-panel">
         <p-tabs [value]="0">
-          <p-tablist><p-tab [value]="0">{{ t('production.materials.title') }}</p-tab><p-tab [value]="1">{{ t('production.articles.title') }}</p-tab></p-tablist>
+          <p-tablist><p-tab [value]="0">{{ t('production.materials.title') }}</p-tab><p-tab [value]="1">{{ t('production.articles.title') }}</p-tab><p-tab [value]="2">{{ t('production.sizes.title') }}</p-tab></p-tablist>
           <p-tabpanels>
             <p-tabpanel [value]="0">
               <dw-filter-bar [active]="(materialSearch() ? 1 : 0) + (inactive() ? 1 : 0)" (cleared)="materialSearch.set(''); inactive.set(false); materials.reload()">
@@ -335,7 +336,7 @@ export class ArticleDialog {
               <dw-data-table [columns]="materialColumns" [rows]="materials.rows()" [loading]="materials.loading()" [error]="materials.error()" [total]="materials.total()" [pageIndex]="materials.page() - 1"
                 [pageSize]="materials.perPage()" [clickable]="true" [emptyTitle]="t('production.materials.empty')" [emptyHint]="t('production.emptyHint')" emptyIcon="texture"
                 (page)="materials.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="openMaterial($event)" (retry)="materials.reload()">
-                <ng-template dwCell="reference" let-m><span class="dw-mono">{{ m.reference }}</span></ng-template>
+                <ng-template dwCell="reference" let-m><span class="dw-mono ref">{{ m.reference }}</span></ng-template>
                 <ng-template dwCell="composition" let-m>@for (line of m.composition; track line.material) { <span class="chip">{{ line.material | dwCode: 'material' }} {{ +line.pct }} %</span> } @empty { — }</ng-template>
                 <ng-template dwCell="color" let-m>@if (m.color_family) { <dw-color [code]="m.color_family" /> }@if (m.color_family && m.color_label) { · }{{ m.color_label ?? (m.color_family ? '' : '—') }}</ng-template>
                 <ng-template dwCell="batches" let-m>{{ m.batches.length || '—' }}</ng-template>
@@ -371,6 +372,7 @@ export class ArticleDialog {
                 <ng-template dwCell="status" let-a><dw-status kind="member" [value]="a.is_active ? 'active' : 'suspended'" [label]="t(a.is_active ? 'common.active' : 'common.inactive')" /></ng-template>
               </dw-data-table>
             </p-tabpanel>
+            <p-tabpanel [value]="2"><dw-size-grids /></p-tabpanel>
           </p-tabpanels>
         </p-tabs>
       </div>
@@ -404,10 +406,10 @@ export class MaterialsPage {
   protected readonly materials = new ListStore<RawMaterial>((query) => this.api.list<RawMaterial>('production/materials', { ...query, search: this.materialSearch(), with_inactive: this.inactive() }));
   protected readonly articles = new ListStore<Article>((query) => this.api.list<Article>('production/articles', { ...query, search: this.articleSearch(), with_inactive: this.inactive() }));
   protected readonly materialColumns: Column<RawMaterial>[] = [
-    { key: 'reference', header: 'production.reference', width: '150px' },
-    { key: 'name', header: 'production.designation', value: (m) => m.name },
+    { key: 'reference', header: 'production.reference', wrap: true },
+    { key: 'name', header: 'production.designation', value: (m) => (m.name === m.reference ? '' : m.name), wrap: true, hideBelow: 1200 },
     { key: 'supplier', header: 'production.suppliers.one', value: (m) => m.supplier?.name ?? '—', hideBelow: 900 },
-    { key: 'unit', header: 'production.materials.unit', value: (m) => m.unit, width: '80px', hideBelow: 900 },
+    { key: 'unit', header: 'production.materials.unit', value: (m) => ({ piece: 'pc' } as Record<string, string>)[m.unit] ?? m.unit, width: '80px', hideBelow: 900 },
     { key: 'composition', header: 'lots.composition', hideBelow: 1100 },
     { key: 'color', header: 'lots.color', hideBelow: 1100 },
     { key: 'batches', header: 'production.materials.batches', align: 'end', hideBelow: 1100 },

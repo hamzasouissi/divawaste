@@ -259,7 +259,9 @@ export interface OfWaste {
   waste_rate_pct: number | null;
   /** The cutting waste the placements of the article are expected to leave; null without a fabric to compute it for. */
   estimated: {
-    per_piece_kg: string; planned_kg: string; produced_kg: string | null;
+    /** cutting: from the spreads of the OF (layers planned, then cut); article: from the article's placements. */
+    source: 'cutting' | 'article';
+    per_piece_kg: string | null; planned_kg: string; produced_kg: string | null; planned_pieces: number | null; produced_pieces: number | null;
     /** By type of waste: weighed_kg counts only the lots of the OF of that type; lots still to weigh are counted apart. */
     by_type: { waste_type: { ulid: string; name: string } | null; per_piece_kg: string; planned_kg: string; produced_kg: string | null; weighed_kg: string | null; lots: number; unweighed_lots: number }[];
   } | null;
@@ -276,6 +278,9 @@ export interface ManufacturingOrder {
   client: PartyRef | null;
   quantity_planned: number;
   quantity_produced: number | null;
+  /** The sizes it makes, from one of the company's grids, and the pieces of each. */
+  size_grid: { ulid: string; name: string; sizes: string[] } | null;
+  sizes: { size: string; quantity: number }[];
   started_on: string | null;
   finished_on: string | null;
   status: OfStatus;
@@ -289,9 +294,39 @@ export interface ManufacturingOrder {
   produced_lots?: ProducedLot[];
   produced?: OfFinance['produced'];
   waste?: OfWaste;
+  /** Its spreads (matelas); null while none is entered. */
+  cutting?: Cutting | null;
   expenses?: OfExpense[];
   /** Null for who may not see money. */
   finance?: OfFinance | null;
+}
+
+/** A company's list of sizes, in order, chosen by its OFs. */
+export interface SizeGrid { ulid: string; name: string; sizes: string[]; is_active: boolean; orders: number }
+
+export interface SpreadFigures { pieces: number; by_size: Record<string, number>; metres: string; fabric_kg: string | null; waste_kg: string | null }
+
+/** One spread (matelas): a fabric, a placement and its layers, planned then cut. */
+export interface CuttingSpread {
+  ulid: string;
+  material: { ulid: string; reference: string; name: string; unit: string; width_cm: string | null; grammage_gsm: string | null };
+  batch: { ulid: string; batch_number: string } | null;
+  marker_length_m: string; efficiency_pct: string; end_allowance_cm: string | null;
+  ratio: { size: string; pieces: number }[]; pieces_per_layer: number;
+  layers_planned: number; layers_done: number | null; cut_on: string | null; notes: string | null; consumption_recorded: boolean;
+  waste_type: { ulid: string; name: string } | null;
+  planned: SpreadFigures; done: SpreadFigures | null;
+}
+
+export interface Cutting {
+  /** The fabric the garments are counted on (most metres planned); interlinings and linings add fabric and waste only. */
+  main_material: CuttingSpread['material'];
+  spreads: CuttingSpread[];
+  totals: { planned: Omit<SpreadFigures, 'by_size'>; done: Omit<SpreadFigures, 'by_size'> | null; spreads_to_cut: number };
+  /** Each size: pieces ordered on the OF, planned by the spreads, cut; its share of the cutting waste (an estimate). */
+  by_size: { size: string; ordered: number | null; planned: number; cut: number | null; waste_kg: string | null }[];
+  /** Each fabric: metres planned and cut, beside what the OF says it consumed. */
+  fabrics: { material: CuttingSpread['material']; planned_m: string; cut_m: string | null; consumed_m: string }[];
 }
 
 /** Colour of a status tag: done is green, running is amber, the rest is neutral. */
@@ -317,5 +352,6 @@ export class ProductionLists {
   materials = (): Observable<RawMaterial[]> => this.all<RawMaterial>('materials');
   articles = (): Observable<Article[]> => this.all<Article>('articles');
   orders = (): Observable<CustomerOrder[]> => this.all<CustomerOrder>('orders');
+  sizeGrids = (): Observable<SizeGrid[]> => this.api.get<SizeGrid[]>('production/size-grids');
   steps = (): Observable<ProductionStep[]> => this.api.get<ProductionStep[]>('production/steps').pipe(map((steps) => steps.filter((step) => step.is_active)));
 }

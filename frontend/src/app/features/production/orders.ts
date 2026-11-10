@@ -22,7 +22,7 @@ import { ListStore } from '../../ui/list-store';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { SearchComponent } from '../../ui/search';
 import { SELECT } from '../../ui/select';
-import { AMOUNT, CustomerOrder, DECIMAL, ManufacturingOrder, OfStatus, OrderStatus, ProductionLists, blankToNull, decimal } from './production-data';
+import { AMOUNT, CustomerOrder, DECIMAL, ManufacturingOrder, OfStatus, OrderStatus, ProductionLists, SizeGrid, blankToNull, decimal } from './production-data';
 import { HelpComponent } from '../../ui/help';
 
 const ORDER_STATUSES: OrderStatus[] = ['open', 'in_progress', 'completed', 'cancelled'];
@@ -239,7 +239,24 @@ export class OrdersPage {
                 @for (article of offered(); track article.ulid) { <dw-option [value]="article.ulid" [label]="article.reference + ' — ' + article.name" /> }
               </dw-select>
             </dw-field>
-            <dw-field [label]="t('production.of.planned')"><input pInputText type="number" formControlName="quantity_planned" min="1" required /></dw-field>
+            <dw-field [label]="t('production.sizes.grid')">
+              <dw-select formControlName="size_grid">
+                <dw-option value="" [label]="t('production.sizes.noGrid')" />
+                @for (grid of grids(); track grid.ulid) { <dw-option [value]="grid.ulid" [label]="grid.name + ' (' + grid.sizes.join(' ') + ')'" /> }
+              </dw-select>
+              @if (grids().length === 0) { <small dwHint>{{ t('production.sizes.noGridHint') }}</small> }
+            </dw-field>
+            <dw-field [label]="t('production.of.planned')">
+              <input pInputText type="number" formControlName="quantity_planned" min="1" required [readonly]="sizes.length > 0" />
+              @if (sizes.length > 0) { <small dwHint>{{ t('production.sizes.totalHint') }}</small> }
+            </dw-field>
+            @if (sizes.length > 0) {
+              <div class="dw-span-2 sizes">
+                @for (line of sizes.controls; track line) {
+                  <label class="size" [formGroup]="line"><span>{{ line.value.size }}</span><input pInputText type="number" min="0" formControlName="quantity" [attr.aria-label]="line.value.size" /></label>
+                }
+              </div>
+            }
             <dw-field [label]="t('production.of.produced')"><input pInputText type="number" formControlName="quantity_produced" min="0" /><small dwHint>{{ t('production.of.producedHint') }}</small></dw-field>
             <dw-field [label]="t('production.of.startedOn')"><dw-date formControlName="started_on" /></dw-field>
             <dw-field [label]="t('production.of.finishedOn')"><dw-date formControlName="finished_on" [min]="form.controls.started_on.value || null" /></dw-field>
@@ -275,6 +292,9 @@ export class OrdersPage {
   styles: LINE_STYLES + `
     .dw-dialog-body { inline-size: min(760px, 90vw); }
     .line.step { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 150px auto; }
+    .sizes { display: flex; flex-wrap: wrap; gap: var(--dw-2); }
+    .size { display: grid; gap: 4px; inline-size: 84px; font-size: 13px; font-weight: 600; text-align: center; }
+    .size input { inline-size: 100%; min-inline-size: 0; box-sizing: border-box; text-align: center; }
     @media (max-width: 640px) { .line.step { grid-template-columns: minmax(0, 1fr) auto; } }
   `,
 })
@@ -292,6 +312,9 @@ export class ManufacturingOrderDialog {
   protected readonly orders = toSignal(this.lists.orders(), { initialValue: [] });
   private readonly articles = toSignal(this.lists.articles(), { initialValue: [] });
   protected readonly stepOptions = toSignal(this.lists.steps(), { initialValue: [] });
+  protected readonly grids = toSignal(this.lists.sizeGrids(), { initialValue: [] as SizeGrid[] });
+  /** The pieces of each size, in the order of the grid; their total is the quantity planned. */
+  protected readonly sizes = this.fb.array((this.data?.sizes ?? []).map((line) => this.sizeLine(line.size, line.quantity)));
   protected readonly busy = signal(false);
   protected readonly steps = this.fb.array((this.data?.steps ?? []).map((line) => this.step(line.step, line.site, line.pieces_done)));
   protected readonly form = this.fb.nonNullable.group({
@@ -304,6 +327,8 @@ export class ManufacturingOrderDialog {
     started_on: [this.data?.started_on ?? ''],
     finished_on: [this.data?.finished_on ?? ''],
     notes: [this.data?.notes ?? ''],
+    size_grid: [this.data?.size_grid?.ulid ?? ''],
+    sizes: this.sizes,
     steps: this.steps,
   });
   private readonly chosenOrder = toSignal(this.form.controls.customer_order.valueChanges, { initialValue: this.form.controls.customer_order.value });
@@ -313,6 +338,26 @@ export class ManufacturingOrderDialog {
 
     return order ? this.articles().filter((article) => order.lines.some((line) => line.article === article.ulid)) : this.articles();
   });
+
+  private sizeLine(size: string, quantity = 0): FormGroup {
+    return this.fb.nonNullable.group({ size: [size], quantity: [quantity, [Validators.required, Validators.min(0)]] });
+  }
+
+  /** A grid chosen: one box per size, the quantities typed so far kept for the sizes it has. */
+  private applyGrid(ulid: string): void {
+    const kept = new Map(this.sizes.getRawValue().map((line) => [line['size'] as string, line['quantity'] as number]));
+    this.sizes.clear();
+    for (const size of this.grids().find((grid) => grid.ulid === ulid)?.sizes ?? []) {
+      this.sizes.push(this.sizeLine(size, kept.get(size) ?? 0));
+    }
+    this.total();
+  }
+
+  private total(): void {
+    if (this.sizes.length > 0) {
+      this.form.controls.quantity_planned.setValue(this.sizes.getRawValue().reduce((sum, line) => sum + (Number(line['quantity']) || 0), 0));
+    }
+  }
 
   private step(step = '', site = '', pieces: number | null = null): FormGroup {
     return this.fb.nonNullable.group({ step: [step, Validators.required], site: [site || (this.sites[0]?.ulid ?? ''), Validators.required], pieces_done: [pieces, Validators.min(0)] });
@@ -327,6 +372,8 @@ export class ManufacturingOrderDialog {
   }
 
   constructor() {
+    this.form.controls.size_grid.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((grid) => this.applyGrid(grid));
+    this.sizes.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.total());
     // The article must be one of the chosen order: when the user changes the order, a choice that no longer fits is cleared.
     this.form.controls.customer_order.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((order) => {
       const lines = this.orders().find((item) => item.ulid === order)?.lines;
@@ -346,6 +393,8 @@ export class ManufacturingOrderDialog {
     const value = this.form.getRawValue();
     const body = blankToNull({
       ...value,
+      size_grid: value.size_grid || null,
+      sizes: value.sizes.map((line) => ({ size: line['size'], quantity: Number(line['quantity']) || 0 })),
       steps: value.steps.map((line) => blankToNull(line)),
     });
     try {

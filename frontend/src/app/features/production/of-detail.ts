@@ -21,6 +21,7 @@ import { KpiComponent, PageHeaderComponent, StatusComponent } from '../../ui/pag
 import { SELECT } from '../../ui/select';
 import { StateComponent } from '../../ui/state';
 import { CreateLotDialog } from '../lots/lot-dialogs';
+import { CuttingComponent } from './cutting';
 import { ManufacturingOrderDialog } from './orders';
 import {
   AMOUNT, ConsumedMaterial, DECIMAL, EXPENSE_CATEGORIES, ManufacturingOrder, OfExpense, OfWaste, ProducedLot, ProducedLotStatus, ProductionLists, blankToNull, decimal, statusTone,
@@ -317,7 +318,7 @@ export class ExpenseDialog {
  * that cost and is worth.
  */
 @Component({
-  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KpiComponent, ButtonDirective, IconComponent, DatePipe, NumberPipe, MoneyPipe, KgPipe, LocalizedPipe, SegmentedComponent],
+  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KpiComponent, ButtonDirective, IconComponent, DatePipe, NumberPipe, MoneyPipe, KgPipe, LocalizedPipe, SegmentedComponent, CuttingComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -376,18 +377,18 @@ export class ExpenseDialog {
               <!-- Before anything is weighed: what the placements of the article are expected to leave. -->
               @if (o.waste?.estimated; as e) {
                 <div class="estimate">
-                  <p class="dw-muted">{{ t('production.waste.estimatedIntro') }}</p>
+                  <p class="dw-muted">{{ t(e.source === 'cutting' ? 'production.waste.estimatedIntroCutting' : 'production.waste.estimatedIntro') }}</p>
                   <div class="scroll">
                     <table class="dw-table">
                       <thead><tr><th>{{ t('fields.wasteType') }}</th><th class="num">{{ t('production.waste.perPiece') }}</th>
-                        <th class="num">{{ t('production.waste.forPlanned', { pieces: (o.quantity_planned | dwNumber) }) }}</th>
-                        @if (e.produced_kg !== null) { <th class="num">{{ t('production.waste.forProduced', { pieces: (o.quantity_produced | dwNumber) }) }}</th> }
+                        <th class="num">{{ t(e.source === 'cutting' ? 'production.waste.forSpreads' : 'production.waste.forPlanned', { pieces: (e.planned_pieces | dwNumber) }) }}</th>
+                        @if (e.produced_kg !== null) { <th class="num">{{ t(e.source === 'cutting' ? 'production.waste.forCut' : 'production.waste.forProduced', { pieces: (e.produced_pieces | dwNumber) }) }}</th> }
                         <th class="num">{{ t('production.waste.weighed') }}</th></tr></thead>
                       <tbody>
                         @for (row of e.by_type; track $index) {
                           <tr>
                             <td>{{ row.waste_type?.name ?? t('production.waste.typeUnknown') }}</td>
-                            <td class="num">{{ +row.per_piece_kg * 1000 | dwNumber: 1 }} g</td>
+                            <td class="num">{{ row.per_piece_kg === null ? '—' : ((+row.per_piece_kg * 1000 | dwNumber: 1) + ' g') }}</td>
                             <td class="num">{{ row.planned_kg | dwKg }}</td>
                             @if (e.produced_kg !== null) { <td class="num"><strong>{{ row.produced_kg | dwKg }}</strong></td> }
                             <td class="num">
@@ -442,6 +443,9 @@ export class ExpenseDialog {
               }
             </section>
 
+            }
+            @case ('cut') {
+              <dw-cutting [of]="o" [canManage]="canManage" (changed)="of.set($event)" />
             }
             @case ('make') {
             @if (o.steps.length > 0) {
@@ -668,11 +672,12 @@ export class ExpenseDialog {
   `,
 })
 export class OfDetailPage implements OnInit {
-  protected readonly tab = signal<'waste' | 'make' | 'produced' | 'money'>('waste');
+  protected readonly tab = signal<'waste' | 'cut' | 'make' | 'produced' | 'money'>('waste');
 
   protected tabOptions(t: (key: string) => string, money: boolean): { value: string; label: string }[] {
     return [
       { value: 'waste', label: t('production.waste.title') },
+      { value: 'cut', label: t('production.cutting.tab') },
       { value: 'make', label: t('production.of.tabMake') },
       { value: 'produced', label: t('production.produced.title') },
       ...(money ? [{ value: 'money', label: t('production.of.tabMoney') }] : []),
