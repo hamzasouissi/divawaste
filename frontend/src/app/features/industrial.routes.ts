@@ -30,6 +30,7 @@ export const INDUSTRIAL_ROUTES: Routes = [
   { path: 'compliance/documents', canActivate: [permissionGuard('documents.view')], loadComponent: () => import('./compliance/compliance').then((m) => m.DocumentsPage), title: 'Documents — DivaWaste' },
   { path: 'production/partners', canActivate: [permissionGuard('production.view')], loadComponent: () => import('./production/partners').then((m) => m.PartnersPage), title: 'Clients et fournisseurs — DivaWaste' },
   { path: 'production/catalog', canActivate: [permissionGuard('production.view')], loadComponent: () => import('./production/materials').then((m) => m.MaterialsPage), title: 'Matières premières et articles — DivaWaste' },
+  { path: 'production/articles/:ulid', canActivate: [permissionGuard('production.view')], loadComponent: () => import('./production/article-detail').then((m) => m.ArticleDetailPage), title: 'Article — DivaWaste' },
   { path: 'production/catalog/:ulid', canActivate: [permissionGuard('production.view')], loadComponent: () => import('./production/material-detail').then((m) => m.MaterialDetailPage), title: 'Matière première — DivaWaste' },
   { path: 'production/lots', canActivate: [permissionGuard('production.view')], loadComponent: () => import('./production/lots').then((m) => m.ProductionLotsPage), title: 'Lots reçus et fabriqués — DivaWaste' },
   { path: 'production/finance', canActivate: [permissionGuard('production.finance.view')], loadComponent: () => import('./production/finance').then((m) => m.ProductionFinancePage), title: 'Coûts et gains — DivaWaste' },

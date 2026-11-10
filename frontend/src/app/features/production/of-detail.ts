@@ -346,7 +346,9 @@ export class ExpenseDialog {
             <dw-kpi [label]="t('production.of.producedPlanned')" [value]="(o.quantity_produced === null ? '—' : (o.quantity_produced | dwNumber)) + ' / ' + (o.quantity_planned | dwNumber)"
               [hint]="o.produced?.source === 'lots' ? t('production.of.fromLots', { count: liveLots() }) : t('production.of.typed')" />
             <dw-kpi [label]="t('production.of.wasteKpi')" [value]="o.waste?.kg | dwKg"
-              [hint]="o.waste?.waste_rate_pct !== null && o.waste?.waste_rate_pct !== undefined ? t('production.of.wasteRate', { pct: (o.waste?.waste_rate_pct | dwNumber: 1) }) : t('production.of.wasteLots', { count: o.waste?.lots ?? 0 })" />
+              [hint]="o.waste?.waste_rate_pct !== null && o.waste?.waste_rate_pct !== undefined ? t('production.of.wasteRate', { pct: (o.waste?.waste_rate_pct | dwNumber: 1) })
+                : (o.waste?.unweighed_lots ?? 0) > 0 ? t('production.waste.notWeighed', { count: o.waste?.unweighed_lots })
+                : t('production.of.wasteLots', { count: o.waste?.lots ?? 0 })" />
             @if (o.finance; as f) {
               <dw-kpi [label]="t('production.finance.totalCost')" [value]="f.total_cost | dwMoney: f.currency" [tone]="f.cost_complete ? 'neutral' : 'warning'"
                 [hint]="f.cost_complete ? (f.unit_cost ? t('production.finance.perPiece', { amount: (f.unit_cost | dwMoney: f.currency) }) : '') : t('production.finance.incomplete')" />
@@ -373,11 +375,32 @@ export class ExpenseDialog {
               <p class="dw-muted intro">{{ t('production.waste.intro') }}</p>
               <!-- Before anything is weighed: what the placements of the article are expected to leave. -->
               @if (o.waste?.estimated; as e) {
-                <p class="estimate" [title]="t('production.articles.cuttingFormula')">
-                  <dw-icon>straighten</dw-icon>
-                  <span>{{ t('production.waste.estimated', { kg: (e.planned_kg | dwKg), pieces: (o.quantity_planned | dwNumber), g: (+e.per_piece_kg * 1000 | dwNumber: 1) }) }}
-                    @if (e.produced_kg !== null) { {{ t('production.waste.estimatedProduced', { pieces: (o.quantity_produced | dwNumber), expected: (e.produced_kg | dwKg), measured: (o.waste?.kg | dwKg) }) }} }</span>
-                </p>
+                <div class="estimate">
+                  <p class="dw-muted">{{ t('production.waste.estimatedIntro') }}</p>
+                  <div class="scroll">
+                    <table class="dw-table">
+                      <thead><tr><th>{{ t('fields.wasteType') }}</th><th class="num">{{ t('production.waste.perPiece') }}</th>
+                        <th class="num">{{ t('production.waste.forPlanned', { pieces: (o.quantity_planned | dwNumber) }) }}</th>
+                        @if (e.produced_kg !== null) { <th class="num">{{ t('production.waste.forProduced', { pieces: (o.quantity_produced | dwNumber) }) }}</th> }
+                        <th class="num">{{ t('production.waste.weighed') }}</th></tr></thead>
+                      <tbody>
+                        @for (row of e.by_type; track $index) {
+                          <tr>
+                            <td>{{ row.waste_type?.name ?? t('production.waste.typeUnknown') }}</td>
+                            <td class="num">{{ +row.per_piece_kg * 1000 | dwNumber: 1 }} g</td>
+                            <td class="num">{{ row.planned_kg | dwKg }}</td>
+                            @if (e.produced_kg !== null) { <td class="num"><strong>{{ row.produced_kg | dwKg }}</strong></td> }
+                            <td class="num">
+                              @if (row.lots === 0) { <span class="dw-faint">{{ t('production.waste.noLotOfType') }}</span> }
+                              @else if (row.weighed_kg === null || +row.weighed_kg === 0) { <span class="dw-faint">{{ t('production.waste.notWeighed', { count: row.unweighed_lots }) }}</span> }
+                              @else { <strong>{{ row.weighed_kg | dwKg }}</strong>@if (row.unweighed_lots > 0) { <div class="dw-faint">{{ t('production.waste.stillToWeigh', { count: row.unweighed_lots }) }}</div> } }
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               }
               @if ((o.waste?.lots ?? 0) === 0 && (o.waste?.rows ?? []).length === 0) {
                 <p class="empty">{{ t('production.waste.empty') }}</p>
@@ -402,7 +425,8 @@ export class ExpenseDialog {
                       }
                     </tbody>
                     <tfoot><tr><td colspan="5">{{ t('production.waste.total', { count: o.waste?.lots ?? 0 }) }}</td><td class="num">{{ o.waste?.kg | dwKg }}</td>
-                      <td class="dw-faint">{{ o.waste?.waste_rate_pct === null ? t('production.waste.noRate') : t('production.of.wasteRate', { pct: (o.waste?.waste_rate_pct | dwNumber: 1) }) }}</td></tr></tfoot>
+                      <td class="dw-faint">{{ o.waste?.waste_rate_pct !== null ? t('production.of.wasteRate', { pct: (o.waste?.waste_rate_pct | dwNumber: 1) })
+                        : ((o.waste?.unweighed_lots ?? 0) > 0 ? t('production.waste.notWeighed', { count: o.waste?.unweighed_lots }) : t('production.waste.noRate')) }}</td></tr></tfoot>
                   </table>
                 </div>
               }
@@ -597,8 +621,8 @@ export class ExpenseDialog {
     .node.current { background: var(--dw-primary-soft, var(--dw-surface-2)); } .dates { margin-inline-start: auto; font-size: 13px; }
     .kpis { margin-block-end: var(--dw-4); }
     .intro { margin: 0; padding: var(--dw-2) var(--dw-4) var(--dw-3); font-size: 13px; }
-    .estimate { display: flex; align-items: flex-start; gap: var(--dw-2); margin: 0 var(--dw-4) var(--dw-3); padding: var(--dw-2) var(--dw-3); border-radius: var(--dw-radius);
-      background: var(--dw-surface-2); font-size: 13px; } .estimate dw-icon { color: var(--dw-ink-3); flex: none; }
+    .estimate { margin: 0 var(--dw-4) var(--dw-3); padding: var(--dw-2) var(--dw-3) var(--dw-3); border-radius: var(--dw-radius); background: var(--dw-surface-2); font-size: 13px; }
+    .estimate p { margin: 0 0 var(--dw-2); } .estimate table { background: var(--dw-surface); }
     .empty { margin: 0; padding: var(--dw-5) var(--dw-4); text-align: center; color: var(--dw-ink-3); }
     .steps { display: flex; align-items: center; flex-wrap: wrap; gap: var(--dw-3); padding: var(--dw-3) var(--dw-4); }
     .step { display: grid; gap: 1px; padding: 8px 12px; border: 1px solid var(--dw-line); border-radius: var(--dw-radius); font-size: 13px; }

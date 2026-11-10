@@ -152,7 +152,7 @@ export class ReceivedLotDialog {
     <ng-container *transloco="let t">
       <dw-state [loading]="loading()" [error]="error()" (retry)="load()">
         @if (material(); as m) {
-          <dw-page-header [title]="m.reference + ' — ' + m.name" back="/production/catalog" [backLabel]="t('production.materials.title')">
+          <dw-page-header [title]="m.reference" [subtitle]="m.name !== m.reference ? m.name : ''" back="/production/catalog" [backLabel]="t('production.materials.title')">
             <dw-status dwTitleBadge kind="member" [value]="m.is_active ? 'active' : 'suspended'" [label]="t(m.is_active ? 'common.active' : 'common.inactive')" />
             @if (canManage) {
               <button pButton severity="secondary" outlined type="button" (click)="edit(m)"><dw-icon>edit</dw-icon>{{ t('common.edit') }}</button>
@@ -196,6 +196,8 @@ export class ReceivedLotDialog {
                       <div><dt>{{ t('lots.color') }}</dt><dd>@if (m.color_family) { <dw-color [code]="m.color_family" /> }@if (m.color_family && m.color_label) { · }{{ m.color_label ?? (m.color_family ? '' : '—') }}</dd></div>
                       <div><dt>{{ t('lots.grammage') }}</dt><dd>{{ m.grammage_gsm ? (+m.grammage_gsm) + ' g/m²' : '—' }}</dd></div>
                       <div><dt>{{ t('production.materials.width') }}</dt><dd>{{ m.width_cm ? (+m.width_cm) + ' cm' : '—' }}</dd></div>
+                      <div><dt>{{ t('production.materials.wasteType') }}</dt><dd>{{ m.waste_type_applied?.name ?? '—' }}
+                        @if (m.waste_type_inherited) { <div class="dw-faint">{{ t('production.materials.wasteTypeInherited') }}</div> }</dd></div>
                       <div><dt>{{ t('production.material.waste') }}</dt><dd>{{ m.summary?.waste_kg | dwKg }} <span class="dw-faint">· {{ t('production.material.wasteLots', { count: m.summary?.waste_lots ?? 0 }) }}</span></dd></div>
                       @if (m.notes) { <div><dt>{{ t('fields.notes') }}</dt><dd>{{ m.notes }}</dd></div> }
                     </dl>
@@ -299,6 +301,7 @@ export class ReceivedLotDialog {
   `,
   styles: `
     .kpis { margin-block-end: var(--dw-4); }
+    .dw-facts dd { overflow-wrap: anywhere; white-space: normal; min-inline-size: 0; }
     .intro { margin: 0; padding: var(--dw-3) var(--dw-4); font-size: 13px; border-block-end: 1px solid var(--dw-line-soft); }
     .empty { margin: 0; padding: var(--dw-5) var(--dw-4); text-align: center; color: var(--dw-ink-3); }
     .scroll { overflow-x: auto; } table { inline-size: 100%; }

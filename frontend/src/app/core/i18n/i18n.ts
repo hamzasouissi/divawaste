@@ -51,7 +51,8 @@ export class TranslationLoader implements TranslocoLoader {
   private readonly http = inject(HttpClient);
 
   getTranslation(lang: string): Observable<Translation> {
-    return this.http.get<Translation>(`/i18n/${lang}.json`);
+    // Checked again on each visit (answered 304 when unchanged): a deployment's new texts are never hidden by a cached copy.
+    return this.http.get<Translation>(`/i18n/${lang}.json`, { headers: { 'Cache-Control': 'no-cache' } });
   }
 }
 

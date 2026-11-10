@@ -201,7 +201,7 @@ export class CodePipe implements PipeTransform {
       return '—';
     }
     const vocabulary = this.vocabulary();
-    const list = { packaging: vocabulary?.packaging_types, color: vocabulary?.color_families, material: vocabulary?.materials, unit: vocabulary?.units, family: vocabulary?.waste_families, zone: vocabulary?.zone_types, catalog: vocabulary?.waste_catalog_items }[kind];
+    const list = { packaging: vocabulary?.packaging_types, color: vocabulary?.color_families, material: vocabulary?.materials, unit: [...(vocabulary?.units ?? []), ...(vocabulary?.material_units ?? [])], family: vocabulary?.waste_families, zone: vocabulary?.zone_types, catalog: vocabulary?.waste_catalog_items }[kind];
     const item = list?.find((entry) => entry.code === code);
     if (kind === 'unit' && item && 'symbol' in item) {
       return String(item.symbol);

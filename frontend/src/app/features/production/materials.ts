@@ -62,6 +62,13 @@ import { COLOR } from '../../ui/swatch';
               <input pInputText formControlName="width_cm" inputmode="decimal" />
               <small dwHint>{{ t('production.materials.widthHint') }}</small>
             </dw-field>
+            <dw-field class="dw-span-2" [label]="t('production.materials.wasteType')">
+              <dw-select formControlName="waste_type">
+                <dw-option value="" [label]="t('production.materials.wasteTypeDefault')" />
+                @for (type of wasteTypes(); track type.ulid) { <dw-option [value]="type.ulid" [label]="type.name" /> }
+              </dw-select>
+              <small dwHint>{{ t('production.materials.wasteTypeHint') }}</small>
+            </dw-field>
             <dw-field [label]="t('lots.color')">
               <dw-select formControlName="color_family">
                 <dw-option value="" label="—" />
@@ -115,6 +122,7 @@ export class MaterialDialog {
 
   protected readonly vocabulary = toSignal(inject(ReferenceData).vocabulary());
   protected readonly suppliers = toSignal(inject(ProductionLists).suppliers(), { initialValue: [] });
+  protected readonly wasteTypes = toSignal(inject(ReferenceData).wasteTypes(), { initialValue: [] });
   /** The saved material: deliveries can only be added to one that exists. */
   protected readonly material = signal<RawMaterial | null>(this.data);
   protected readonly changed = signal(false);
@@ -130,6 +138,7 @@ export class MaterialDialog {
     color_label: [this.data?.color_label ?? ''],
     grammage_gsm: [this.data?.grammage_gsm ?? '', DECIMAL],
     width_cm: [this.data?.width_cm ?? '', DECIMAL],
+    waste_type: [this.data?.waste_type?.ulid ?? ''],
     notes: [this.data?.notes ?? ''],
     is_active: [this.data?.is_active ?? true],
     composition: this.composition,
@@ -352,10 +361,10 @@ export class ArticleDialog {
                 }
               </div>
               <dw-data-table [columns]="articleColumns" [rows]="articles.rows()" [loading]="articles.loading()" [error]="articles.error()" [total]="articles.total()" [pageIndex]="articles.page() - 1"
-                [pageSize]="articles.perPage()" [clickable]="canManage" [emptyTitle]="t('production.articles.empty')" [emptyHint]="t('production.emptyHint')" emptyIcon="checkroom"
-                (page)="articles.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="editArticle($event)" (retry)="articles.reload()">
-                <ng-template dwCell="reference" let-a><span class="dw-mono">{{ a.reference }}</span></ng-template>
-                <ng-template dwCell="consumption" let-a>@for (line of a.materials; track line.material) { <div>{{ line.quantity_per_piece | dwNumber: 3 }} {{ line.unit }} · <span class="dw-faint">{{ line.reference }}</span></div> } @empty { — }</ng-template>
+                [pageSize]="articles.perPage()" [clickable]="true" [emptyTitle]="t('production.articles.empty')" [emptyHint]="t('production.emptyHint')" emptyIcon="checkroom"
+                (page)="articles.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="openArticle($event)" (retry)="articles.reload()">
+                <ng-template dwCell="reference" let-a><span class="dw-mono ref">{{ a.reference }}</span></ng-template>
+                <ng-template dwCell="consumption" let-a>{{ a.materials.length ? t('production.articles.materialsCount', { count: a.materials.length }) : '—' }}</ng-template>
                 <ng-template dwCell="cutting" let-a>@if (a.cutting_waste.waste_kg_per_piece; as kg) {
                     <span [title]="t('production.articles.cuttingFormula')">{{ t('production.articles.cuttingWastePerPiece', { g: (+kg * 1000 | dwNumber: 1) }) }}</span>
                   } @else { <span class="dw-faint" [title]="t('production.articles.cuttingWasteNone')">—</span> }</ng-template>
@@ -369,8 +378,9 @@ export class ArticleDialog {
   `,
   styles: `
     .chip { display: inline-block; margin-inline-end: 4px; padding: 1px 8px; border-radius: 999px; background: var(--dw-surface-2); font-size: 12px; }
-    .efficiency { display: flex; flex-wrap: wrap; align-items: center; gap: var(--dw-2); margin-block: var(--dw-2); font-size: 13px; }
+    .efficiency { display: flex; flex-wrap: wrap; align-items: center; gap: var(--dw-2); padding: var(--dw-2) var(--dw-3); border-block-end: 1px solid var(--dw-line); font-size: 13px; }
     .efficiency .pct { inline-size: 90px; }
+    .ref { display: block; max-inline-size: 280px; white-space: normal; overflow-wrap: anywhere; }
   `,
 })
 export class MaterialsPage {
@@ -404,12 +414,12 @@ export class MaterialsPage {
     { key: 'status', header: 'fields.status' },
   ];
   protected readonly articleColumns: Column<Article>[] = [
-    { key: 'reference', header: 'production.reference', width: '150px' },
-    { key: 'name', header: 'production.designation', value: (a) => a.name },
-    { key: 'family', header: 'production.articles.family', value: (a) => a.family ?? '—', hideBelow: 900 },
-    { key: 'client', header: 'production.clients.one', value: (a) => a.client?.name ?? '—', hideBelow: 700 },
-    { key: 'consumption', header: 'production.articles.consumption', hideBelow: 1100 },
-    { key: 'cutting', header: 'production.articles.cuttingWaste', align: 'end', hideBelow: 700 },
+    { key: 'reference', header: 'production.reference', width: '260px', wrap: true },
+    { key: 'name', header: 'production.designation', value: (a) => (a.name === a.reference ? '' : a.name), wrap: true, hideBelow: 1200 },
+    { key: 'family', header: 'production.articles.family', value: (a) => a.family ?? '—', hideBelow: 1200 },
+    { key: 'client', header: 'production.clients.one', value: (a) => a.client?.name ?? '—', hideBelow: 1200 },
+    { key: 'consumption', header: 'production.articles.materialsHeader', align: 'end', width: '110px', hideBelow: 900 },
+    { key: 'cutting', header: 'production.articles.cuttingWaste', align: 'end', width: '170px' },
     { key: 'status', header: 'fields.status' },
   ];
 
@@ -441,7 +451,13 @@ export class MaterialsPage {
       .subscribe((saved) => (saved && typeof saved === 'object' ? this.openMaterial(saved) : saved && this.materials.reload()));
   }
 
+  /** The page of the article: its composition, line by line, and the waste its cutting is expected to leave. */
+  protected openArticle(article: Article): void {
+    void this.router.navigate(['/production/articles', article.ulid]);
+  }
+
+  /** A new article opens on its page once saved. */
   protected editArticle(article: Article | null): void {
-    this.dialog.open<ArticleDialog, Article | null, Article>(ArticleDialog, { data: article }).afterClosed().subscribe((saved) => saved && this.articles.reload());
+    this.dialog.open<ArticleDialog, Article | null, Article>(ArticleDialog, { data: article }).afterClosed().subscribe((saved) => saved && this.openArticle(saved));
   }
 }

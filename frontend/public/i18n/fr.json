@@ -3138,7 +3138,11 @@
       "batchNumber": "N° de lot",
       "receivedOn": "Reçu le",
       "width": "Laize (cm)",
-      "widthHint": "Avec le grammage, permet de convertir les mètres consommés en kg et de calculer le taux de chute."
+      "widthHint": "Avec le grammage, permet de convertir les mètres consommés en kg et de calculer le taux de chute.",
+      "wasteType": "Déchet produit",
+      "wasteTypeDefault": "Par défaut (Chutes de coupe pour un tissu)",
+      "wasteTypeHint": "Le type de déchet que cette matière laisse à la coupe. Vide : un tissu (en mètres, avec laize et grammage) donne les « Chutes de coupe » de l'entreprise.",
+      "wasteTypeInherited": "Par défaut : tissu en mètres avec laize et grammage."
     },
     "articles": {
       "title": "Articles",
@@ -3158,7 +3162,27 @@
       "cuttingWasteNone": "Aucun tissu avec sa laize et son grammage : pas d'estimation.",
       "defaultEfficiency": "Chutes de coupe estimées avec une efficience de placement de {{pct}} % pour les tissus dont l'article ne précise pas la sienne.",
       "defaultEfficiencyLabel": "Efficience par défaut (%)",
-      "cuttingFormula": "Chute par pièce = consommation (m) × laize × grammage × (100 − efficience) %. Seuls les tissus en mètres avec laize et grammage comptent."
+      "cuttingFormula": "Chute par pièce = consommation (m) × laize × grammage × (100 − efficience) %. Seuls les tissus en mètres avec laize et grammage comptent.",
+      "materialsHeader": "Matières",
+      "materialsCount": "{{count}} MP",
+      "perPieceShort": "Conso / pièce",
+      "fabricUsed": "Tissu / pièce",
+      "wastePerPiece": "Chute / pièce",
+      "summaryTitle": "Chute de coupe estimée par pièce",
+      "summaryNone": "Aucun tissu de l'article n'a sa laize et son grammage : pas d'estimation.",
+      "missingData": "En mètres sans laize ni grammage, donc non comptés : {{names}}. Si c'est un tissu, renseignez sa laize et son grammage sur la matière.",
+      "ofFabric": "sur {{g}} g de tissu consommé ({{pct}} %)",
+      "wasteProduced": "Déchet produit",
+      "typesCount": "{{count}} types",
+      "fabricsCount": "{{count}} tissu(s)",
+      "suppliesCount": "{{count}} fourniture(s) et emballage(s)",
+      "fabricsTitle": "Tissus et chutes de coupe",
+      "fabricsIntro": "Pour une pièce : le tissu consommé, la part que le placement ne retient pas (100 − efficience), et le type de déchet que donne cette chute.",
+      "fabric": "Tissu",
+      "default": "défaut",
+      "perPieceTotal": "Total par pièce",
+      "suppliesTitle": "Fournitures et emballages ({{count}})",
+      "suppliesHint": "pas de placement, pas de chute de coupe estimée"
     },
     "orders": {
       "title": "Commandes",
@@ -3486,7 +3510,16 @@
       "total": "{{count}} lot(s) généré(s)",
       "noRate": "Taux de chute non calculable",
       "estimated": "Chutes de coupe estimées : {{kg}} pour {{pieces}} pièces prévues ({{g}} g / pièce).",
-      "estimatedProduced": "Pour les {{pieces}} pièces produites : {{expected}} estimés, {{measured}} pesés."
+      "estimatedProduced": "Pour les {{pieces}} pièces produites : {{expected}} estimés, {{measured}} pesés.",
+      "estimatedIntro": "Chutes de coupe estimées d'après les placements de l'article, comparées aux lots pesés du même type sur cet OF.",
+      "perPiece": "Par pièce",
+      "forPlanned": "Pour {{pieces}} prévues",
+      "forProduced": "Pour {{pieces}} produites",
+      "weighed": "Pesé",
+      "typeUnknown": "Type à définir",
+      "noLotOfType": "Aucun lot de ce type",
+      "notWeighed": "{{count}} lot(s) pas encore pesé(s)",
+      "stillToWeigh": "+ {{count}} à peser"
     },
     "expenses": {
       "title": "Autres dépenses",
