@@ -283,12 +283,12 @@
     <p>DivaWaste estime la chute de coupe de chaque OF et la compare aux lots pesés, comme dans le Guide 2 (partie C). Avec un ERP, deux données arrivent par les imports :</p>
     <table>
       <tr><th>Fichier</th><th>Colonne</th><th>Ce qu'elle donne</th></tr>
-      <tr><td>Matières premières</td><td class="ans">Type de déchet</td><td>Le déchet que donne la matière, par son nom ou son code (« Chutes de coupe »). Un type inconnu est refusé sur sa ligne, jamais créé.</td></tr>
+      <tr><td>Matières premières</td><td class="ans">Nature</td><td>Tissu, fil, fourniture, emballage, chimique ou autre ; avec <b>Poids unitaire</b> pour une matière comptée en pièces.</td></tr>
+      <tr><td>Matières premières</td><td class="ans">Type de déchet</td><td>Le déchet que donne la matière, par son nom ou son code (« Chutes de coupe »). Son calcul suit la nature : part de la coupe pour un tissu, toute la matière pour un emballage, taux de perte à indiquer pour le reste. Un type inconnu est refusé sur sa ligne, jamais créé.</td></tr>
       <tr><td>Articles (composition)</td><td class="ans">Efficience</td><td>L'efficience du placement de chaque tissu (82). Vide : l'efficience par défaut de la société.</td></tr>
     </table>
-    <div class="box tip"><b>Une matière qui donne plusieurs déchets</b> (85 % chutes de coupe, 15 % lisières) se règle sur sa fiche, partie <b>Déchets produits</b> (après <b>Corriger ici quand même</b>) ; le fichier, lui, n'en porte qu'un.</div>
+    <div class="box tip"><b>Plusieurs déchets, un taux, un poids par unité</b> (85 % chutes de coupe et 15 % lisières ; fil 4 % ; cône vide 0,03 kg) se règlent sur la fiche de la matière, partie <b>Déchets produits</b> (après <b>Corriger ici quand même</b>) ; le fichier, lui, n'en porte qu'un.</div>
     <p><b>Les tailles et les matelas</b> ne viennent jamais de l'ERP : ils se saisissent dans DivaWaste même avec un ERP. Sur l'OF, <b>Affecter des tailles</b>, puis l'onglet <b>Coupe</b> : longueur, couches prévues puis coupées, efficience.</p>
-    <div class="shot half"><img src="../guide-2/imgC/c5-cutting.jpg"></div>
     <div class="shot"><img src="../guide-2/imgC/c6-estimate.jpg"></div>
     <div class="box see"><b>✔ Vous devez voir</b> dans <b>Lots de déchets</b> : en <b>rouge</b> un type pesé au-dessus de l'estimé, en <b>vert</b> en dessous (une fois tous ses lots pesés).</div>
   </div>

@@ -331,12 +331,17 @@
   <h2 class="part">C. Chute estimée et coupe<small>Ce que la coupe devrait laisser, puis ce qu'elle a laissé</small></h2>
   <p class="lead">Avant de peser quoi que ce soit, DivaWaste estime la chute de coupe : le tissu étalé × (100 − efficience du placement). Il la compare ensuite aux lots pesés. Exemple : <b>OF-2026-020</b>, 500 jeans <b>JEAN-501</b> en denim <b>DEN-12OZ</b> (laize 150 cm, 407 g/m²).</p>
   <div class="step">
-    <h3><span class="n">C1</span>Les déchets que donne une matière</h3>
-    <ol class="do"><li>Fiche de la matière (DEN-12OZ) › <b>Modifier</b> › partie <b>Déchets produits</b>.</li>
-      <li><b>Indiquer le déchet produit</b> : <b>Chutes de coupe</b>. Une matière en donne plusieurs ? <b>Ajouter un autre déchet produit</b> (<b>Lisières</b>) et répartissez : <b>85 %</b> et <b>15 %</b>. Les parts font 100 %.</li>
-      <li>Le type n'existe pas encore ? <b>Nouveau type de déchet</b>, sans quitter la fiche. <b>Enregistrer</b>.</li></ol>
-    <div class="shot half"><img src="imgC/c2-material-waste.jpg"></div>
-    <div class="box tip"><b>Rien d'indiqué ?</b> Un tissu en mètres donne alors les <b>Chutes de coupe</b> de la société ; une fourniture (bouton, étiquette) ne donne pas de chute estimée.</div>
+    <h3><span class="n">C1</span>Ce qu'est une matière, et les déchets qu'elle donne</h3>
+    <ol class="do"><li>Fiche de la matière (DEN-12OZ) › <b>Modifier</b>. <b>Nature</b> : <b>Tissu</b> (ou Fil, Fourniture, Emballage, Produit chimique, Autre). Une matière comptée en pièces demande son <b>poids d'une pièce</b> (un carton : 0,6 kg).</li>
+      <li>Partie <b>Déchets produits</b> : chaque type de déchet a son <b>calcul</b>. Ici <b>Chutes de coupe</b> et <b>Lisières</b>, en <b>Part de la coupe</b> : <b>85 %</b> et <b>15 %</b> (elles font 100 %). Le type n'existe pas ? <b>Nouveau type de déchet</b>.</li></ol>
+    <div class="shot small"><img src="imgC/c2-material-waste.jpg"></div>
+    <table>
+      <tr><th>Calcul</th><th>Exemple</th><th>Déchet par pièce</th></tr>
+      <tr><td><b>Part de la coupe</b></td><td>Denim : 85 % de la chute</td><td>tissu × (100 − efficience) % × part</td></tr>
+      <tr><td><b>Taux de perte</b></td><td>Fil : 4 % du consommé</td><td>kg consommés × taux</td></tr>
+      <tr><td><b>Poids par unité</b></td><td>Cône vide : 0,03 kg par cône</td><td>quantité × kg par unité</td></tr>
+      <tr><td><b>Toute la matière</b></td><td>Carton jeté</td><td>kg consommés</td></tr>
+    </table>
   </div>
   <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
 </section>
@@ -347,12 +352,7 @@
     <ol class="do"><li>Onglet <b>Articles</b> › JEAN-501 › <b>Modifier</b> : pour chaque tissu, sa <b>consommation par pièce</b> (1,35 m, la consommation brute du placement) et son <b>efficience %</b> (82). Laissée vide : l'efficience par défaut de la société (réglable au-dessus de la liste des articles, 80 % au départ).</li>
       <li>Ouvrez l'article : la chute par pièce et le déchet qu'elle donne.</li></ol>
     <div class="shot"><img src="imgC/c3-article.jpg"></div>
-    <table>
-      <tr><th>Calcul pour une pièce</th><th class="ans">Ici</th></tr>
-      <tr><td>Tissu = 1,35 m × 1,50 m × 407 g/m²</td><td class="ans">824 g</td></tr>
-      <tr><td>Chute = 824 g × (100 − 82) %</td><td class="ans">148 g</td></tr>
-      <tr><td>Par type : 85 % Chutes de coupe, 15 % Lisières</td><td class="ans">126 g · 22 g</td></tr>
-    </table>
+    <div class="box see"><b>✔ Vous devez voir</b> <b>172,7 g / pièce</b> : la coupe du denim (1,35 m × 1,50 m × 407 g = 824 g, dont 18 % de chute : <b>148,4 g</b>, partagés 85 % / 15 %) et, dans <b>Fils, emballages et autres matières</b>, <b>24,4 g</b> (carton 24 g, fil 0,3 g, cône 0,1 g).</div>
   </div>
   <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
 </section>
@@ -360,8 +360,8 @@
 <section class="page">
   <div class="step">
     <h3><span class="n">C3</span>Les tailles</h3>
-    <ol class="do"><li><b>Référentiel › Matières premières et articles</b>, onglet <b>Tailles</b>. À gauche, vos <b>tailles</b> : tapez-en plusieurs d'un coup (<b>38 40 42 44 46</b>), <b>Ajouter</b>. Glissez une taille pour changer l'ordre.</li>
-      <li>À droite, les <b>grilles</b> (facultatif) : <b>Nouvelle grille</b>, un nom (Jean homme), cliquez ses tailles.</li></ol>
+    <ol class="do"><li><b>Référentiel › Matières premières et articles</b>, onglet <b>Tailles</b>. En bas, <b>Toutes les tailles</b> : tapez-en plusieurs d'un coup (<b>38 40 42 44 46</b>) puis <b>+</b>. Glissez une taille pour changer l'ordre.</li>
+      <li>En haut, les <b>grilles de tailles</b> (facultatif) : <b>Nouvelle grille</b>, un nom (Jean homme), cliquez ses tailles ; une taille manquante se tape dans la grille même. Chaque grille s'affiche comme une échelle de tailles.</li></ol>
     <div class="shot"><img src="imgC/c1-sizes.jpg"></div>
     <ol class="do" start="3"><li>Sur la page de l'OF, sous le chemin : <b>Affecter des tailles</b>. Prenez celles d'une grille, ou <b>Choisir une à une</b> ; tapez les pièces de chaque taille. Le total devient la <b>quantité prévue</b>.</li></ol>
     <div class="two"><div class="shot"><img src="imgC/c4-of-sizes.jpg"></div>
