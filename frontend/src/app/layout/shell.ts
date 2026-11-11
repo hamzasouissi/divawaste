@@ -277,7 +277,7 @@ const RAIL_KEY = 'dw.nav.collapsed';
     .davi-btn:hover { box-shadow: inset 0 0 0 1px var(--dw-primary); }
     .davi-btn.on { color: #fff; background: linear-gradient(135deg, var(--dw-primary), #3a9d8f); box-shadow: none; } .davi-btn.on dw-icon { color: #fff; }
     .davi-btn:focus-visible { outline: 2px solid var(--dw-focus); outline-offset: 2px; }
-    @media (max-width: 640px) { .davi-btn span { display: none; } .davi-btn { padding: 0 8px; } }
+    @media (max-width: 640px) { .davi-btn span { display: none; } .davi-btn { padding: 0 8px; } .search { flex: 1 1 0; min-width: 0; } .bar { gap: 4px; } .user { margin-inline-start: 0; } }
     .bell { position: relative; }
     .bell-count { position: absolute; inset-block-start: 3px; inset-inline-end: 2px; min-width: 17px; height: 17px; padding-inline: 4px; border-radius: 9px; display: grid; place-items: center;
       background: var(--dw-danger); color: #fff; font-size: 10px; font-weight: 700; line-height: 1; box-shadow: 0 0 0 2px var(--dw-surface); pointer-events: none; }

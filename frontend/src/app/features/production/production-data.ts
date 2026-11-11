@@ -294,8 +294,8 @@ export interface ManufacturingOrder {
   produced_lots?: ProducedLot[];
   produced?: OfFinance['produced'];
   waste?: OfWaste;
-  /** Its spreads (matelas); null while none is entered. */
-  cutting?: Cutting | null;
+  /** Its fabrics and their spreads (matelas). */
+  cutting?: Cutting;
   expenses?: OfExpense[];
   /** Null for who may not see money. */
   finance?: OfFinance | null;
@@ -304,29 +304,37 @@ export interface ManufacturingOrder {
 /** A company's list of sizes, in order, chosen by its OFs. */
 export interface SizeGrid { ulid: string; name: string; sizes: string[]; is_active: boolean; orders: number }
 
-export interface SpreadFigures { pieces: number; by_size: Record<string, number>; metres: string; fabric_kg: string | null; waste_kg: string | null }
+/** What layers of a spread lay and leave: metres, kilos (with laize and grammage), cutting waste. */
+export interface SpreadFigures { metres: string; fabric_kg: string | null; waste_kg: string | null }
+export interface CuttingTotal extends SpreadFigures { waste_pct: string | null }
 
-/** One spread (matelas): a fabric, a placement and its layers, planned then cut. */
+/** One spread (matelas): its length, its layers planned then cut, its efficiency; the laize and grammage it uses. */
 export interface CuttingSpread {
   ulid: string;
-  material: { ulid: string; reference: string; name: string; unit: string; width_cm: string | null; grammage_gsm: string | null };
-  batch: { ulid: string; batch_number: string } | null;
-  marker_length_m: string; efficiency_pct: string; end_allowance_cm: string | null;
-  ratio: { size: string; pieces: number }[]; pieces_per_layer: number;
-  layers_planned: number; layers_done: number | null; cut_on: string | null; notes: string | null; consumption_recorded: boolean;
-  waste_type: { ulid: string; name: string } | null;
+  length_m: string; efficiency_pct: string;
+  /** The laize and grammage used: the spread's own when own_* is true, else the raw material's. */
+  width_cm: string | null; own_width: boolean; grammage_gsm: string | null; own_grammage: boolean;
+  layers_planned: number; layers_done: number | null; cut_on: string | null; notes: string | null;
   planned: SpreadFigures; done: SpreadFigures | null;
 }
 
-export interface Cutting {
-  /** The fabric the garments are counted on (most metres planned); interlinings and linings add fabric and waste only. */
-  main_material: CuttingSpread['material'];
+/** A fabric of the OF — those of its article, listed before any spread, and any other a spread is laid of. */
+export interface CuttingFabric {
+  material: { ulid: string; reference: string; name: string; width_cm: string | null; grammage_gsm: string | null };
+  in_article: boolean;
+  /** What the article says the OF needs of it, in metres. */
+  article_m: string | null;
+  /** The efficiency a new spread starts from: the article's for this fabric, else the company's. */
+  efficiency_pct: string; efficiency_from: 'article' | 'company';
+  waste_type: { ulid: string; name: string } | null;
   spreads: CuttingSpread[];
-  totals: { planned: Omit<SpreadFigures, 'by_size'>; done: Omit<SpreadFigures, 'by_size'> | null; spreads_to_cut: number };
-  /** Each size: pieces ordered on the OF, planned by the spreads, cut; its share of the cutting waste (an estimate). */
-  by_size: { size: string; ordered: number | null; planned: number; cut: number | null; waste_kg: string | null }[];
-  /** Each fabric: metres planned and cut, beside what the OF says it consumed. */
-  fabrics: { material: CuttingSpread['material']; planned_m: string; cut_m: string | null; consumed_m: string }[];
+  planned: CuttingTotal | null; done: CuttingTotal | null;
+  consumed_m: string | null;
+}
+
+export interface Cutting {
+  fabrics: CuttingFabric[];
+  totals: { spreads: number; spreads_to_cut: number; planned: CuttingTotal | null; done: CuttingTotal | null };
 }
 
 /** Colour of a status tag: done is green, running is amber, the rest is neutral. */
