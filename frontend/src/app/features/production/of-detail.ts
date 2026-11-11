@@ -22,6 +22,7 @@ import { SELECT } from '../../ui/select';
 import { StateComponent } from '../../ui/state';
 import { CreateLotDialog } from '../lots/lot-dialogs';
 import { CuttingComponent } from './spreads';
+import { OfSizesDialog } from './sizes';
 import { ManufacturingOrderDialog } from './orders';
 import {
   AMOUNT, ConsumedMaterial, DECIMAL, EXPENSE_CATEGORIES, ManufacturingOrder, OfExpense, OfWaste, ProducedLot, ProducedLotStatus, ProductionLists, blankToNull, decimal, statusTone,
@@ -344,10 +345,15 @@ export class ExpenseDialog {
           </nav>
 
           <!-- The sizes it makes, for information: the cutting waste follows the fabric laid, not the sizes. -->
-          @if (o.sizes.length > 0) {
+          @if (o.sizes.length > 0 || canCut) {
             <div class="sizes" [attr.aria-label]="t('production.sizes.sizes')">
-              <span class="dw-faint">{{ t('production.sizes.sizes') }}@if (o.size_grid) { · {{ o.size_grid.name }} }</span>
-              @for (s of o.sizes; track s.size) { <span class="size"><b>{{ s.size }}</b> {{ s.quantity | dwNumber }}</span> }
+              @if (o.sizes.length > 0) {
+                <span class="dw-faint">{{ t('production.sizes.sizes') }}@if (o.size_grid) { · {{ o.size_grid.name }} }</span>
+                @for (s of o.sizes; track s.size) { <span class="size"><b>{{ s.size }}</b> {{ s.quantity | dwNumber }}</span> }
+              }
+              @if (canCut) {
+                <button pButton text size="small" type="button" class="size-edit" (click)="editSizes(o)"><dw-icon>{{ o.sizes.length > 0 ? 'edit' : 'straighten' }}</dw-icon>{{ t(o.sizes.length > 0 ? 'production.sizes.change' : 'production.sizes.assign') }}</button>
+              }
             </div>
           }
 
@@ -453,7 +459,7 @@ export class ExpenseDialog {
 
             }
             @case ('cut') {
-              <dw-cutting [of]="o" [canManage]="canManage" (changed)="of.set($event)" />
+              <dw-cutting [of]="o" [canManage]="canCut" (changed)="of.set($event)" />
             }
             @case ('make') {
             @if (o.steps.length > 0) {
@@ -646,6 +652,7 @@ export class ExpenseDialog {
     .sizes > span:first-child { margin-inline-end: var(--dw-1); }
     .size { padding: 2px 10px; border-radius: 999px; background: var(--dw-surface); border: 1px solid var(--dw-line); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .size b { font-weight: 650; margin-inline-end: 2px; }
+    .size-edit { margin-inline-start: 2px; }
     .intro { margin: 0; padding: var(--dw-2) var(--dw-4) var(--dw-3); font-size: 13px; }
     .estimate { margin: 0 var(--dw-4) var(--dw-3); padding: var(--dw-2) var(--dw-3) var(--dw-3); border-radius: var(--dw-radius); background: var(--dw-surface-2); font-size: 13px; }
     .estimate p { margin: 0 0 var(--dw-2); } .estimate table { background: var(--dw-surface); }
@@ -707,6 +714,11 @@ export class OfDetailPage implements OnInit {
   protected get canManage(): boolean {
     return this.session.canEditProduction();
   }
+
+  /** Sizes and spreads are DivaWaste's own (an ERP never sends them): entered here even with an ERP. */
+  protected get canCut(): boolean {
+    return this.session.can('production.manage');
+  }
   protected get canManageMoney(): boolean {
     return this.canManage && this.session.can('production.finance.view');
   }
@@ -734,6 +746,11 @@ export class OfDetailPage implements OnInit {
     const tone = kg > 0 ? 'over' : kg < 0 && row.unweighed_lots === 0 ? 'under' : null;
 
     return { kg: Math.abs(kg), pct: (Math.abs(kg) / expected) * 100, tone };
+  }
+
+  /** The sizes of the OF and the pieces of each, from a grid or picked one by one. */
+  protected editSizes(o: ManufacturingOrder): void {
+    this.dialog.open<OfSizesDialog, ManufacturingOrder, ManufacturingOrder>(OfSizesDialog, { data: o }).afterClosed().subscribe((saved) => saved && this.of.set(saved));
   }
 
   protected load(): void {

@@ -25,8 +25,9 @@ import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { SearchComponent } from '../../ui/search';
 import { SELECT } from '../../ui/select';
 import { Article, DECIMAL, ProductionLists, RawMaterial, blankToNull, decimal } from './production-data';
-import { Company } from '../../core/api/models';
-import { SizeGridsComponent } from './cutting';
+import { Company, WasteType } from '../../core/api/models';
+import { SizeGridsComponent } from './sizes';
+import { WasteTypeDialog } from '../catalog/waste-types';
 import { HelpComponent } from '../../ui/help';
 import { COLOR } from '../../ui/swatch';
 
@@ -63,13 +64,27 @@ import { COLOR } from '../../ui/swatch';
               <input pInputText formControlName="width_cm" inputmode="decimal" />
               <small dwHint>{{ t('production.materials.widthHint') }}</small>
             </dw-field>
-            <dw-field class="dw-span-2" [label]="t('production.materials.wasteType')">
-              <dw-select formControlName="waste_type">
-                <dw-option value="" [label]="t('production.materials.wasteTypeDefault')" />
-                @for (type of wasteTypes(); track type.ulid) { <dw-option [value]="type.ulid" [label]="type.name" /> }
-              </dw-select>
-              <small dwHint>{{ t('production.materials.wasteTypeHint') }}</small>
-            </dw-field>
+            <section class="dw-span-2 part waste">
+              <div class="part-head">
+                <h3 class="dw-h3">{{ t('production.materials.wasteProduced') }}</h3>
+                @if (canCreateType) { <button pButton text size="small" type="button" (click)="newType()"><dw-icon>add_circle</dw-icon>{{ t('production.materials.newWasteType') }}</button> }
+              </div>
+              @if (waste.length === 0) { <p class="dw-muted">{{ t('production.materials.wasteProducedNone') }}</p> }
+              @for (line of waste.controls; track line; let i = $index) {
+                <div class="line" [formGroup]="line">
+                  <dw-select formControlName="waste_type" [ariaLabel]="t('production.materials.wasteType')" [placeholder]="t('production.materials.wasteTypePick')">
+                    @for (type of wasteTypes(); track type.ulid) { <dw-option [value]="type.ulid" [label]="type.name" [disabled]="wasteTaken(type.ulid, i)" /> }
+                  </dw-select>
+                  @if (waste.length > 1) {
+                    <span class="share"><input pInputText formControlName="share_pct" inputmode="decimal" [attr.aria-label]="t('production.materials.share')" /><span>%</span></span>
+                  } @else { <span class="share all">100 %</span> }
+                  <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="removeWaste(i)" [attr.aria-label]="t('common.remove')" [title]="t('common.remove')"><dw-icon>close</dw-icon></button>
+                </div>
+              }
+              <button pButton text type="button" class="add" (click)="addWaste()"><dw-icon>add</dw-icon>{{ t(waste.length === 0 ? 'production.materials.addWasteFirst' : 'production.materials.addWaste') }}</button>
+              @if (tried() && wasteMissing()) { <small class="dw-field-error" role="alert">{{ t('production.materials.wasteMissing') }}</small> }
+              @if (waste.length > 1 && wasteTotal() !== 100) { <small class="dw-field-error" role="alert">{{ t('production.materials.wasteTotal', { total: wasteTotal() | dwNumber: 2 }) }}</small> }
+            </section>
             <dw-field [label]="t('lots.color')">
               <dw-select formControlName="color_family">
                 <dw-option value="" label="—" />
@@ -111,6 +126,9 @@ import { COLOR } from '../../ui/swatch';
     .batches { margin-block-start: var(--dw-4); padding-block-start: var(--dw-3); border-block-start: 1px solid var(--dw-line-soft); }
     .line { display: grid; grid-template-columns: minmax(0, 1fr) 110px auto; gap: var(--dw-2); align-items: center; }
     .line.batch { grid-template-columns: minmax(0, 1fr) 170px 120px auto; }
+    .part-head { display: flex; align-items: center; justify-content: space-between; gap: var(--dw-2); } .part-head h3 { margin: 0; }
+    .share { display: inline-flex; align-items: center; gap: 4px; } .share input { inline-size: 100%; min-inline-size: 0; text-align: end; }
+    .share.all { justify-content: flex-end; padding-inline-end: 14px; color: var(--dw-ink-3); font-size: 13px; font-variant-numeric: tabular-nums; }
     .add { justify-self: start; }
   `,
 })
@@ -123,7 +141,13 @@ export class MaterialDialog {
 
   protected readonly vocabulary = toSignal(inject(ReferenceData).vocabulary());
   protected readonly suppliers = toSignal(inject(ProductionLists).suppliers(), { initialValue: [] });
-  protected readonly wasteTypes = toSignal(inject(ReferenceData).wasteTypes(), { initialValue: [] });
+  private readonly reference = inject(ReferenceData);
+  private readonly dialogs = inject(Dialogs);
+  protected readonly canCreateType = inject(Session).can('waste_types.manage');
+  protected readonly wasteTypes = signal<WasteType[]>([]);
+  /** The waste it leaves, each type with its share (one type: all of it). */
+  protected readonly waste = this.fb.array((this.data?.waste_types_inherited ? [] : (this.data?.waste_types ?? []))
+    .map((line) => this.wasteLine(line.waste_type?.ulid ?? '', String(+line.share_pct))));
   /** The saved material: deliveries can only be added to one that exists. */
   protected readonly material = signal<RawMaterial | null>(this.data);
   protected readonly changed = signal(false);
@@ -139,12 +163,73 @@ export class MaterialDialog {
     color_label: [this.data?.color_label ?? ''],
     grammage_gsm: [this.data?.grammage_gsm ?? '', DECIMAL],
     width_cm: [this.data?.width_cm ?? '', DECIMAL],
-    waste_type: [this.data?.waste_type?.ulid ?? ''],
+    waste_types: this.waste,
     notes: [this.data?.notes ?? ''],
     is_active: [this.data?.is_active ?? true],
     composition: this.composition,
   });
   private readonly lines = toSignal(this.composition.valueChanges, { initialValue: this.composition.getRawValue() });
+  private readonly wasteLines = toSignal(this.waste.valueChanges, { initialValue: this.waste.getRawValue() });
+
+  constructor() {
+    this.loadTypes();
+  }
+
+  private loadTypes(): void {
+    this.reference.wasteTypes().subscribe((types) => this.wasteTypes.set(types));
+  }
+
+  protected readonly tried = signal(false);
+
+  protected wasteMissing(): boolean {
+    return this.wasteLines().some((line) => !line['waste_type']);
+  }
+
+  protected wasteTotal(): number {
+    return Math.round(this.wasteLines().reduce((sum, line) => sum + Number(String(line['share_pct'] ?? '').replace(',', '.') || 0), 0) * 100) / 100;
+  }
+
+  private wasteLine(type = '', share = '100'): FormGroup {
+    return this.fb.nonNullable.group({ waste_type: [type, Validators.required], share_pct: [share, [Validators.required, DECIMAL]] });
+  }
+
+  protected wasteTaken(ulid: string, index: number): boolean {
+    return this.waste.controls.some((line, i) => i !== index && line.value.waste_type === ulid);
+  }
+
+  /** A second type shares the waste: what the others leave free, or else all of them evenly. */
+  protected addWaste(type = ''): void {
+    const free = Math.round((100 - this.wasteTotal()) * 100) / 100;
+    this.waste.push(this.wasteLine(type, this.waste.length === 0 ? '100' : free > 0 ? String(free) : ''));
+    if (free <= 0 && this.waste.length > 1) {
+      const even = Math.floor(10000 / this.waste.length) / 100;
+      this.waste.controls.forEach((line, i) => line.patchValue({ share_pct: String(i === 0 ? Math.round((100 - even * (this.waste.length - 1)) * 100) / 100 : even) }));
+    }
+  }
+
+  protected removeWaste(index: number): void {
+    this.waste.removeAt(index);
+    if (this.waste.length === 1) {
+      this.waste.at(0).patchValue({ share_pct: '100' });
+    }
+  }
+
+  /** A type of waste the company does not have yet, made here and added to the material. */
+  protected newType(): void {
+    this.dialogs.open<WasteTypeDialog, WasteType | null, WasteType>(WasteTypeDialog, { data: null }).afterClosed().subscribe((type) => {
+      if (type) {
+        this.reference.wasteTypes().subscribe((types) => {
+          this.wasteTypes.set(types.some((item) => item.ulid === type.ulid) ? types : [...types, type]);
+          const empty = this.waste.controls.findIndex((line) => !line.value.waste_type);
+          if (empty >= 0) {
+            this.waste.at(empty).patchValue({ waste_type: type.ulid });
+          } else {
+            this.addWaste(type.ulid);
+          }
+        });
+      }
+    });
+  }
 
   protected total(): number {
     return Math.round(this.lines().reduce((sum, line) => sum + Number(String(line['pct'] ?? '').replace(',', '.') || 0), 0) * 100) / 100;
@@ -159,14 +244,16 @@ export class MaterialDialog {
   }
 
   protected async submit(): Promise<void> {
-    if (this.form.invalid || (this.composition.length > 0 && this.total() !== 100)) {
+    this.tried.set(true);
+    if (this.form.invalid || (this.composition.length > 0 && this.total() !== 100) || (this.waste.length > 1 && this.wasteTotal() !== 100)) {
       this.form.markAllAsTouched();
 
       return;
     }
     this.busy.set(true);
     const value = this.form.getRawValue();
-    const body = blankToNull({ ...value, grammage_gsm: decimal(value.grammage_gsm), width_cm: decimal(value.width_cm), composition: value.composition.map((line) => ({ material: line['material'] as string, pct: decimal(line['pct'] as string) })) });
+    const body = blankToNull({ ...value, grammage_gsm: decimal(value.grammage_gsm), width_cm: decimal(value.width_cm), composition: value.composition.map((line) => ({ material: line['material'] as string, pct: decimal(line['pct'] as string) })),
+      waste_types: value.waste_types.map((line) => ({ waste_type: line['waste_type'] as string, share_pct: value.waste_types.length === 1 ? '100' : decimal(line['share_pct'] as string) })) });
     const current = this.material();
     try {
       const saved = await firstValueFrom(current ? this.api.put<RawMaterial>(`production/materials/${current.ulid}`, body) : this.api.post<RawMaterial>('production/materials', body));
@@ -324,7 +411,7 @@ export class ArticleDialog {
       <dw-help topic="productionCatalog" />
       <div class="dw-panel">
         <p-tabs [value]="0">
-          <p-tablist><p-tab [value]="0">{{ t('production.materials.title') }}</p-tab><p-tab [value]="1">{{ t('production.articles.title') }}</p-tab><p-tab [value]="2">{{ t('production.sizes.title') }}</p-tab></p-tablist>
+          <p-tablist><p-tab [value]="0">{{ t('production.materials.title') }}</p-tab><p-tab [value]="1">{{ t('production.articles.title') }}</p-tab><p-tab [value]="2">{{ t('production.sizes.tab') }}</p-tab></p-tablist>
           <p-tabpanels>
             <p-tabpanel [value]="0">
               <dw-filter-bar [active]="(materialSearch() ? 1 : 0) + (inactive() ? 1 : 0)" (cleared)="materialSearch.set(''); inactive.set(false); materials.reload()">
