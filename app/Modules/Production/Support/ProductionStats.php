@@ -38,7 +38,7 @@ final class ProductionStats
         $materials = DB::table('raw_materials as m')->leftJoin('production_suppliers as s', 's.id', '=', 'm.production_supplier_id')->leftJoin('units as u', 'u.id', '=', 'm.unit_id')
             ->where('m.company_id', $companyId)->get(['m.id', 'm.ulid', 'm.reference', 'm.name', 'm.grammage_gsm', 'm.width_cm', 'u.code as unit', 's.id as supplier_id', 's.name as supplier'])->keyBy('id');
         $steps = DB::table('production_steps')->get(['id', 'code', 'name'])->keyBy('id');
-        // The cutting waste one piece of each article is expected to leave (its fabrics' placements).
+        // The waste one piece of each article is expected to leave (its fabrics' placements, its threads, its packaging…).
         $expectedPerPiece = $this->cutting->perPiece($orders->pluck('article_id')->unique()->map(fn ($id) => (int) $id)->values()->all());
         // An OF whose spreads were cut says its own: the waste of its layers really cut, with each placement's efficiency.
         $expectedCut = $this->plan->cutWasteByOrder($orders->keys()->map(fn ($id) => (int) $id)->values()->all());
@@ -131,7 +131,9 @@ final class ProductionStats
                     $pieces += (int) ($orders[$orderId]->quantity_produced ?? 0);
                     $perPiece = $expectedPerPiece[(int) $orders[$orderId]->article_id]['waste_kg'] ?? null;
                     if ($expected && isset($expectedCut[(int) $orderId])) {
-                        $cutting = bcadd($cutting ?? '0', $expectedCut[(int) $orderId], 6);
+                        // Its layers cut, and the rest of the article (threads, packaging…) for the pieces produced.
+                        $other = $expectedPerPiece[(int) $orders[$orderId]->article_id]['other_kg'] ?? '0';
+                        $cutting = bcadd($cutting ?? '0', bcadd($expectedCut[(int) $orderId], bcmul($other, (string) ($orders[$orderId]->quantity_produced ?? 0), 6), 6), 6);
                     } elseif ($expected && $perPiece !== null && $orders[$orderId]->quantity_produced !== null) {
                         $cutting = bcadd($cutting ?? '0', bcmul($perPiece, (string) $orders[$orderId]->quantity_produced, 6), 6);
                     }

@@ -13,7 +13,7 @@ return [
         'suppliers' => ['code' => 'Code', 'name' => 'Nom', 'country_code' => 'Pays (code)', 'contact_name' => 'Contact', 'email' => 'Email', 'phone' => 'Téléphone'],
         'materials' => [
             'reference' => 'Référence', 'name' => 'Désignation', 'category' => 'Catégorie', 'supplier' => 'Fournisseur par défaut', 'unit' => 'Unité (m, kg, pièce)', 'color_label' => 'Couleur', 'waste_type' => 'Type de déchet produit',
-            'grammage_gsm' => 'Grammage (g/m²)', 'width_cm' => 'Laize (cm)', 'batch_number' => 'N° de lot reçu', 'received_on' => 'Date de réception', 'batch_quantity' => 'Quantité reçue',
+            'grammage_gsm' => 'Grammage (g/m²)', 'width_cm' => 'Laize (cm)', 'nature' => 'Nature (tissu, fil, fourniture, emballage, chimique, autre)', 'unit_weight_kg' => 'Poids d\'une pièce (kg)', 'batch_number' => 'N° de lot reçu', 'received_on' => 'Date de réception', 'batch_quantity' => 'Quantité reçue',
         ],
         'articles' => [
             'reference' => 'Référence', 'name' => 'Désignation', 'family' => 'Famille', 'client' => 'Client', 'material' => 'Matière première',
@@ -69,6 +69,7 @@ return [
         'required' => '« :field » est vide.',
         'unknown' => ':what inconnu(e) : « :value ».',
         'unit' => 'Unité inconnue : « :value » (attendu : m, kg ou pièce).',
+        'nature' => 'Nature inconnue : « :value » (attendu : tissu, fil, fourniture, emballage, chimique ou autre).',
         'efficiency' => 'Efficience invalide : « :value » (attendu : un pourcentage entre 0 et 100).',
         'unexpected' => 'Cette ligne n\'a pas pu être enregistrée.',
         'site_rights' => 'Vous ne pouvez pas créer de lots sur le site « :site ».',

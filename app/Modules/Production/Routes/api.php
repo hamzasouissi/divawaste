@@ -164,25 +164,49 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
         'waste_type' => ['sometimes', 'nullable', 'string', new TenantExists(WasteType::class)],
         'waste_types' => ['sometimes', 'array', 'max:10'],
         'waste_types.*.waste_type' => ['required', 'string', 'distinct', new TenantExists(WasteType::class)],
-        'waste_types.*.share_pct' => ['required', 'decimal:0,2', 'gt:0', 'lte:100'],
+        // How each is estimated: a share of the cutting waste (a fabric), a rate of what is consumed, a weight per unit
+        // consumed, or all of it. Without a method, a share means the cutting.
+        'waste_types.*.method' => ['sometimes', 'string', 'in:'.implode(',', CuttingWaste::METHODS)],
+        'waste_types.*.share_pct' => ['nullable', 'decimal:0,2', 'gt:0', 'lte:100'],
+        'waste_types.*.rate_pct' => ['nullable', 'decimal:0,3', 'gt:0', 'lte:100'],
+        'waste_types.*.kg_per_unit' => ['nullable', 'decimal:0,6', 'gt:0', 'lte:100000'],
+        // What it is, and what one piece weighs (to turn pieces into kilograms).
+        'kind' => ['nullable', 'string', 'in:'.implode(',', RawMaterial::KINDS)],
+        'unit_weight_kg' => ['nullable', 'decimal:0,6', 'gt:0', 'lte:100000'],
     ];
-    // The waste types sent, as [type id, share], or null when the form does not speak of them.
+    // The waste lines sent, each with its calculation and the figure it needs, or null when the form does not speak of
+    // them. Only a material in metres is cut from a placement; the cutting shares make 100 %.
     $materialWaste = function (array $input) use ($id): ?array {
+        $metres = ($input['unit'] ?? null) === 'm';
         if (array_key_exists('waste_types', $input)) {
-            $lines = array_map(fn (array $line) => ['type' => $id(WasteType::class, $line['waste_type']), 'pct' => bcadd((string) $line['share_pct'], '0', 2)], $input['waste_types']);
-            if ($lines !== [] && bccomp(array_reduce($lines, fn (string $sum, array $line) => bcadd($sum, $line['pct'], 2), '0'), '100', 2) !== 0) {
+            $lines = array_map(function (array $line, int $i) use ($id, $metres) {
+                $method = $line['method'] ?? 'cutting';
+                $needs = ['cutting' => 'share_pct', 'loss_rate' => 'rate_pct', 'per_unit' => 'kg_per_unit'][$method] ?? null;
+                if ($needs !== null && ($line[$needs] ?? null) === null) {
+                    throw ValidationException::withMessages(["waste_types.{$i}.{$needs}" => [__('validation.custom.production.waste_figure')]]);
+                }
+                if ($method === 'cutting' && ! $metres) {
+                    throw ValidationException::withMessages(["waste_types.{$i}.method" => [__('validation.custom.production.waste_cutting_fabric')]]);
+                }
+                $figure = fn (string $key, int $scale) => $needs === $key ? bcadd((string) $line[$key], '0', $scale) : null;
+
+                return ['type' => $id(WasteType::class, $line['waste_type']), 'method' => $method,
+                    'pct' => $figure('share_pct', 2), 'rate' => $figure('rate_pct', 3), 'per_unit' => $figure('kg_per_unit', 6)];
+            }, $input['waste_types'], array_keys($input['waste_types']));
+            $shares = array_filter($lines, fn (array $line) => $line['method'] === 'cutting');
+            if ($shares !== [] && bccomp(array_reduce($shares, fn (string $sum, array $line) => bcadd($sum, $line['pct'], 2), '0'), '100', 2) !== 0) {
                 throw ValidationException::withMessages(['waste_types' => [__('validation.custom.production.waste_shares')]]);
             }
 
             return $lines;
         }
         if (array_key_exists('waste_type', $input)) {
-            return $input['waste_type'] === null ? [] : [['type' => $id(WasteType::class, $input['waste_type']), 'pct' => '100.00']];
+            return $input['waste_type'] === null ? [] : [RawMaterial::defaultWasteLine($id(WasteType::class, $input['waste_type']), $input['kind'] ?? null, $metres)];
         }
 
         return null;
     };
-    $materialAttributes = function (array $input, ReferenceCodes $codes) use ($id) {
+    $materialAttributes = function (array $input, ReferenceCodes $codes, bool $create = false) use ($id) {
         $composition = $input['composition'] ?? [];
         if ($composition !== [] && bccomp(array_reduce($composition, fn (string $sum, array $line) => bcadd($sum, (string) $line['pct'], 2), '0'), '100', 2) !== 0) {
             throw ValidationException::withMessages(['composition' => [__('validation.custom.composition.total')]]);
@@ -193,7 +217,10 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
             'unit_id' => $codes->id('units', $input['unit']), 'color_family_id' => $codes->id('color_families', $input['color_family'] ?? null),
             'color_label' => $input['color_label'] ?? null, 'grammage_gsm' => $input['grammage_gsm'] ?? null, 'width_cm' => $input['width_cm'] ?? null, 'composition' => $composition === [] ? null : $composition,
             'notes' => $input['notes'] ?? null, 'is_active' => (bool) ($input['is_active'] ?? true),
-        ];
+        ]
+            // Not sent: left as it is (an older screen does not know them). A new fabric needs no saying: metres with a laize and a grammage.
+            + (array_key_exists('kind', $input) || $create ? ['kind' => $input['kind'] ?? ($input['unit'] === 'm' && isset($input['width_cm'], $input['grammage_gsm']) ? 'fabric' : null)] : [])
+            + (array_key_exists('unit_weight_kg', $input) || $input['unit'] === 'm' ? ['unit_weight_kg' => $input['unit'] === 'm' ? null : $input['unit_weight_kg']] : []);
     };
 
     Route::get('materials', function (Request $request, ProductionData $data) use ($view, $like, $page, $paged) {
@@ -211,7 +238,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
         $input = $request->validate($materialRules());
         $waste = $materialWaste($input);
         $material = DB::transaction(function () use ($input, $codes, $materialAttributes, $waste, $cutting) {
-            $material = RawMaterial::query()->create($materialAttributes($input, $codes));
+            $material = RawMaterial::query()->create($materialAttributes($input, $codes, true));
             if ($waste !== null) {
                 $cutting->save((int) $material->getAttribute('company_id'), (int) $material->id, $waste);
             }
