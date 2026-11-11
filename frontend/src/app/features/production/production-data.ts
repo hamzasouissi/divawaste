@@ -80,8 +80,11 @@ export interface RawMaterial {
   composition: { material: string; pct: string }[];
   notes: string | null;
   is_active: boolean;
-  /** The waste it leaves when used, each type with its share; for a fabric that says nothing, the cutting scraps (inherited). */
-  waste_types: WasteShare[];
+  /** What it is; counted in pieces, what one piece weighs (kg). */
+  kind: MaterialKind | null;
+  unit_weight_kg: string | null;
+  /** The waste it leaves when used, each type with its calculation; for a fabric that says nothing, the cutting scraps (inherited). */
+  waste_types: WasteLine[];
   waste_types_inherited: boolean;
   batches: MaterialBatch[];
   average_unit_cost: string | null;
@@ -103,7 +106,7 @@ export interface Article {
   /** What one piece is expected to consume; for a fabric, the waste its cutting is expected to leave (kg per piece). */
   materials: ArticleLine[];
   /** Null figures: no fabric of the article has its width and weight. */
-  cutting_waste: { default_efficiency_pct: string; fabric_kg_per_piece: string | null; waste_kg_per_piece: string | null; by_type: WasteByType[] };
+  cutting_waste: { default_efficiency_pct: string; fabric_kg_per_piece: string | null; cutting_kg_per_piece: string | null; other_kg_per_piece: string | null; waste_kg_per_piece: string | null; by_type: WasteByType[] };
 }
 
 /** A line of a composition; for a fabric, what its cutting is expected to leave and the type of waste it is. */
@@ -111,11 +114,35 @@ export interface ArticleLine {
   material: string; reference: string; name: string; unit: string; quantity_per_piece: string;
   width_cm: string | null; grammage_gsm: string | null; composition: { material: string; pct: string | number }[];
   efficiency_pct: string | null; efficiency_applied: string | null; fabric_kg_per_piece: string | null; waste_kg_per_piece: string | null;
-  /** The waste the line gives per piece, by type (the material's shares). */
-  waste_types: (WasteShare & { waste_kg_per_piece: string })[]; waste_type_inherited: boolean;
+  kind: MaterialKind | null;
+  /** What one piece consumes of it in kg, when it can be said. */
+  consumed_kg_per_piece: string | null;
+  /** The waste the line gives per piece, line by line with its calculation (null: cannot be computed). */
+  waste_types: (WasteLine & { waste_kg_per_piece: string | null })[]; waste_type_inherited: boolean;
 }
 
 export interface WasteShare { waste_type: { ulid: string; name: string } | null; share_pct: string }
+export type MaterialKind = 'fabric' | 'thread' | 'trim' | 'packaging' | 'chemical' | 'other';
+/** The icon of each kind of raw material. */
+export const KIND_ICON: Record<MaterialKind, string> = { fabric: 'texture', thread: 'gesture', trim: 'radio_button_checked', packaging: 'inventory_2', chemical: 'science', other: 'category' };
+/** cutting: a share of the cutting waste; loss_rate: a % of what is consumed; per_unit: kg per unit consumed; whole: all of it. */
+export type WasteMethod = 'cutting' | 'loss_rate' | 'per_unit' | 'whole';
+export interface WasteLine { waste_type: { ulid: string; name: string } | null; method: WasteMethod; share_pct: string | null; rate_pct: string | null; kg_per_unit: string | null }
+
+/** A waste line's calculation in a few words: "85 % de la chute de coupe", "3 % du consommé", "0,025 kg par pièce". */
+export const describeWaste = (line: WasteLine, unit: string, t: (key: string, params?: Record<string, unknown>) => string): string => {
+  const n = (value: string | null) => new Intl.NumberFormat(document.documentElement.lang || 'fr', { maximumFractionDigits: 6 }).format(Number(value ?? 0));
+  switch (line.method) {
+    case 'cutting':
+      return t('production.materials.short.cutting', { pct: n(line.share_pct) });
+    case 'loss_rate':
+      return line.rate_pct === null ? t('production.materials.short.rateMissing') : t('production.materials.short.lossRate', { rate: n(line.rate_pct) });
+    case 'per_unit':
+      return t('production.materials.short.perUnit', { kg: n(line.kg_per_unit), unit: t('production.materials.unitShort.' + unit) });
+    default:
+      return t('production.materials.short.whole');
+  }
+};
 export interface WasteByType { waste_type: { ulid: string; name: string } | null; lines: number; waste_kg_per_piece: string }
 
 export type OrderStatus = 'open' | 'in_progress' | 'completed' | 'cancelled';

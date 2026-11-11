@@ -11,7 +11,7 @@ import { IconComponent } from '../../ui/icon';
 import { KpiComponent, PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
 import { ArticleDialog } from './materials';
-import { Article, ArticleLine } from './production-data';
+import { Article, ArticleLine, KIND_ICON, WasteLine, describeWaste } from './production-data';
 
 /** How a quantity per piece is written: metres, kilograms, pieces. */
 const UNIT: Record<string, string> = { m: 'm', kg: 'kg', piece: 'pc' };
@@ -37,13 +37,14 @@ const UNIT: Record<string, string> = { m: 'm', kg: 'kg', piece: 'pc' };
           <div class="dw-grid-3 kpis">
             <dw-kpi [label]="t('production.articles.summaryTitle')"
               [value]="a.cutting_waste.waste_kg_per_piece === null ? '—' : t('production.articles.cuttingWastePerPiece', { g: (grams(a.cutting_waste.waste_kg_per_piece) | dwNumber: 1) })"
-              [hint]="a.cutting_waste.fabric_kg_per_piece === null ? t('production.articles.summaryNone')
+              [hint]="a.cutting_waste.waste_kg_per_piece === null ? t('production.articles.summaryNone')
+                : +(a.cutting_waste.other_kg_per_piece ?? 0) > 0 ? t('production.articles.cutAndOther', { cut: (grams(a.cutting_waste.cutting_kg_per_piece) | dwNumber: 1), other: (grams(a.cutting_waste.other_kg_per_piece) | dwNumber: 1) })
                 : t('production.articles.ofFabric', { g: (grams(a.cutting_waste.fabric_kg_per_piece) | dwNumber: 0), pct: (share(a) | dwNumber: 0) })" />
             <dw-kpi [label]="t('production.articles.wasteProduced')"
               [value]="a.cutting_waste.by_type.length === 0 ? '—' : a.cutting_waste.by_type.length === 1 ? (a.cutting_waste.by_type[0].waste_type?.name ?? t('production.waste.typeUnknown')) : t('production.articles.typesCount', { count: a.cutting_waste.by_type.length })"
               [hint]="typesHint(a, t)" />
             <dw-kpi [label]="t('production.articles.materialsHeader')" [value]="t('production.articles.fabricsCount', { count: fabrics().length })"
-              [hint]="t('production.articles.suppliesCount', { count: supplies().length })" />
+              [hint]="t('production.articles.othersCount', { count: others().length + supplies().length })" />
           </div>
 
           <section class="dw-panel">
@@ -75,25 +76,58 @@ const UNIT: Record<string, string> = { m: 'm', kg: 'kg', piece: 'pc' };
                         <td class="num"><strong>{{ grams(line.waste_kg_per_piece) | dwNumber: 1 }} g</strong></td>
                         <td class="type">
                           @for (w of line.waste_types; track $index) {
-                            <div>{{ w.waste_type?.name ?? t('production.waste.typeUnknown') }}@if (line.waste_types.length > 1) { <span class="dw-faint"> · {{ +w.share_pct | dwNumber: 0 }} % · {{ +w.waste_kg_per_piece * 1000 | dwNumber: 1 }} g</span> }</div>
+                            <div>{{ w.waste_type?.name ?? t('production.waste.typeUnknown') }}@if (line.waste_types.length > 1 || w.method !== 'cutting') { <span class="dw-faint"> · {{ w.method === 'cutting' ? (+w.share_pct! | dwNumber: 1) + ' %' : describe(w, line.unit, t) }}@if (w.waste_kg_per_piece !== null) { · {{ grams(w.waste_kg_per_piece) | dwNumber: 1 }} g }</span> }</div>
                           }
                           @if (line.waste_type_inherited) { <span class="tag" [title]="t('production.materials.wasteTypeInherited')">{{ t('production.articles.default') }}</span> }</td>
                       </tr>
                     }
                   </tbody>
                   <tfoot><tr><td colspan="5">{{ t('production.articles.perPieceTotal') }}</td>
-                    <td class="num used">{{ grams(a.cutting_waste.fabric_kg_per_piece) | dwNumber: 1 }} g</td><td class="num"><strong>{{ grams(a.cutting_waste.waste_kg_per_piece) | dwNumber: 1 }} g</strong></td><td></td></tr></tfoot>
+                    <td class="num used">{{ grams(a.cutting_waste.fabric_kg_per_piece) | dwNumber: 1 }} g</td><td class="num"><strong>{{ fabricsWaste() | dwNumber: 1 }} g</strong></td><td></td></tr></tfoot>
                 </table>
               </div>
               <p class="formula dw-faint">{{ t('production.articles.cuttingFormula') }}</p>
             }
           </section>
 
+          @if (others().length > 0) {
+            <!-- Threads, packaging, chemicals…: each waste by its own calculation (a rate, a weight per unit, all of it). -->
+            <section class="dw-panel others">
+              <div class="dw-panel-head"><h2 class="dw-h2">{{ t('production.articles.othersTitle') }}</h2></div>
+              <p class="dw-muted intro">{{ t('production.articles.othersIntro') }}</p>
+              <div class="scroll">
+                <table class="dw-table">
+                  <thead><tr><th>{{ t('production.materials.one') }}</th><th class="num">{{ t('production.articles.perPieceShort') }}</th>
+                    <th>{{ t('production.materials.wasteProduced') }}</th><th class="num">{{ t('production.articles.wastePerPiece') }}</th></tr></thead>
+                  <tbody>
+                    @for (line of others(); track line.material) {
+                      <tr>
+                        <td class="material"><a class="dw-mono name" [routerLink]="['/production/catalog', line.material]" [title]="line.name">{{ line.reference }}</a>
+                          @if (line.kind) { <span class="nature"><dw-icon>{{ kindIcon[line.kind] }}</dw-icon>{{ t('production.materials.kinds.' + line.kind) }}</span> }</td>
+                        <td class="num">{{ +line.quantity_per_piece | dwNumber: 4 }} {{ unit(line) }}</td>
+                        <td class="type">
+                          @for (w of line.waste_types; track $index) {
+                            <div>{{ w.waste_type?.name ?? t('production.waste.typeUnknown') }} <span class="dw-faint">· {{ describe(w, line.unit, t) }}</span>
+                              @if (w.waste_kg_per_piece === null) { <span class="tag warn" [title]="t('production.articles.cannotCount')">{{ t('production.articles.toComplete') }}</span> }</div>
+                          }
+                        </td>
+                        <td class="num"><strong>{{ line.waste_kg_per_piece === null ? '—' : (grams(line.waste_kg_per_piece) | dwNumber: 2) + ' g' }}</strong></td>
+                      </tr>
+                    }
+                  </tbody>
+                  @if (+(a.cutting_waste.other_kg_per_piece ?? 0) > 0) {
+                    <tfoot><tr><td colspan="3">{{ t('production.articles.perPieceTotal') }}</td><td class="num"><strong>{{ grams(a.cutting_waste.other_kg_per_piece) | dwNumber: 2 }} g</strong></td></tr></tfoot>
+                  }
+                </table>
+              </div>
+            </section>
+          }
+
           @if (supplies().length > 0) {
             <section class="dw-panel">
               <button type="button" class="fold" (click)="showSupplies.set(!showSupplies())" [attr.aria-expanded]="showSupplies()">
                 <span><strong>{{ t('production.articles.suppliesTitle', { count: supplies().length }) }}</strong>
-                  <span class="dw-faint"> · {{ t('production.articles.suppliesHint') }}</span></span>
+                  <span class="dw-faint"> · {{ t('production.articles.suppliesNoWaste') }}</span></span>
                 <dw-icon>{{ showSupplies() ? 'expand_less' : 'expand_more' }}</dw-icon>
               </button>
               @if (showSupplies()) {
@@ -119,12 +153,16 @@ const UNIT: Record<string, string> = { m: 'm', kg: 'kg', piece: 'pc' };
     .scroll { overflow-x: auto; } table { inline-size: 100%; }
     .num { text-align: end; white-space: nowrap; }
     .material { white-space: normal; } .material .name { display: block; max-inline-size: 240px; overflow-wrap: anywhere; }
-    .type { white-space: nowrap; }
+    .type { white-space: normal; min-inline-size: 180px; }
     /* The fabric weight is also in the summary above: the first column to go when the screen is narrower. */
     @media (max-width: 1400px) { .used { display: none; } }
-    .chip { display: inline-block; margin: 4px 4px 0 0; padding: 1px 8px; border-radius: 999px; background: var(--dw-surface-2); font-size: 12px; }
+    .chip { display: inline-block; margin: 4px 4px 0 0; padding: 1px 8px; border-radius: 999px; background: var(--dw-surface-2); font-size: 12px; white-space: nowrap; }
+    .material { min-inline-size: 170px; }
     .num .tag { display: block; inline-size: fit-content; margin: 2px 0 0 auto; } .tag { display: inline-block; margin-inline-start: 6px; padding: 0 6px; border-radius: 4px; background: var(--dw-surface-2); color: var(--dw-ink-3); font-size: 11px; vertical-align: 1px; }
     .formula { margin: 0; padding: var(--dw-2) var(--dw-4) var(--dw-3); font-size: 12px; }
+    .nature { display: inline-flex; align-items: center; gap: 4px; margin-block-start: 2px; font-size: 12px; color: var(--dw-ink-3); } .nature dw-icon { font-size: 15px; }
+    .tag.warn { background: var(--dw-warning-soft); color: var(--dw-warning); }
+    .others .type { white-space: normal; }
     .fold { display: flex; justify-content: space-between; align-items: center; gap: var(--dw-3); inline-size: 100%; padding: var(--dw-3) var(--dw-4);
       background: none; border: 0; font: inherit; color: inherit; text-align: start; cursor: pointer; }
     .supplies { list-style: none; margin: 0; padding: 0 var(--dw-4) var(--dw-3); display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); column-gap: var(--dw-5); }
@@ -146,15 +184,26 @@ export class ArticleDetailPage {
   protected readonly loading = signal(true);
   protected readonly error = signal<unknown>(null);
   protected readonly showSupplies = signal(false);
-  /** The fabrics: what is cut from a placement, the heaviest waste first. */
-  protected readonly fabrics = computed<ArticleLine[]>(() => (this.article()?.materials ?? []).filter((line) => line.waste_kg_per_piece !== null)
-    .sort((a, b) => +b.waste_kg_per_piece! - +a.waste_kg_per_piece!));
-  protected readonly supplies = computed<ArticleLine[]>(() => (this.article()?.materials ?? []).filter((line) => line.waste_kg_per_piece === null));
+  protected readonly kindIcon = KIND_ICON;
+  /** The fabrics: what is cut from a placement (metres with laize and grammage), the heaviest waste first. */
+  protected readonly fabrics = computed<ArticleLine[]>(() => (this.article()?.materials ?? []).filter((line) => line.fabric_kg_per_piece !== null)
+    .sort((a, b) => +(b.waste_kg_per_piece ?? 0) - +(a.waste_kg_per_piece ?? 0)));
+  /** The rest that says a waste: threads, packaging, chemicals… */
+  protected readonly others = computed<ArticleLine[]>(() => (this.article()?.materials ?? []).filter((line) => line.fabric_kg_per_piece === null && line.waste_types.length > 0)
+    .sort((a, b) => +(b.waste_kg_per_piece ?? -1) - +(a.waste_kg_per_piece ?? -1)));
+  /** What leaves no waste estimate: buttons, labels… */
+  protected readonly supplies = computed<ArticleLine[]>(() => (this.article()?.materials ?? []).filter((line) => line.fabric_kg_per_piece === null && line.waste_types.length === 0));
   /** In metres but without laize or grammage: a fabric the estimate cannot count yet, or a tape that is not one. */
   protected readonly uncounted = computed(() => this.supplies().filter((line) => line.unit === 'm').map((line) => line.reference));
+  /** The waste of the fabrics alone, per piece, in grams. */
+  protected readonly fabricsWaste = computed(() => this.fabrics().reduce((sum, line) => sum + this.grams(line.waste_kg_per_piece), 0));
 
   constructor() {
     queueMicrotask(() => this.load());
+  }
+
+  protected describe(line: WasteLine, unit: string, t: (key: string, params?: Record<string, unknown>) => string): string {
+    return describeWaste(line, unit, t);
   }
 
   protected grams(kg: string | null): number {
@@ -169,7 +218,7 @@ export class ArticleDetailPage {
   protected share(article: Article): number {
     const fabric = Number(article.cutting_waste.fabric_kg_per_piece ?? 0);
 
-    return fabric > 0 ? (Number(article.cutting_waste.waste_kg_per_piece ?? 0) / fabric) * 100 : 0;
+    return fabric > 0 ? (Number(article.cutting_waste.cutting_kg_per_piece ?? 0) / fabric) * 100 : 0;
   }
 
   protected typesHint(article: Article, t: (key: string, params?: Record<string, unknown>) => string): string {

@@ -22,7 +22,7 @@ import { SELECT } from '../../ui/select';
 import { StateComponent } from '../../ui/state';
 import { COLOR } from '../../ui/swatch';
 import { MaterialDialog } from './materials';
-import { AMOUNT, DECIMAL, MaterialBatch, ProductionLists, RawMaterial, blankToNull, decimal, statusTone } from './production-data';
+import { AMOUNT, DECIMAL, KIND_ICON, MaterialBatch, ProductionLists, RawMaterial, WasteLine, blankToNull, decimal, describeWaste, statusTone } from './production-data';
 
 export interface ReceivedLotDialogData {
   material: Pick<RawMaterial, 'ulid' | 'reference' | 'name' | 'unit' | 'supplier'>;
@@ -190,14 +190,17 @@ export class ReceivedLotDialog {
                       <div><dt>{{ t('production.reference') }}</dt><dd class="dw-mono">{{ m.reference }}</dd></div>
                       <div><dt>{{ t('production.designation') }}</dt><dd>{{ m.name }}</dd></div>
                       <div><dt>{{ t('production.material.category') }}</dt><dd>{{ m.category ?? '—' }}</dd></div>
-                      <div><dt>{{ t('production.materials.unit') }}</dt><dd>{{ m.unit | dwCode: 'unit' }}</dd></div>
+                      <div><dt>{{ t('production.materials.kind') }}</dt><dd>@if (m.kind) { <span class="kind"><dw-icon>{{ kindIcon[m.kind] }}</dw-icon>{{ t('production.materials.kinds.' + m.kind) }}</span> } @else { — }</dd></div>
+                      <div><dt>{{ t('production.materials.unit') }}</dt><dd>{{ m.unit | dwCode: 'unit' }}@if (m.unit_weight_kg) { <div class="dw-faint">{{ t('production.materials.unitWeightIs', { kg: (+m.unit_weight_kg | dwNumber: 6) }) }}</div> }</dd></div>
                       <div><dt>{{ t('production.material.defaultSupplier') }}</dt><dd>{{ m.supplier?.name ?? '—' }}<div class="dw-faint">{{ t('production.material.defaultSupplierHint') }}</div></dd></div>
                       <div><dt>{{ t('lots.composition') }}</dt><dd>@for (line of m.composition; track line.material) { <span class="chip">{{ line.material | dwCode: 'material' }} {{ +line.pct }} %</span> } @empty { — }</dd></div>
                       <div><dt>{{ t('lots.color') }}</dt><dd>@if (m.color_family) { <dw-color [code]="m.color_family" /> }@if (m.color_family && m.color_label) { · }{{ m.color_label ?? (m.color_family ? '' : '—') }}</dd></div>
-                      <div><dt>{{ t('lots.grammage') }}</dt><dd>{{ m.grammage_gsm ? (+m.grammage_gsm) + ' g/m²' : '—' }}</dd></div>
-                      <div><dt>{{ t('production.materials.width') }}</dt><dd>{{ m.width_cm ? (+m.width_cm) + ' cm' : '—' }}</dd></div>
+                      @if (m.unit === 'm') {
+                        <div><dt>{{ t('lots.grammage') }}</dt><dd>{{ m.grammage_gsm ? (+m.grammage_gsm) + ' g/m²' : '—' }}</dd></div>
+                        <div><dt>{{ t('production.materials.width') }}</dt><dd>{{ m.width_cm ? (+m.width_cm) + ' cm' : '—' }}</dd></div>
+                      }
                       <div><dt>{{ t('production.materials.wasteProduced') }}</dt><dd>
-                        @for (w of m.waste_types; track $index) { <div>{{ w.waste_type?.name ?? t('production.waste.typeUnknown') }}@if (m.waste_types.length > 1) { <span class="dw-faint"> · {{ +w.share_pct | dwNumber: 1 }} %</span> }</div> }
+                        @for (w of m.waste_types; track $index) { <div>{{ w.waste_type?.name ?? t('production.waste.typeUnknown') }} <span class="dw-faint">· {{ describe(w, m.unit, t) }}</span></div> }
                         @empty { — }
                         @if (m.waste_types_inherited) { <div class="dw-faint">{{ t('production.materials.wasteTypeInherited') }}</div> }</dd></div>
                       <div><dt>{{ t('production.material.waste') }}</dt><dd>{{ m.summary?.waste_kg | dwKg }} <span class="dw-faint">· {{ t('production.material.wasteLots', { count: m.summary?.waste_lots ?? 0 }) }}</span></dd></div>
@@ -302,6 +305,7 @@ export class ReceivedLotDialog {
     </ng-container>
   `,
   styles: `
+    .kind { display: inline-flex; align-items: center; gap: 6px; } .kind dw-icon { font-size: 18px; color: var(--dw-primary); }
     .kpis { margin-block-end: var(--dw-4); }
     .dw-facts dd { overflow-wrap: anywhere; white-space: normal; min-inline-size: 0; }
     .intro { margin: 0; padding: var(--dw-3) var(--dw-4); font-size: 13px; border-block-end: 1px solid var(--dw-line-soft); }
@@ -314,6 +318,11 @@ export class ReceivedLotDialog {
   `,
 })
 export class MaterialDetailPage {
+  protected readonly kindIcon = KIND_ICON;
+  protected describe(line: WasteLine, unit: string, t: (key: string, params?: Record<string, unknown>) => string): string {
+    return describeWaste(line, unit, t);
+  }
+
   readonly ulid = input.required<string>();
 
   private readonly api = inject(Api);

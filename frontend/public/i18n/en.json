@@ -3150,8 +3150,50 @@
       "share": "Share (%)",
       "addWaste": "Add another waste produced",
       "addWasteFirst": "Say the waste produced",
-      "wasteTotal": "The shares make {{total}} %: they must make 100 %.",
-      "wasteMissing": "Choose the waste type of each line, or remove the line."
+      "wasteTotal": "The shares of the cutting waste make {{total}} %: they must make 100 %.",
+      "wasteMissing": "Choose the waste type of each line, or remove the line.",
+      "kind": "Nature",
+      "kinds": {
+        "fabric": "Fabric",
+        "thread": "Thread",
+        "trim": "Trim",
+        "packaging": "Packaging",
+        "chemical": "Chemical",
+        "other": "Other"
+      },
+      "unitWeight": "Weight of one piece (kg)",
+      "unitWeightHint": "To count in kg what becomes waste (a carton: 0.45 kg).",
+      "unitWeightIs": "{{kg}} kg each",
+      "method": "Calculation",
+      "methods": {
+        "cutting": "Cutting share",
+        "loss_rate": "Loss rate",
+        "per_unit": "Weight per unit",
+        "whole": "All of it"
+      },
+      "kgPer": "kg / {{unit}}",
+      "unitShort": {
+        "m": "m",
+        "kg": "kg",
+        "piece": "piece"
+      },
+      "how": {
+        "cutting": "{{pct}} % of the cutting waste: fabric consumed × (100 − efficiency) %.",
+        "lossRate": "{{rate}} % of the material consumed becomes this waste.",
+        "perUnit": "{{kg}} kg of this waste for each {{unit}} consumed (an empty cone, a core…).",
+        "whole": "All the material consumed becomes this waste (packaging thrown away).",
+        "needsWeight": "Give the weight of one piece: without it, this waste cannot be counted in kg.",
+        "needsWidth": "Give the width and weight: without them, this waste cannot be counted in kg."
+      },
+      "short": {
+        "cutting": "{{pct}} % of the cutting waste",
+        "lossRate": "{{rate}} % of what is consumed",
+        "rateMissing": "rate to give",
+        "perUnit": "{{kg}} kg per {{unit}}",
+        "whole": "all of it"
+      },
+      "wasteProducedHint": "Each waste has its calculation: a share of the cutting waste (fabric), a loss rate (thread), a weight per unit (empty cone), or all of it (packaging).",
+      "wasteProducedNoneOther": "No waste given: this material does not count in the expected waste."
     },
     "articles": {
       "title": "Articles",
@@ -3177,7 +3219,7 @@
       "perPieceShort": "Per piece",
       "fabricUsed": "Fabric / piece",
       "wastePerPiece": "Waste / piece",
-      "summaryTitle": "Expected cutting waste per piece",
+      "summaryTitle": "Expected waste per piece",
       "summaryNone": "No fabric of the article has its width and weight: no estimate.",
       "missingData": "In metres without width or weight, so not counted: {{names}}. If it is a fabric, fill in its width and weight on the material.",
       "ofFabric": "of {{g}} g of fabric consumed ({{pct}} %)",
@@ -3191,7 +3233,14 @@
       "default": "default",
       "perPieceTotal": "Total per piece",
       "suppliesTitle": "Supplies and packaging ({{count}})",
-      "suppliesHint": "no placement, no expected cutting waste"
+      "suppliesHint": "no placement, no expected cutting waste",
+      "cutAndOther": "cutting {{cut}} g · other {{other}} g",
+      "othersTitle": "Threads, packaging and other materials",
+      "othersIntro": "Materials that leave a waste without a placement: each by its calculation (loss rate, weight per unit, all of it).",
+      "toComplete": "to complete",
+      "cannotCount": "A figure is missing to count it in kg: the rate, the weight per unit, or the weight of one piece of the material.",
+      "suppliesNoWaste": "no waste expected",
+      "othersCount": "{{count}} other material(s): threads, trims, packaging"
     },
     "orders": {
       "title": "Orders",
@@ -3520,7 +3569,7 @@
       "noRate": "Waste rate not calculable",
       "estimated": "Expected cutting waste: {{kg}} for {{pieces}} pieces planned ({{g}} g / piece).",
       "estimatedProduced": "For the {{pieces}} pieces produced: {{expected}} expected, {{measured}} weighed.",
-      "estimatedIntro": "Cutting waste expected from the placements of the article, set beside the lots of the same type weighed on this MO.",
+      "estimatedIntro": "Waste expected from the article (cutting of the fabrics, threads, packaging…), against the lots weighed of the same type on this MO.",
       "perPiece": "Per piece",
       "forPlanned": "For {{pieces}} planned",
       "forProduced": "For {{pieces}} produced",
@@ -3532,9 +3581,9 @@
       "aboveEstimate": "+{{kg}} (+{{pct}} %) above the estimate",
       "belowEstimate": "−{{kg}} (−{{pct}} %) below the estimate",
       "asEstimated": "As estimated",
-      "estimatedIntroCutting": "Cutting waste expected from the spreads of the MO (Cutting tab), against the weighed lots of the same type.",
-      "forSpreads": "Spreads planned",
-      "forCut": "Spreads cut"
+      "estimatedIntroCutting": "Waste expected: the cutting from the spreads of the MO (Cutting tab), the rest (threads, packaging…) from the article; against the lots weighed of the same type.",
+      "forSpreads": "Planned",
+      "forCut": "Done"
     },
     "expenses": {
       "title": "Other expenses",
@@ -3636,7 +3685,7 @@
       "method": "Method: actual raw material cost = quantity consumed × cost of the received lot (price paid, delivery cost spread). Lot not specified = weighted average price of the raw material, counted as \"estimated\". A gain is added up only for the orders where it can be calculated. An order belongs to the period by its end date, else its start date, else its creation date. Amounts exclude tax."
     },
     "sizes": {
-      "title": "Grids",
+      "title": "Size grids",
       "new": "New grid",
       "edit": "Edit the grid",
       "name": "Name",
@@ -3645,15 +3694,15 @@
       "sizesHint": "In order, separated by commas or spaces.",
       "used": "Used",
       "ofCount": "{{count}} MO",
-      "intro": "A grid groups sizes (Adult, Child…) to give them to an MO at once.",
-      "empty": "No grid. A grid is not required: an MO can also take its sizes one by one.",
+      "intro": "A grid gathers the sizes of a kind of product (Adult, Child, Men jeans…) to give them to an MO at once.",
+      "empty": "No grid yet. A grid is not required: an MO can also take its sizes one by one.",
       "grid": "Size grid",
       "noGrid": "No sizes",
       "noGridHint": "Create your grids in Catalogue › Size grids.",
       "totalHint": "becomes the planned quantity",
-      "catalogueTitle": "Sizes",
-      "catalogueIntro": "Your sizes, in order. Grids and MOs take them from here.",
-      "addPlaceholder": "XS S M L XL",
+      "catalogueTitle": "All sizes",
+      "catalogueIntro": "Your sizes in the order they read. Grids and MOs take them in this order.",
+      "addPlaceholder": "Add: XS S M…",
       "add": "Add",
       "addHint": "Several at once, separated by spaces or commas.",
       "noSize": "No size yet.",
@@ -3675,7 +3724,18 @@
       "tab": "Sizes",
       "dragHint": "Drag to change the order",
       "from": "Take the sizes from",
-      "oneByOne": "Choose one by one"
+      "oneByOne": "Choose one by one",
+      "libraryHint": "Drag a size to move it (keyboard: arrows). A size a grid or an MO uses (green dot) cannot be deleted.",
+      "none": "None",
+      "all": "All",
+      "newSizes": "New size…",
+      "preview": "Preview",
+      "usedBy": "{{grids}} grid(s), {{orders}} MO",
+      "oneByOneHint": "among all sizes",
+      "quantities": "Pieces per size",
+      "fillAll": "Same quantity everywhere:",
+      "apply": "Apply",
+      "totalShort": "Total"
     },
     "cutting": {
       "tab": "Cutting",
