@@ -3206,13 +3206,9 @@
       "consumptionHint": "Ce qu'une pièce doit consommer de chaque matière première. Sert à comparer le prévu et le réel d'un OF.",
       "perPiece": "Par pièce",
       "addMaterial": "Ajouter une matière première",
-      "efficiency": "Efficience %",
-      "efficiencyHint": "Pour un tissu : l'efficience du placement (%). Vide : celle de l'entreprise ({{pct}} %).",
       "cuttingWaste": "Chute de coupe estimée",
       "cuttingWastePerPiece": "{{g}} g / pièce",
       "cuttingWasteNone": "Aucun tissu avec sa laize et son grammage : pas d'estimation.",
-      "defaultEfficiency": "Chutes de coupe estimées avec une efficience de placement de {{pct}} % pour les tissus dont l'article ne précise pas la sienne.",
-      "defaultEfficiencyLabel": "Efficience par défaut (%)",
       "cuttingFormula": "Chute par pièce = consommation (m) × laize × grammage × (100 − efficience) %. Seuls les tissus en mètres avec laize et grammage comptent.",
       "materialsHeader": "Matières",
       "materialsCount": "{{count}} MP",
@@ -3228,7 +3224,7 @@
       "fabricsCount": "{{count}} tissu(s)",
       "suppliesCount": "{{count}} fourniture(s) et emballage(s)",
       "fabricsTitle": "Tissus et chutes de coupe",
-      "fabricsIntro": "Pour une pièce : le tissu consommé, la part que le placement ne retient pas (100 − efficience), et le type de déchet que donne cette chute.",
+      "fabricsIntro": "Pour une pièce : le tissu consommé, la chute que sa coupe devrait laisser et le type de déchet qu'elle donne.",
       "fabric": "Tissu",
       "default": "défaut",
       "perPieceTotal": "Total par pièce",
@@ -3240,7 +3236,15 @@
       "toComplete": "à compléter",
       "cannotCount": "Il manque un chiffre pour le compter en kg : le taux, le poids par unité, ou le poids d'une pièce de la matière.",
       "suppliesNoWaste": "sans déchet estimé",
-      "othersCount": "{{count}} autre(s) matière(s) : fils, fournitures, emballages"
+      "othersCount": "{{count}} autre(s) matière(s) : fils, fournitures, emballages",
+      "estimateNote": "Estimation avant la coupe, à l'efficience habituelle de la société. Sur un OF, la chute se calcule avec ses matelas (onglet Coupe).",
+      "perPieceUnit": {
+        "m": "m / pièce",
+        "kg": "kg / pièce",
+        "piece": "u. / pièce"
+      },
+      "byTypeTitle": "Déchets par type, pour une pièce",
+      "heaviest": "surtout {{name}} ({{pct}} %)"
     },
     "orders": {
       "title": "Commandes",
@@ -3304,7 +3308,8 @@
       "wasteLots": "{{count}} lot(s) de déchets",
       "producedHint": "Dès que l’OF a des lots fabriqués, cette quantité est leur somme.",
       "tabMake": "Étapes et consommations",
-      "tabMoney": "Coûts et gain"
+      "tabMoney": "Coûts et gain",
+      "period": "Période"
     },
     "ofStatus": {
       "planned": "Prévu",
@@ -3524,10 +3529,10 @@
     },
     "consumed": {
       "title": "Matières premières consommées",
-      "edit": "Modifier les consommations",
-      "editHint": "Une ligne par matière première et par lot reçu : 12 kg du lot A et 8 kg du lot B font deux lignes. Si vous ne savez pas de quel lot vient la matière première, laissez « Lot non précisé ».",
+      "edit": "Saisir les consommations",
+      "editHint": "Une ligne par lot reçu : 12 kg du lot A et 8 kg du lot B font deux lignes. Seules les matières premières de l'article sont proposées. Lot inconnu : laissez « Lot non précisé ».",
       "none": "Aucune consommation saisie.",
-      "intro": "OF → matière première consommée → lot reçu → fournisseur. Le prévu vient de la consommation par pièce de l’article.",
+      "intro": "Chaque matière première de l'article : ce qui était prévu, ce qui a été consommé, et d'où ça vient (cliquez une ligne pour voir ses lots reçus).",
       "empty": "Aucune matière première prévue ni consommée pour cet OF.",
       "planned": "Prévu",
       "actual": "Consommé",
@@ -3536,7 +3541,17 @@
       "notYet": "Rien de consommé pour l’instant.",
       "materialsHint": "matière première(s) prévue(s) ou consommée(s)",
       "averageHint": "Lot non précisé : valorisé au prix moyen des lots de cette matière première.",
-      "unallocated": "{{quantity}} {{unit}} sans lot précisé ; l’origine de {{known}} {{unit}} est connue."
+      "unallocated": "{{quantity}} {{unit}} sans lot précisé ; l’origine de {{known}} {{unit}} est connue.",
+      "progress": "Avancement",
+      "notEntered": "Pas encore saisi",
+      "linesCount": "{{count}} saisie(s)",
+      "lots": "Lots reçus",
+      "outsideArticle": "Hors article",
+      "entered": "Saisi",
+      "addLot": "Ajouter un lot",
+      "enter": "Saisir une consommation",
+      "noArticleMaterials": "L'article de cet OF n'a pas encore de matières premières. Ajoutez-les sur sa fiche (Référentiel › Articles), puis saisissez ici ce qui a été consommé.",
+      "noLotNamed": "Aucun lot reçu précisé : le coût vient du prix moyen de la matière, s'il est connu."
     },
     "produced": {
       "title": "Lots fabriqués",
@@ -3735,7 +3750,8 @@
       "quantities": "Pièces par taille",
       "fillAll": "Même quantité partout :",
       "apply": "Appliquer",
-      "totalShort": "Total"
+      "totalShort": "Total",
+      "noneOnOf": "Aucune taille affectée"
     },
     "cutting": {
       "tab": "Coupe",
@@ -3771,14 +3787,15 @@
       "totalCut": "Total coupé",
       "totalPlanned": "Total prévu",
       "newSpread": "Ajouter un matelas",
-      "startsArticle": "Efficience de départ : {{pct}} % (article)",
-      "startsCompany": "Efficience de départ : {{pct}} % (par défaut)",
+      "startsCompany": "Efficience de départ : {{pct}} %",
       "noFabric": "L'article de cet OF n'a pas de tissu en mètres. Ajoutez un tissu ci-dessous pour saisir ses matelas.",
       "otherFabric": "Autre tissu (entoilage, doublure…)",
       "otherHint": "Pour un tissu que l'article ne liste pas.",
       "formula": "Tissu = couches × longueur × laize × grammage. Chute = tissu × (100 − efficience) %. Avant la coupe : couches prévues ; après : couches coupées.",
       "deleted": "Matelas {{fabric}} supprimé.",
-      "ofPlanned": "sur {{value}} prévus"
+      "ofPlanned": "sur {{value}} prévus",
+      "usual": "Un nouveau matelas part de l'efficience habituelle de la société : {{pct}} %.",
+      "usualLabel": "Efficience habituelle"
     }
   },
   "help": {
@@ -3880,7 +3897,8 @@
     "l": "l",
     "piece": "pièces",
     "piece_one": "pièce",
-    "package": "colis"
+    "package": "colis",
+    "m": "m"
   },
   "tolerance": {
     "title": "Écarts à la réception",
