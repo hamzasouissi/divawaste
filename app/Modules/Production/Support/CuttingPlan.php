@@ -35,7 +35,7 @@ final class CuttingPlan
         $default = $this->cutting->defaultEfficiency();
         $article = DB::table('article_materials')->where('article_id', $of->article_id)->orderBy('id')->get(['raw_material_id', 'quantity_per_piece', 'efficiency_pct']);
         $materials = DB::table('raw_materials')->whereIn('id', $article->pluck('raw_material_id')->merge($spreads->pluck('raw_material_id'))->unique())
-            ->get(['id', 'ulid', 'reference', 'name', 'unit_id', 'width_cm', 'grammage_gsm', 'waste_type_id'])->keyBy('id');
+            ->get(['id', 'ulid', 'reference', 'name', 'unit_id', 'width_cm', 'grammage_gsm'])->keyBy('id');
         $consumed = DB::table('production_order_consumptions')->where('production_order_id', $of->id)->groupBy('raw_material_id')
             ->selectRaw('raw_material_id, SUM(quantity) as quantity')->pluck('quantity', 'raw_material_id');
         $round = fn (?string $value) => $value === null ? null : CuttingWaste::round($value, 3);
@@ -47,7 +47,7 @@ final class CuttingPlan
         $fabrics = $ids->map(function (int $id) use ($of, $spreads, $materials, $article, $consumed, $default, $round) {
             $material = $materials[$id];
             $line = $article->firstWhere('raw_material_id', $id);
-            $wasteType = $material->waste_type_id ?? $this->cutting->scrapsType();
+            $waste = $this->cutting->applied($id, true);
             $rows = $spreads->filter(fn (CuttingSpread $spread) => (int) $spread->getAttribute('raw_material_id') === $id)
                 ->map(fn (CuttingSpread $spread) => $this->row($spread, $material))->values();
 
@@ -59,31 +59,52 @@ final class CuttingPlan
                 'article_m' => $line === null ? null : $round(bcmul((string) $line->quantity_per_piece, (string) $of->quantity_planned, 6)),
                 'efficiency_pct' => $line?->efficiency_pct !== null ? (string) $line->efficiency_pct : $default,
                 'efficiency_from' => $line?->efficiency_pct !== null ? 'article' : 'company',
-                'waste_type' => $this->cutting->type($wasteType),
+                // The waste it gives, each type with its share.
+                'waste_types' => array_map(fn (array $line) => ['waste_type' => $this->cutting->type($line['type'] ?: null), 'share_pct' => $line['pct']], $waste['lines']),
                 'spreads' => $rows->all(),
                 'planned' => $this->sum($rows, 'planned'),
                 'done' => $this->sum($rows, 'done'),
                 'consumed_m' => isset($consumed[$id]) ? bcadd((string) $consumed[$id], '0', 3) : null,
-                '_type' => $wasteType ?? 0,
+                '_shares' => $waste['lines'],
             ];
         });
         $all = $fabrics->flatMap(fn (array $fabric) => $fabric['spreads']);
 
         return [
-            'fabrics' => $fabrics->map(fn (array $fabric) => array_diff_key($fabric, ['_type' => 0]))->all(),
+            'fabrics' => $fabrics->map(fn (array $fabric) => array_diff_key($fabric, ['_shares' => 0]))->all(),
             'totals' => [
                 'spreads' => $all->count(),
                 'spreads_to_cut' => $all->filter(fn (array $row) => $row['done'] === null)->count(),
                 'planned' => $this->sum($all, 'planned'),
                 'done' => $this->sum($all, 'done'),
             ],
-            // Kept for the estimate of the OF, by type of waste.
-            'by_type' => $fabrics->filter(fn (array $fabric) => $fabric['spreads'] !== [])->groupBy('_type')->map(fn (Collection $group, $type) => [
-                'type_id' => (int) $type,
-                'planned_kg' => $this->sum($group->flatMap(fn (array $fabric) => $fabric['spreads']), 'planned')['waste_kg'] ?? null,
-                'done_kg' => $this->sum($group->flatMap(fn (array $fabric) => $fabric['spreads']), 'done')['waste_kg'] ?? null,
-            ])->values()->all(),
+            // Kept for the estimate of the OF, by type of waste: each fabric's waste shared by its types.
+            'by_type' => $this->byType($fabrics),
         ];
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $fabrics
+     * @return list<array{type_id: int, planned_kg: string|null, done_kg: string|null}>
+     */
+    private function byType(Collection $fabrics): array
+    {
+        $out = [];
+        foreach ($fabrics as $fabric) {
+            foreach (['planned' => 'planned_kg', 'done' => 'done_kg'] as $stage => $key) {
+                if (($fabric[$stage]['waste_kg'] ?? null) === null) {
+                    continue;
+                }
+                foreach (CuttingWaste::split($fabric[$stage]['waste_kg'], $fabric['_shares']) as $type => $kg) {
+                    $out[$type] ??= ['type_id' => $type, 'planned_kg' => null, 'done_kg' => null];
+                    $out[$type][$key] = bcadd($out[$type][$key] ?? '0', $kg, 8);
+                }
+            }
+        }
+
+        return array_values(array_map(fn (array $row) => ['type_id' => $row['type_id'],
+            'planned_kg' => $row['planned_kg'] === null ? null : CuttingWaste::round($row['planned_kg'], 6),
+            'done_kg' => $row['done_kg'] === null ? null : CuttingWaste::round($row['done_kg'], 6)], $out));
     }
 
     /**

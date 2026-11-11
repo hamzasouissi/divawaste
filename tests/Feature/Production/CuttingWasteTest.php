@@ -107,23 +107,23 @@ class CuttingWasteTest extends TestCase
         ]);
         // A cotton that says nothing leaves the company's cutting scraps; an interlining says its own waste.
         $cotton = $this->material(['reference' => 'F22-G1', 'unit' => 'm', 'width_cm' => '150', 'grammage_gsm' => '200', 'composition' => [['material' => 'CO', 'pct' => '100']]]);
-        $this->assertSame('Chutes de coupe', $cotton['waste_type_applied']['name']);
-        $this->assertNull($cotton['waste_type']);
-        $this->assertTrue($cotton['waste_type_inherited']);
+        $this->assertSame(['waste_type' => ['ulid' => $scraps->ulid, 'name' => 'Chutes de coupe'], 'share_pct' => '100.00'], $cotton['waste_types'][0]);
+        $this->assertTrue($cotton['waste_types_inherited']);
         $interlining = $this->material(['reference' => 'VESLINE', 'unit' => 'm', 'width_cm' => '150', 'grammage_gsm' => '40', 'waste_type' => $selvedges->ulid]);
-        $this->assertSame('Lisières', $interlining['waste_type_applied']['name']);
-        $this->assertFalse($interlining['waste_type_inherited']);
+        $this->assertSame('Lisières', $interlining['waste_types'][0]['waste_type']['name']);
+        $this->assertFalse($interlining['waste_types_inherited']);
         $label = $this->material(['reference' => 'LABEL', 'unit' => 'piece']);
-        $this->assertNull($label['waste_type_applied']);
+        $this->assertSame([], $label['waste_types']);
 
         $article = $this->client()->postJson('/api/v1/production/articles', ['reference' => 'IKA', 'name' => 'Veste', 'materials' => [
             ['material' => $cotton['ulid'], 'quantity_per_piece' => '1.5'], ['material' => $interlining['ulid'], 'quantity_per_piece' => '0.5'], ['material' => $label['ulid'], 'quantity_per_piece' => '1'],
         ]])->assertCreated()->json('data');
         // 1.5 × 1.5 × 200 g × 20 % = 90 g of cotton scraps; 0.5 × 1.5 × 40 g × 20 % = 6 g of selvedges.
         $this->client()->getJson("/api/v1/production/articles/{$article['ulid']}")->assertOk()
-            ->assertJsonPath('data.materials.0.waste_type.name', 'Chutes de coupe')->assertJsonPath('data.materials.0.waste_type_inherited', true)
+            ->assertJsonPath('data.materials.0.waste_types.0.waste_type.name', 'Chutes de coupe')->assertJsonPath('data.materials.0.waste_type_inherited', true)
             ->assertJsonPath('data.materials.0.composition.0.material', 'CO')->assertJsonPath('data.materials.0.width_cm', '150.00')
-            ->assertJsonPath('data.materials.1.waste_type.name', 'Lisières')->assertJsonPath('data.materials.2.waste_type', null)
+            ->assertJsonPath('data.materials.1.waste_types.0.waste_type.name', 'Lisières')->assertJsonPath('data.materials.1.waste_types.0.waste_kg_per_piece', '0.0060')
+            ->assertJsonPath('data.materials.2.waste_types', [])
             ->assertJsonPath('data.cutting_waste.waste_kg_per_piece', '0.0960')
             ->assertJsonPath('data.cutting_waste.by_type.0.waste_type.name', 'Chutes de coupe')->assertJsonPath('data.cutting_waste.by_type.0.waste_kg_per_piece', '0.0900')
             ->assertJsonPath('data.cutting_waste.by_type.1.waste_type.name', 'Lisières')->assertJsonPath('data.cutting_waste.by_type.1.waste_kg_per_piece', '0.0060');
@@ -152,12 +152,27 @@ class CuttingWasteTest extends TestCase
         $csv = implode("\n", ['Reference;Unite;Type de dechet', 'F22-G1;m;SELVEDGES', 'NEW-1;m;Inconnu']);
         $this->client()->post('/api/v1/production/imports/run', ['target' => 'materials', 'file' => UploadedFile::fake()->createWithContent('mp.csv', $csv),
             'mapping' => ['reference' => 0, 'unit' => 1, 'waste_type' => 2]], ['Accept' => 'application/json'])->assertOk()->assertJsonPath('data.updated', 1)->assertJsonCount(1, 'data.errors');
-        $this->client()->getJson("/api/v1/production/materials/{$cotton['ulid']}")->assertOk()->assertJsonPath('data.waste_type.name', 'Lisières');
+        $this->client()->getJson("/api/v1/production/materials/{$cotton['ulid']}")->assertOk()->assertJsonPath('data.waste_types.0.waste_type.name', 'Lisières');
         // A form that does not send the waste type leaves it as it is; sent empty, the fabric is back to the cutting scraps.
-        $this->client()->putJson("/api/v1/production/materials/{$cotton['ulid']}", ['reference' => 'F22-G1', 'name' => 'F22-G1', 'unit' => 'm', 'width_cm' => '150', 'grammage_gsm' => '200'])
-            ->assertOk()->assertJsonPath('data.waste_type.name', 'Lisières');
-        $this->client()->putJson("/api/v1/production/materials/{$cotton['ulid']}", ['reference' => 'F22-G1', 'name' => 'F22-G1', 'unit' => 'm', 'width_cm' => '150', 'grammage_gsm' => '200', 'waste_type' => null])
-            ->assertOk()->assertJsonPath('data.waste_type', null)->assertJsonPath('data.waste_type_applied.name', 'Chutes de coupe');
+        $base = ['reference' => 'F22-G1', 'name' => 'F22-G1', 'unit' => 'm', 'width_cm' => '150', 'grammage_gsm' => '200'];
+        $this->client()->putJson("/api/v1/production/materials/{$cotton['ulid']}", $base)->assertOk()->assertJsonPath('data.waste_types.0.waste_type.name', 'Lisières');
+        $this->client()->putJson("/api/v1/production/materials/{$cotton['ulid']}", $base + ['waste_types' => []])->assertOk()
+            ->assertJsonPath('data.waste_types.0.waste_type.name', 'Chutes de coupe')->assertJsonPath('data.waste_types_inherited', true);
+
+        // A fabric can leave several types, each with its share; the shares make 100 %.
+        $this->client()->putJson("/api/v1/production/materials/{$cotton['ulid']}", $base + ['waste_types' => [['waste_type' => $scraps->ulid, 'share_pct' => '85'], ['waste_type' => $selvedges->ulid, 'share_pct' => '10']]])
+            ->assertUnprocessable()->assertJsonStructure(['errors' => ['waste_types']]);
+        $this->client()->putJson("/api/v1/production/materials/{$cotton['ulid']}", $base + ['waste_types' => [['waste_type' => $scraps->ulid, 'share_pct' => '85'], ['waste_type' => $selvedges->ulid, 'share_pct' => '15']]])
+            ->assertOk()->assertJsonCount(2, 'data.waste_types')->assertJsonPath('data.waste_types.1.share_pct', '15.00')->assertJsonPath('data.waste_types_inherited', false);
+        // 90 g of cotton waste: 76.5 g of scraps and 13.5 g of selvedges, beside the interlining's 6 g of selvedges.
+        $this->client()->getJson("/api/v1/production/articles/{$article['ulid']}")->assertOk()
+            ->assertJsonPath('data.materials.0.waste_types.0.waste_kg_per_piece', '0.0765')->assertJsonPath('data.materials.0.waste_types.1.waste_kg_per_piece', '0.0135')
+            ->assertJsonPath('data.cutting_waste.waste_kg_per_piece', '0.0960')
+            ->assertJsonPath('data.cutting_waste.by_type.0.waste_type.name', 'Chutes de coupe')->assertJsonPath('data.cutting_waste.by_type.0.waste_kg_per_piece', '0.0765')
+            ->assertJsonPath('data.cutting_waste.by_type.1.waste_type.name', 'Lisières')->assertJsonPath('data.cutting_waste.by_type.1.waste_kg_per_piece', '0.0195');
+        // The OF sets each share beside the lots of its type: 100 pieces, 7.65 kg of scraps expected.
+        $this->client()->getJson("/api/v1/production/manufacturing-orders/{$of['ulid']}")->assertOk()
+            ->assertJsonPath('data.waste.estimated.by_type.0.produced_kg', '7.650')->assertJsonPath('data.waste.estimated.by_type.1.produced_kg', '1.950');
     }
 
     private function type(string $code, string $name, string $catalog): WasteType

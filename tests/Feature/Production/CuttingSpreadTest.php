@@ -37,8 +37,10 @@ class CuttingSpreadTest extends TestCase
 
     public function test_an_of_is_cut_spread_by_spread(): void
     {
-        // A grid, reused by every OF that follows it.
-        $grid = $this->client()->postJson('/api/v1/production/size-grids', ['name' => 'Adulte', 'sizes' => ['S', 'M', 'L', 'XL']])->assertCreated()->json('data');
+        // The company's sizes, typed at once and kept in order; a grid is made of them, in that order, and reused.
+        $this->client()->postJson('/api/v1/production/sizes', ['codes' => ['S', 'M', 'L', 'XL', 'S']])->assertCreated()->assertJsonCount(4, 'data')->assertJsonPath('data.3.code', 'XL');
+        $this->client()->postJson('/api/v1/production/size-grids', ['name' => 'Enfant', 'sizes' => ['2A']])->assertUnprocessable();
+        $grid = $this->client()->postJson('/api/v1/production/size-grids', ['name' => 'Adulte', 'sizes' => ['XL', 'S', 'M', 'L']])->assertCreated()->assertJsonPath('data.sizes', ['S', 'M', 'L', 'XL'])->json('data');
         $this->client()->postJson('/api/v1/production/size-grids', ['name' => 'Adulte', 'sizes' => ['S']])->assertUnprocessable();
         $this->client()->getJson('/api/v1/production/size-grids')->assertOk()->assertJsonPath('data.0.sizes', ['S', 'M', 'L', 'XL']);
 
@@ -67,7 +69,7 @@ class CuttingSpreadTest extends TestCase
         $data = $this->client()->postJson("/api/v1/production/manufacturing-orders/{$of['ulid']}/spreads", $spread)->assertCreated()
             ->assertJsonPath('data.cutting.fabrics.0.spreads.0.planned', ['metres' => '120.400', 'fabric_kg' => '36.120', 'waste_kg' => '6.502'])
             ->assertJsonPath('data.cutting.fabrics.0.spreads.0.done', null)->assertJsonPath('data.cutting.fabrics.0.spreads.0.width_cm', '150.00')
-            ->assertJsonPath('data.cutting.fabrics.0.spreads.0.own_width', false)->assertJsonPath('data.cutting.fabrics.0.waste_type.name', 'Chutes de coupe')
+            ->assertJsonPath('data.cutting.fabrics.0.spreads.0.own_width', false)->assertJsonPath('data.cutting.fabrics.0.waste_types.0.waste_type.name', 'Chutes de coupe')
             ->assertJsonPath('data.cutting.totals.planned.waste_pct', '18.0')->assertJsonPath('data.cutting.totals.spreads_to_cut', 1)
             ->assertJsonPath('data.waste.estimated.source', 'cutting')->assertJsonPath('data.waste.estimated.planned_kg', '6.502')
             ->assertJsonPath('data.waste.estimated.per_piece_kg', '0.0542')->assertJsonPath('data.waste.estimated.planned_pieces', 120)
@@ -100,9 +102,22 @@ class CuttingSpreadTest extends TestCase
             ->assertJsonPath('data.cutting.totals.planned.waste_kg', '6.804')->json('data');
         $this->client()->deleteJson("/api/v1/production/spreads/{$added['cutting']['fabrics'][1]['spreads'][0]['ulid']}")->assertOk()->assertJsonCount(1, 'data.cutting.fabrics');
 
-        // A size an OF gave quantities to cannot leave the grid; another can be added.
+        // A size an OF gave quantities to cannot leave the grid; another can be added, once it is one of the company's.
         $this->client()->putJson("/api/v1/production/size-grids/{$grid['ulid']}", ['name' => 'Adulte', 'sizes' => ['S', 'M', 'L']])->assertUnprocessable();
-        $this->client()->putJson("/api/v1/production/size-grids/{$grid['ulid']}", ['name' => 'Adulte', 'sizes' => ['XS', 'S', 'M', 'L', 'XL']])->assertOk()->assertJsonPath('data.orders', 1);
+        $sizes = $this->client()->postJson('/api/v1/production/sizes', ['codes' => ['XS']])->assertCreated()->json('data');
+        $order = array_column($sizes, 'ulid');
+        $this->client()->putJson('/api/v1/production/sizes/order', ['sizes' => array_merge([end($order)], array_slice($order, 0, -1))])->assertOk()->assertJsonPath('data.0.code', 'XS');
+        $this->client()->putJson("/api/v1/production/size-grids/{$grid['ulid']}", ['name' => 'Adulte', 'sizes' => ['S', 'M', 'L', 'XL', 'XS']])->assertOk()
+            ->assertJsonPath('data.sizes', ['XS', 'S', 'M', 'L', 'XL'])->assertJsonPath('data.orders', 1);
+        // A size a grid uses stays; one nobody uses goes.
+        $this->client()->deleteJson("/api/v1/production/sizes/{$sizes[0]['ulid']}")->assertUnprocessable();
+
+        // From its page, an OF takes sizes picked one by one, without a grid: the planned quantity is their total.
+        $this->client()->putJson("/api/v1/production/manufacturing-orders/{$of['ulid']}/sizes", ['size_grid' => null, 'sizes' => [['size' => 'XL', 'quantity' => 5], ['size' => 'M', 'quantity' => 10]]])->assertOk()
+            ->assertJsonPath('data.size_grid', null)->assertJsonPath('data.sizes', [['size' => 'M', 'quantity' => 10], ['size' => 'XL', 'quantity' => 5]])->assertJsonPath('data.quantity_planned', 15);
+        $this->client()->putJson("/api/v1/production/manufacturing-orders/{$of['ulid']}/sizes", ['size_grid' => null, 'sizes' => [['size' => '3XL', 'quantity' => 5]]])->assertUnprocessable();
+        $this->client()->putJson("/api/v1/production/manufacturing-orders/{$of['ulid']}/sizes", ['size_grid' => $grid['ulid'], 'sizes' => [['size' => 'S', 'quantity' => 20], ['size' => 'M', 'quantity' => 40], ['size' => 'L', 'quantity' => 40], ['size' => 'XL', 'quantity' => 20]]])
+            ->assertOk()->assertJsonPath('data.sizes.0', ['size' => 'XS', 'quantity' => 0])->assertJsonPath('data.quantity_planned', 120);
 
         // Removed by mistake: the OF goes back to the estimate of its article.
         $this->client()->deleteJson("/api/v1/production/spreads/{$ulid}")->assertOk()->assertJsonPath('data.cutting.totals.spreads', 0)->assertJsonPath('data.waste.estimated.source', 'article');

@@ -59379,6 +59379,182 @@ paths:
         required: true
         schema:
           type: string
+  '/api/v1/production/manufacturing-orders/{of}/sizes':
+    put:
+      summary: 'Sizes production manufacturing orders'
+      operationId: sizesProductionManufacturingOrders
+      description: 'Only the sizes of the OF and the pieces of each, from its page: the planned quantity becomes their total.'
+      parameters: []
+      responses:
+        401:
+          description: 'No valid session or token.'
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  type: 'about:blank'
+                  title: Unauthorized
+                  status: 401
+                  code: UNAUTHENTICATED
+                  request_id: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+                properties:
+                  type:
+                    type: string
+                    example: 'about:blank'
+                  title:
+                    type: string
+                    example: Unauthorized
+                  status:
+                    type: integer
+                    example: 401
+                  code:
+                    type: string
+                    example: UNAUTHENTICATED
+                  request_id:
+                    type: string
+                    example: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+        403:
+          description: 'The account may not use this route (wrong kind of account, or company not active).'
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  type: 'about:blank'
+                  title: Forbidden
+                  status: 403
+                  code: FORBIDDEN
+                  request_id: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+                properties:
+                  type:
+                    type: string
+                    example: 'about:blank'
+                  title:
+                    type: string
+                    example: Forbidden
+                  status:
+                    type: integer
+                    example: 403
+                  code:
+                    type: string
+                    example: FORBIDDEN
+                  request_id:
+                    type: string
+                    example: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+        404:
+          description: 'Unknown identifier, or a record of another company: both answer the same way.'
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  type: 'about:blank'
+                  title: 'Not Found'
+                  status: 404
+                  code: NOT_FOUND
+                  request_id: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+                properties:
+                  type:
+                    type: string
+                    example: 'about:blank'
+                  title:
+                    type: string
+                    example: 'Not Found'
+                  status:
+                    type: integer
+                    example: 404
+                  code:
+                    type: string
+                    example: NOT_FOUND
+                  request_id:
+                    type: string
+                    example: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+        422:
+          description: 'A parameter is missing or invalid; `errors` names each one.'
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  type: 'about:blank'
+                  title: 'Unprocessable Content'
+                  status: 422
+                  code: VALIDATION_FAILED
+                  detail: 'The given data was invalid.'
+                  errors:
+                    size_grid:
+                      - 'The size grid field is invalid.'
+                  request_id: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+                properties:
+                  type:
+                    type: string
+                    example: 'about:blank'
+                  title:
+                    type: string
+                    example: 'Unprocessable Content'
+                  status:
+                    type: integer
+                    example: 422
+                  code:
+                    type: string
+                    example: VALIDATION_FAILED
+                  detail:
+                    type: string
+                    example: 'The given data was invalid.'
+                  errors:
+                    type: object
+                    properties:
+                      size_grid:
+                        type: array
+                        example:
+                          - 'The size grid field is invalid.'
+                        items:
+                          type: string
+                  request_id:
+                    type: string
+                    example: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+      tags:
+        - Production
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                size_grid:
+                  type: string
+                  description: ''
+                  example: architecto
+                  nullable: true
+                sizes:
+                  type: array
+                  description: 'Must not have more than 40 items.'
+                  example: null
+                  items:
+                    type: object
+                    properties:
+                      size:
+                        type: string
+                        description: 'Must not be greater than 20 characters.'
+                        example: ngzmiyvdljnikhwa
+                      quantity:
+                        type: integer
+                        description: 'Must be between 0 and 100000000.'
+                        example: 0
+                    required:
+                      - size
+                      - quantity
+    parameters:
+      -
+        in: path
+        name: of
+        description: 'Public identifier (ULID) of the of.'
+        example: 01M732NTF1885N5C90XBQ0GSNG
+        required: true
+        schema:
+          type: string
   '/api/v1/production/manufacturing-orders/{of}/consumptions':
     put:
       summary: 'Consumptions production manufacturing orders'
@@ -59478,6 +59654,422 @@ paths:
         name: of
         description: 'Public identifier (ULID) of the of.'
         example: 01M520MX4P359Y33GSCEARZ1YZ
+        required: true
+        schema:
+          type: string
+  /api/v1/production/sizes:
+    get:
+      summary: 'List production sizes'
+      operationId: listProductionSizes
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: ''
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                example:
+                  type: 'about:blank'
+                  title: Unauthorized
+                  status: 401
+                  code: UNAUTHENTICATED
+                  request_id: 01M74Y09D380XPXN2SPC96Q60W
+                properties:
+                  type:
+                    type: string
+                    example: 'about:blank'
+                  title:
+                    type: string
+                    example: Unauthorized
+                  status:
+                    type: integer
+                    example: 401
+                  code:
+                    type: string
+                    example: UNAUTHENTICATED
+                  request_id:
+                    type: string
+                    example: 01M74Y09D380XPXN2SPC96Q60W
+        403:
+          description: 'The account may not use this route (wrong kind of account, or company not active).'
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  type: 'about:blank'
+                  title: Forbidden
+                  status: 403
+                  code: FORBIDDEN
+                  request_id: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+                properties:
+                  type:
+                    type: string
+                    example: 'about:blank'
+                  title:
+                    type: string
+                    example: Forbidden
+                  status:
+                    type: integer
+                    example: 403
+                  code:
+                    type: string
+                    example: FORBIDDEN
+                  request_id:
+                    type: string
+                    example: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+      tags:
+        - Production
+    post:
+      summary: 'Create production sizes'
+      operationId: createProductionSizes
+      description: 'One size or several typed at once ("XS S M L"), added after the others in that order; one already there is skipped.'
+      parameters: []
+      responses:
+        401:
+          description: 'No valid session or token.'
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  type: 'about:blank'
+                  title: Unauthorized
+                  status: 401
+                  code: UNAUTHENTICATED
+                  request_id: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+                properties:
+                  type:
+                    type: string
+                    example: 'about:blank'
+                  title:
+                    type: string
+                    example: Unauthorized
+                  status:
+                    type: integer
+                    example: 401
+                  code:
+                    type: string
+                    example: UNAUTHENTICATED
+                  request_id:
+                    type: string
+                    example: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+        403:
+          description: 'The account may not use this route (wrong kind of account, or company not active).'
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  type: 'about:blank'
+                  title: Forbidden
+                  status: 403
+                  code: FORBIDDEN
+                  request_id: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+                properties:
+                  type:
+                    type: string
+                    example: 'about:blank'
+                  title:
+                    type: string
+                    example: Forbidden
+                  status:
+                    type: integer
+                    example: 403
+                  code:
+                    type: string
+                    example: FORBIDDEN
+                  request_id:
+                    type: string
+                    example: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+        422:
+          description: 'A parameter is missing or invalid; `errors` names each one.'
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  type: 'about:blank'
+                  title: 'Unprocessable Content'
+                  status: 422
+                  code: VALIDATION_FAILED
+                  detail: 'The given data was invalid.'
+                  errors:
+                    codes:
+                      - 'The codes field is invalid.'
+                  request_id: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+                properties:
+                  type:
+                    type: string
+                    example: 'about:blank'
+                  title:
+                    type: string
+                    example: 'Unprocessable Content'
+                  status:
+                    type: integer
+                    example: 422
+                  code:
+                    type: string
+                    example: VALIDATION_FAILED
+                  detail:
+                    type: string
+                    example: 'The given data was invalid.'
+                  errors:
+                    type: object
+                    properties:
+                      codes:
+                        type: array
+                        example:
+                          - 'The codes field is invalid.'
+                        items:
+                          type: string
+                  request_id:
+                    type: string
+                    example: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+      tags:
+        - Production
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                codes:
+                  type: array
+                  description: 'Must not be greater than 20 characters.'
+                  example:
+                    - bngzmiyvdljnikhw
+                  items:
+                    type: string
+              required:
+                - codes
+  /api/v1/production/sizes/order:
+    put:
+      summary: 'Order production sizes'
+      operationId: orderProductionSizes
+      description: "The company's order of its sizes: every size, once, in the new order."
+      parameters: []
+      responses:
+        401:
+          description: 'No valid session or token.'
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  type: 'about:blank'
+                  title: Unauthorized
+                  status: 401
+                  code: UNAUTHENTICATED
+                  request_id: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+                properties:
+                  type:
+                    type: string
+                    example: 'about:blank'
+                  title:
+                    type: string
+                    example: Unauthorized
+                  status:
+                    type: integer
+                    example: 401
+                  code:
+                    type: string
+                    example: UNAUTHENTICATED
+                  request_id:
+                    type: string
+                    example: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+        403:
+          description: 'The account may not use this route (wrong kind of account, or company not active).'
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  type: 'about:blank'
+                  title: Forbidden
+                  status: 403
+                  code: FORBIDDEN
+                  request_id: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+                properties:
+                  type:
+                    type: string
+                    example: 'about:blank'
+                  title:
+                    type: string
+                    example: Forbidden
+                  status:
+                    type: integer
+                    example: 403
+                  code:
+                    type: string
+                    example: FORBIDDEN
+                  request_id:
+                    type: string
+                    example: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+        422:
+          description: 'A parameter is missing or invalid; `errors` names each one.'
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  type: 'about:blank'
+                  title: 'Unprocessable Content'
+                  status: 422
+                  code: VALIDATION_FAILED
+                  detail: 'The given data was invalid.'
+                  errors:
+                    sizes:
+                      - 'The sizes field is invalid.'
+                  request_id: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+                properties:
+                  type:
+                    type: string
+                    example: 'about:blank'
+                  title:
+                    type: string
+                    example: 'Unprocessable Content'
+                  status:
+                    type: integer
+                    example: 422
+                  code:
+                    type: string
+                    example: VALIDATION_FAILED
+                  detail:
+                    type: string
+                    example: 'The given data was invalid.'
+                  errors:
+                    type: object
+                    properties:
+                      sizes:
+                        type: array
+                        example:
+                          - 'The sizes field is invalid.'
+                        items:
+                          type: string
+                  request_id:
+                    type: string
+                    example: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+      tags:
+        - Production
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sizes:
+                  type: array
+                  description: ''
+                  example:
+                    - architecto
+                  items:
+                    type: string
+              required:
+                - sizes
+  '/api/v1/production/sizes/{size}':
+    delete:
+      summary: 'Delete production sizes'
+      operationId: deleteProductionSizes
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: 'No valid session or token.'
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  type: 'about:blank'
+                  title: Unauthorized
+                  status: 401
+                  code: UNAUTHENTICATED
+                  request_id: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+                properties:
+                  type:
+                    type: string
+                    example: 'about:blank'
+                  title:
+                    type: string
+                    example: Unauthorized
+                  status:
+                    type: integer
+                    example: 401
+                  code:
+                    type: string
+                    example: UNAUTHENTICATED
+                  request_id:
+                    type: string
+                    example: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+        403:
+          description: 'The account may not use this route (wrong kind of account, or company not active).'
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  type: 'about:blank'
+                  title: Forbidden
+                  status: 403
+                  code: FORBIDDEN
+                  request_id: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+                properties:
+                  type:
+                    type: string
+                    example: 'about:blank'
+                  title:
+                    type: string
+                    example: Forbidden
+                  status:
+                    type: integer
+                    example: 403
+                  code:
+                    type: string
+                    example: FORBIDDEN
+                  request_id:
+                    type: string
+                    example: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+        404:
+          description: 'Unknown identifier, or a record of another company: both answer the same way.'
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  type: 'about:blank'
+                  title: 'Not Found'
+                  status: 404
+                  code: NOT_FOUND
+                  request_id: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+                properties:
+                  type:
+                    type: string
+                    example: 'about:blank'
+                  title:
+                    type: string
+                    example: 'Not Found'
+                  status:
+                    type: integer
+                    example: 404
+                  code:
+                    type: string
+                    example: NOT_FOUND
+                  request_id:
+                    type: string
+                    example: 01J9ZX5E8Q4T7M2K6R3W0V1YNB
+      tags:
+        - Production
+    parameters:
+      -
+        in: path
+        name: size
+        description: 'Public identifier (ULID) of the size.'
+        example: 01M74XZYMWG0R08SPZHB56NGPN
         required: true
         schema:
           type: string

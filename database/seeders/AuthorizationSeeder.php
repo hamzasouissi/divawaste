@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Identity\Authorization\PermissionCatalog;
 use App\Modules\Identity\Models\Permission;
 use App\Modules\Identity\Models\Role;
@@ -27,6 +28,9 @@ class AuthorizationSeeder extends Seeder
         'provider_admin' => ['fr' => 'Administrateur prestataire', 'en' => 'Provider administrator'],
         'provider_operator' => ['fr' => 'Opérateur prestataire', 'en' => 'Provider operator'],
     ];
+
+    /** Roles that hold every permission of their audience, on every run. */
+    private const FULL_ROLES = ['super_admin', 'client_admin', 'provider_admin'];
 
     public function run(): void
     {
@@ -60,6 +64,11 @@ class AuthorizationSeeder extends Seeder
                         'is_system' => true,
                     ]);
                     $role->syncPermissions($permissions);
+                } elseif (in_array($name, self::FULL_ROLES, true)) {
+                    // An administrator role holds its whole default matrix, whatever version first created it:
+                    // a right added after the platform was installed (the marketplace, contracts…) reaches it too.
+                    $role->givePermissionTo($permissions);
+                    $role->forceFill(['label' => self::ROLE_LABELS[$name]])->save();
                 } else {
                     // An existing role keeps the matrix its administrators edited; it only receives the permissions
                     // that are new in this version and that its default matrix includes.
@@ -73,5 +82,7 @@ class AuthorizationSeeder extends Seeder
         });
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+        // The rights each user holds are cached per company: a matrix that changed is read again.
+        app(AccessResolver::class)->flushAll();
     }
 }

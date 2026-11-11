@@ -669,9 +669,12 @@ gain could not be calculated and why; totals only add the gains that exist. **Ex
 - **Matières et articles** — `/production/catalog`:
   - a **matière première** has a reference, a supplier, a unit (metre, kilogram or piece), a colour or Pantone
     reference, a composition (must total 100 %) and its **lots reçus** (deliveries: batch number, date, quantity).
-    Its **déchet produit** is the type of waste it leaves when cut; empty, a fabric (metres, laize and grammage)
-    leaves the company's "Chutes de coupe" (marked "défaut"). It also comes in with the materials file
-    (column "Type de déchet", by the name or the code of a type of the company);
+    Its **déchets produits** are the types of waste it leaves when cut, each with its **share** (one type: all of it;
+    several: 85 % Chutes de coupe, 15 % Lisières, totalling 100 %). "Nouveau type de déchet" creates a type of the
+    company without leaving the form. Empty, a fabric (metres, laize and grammage) leaves the company's "Chutes de
+    coupe" (marked "défaut"). One type also comes in with the materials file (column "Type de déchet", by the name or
+    the code of a type of the company; never created from a file). Every estimate (article, OF, statistics) shares
+    the waste of a fabric between its types by these shares;
   - an **article** has a reference, a family, a client, and its **consommation par pièce** of each material.
     For a fabric (a material in metres with its **laize** and **grammage**), the line also takes the **efficience** of
     its placement (%); empty, the company's default applies (80 % until changed, "Modifier" above the list of articles).
@@ -682,13 +685,19 @@ gain could not be calculated and why; totals only add the gains that exist. **Ex
     (marker length ÷ pieces in the marker): the waste is inside it. Supplies (buttons, labels, threads) and materials
     without laize or grammage give no estimate rather than a wrong one. The efficience also comes in with the
     composition file (column "Efficience").
-- **Grilles de tailles** — third tab of `/production/catalog`: a company's lists of sizes, in order ("Adulte : S M L
-  XL", "Enfant : 2A 4A …"), created once and reused. A size that an OF gave quantities to cannot leave its grid.
+- **Tailles** — third tab of `/production/catalog`, in two parts:
+  - the company's **sizes**, in order: several typed at once ("XS S M L XL"), dragged to change the order (with the
+    keyboard: the arrows of a focused size); a size a grid or an OF uses cannot be deleted;
+  - the **grilles** (optional): a name and some of those sizes, ticked ("Adulte : S M L XL", "Enfant : 2A 4A …"),
+    kept in the company's order. A size that an OF gave quantities to cannot leave its grid.
+  Sizes are never an ERP's: they are managed here even with an ERP.
 - **Commandes** — `/production/orders`: number, client, dates, status, and the articles ordered with quantities.
 - **Ordres de fabrication** — `/production/manufacturing-orders`: number, article (one of the order's when an order is
   chosen), planned and produced quantities, dates, status, then:
-  - **Tailles**: the OF may follow a grid and give its quantity of each size; the planned quantity is then their total.
-    The sizes are shown on the OF for information: the cutting waste follows the fabric laid, not the sizes.
+  - **Tailles**: on the OF page, under the chain, "Affecter des tailles" (then "Modifier"): the sizes of a grid, or
+    sizes chosen one by one, and the pieces of each; the planned quantity becomes their total ("Retirer les tailles"
+    removes them). The OF form no longer asks for them. The sizes are shown on the OF for information: the cutting
+    waste follows the fabric laid, not the sizes. With an ERP too, since an ERP never sends them.
   - **Coupe** (tab of the OF): one card per **fabric** — those of the article are listed already, with their laize,
     grammage, what the article says the OF needs, and the waste type they give; "Autre tissu" adds a fabric the
     article does not list (an interlining, a lining). In each card, one row per **matelas**, typed in place: the
