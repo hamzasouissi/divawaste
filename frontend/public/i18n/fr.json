@@ -3150,8 +3150,50 @@
       "share": "Part (%)",
       "addWaste": "Ajouter un autre déchet produit",
       "addWasteFirst": "Indiquer le déchet produit",
-      "wasteTotal": "Les parts font {{total}} % : elles doivent faire 100 %.",
-      "wasteMissing": "Choisissez le type de déchet de chaque ligne, ou retirez la ligne."
+      "wasteTotal": "Les parts de la chute de coupe font {{total}} % : elles doivent faire 100 %.",
+      "wasteMissing": "Choisissez le type de déchet de chaque ligne, ou retirez la ligne.",
+      "kind": "Nature",
+      "kinds": {
+        "fabric": "Tissu",
+        "thread": "Fil",
+        "trim": "Fourniture",
+        "packaging": "Emballage",
+        "chemical": "Produit chimique",
+        "other": "Autre"
+      },
+      "unitWeight": "Poids d'une pièce (kg)",
+      "unitWeightHint": "Pour compter en kg ce qui part en déchet (un carton : 0,45 kg).",
+      "unitWeightIs": "{{kg}} kg la pièce",
+      "method": "Calcul",
+      "methods": {
+        "cutting": "Part de la coupe",
+        "loss_rate": "Taux de perte",
+        "per_unit": "Poids par unité",
+        "whole": "Toute la matière"
+      },
+      "kgPer": "kg / {{unit}}",
+      "unitShort": {
+        "m": "m",
+        "kg": "kg",
+        "piece": "pièce"
+      },
+      "how": {
+        "cutting": "{{pct}} % de la chute de coupe : tissu consommé × (100 − efficience) %.",
+        "lossRate": "{{rate}} % de la matière consommée devient ce déchet.",
+        "perUnit": "{{kg}} kg de ce déchet pour chaque {{unit}} consommée (un cône vide, un mandrin…).",
+        "whole": "Toute la matière consommée devient ce déchet (un emballage jeté).",
+        "needsWeight": "Indiquez le poids d'une pièce : sans lui, ce déchet ne peut pas être compté en kg.",
+        "needsWidth": "Indiquez la laize et le grammage : sans eux, ce déchet ne peut pas être compté en kg."
+      },
+      "short": {
+        "cutting": "{{pct}} % de la chute de coupe",
+        "lossRate": "{{rate}} % du consommé",
+        "rateMissing": "taux à indiquer",
+        "perUnit": "{{kg}} kg par {{unit}}",
+        "whole": "toute la matière"
+      },
+      "wasteProducedHint": "Chaque déchet a son calcul : une part de la chute de coupe (tissu), un taux de perte (fil), un poids par unité (cône vide), ou toute la matière (emballage).",
+      "wasteProducedNoneOther": "Aucun déchet indiqué : cette matière n'entre pas dans les déchets estimés."
     },
     "articles": {
       "title": "Articles",
@@ -3177,7 +3219,7 @@
       "perPieceShort": "Conso / pièce",
       "fabricUsed": "Tissu / pièce",
       "wastePerPiece": "Chute / pièce",
-      "summaryTitle": "Chute de coupe estimée par pièce",
+      "summaryTitle": "Déchets estimés par pièce",
       "summaryNone": "Aucun tissu de l'article n'a sa laize et son grammage : pas d'estimation.",
       "missingData": "En mètres sans laize ni grammage, donc non comptés : {{names}}. Si c'est un tissu, renseignez sa laize et son grammage sur la matière.",
       "ofFabric": "sur {{g}} g de tissu consommé ({{pct}} %)",
@@ -3191,7 +3233,14 @@
       "default": "défaut",
       "perPieceTotal": "Total par pièce",
       "suppliesTitle": "Fournitures et emballages ({{count}})",
-      "suppliesHint": "pas de placement, pas de chute de coupe estimée"
+      "suppliesHint": "pas de placement, pas de chute de coupe estimée",
+      "cutAndOther": "coupe {{cut}} g · autres {{other}} g",
+      "othersTitle": "Fils, emballages et autres matières",
+      "othersIntro": "Les matières qui donnent un déchet sans placement : chacune par son calcul (taux de perte, poids par unité, toute la matière).",
+      "toComplete": "à compléter",
+      "cannotCount": "Il manque un chiffre pour le compter en kg : le taux, le poids par unité, ou le poids d'une pièce de la matière.",
+      "suppliesNoWaste": "sans déchet estimé",
+      "othersCount": "{{count}} autre(s) matière(s) : fils, fournitures, emballages"
     },
     "orders": {
       "title": "Commandes",
@@ -3520,7 +3569,7 @@
       "noRate": "Taux de chute non calculable",
       "estimated": "Chutes de coupe estimées : {{kg}} pour {{pieces}} pièces prévues ({{g}} g / pièce).",
       "estimatedProduced": "Pour les {{pieces}} pièces produites : {{expected}} estimés, {{measured}} pesés.",
-      "estimatedIntro": "Chutes de coupe estimées d'après les placements de l'article, comparées aux lots pesés du même type sur cet OF.",
+      "estimatedIntro": "Déchets estimés d'après l'article (coupe des tissus, fils, emballages…), comparés aux lots pesés du même type sur cet OF.",
       "perPiece": "Par pièce",
       "forPlanned": "Pour {{pieces}} prévues",
       "forProduced": "Pour {{pieces}} produites",
@@ -3532,9 +3581,9 @@
       "aboveEstimate": "+{{kg}} (+{{pct}} %) au-dessus de l'estimé",
       "belowEstimate": "−{{kg}} (−{{pct}} %) en dessous de l'estimé",
       "asEstimated": "Égal à l'estimé",
-      "estimatedIntroCutting": "Chutes de coupe estimées d'après les matelas de l'OF (onglet Coupe), comparées aux lots pesés du même type.",
-      "forSpreads": "Matelas prévus",
-      "forCut": "Matelas coupés"
+      "estimatedIntroCutting": "Déchets estimés : la coupe d'après les matelas de l'OF (onglet Coupe), le reste (fils, emballages…) d'après l'article ; comparés aux lots pesés du même type.",
+      "forSpreads": "Prévu",
+      "forCut": "Réalisé"
     },
     "expenses": {
       "title": "Autres dépenses",
@@ -3636,7 +3685,7 @@
       "method": "Méthode : coût matière première réel = quantité consommée × coût du lot reçu (prix payé, frais de livraison répartis). Lot non précisé = prix moyen pondéré de la matière première, compté comme « estimé ». Le gain n’est additionné que pour les OF où il est calculable. Un OF appartient à la période par sa date de fin, à défaut de début, à défaut de création. Montants hors taxes."
     },
     "sizes": {
-      "title": "Grilles",
+      "title": "Grilles de tailles",
       "new": "Nouvelle grille",
       "edit": "Modifier la grille",
       "name": "Nom",
@@ -3645,15 +3694,15 @@
       "sizesHint": "Dans l'ordre, séparées par des virgules ou des espaces.",
       "used": "Utilisée",
       "ofCount": "{{count}} OF",
-      "intro": "Une grille regroupe des tailles (Adulte, Enfant…) pour les affecter d'un coup à un OF.",
-      "empty": "Aucune grille. Une grille n'est pas obligatoire : un OF peut aussi prendre ses tailles une à une.",
+      "intro": "Une grille rassemble les tailles d'un type de produit (Adulte, Enfant, Jean homme…) pour les donner d'un coup à un OF.",
+      "empty": "Aucune grille pour l'instant. Une grille n'est pas obligatoire : un OF peut aussi prendre ses tailles une à une.",
       "grid": "Grille de tailles",
       "noGrid": "Sans tailles",
       "noGridHint": "Créez vos grilles dans Référentiel › Grilles de tailles.",
       "totalHint": "devient la quantité prévue",
-      "catalogueTitle": "Tailles",
-      "catalogueIntro": "Vos tailles, dans l'ordre. Les grilles et les OF les reprennent.",
-      "addPlaceholder": "XS S M L XL",
+      "catalogueTitle": "Toutes les tailles",
+      "catalogueIntro": "Vos tailles dans l'ordre où elles se lisent. Les grilles et les OF les reprennent dans cet ordre.",
+      "addPlaceholder": "Ajouter : XS S M…",
       "add": "Ajouter",
       "addHint": "Plusieurs à la fois, séparées par des espaces ou des virgules.",
       "noSize": "Aucune taille pour l'instant.",
@@ -3675,7 +3724,18 @@
       "tab": "Tailles",
       "dragHint": "Glisser pour changer l'ordre",
       "from": "Prendre les tailles de",
-      "oneByOne": "Choisir une à une"
+      "oneByOne": "Choisir une à une",
+      "libraryHint": "Glissez une taille pour la déplacer (au clavier : flèches). Une taille utilisée par une grille ou un OF (point vert) ne se supprime pas.",
+      "none": "Aucune",
+      "all": "Toutes",
+      "newSizes": "Nouvelle taille…",
+      "preview": "Aperçu",
+      "usedBy": "{{grids}} grille(s), {{orders}} OF",
+      "oneByOneHint": "parmi toutes les tailles",
+      "quantities": "Pièces par taille",
+      "fillAll": "Même quantité partout :",
+      "apply": "Appliquer",
+      "totalShort": "Total"
     },
     "cutting": {
       "tab": "Coupe",

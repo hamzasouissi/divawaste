@@ -22,7 +22,7 @@ import { SELECT } from '../../ui/select';
 import { StateComponent } from '../../ui/state';
 import { CreateLotDialog } from '../lots/lot-dialogs';
 import { CuttingComponent } from './spreads';
-import { OfSizesDialog } from './sizes';
+import { OfSizesDialog, SizeRunComponent } from './sizes';
 import { ManufacturingOrderDialog } from './orders';
 import {
   AMOUNT, ConsumedMaterial, DECIMAL, EXPENSE_CATEGORIES, ManufacturingOrder, OfExpense, OfWaste, ProducedLot, ProducedLotStatus, ProductionLists, blankToNull, decimal, statusTone,
@@ -319,7 +319,7 @@ export class ExpenseDialog {
  * that cost and is worth.
  */
 @Component({
-  imports: [RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KpiComponent, ButtonDirective, IconComponent, DatePipe, NumberPipe, MoneyPipe, KgPipe, LocalizedPipe, SegmentedComponent, CuttingComponent],
+  imports: [SizeRunComponent, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KpiComponent, ButtonDirective, IconComponent, DatePipe, NumberPipe, MoneyPipe, KgPipe, LocalizedPipe, SegmentedComponent, CuttingComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -348,8 +348,8 @@ export class ExpenseDialog {
           @if (o.sizes.length > 0 || canCut) {
             <div class="sizes" [attr.aria-label]="t('production.sizes.sizes')">
               @if (o.sizes.length > 0) {
-                <span class="dw-faint">{{ t('production.sizes.sizes') }}@if (o.size_grid) { · {{ o.size_grid.name }} }</span>
-                @for (s of o.sizes; track s.size) { <span class="size"><b>{{ s.size }}</b> {{ s.quantity | dwNumber }}</span> }
+                <span class="sizes-label"><b>{{ t('production.sizes.sizes') }}</b>@if (o.size_grid) { <span class="dw-faint">{{ o.size_grid.name }}</span> }</span>
+                <dw-size-run [sizes]="sizeRun().sizes" [quantities]="sizeRun().quantities" [totalLabel]="t('production.sizes.totalShort')" />
               }
               @if (canCut) {
                 <button pButton text size="small" type="button" class="size-edit" (click)="editSizes(o)"><dw-icon>{{ o.sizes.length > 0 ? 'edit' : 'straighten' }}</dw-icon>{{ t(o.sizes.length > 0 ? 'production.sizes.change' : 'production.sizes.assign') }}</button>
@@ -403,8 +403,8 @@ export class ExpenseDialog {
                           <tr>
                             <td>{{ row.waste_type?.name ?? t('production.waste.typeUnknown') }}</td>
                             <td class="num">{{ row.per_piece_kg === null ? '—' : ((+row.per_piece_kg * 1000 | dwNumber: 1) + ' g') }}</td>
-                            <td class="num">{{ row.planned_kg | dwKg }}</td>
-                            @if (e.produced_kg !== null) { <td class="num"><strong>{{ row.produced_kg | dwKg }}</strong></td> }
+                            <td class="num">{{ +row.planned_kg | dwNumber: (+row.planned_kg < 1 ? 3 : 1) }} kg</td>
+                            @if (e.produced_kg !== null) { <td class="num"><strong>@if (row.produced_kg === null) { — } @else { {{ +row.produced_kg | dwNumber: (+row.produced_kg < 1 ? 3 : 1) }} kg }</strong></td> }
                             <td class="num">
                               @if (row.lots === 0) { <span class="dw-faint">{{ t('production.waste.noLotOfType') }}</span> }
                               @else if (row.weighed_kg === null || +row.weighed_kg === 0) { <span class="dw-faint">{{ t('production.waste.notWeighed', { count: row.unweighed_lots }) }}</span> }
@@ -648,11 +648,10 @@ export class ExpenseDialog {
     .node { display: grid; padding: 4px 10px; border-radius: var(--dw-radius); } .node small { font-size: 11px; color: var(--dw-ink-3); text-transform: uppercase; letter-spacing: 0.04em; }
     .node.current { background: var(--dw-primary-soft, var(--dw-surface-2)); } .dates { margin-inline-start: auto; font-size: 13px; }
     .kpis { margin-block-end: var(--dw-4); }
-    .sizes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: calc(-1 * var(--dw-2)) 0 var(--dw-4); font-size: 13px; }
-    .sizes > span:first-child { margin-inline-end: var(--dw-1); }
-    .size { padding: 2px 10px; border-radius: 999px; background: var(--dw-surface); border: 1px solid var(--dw-line); font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .size b { font-weight: 650; margin-inline-end: 2px; }
-    .size-edit { margin-inline-start: 2px; }
+    .sizes { display: flex; flex-wrap: wrap; align-items: center; gap: var(--dw-3); margin: 0 0 var(--dw-4); padding: 10px 14px; border-radius: var(--dw-radius-lg); background: var(--dw-surface); box-shadow: var(--dw-shadow); }
+    .sizes-label { display: grid; font-size: 13px; line-height: 18px; } .sizes-label b { font-weight: 650; } .sizes-label span { font-size: 12px; }
+    .sizes dw-size-run { min-inline-size: 0; max-inline-size: 100%; }
+    .size-edit { margin-inline-start: auto; }
     .intro { margin: 0; padding: var(--dw-2) var(--dw-4) var(--dw-3); font-size: 13px; }
     .estimate { margin: 0 var(--dw-4) var(--dw-3); padding: var(--dw-2) var(--dw-3) var(--dw-3); border-radius: var(--dw-radius); background: var(--dw-surface-2); font-size: 13px; }
     .estimate p { margin: 0 0 var(--dw-2); } .estimate table { background: var(--dw-surface); }
@@ -747,6 +746,13 @@ export class OfDetailPage implements OnInit {
 
     return { kg: Math.abs(kg), pct: (Math.abs(kg) / expected) * 100, tone };
   }
+
+  /** The sizes of the OF and the pieces of each, as its size run shows them. */
+  protected readonly sizeRun = computed(() => {
+    const lines = this.of()?.sizes ?? [];
+
+    return { sizes: lines.map((line) => line.size), quantities: Object.fromEntries(lines.map((line) => [line.size, line.quantity])) as Record<string, number> };
+  });
 
   /** The sizes of the OF and the pieces of each, from a grid or picked one by one. */
   protected editSizes(o: ManufacturingOrder): void {
