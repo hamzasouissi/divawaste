@@ -62,6 +62,7 @@ return [
             'size_not_in_grid' => 'La taille « :size » n\'est pas dans la grille de tailles de l\'OF.',
             'size_in_use' => 'La taille « :size » a des quantités sur un OF : elle ne peut pas quitter la grille.',
             'size_unknown' => 'La taille « :size » n\'existe pas : ajoutez-la d\'abord dans Tailles.',
+            'material_not_in_article' => "Seules les matières premières de l'article sont consommées ici : ajoutez d'abord la matière à l'article.",
             'size_used' => 'La taille « :size » est utilisée par une grille ou un OF : elle ne peut pas être supprimée.',
             'size_order' => 'Donnez toutes les tailles, chacune une fois.',
             'waste_figure' => 'Indiquez la valeur de ce calcul (part, taux ou poids par unité).',

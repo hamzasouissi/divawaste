@@ -128,7 +128,7 @@ final class ProductionFinance
             ->get(['article_id', 'raw_material_id', 'quantity_per_piece'])->groupBy('article_id');
         $materialIds = $consumptions->flatten(1)->pluck('raw_material_id')->merge($planned->flatten(1)->pluck('raw_material_id'))->unique()->values();
         $materials = DB::table('raw_materials as m')->join('units as u', 'u.id', '=', 'm.unit_id')->whereIn('m.id', $materialIds)
-            ->get(['m.id', 'm.ulid', 'm.reference', 'm.name', 'u.code as unit'])->keyBy('id');
+            ->get(['m.id', 'm.ulid', 'm.reference', 'm.name', 'm.kind', 'u.code as unit'])->keyBy('id');
         $batches = DB::table('raw_material_batches as b')->leftJoin('production_suppliers as s', 's.id', '=', 'b.production_supplier_id')
             ->where('b.company_id', $companyId)->whereIn('b.raw_material_id', $materialIds)
             ->get(['b.id', 'b.ulid', 'b.raw_material_id', 'b.batch_number', 'b.quantity', 'b.unit_price', 'b.total_amount', 'b.delivery_cost', 'b.currency_code', 's.ulid as supplier', 's.name as supplier_name']);
@@ -157,10 +157,10 @@ final class ProductionFinance
             // --- Materials: planned against consumed, each consumption with where its cost comes from.
             $rows = [];
             foreach ($planned[$order->article_id] ?? [] as $line) {
-                $rows[(int) $line->raw_material_id] = ['planned' => bcmul((string) $line->quantity_per_piece, (string) $order->quantity_planned, 3), 'lines' => []];
+                $rows[(int) $line->raw_material_id] = ['planned' => bcmul((string) $line->quantity_per_piece, (string) $order->quantity_planned, 3), 'per_piece' => (string) $line->quantity_per_piece, 'lines' => []];
             }
             foreach ($consumptions[$id] ?? [] as $line) {
-                $rows[(int) $line->raw_material_id] ??= ['planned' => null, 'lines' => []];
+                $rows[(int) $line->raw_material_id] ??= ['planned' => null, 'per_piece' => null, 'lines' => []];
                 $rows[(int) $line->raw_material_id]['lines'][] = $line;
             }
             $known = '0.000';
@@ -214,7 +214,9 @@ final class ProductionFinance
                 $plannedCost = $plannedCost === null || ($row['planned'] !== null && $rowPlannedCost === null) ? null : bcadd($plannedCost, $rowPlannedCost ?? '0', 3);
                 $variance = $row['planned'] === null || $row['lines'] === [] ? null : bcsub($consumed, $row['planned'], 3);
                 $materialRows[] = [
-                    'material' => $material->ulid, 'reference' => $material->reference, 'name' => $material->name, 'unit' => $material->unit,
+                    'material' => $material->ulid, 'reference' => $material->reference, 'name' => $material->name, 'unit' => $material->unit, 'kind' => $material->kind,
+                    // A material of the article (with what one piece consumes), or one consumed beside it.
+                    'in_article' => $row['per_piece'] !== null, 'per_piece' => $row['per_piece'],
                     'planned' => $row['planned'], 'consumed' => $consumed, 'variance' => $variance,
                     'variance_pct' => $variance === null || bccomp((string) $row['planned'], '0', 3) <= 0 ? null : round((float) $variance / (float) $row['planned'] * 100, 1),
                     // How much of what was consumed names its received lot.

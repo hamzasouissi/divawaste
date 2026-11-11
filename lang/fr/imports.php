@@ -18,7 +18,6 @@ return [
         'articles' => [
             'reference' => 'Référence', 'name' => 'Désignation', 'family' => 'Famille', 'client' => 'Client', 'material' => 'Matière première',
             'quantity_per_piece' => 'Consommation par pièce',
-            'efficiency_pct' => 'Efficience du placement (%)',
         ],
         'orders' => [
             'order_number' => 'N° de commande', 'client' => 'Client', 'article' => 'Article', 'quantity' => 'Quantité', 'unit_price' => 'Prix de vente unitaire HT',
@@ -70,7 +69,6 @@ return [
         'unknown' => ':what inconnu(e) : « :value ».',
         'unit' => 'Unité inconnue : « :value » (attendu : m, kg ou pièce).',
         'nature' => 'Nature inconnue : « :value » (attendu : tissu, fil, fourniture, emballage, chimique ou autre).',
-        'efficiency' => 'Efficience invalide : « :value » (attendu : un pourcentage entre 0 et 100).',
         'unexpected' => 'Cette ligne n\'a pas pu être enregistrée.',
         'site_rights' => 'Vous ne pouvez pas créer de lots sur le site « :site ».',
         'zone_needed' => 'Le site « :site » a plusieurs zones et aucune aire de stockage : indiquez la zone.',

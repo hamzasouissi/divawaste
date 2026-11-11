@@ -627,10 +627,16 @@ quantity consumed **without a lot specified**, and the average purchase price. T
 Clicking an OF opens its page: the chain client → order → OF → article, then
 
 - **Étapes**: the stages, each on its site, with the pieces done.
-- **Matières consommées**: for each material, planned (consumption per piece × planned quantity), consumed, the gap,
-  and one line per **received lot** with its supplier, stage, date, quantity and cost. **Modifier les consommations**
-  edits them: 12 kg of lot A and 8 kg of lot B are two lines; if nobody knows which lot was used, leave **Lot non
-  précisé** — the application never picks one.
+- **Matières consommées**: one row per material of the article, its nature as an icon: planned (consumption per piece
+  × planned quantity, with the consumption per piece under it), consumed (or "Pas encore saisi"), a progress bar (red
+  above 100 %), the gap and the cost. A click on a row opens its **received lots**, each with its supplier, stage,
+  date, quantity and cost. On a phone, each material is a card: planned and consumed side by side.
+  **Saisir les consommations** edits them, one block per material **of the article** (only those: a material the
+  article does not list is refused until it is added to the article; one an OF already consumed before stays, marked
+  "Hors article"). Each block shows its planned and what is typed so far (red when above); one line per received lot:
+  12 kg of lot A and 8 kg of lot B are two lines; if nobody knows which lot was used, leave **Lot non précisé** — the
+  application never picks one. A new line takes the stage, site and date of the line above. Files and ERP imports of
+  consumptions are not restricted.
 - **Lots fabriqués**: the batches of finished goods, each with its number, date, quantity and status (fabriqué, livré,
   annulé). As soon as an OF has produced lots, its produced quantity is their sum.
 - **Lots de déchets**: the ordinary waste lots that name this OF, with a link to each; **Enregistrer un déchet** opens
@@ -684,16 +690,17 @@ gain could not be calculated and why; totals only add the gains that exist. **Ex
     weight ("Poids unitaire") and one waste type ("Type de déchet", by the name or code of a type of the company,
     never created from a file; its calculation follows the nature: cutting for a fabric, all of it for packaging, a
     loss rate to give for the rest);
-  - an **article** has a reference, a family, a client, and its **consommation par pièce** of each material.
-    For a fabric (a material in metres with its **laize** and **grammage**), the line also takes the **efficience** of
-    its placement (%); empty, the company's default applies (80 % until changed, "Modifier" above the list of articles).
+  - an **article** has a reference, a family, a client, and its **consommation par pièce** of each material, typed
+    in the unit of the material ("1,35 m / pièce"). An article says **no efficience**: the efficience belongs to each
+    matelas of an OF (Coupe tab). Before the matelas, the article's cutting waste is estimated at the company's
+    **efficience habituelle** (80 % until changed, "Modifier" at the foot of the Coupe tab of any OF).
     The list shows the number of materials and the **chute de coupe estimée** per piece; a click opens the
-    **article page**: the fabrics with consumption, laize, grammage, efficience, fabric and waste per piece and the
-    waste type each gives, the summary by type of waste, then the supplies (folded). The estimate is
-    consumption (m) × laize × grammage × (100 − efficience) %. The consumption is the gross one, from the placement
-    (marker length ÷ pieces in the marker): the waste is inside it. Supplies (buttons, labels, threads) and materials
-    without laize or grammage give no estimate rather than a wrong one. The efficience also comes in with the
-    composition file (column "Efficience"). Below the fabrics, **Fils, emballages et autres matières**: each material
+    **article page**: the waste of one piece by type (one bar, each type its grams and its share), the fabrics with
+    consumption, laize, grammage, fabric and waste per piece and the waste type each gives, then the supplies
+    (folded). The estimate is consumption (m) × laize × grammage × (100 − efficience habituelle) %. The consumption is
+    the gross one, from the placement (marker length ÷ pieces in the marker): the waste is inside it. Supplies
+    (buttons, labels, threads) and materials without laize or grammage give no estimate rather than a wrong one. A
+    composition file brings no efficience (an "Efficience" column is not read). Below the fabrics, **Fils, emballages et autres matières**: each material
     that leaves a waste without a placement, with its calculation and its grams per piece ("à compléter" when a figure
     is missing); then, folded, the supplies that leave nothing. The article's expected waste per piece is the cutting
     of its fabrics plus these.
@@ -716,7 +723,7 @@ gain could not be calculated and why; totals only add the gains that exist. **Ex
     grammage, what the article says the OF needs, and the waste type they give; "Autre tissu" adds a fabric the
     article does not list (an interlining, a lining). In each card, one row per **matelas**, typed in place: the
     **length** of the spread (m, its ends included), the **couches prévues**, after cutting the **couches coupées**,
-    the **efficience** (starting from the article's for that fabric, else the company's), and, only when the rolls
+    the **efficience** (starting from the company's efficience habituelle, said and changed at the foot of the tab), and, only when the rolls
     laid differ from the raw material, their **laize** or **grammage** (empty boxes show the raw material's in grey).
     A row is saved when a box is left; the figures follow the typing, with the working written under each row:
     fabric (m) = couches × length; fabric (kg) = m × laize × grammage; chute = kg × (100 − efficience) %.

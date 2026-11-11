@@ -47,7 +47,7 @@ class CuttingSpreadTest extends TestCase
         $fabric = $this->client()->postJson('/api/v1/production/materials', ['reference' => 'F22-G1', 'name' => 'Coton', 'unit' => 'm', 'width_cm' => '150', 'grammage_gsm' => '200'])->assertCreated()->json('data');
         $label = $this->client()->postJson('/api/v1/production/materials', ['reference' => 'LABEL', 'name' => 'Etiquette', 'unit' => 'piece'])->assertCreated()->json('data');
         $article = $this->client()->postJson('/api/v1/production/articles', ['reference' => 'IKA', 'name' => 'Veste', 'materials' => [
-            ['material' => $fabric['ulid'], 'quantity_per_piece' => '1.5', 'efficiency_pct' => '82'], ['material' => $label['ulid'], 'quantity_per_piece' => '1'],
+            ['material' => $fabric['ulid'], 'quantity_per_piece' => '1.5'], ['material' => $label['ulid'], 'quantity_per_piece' => '1'],
         ]])->assertCreated()->json('data');
 
         // The OF says its sizes: the pieces planned are their total; a size outside the grid is refused.
@@ -58,8 +58,8 @@ class CuttingSpreadTest extends TestCase
         $of = $this->client()->postJson('/api/v1/production/manufacturing-orders', $payload)->assertCreated()
             ->assertJsonPath('data.quantity_planned', 120)->assertJsonPath('data.size_grid.name', 'Adulte')->assertJsonPath('data.sizes.1', ['size' => 'M', 'quantity' => 40])
             ->assertJsonCount(1, 'data.cutting.fabrics')->assertJsonPath('data.cutting.fabrics.0.material.reference', 'F22-G1')
-            ->assertJsonPath('data.cutting.fabrics.0.article_m', '180.000')->assertJsonPath('data.cutting.fabrics.0.efficiency_pct', '82.00')
-            ->assertJsonPath('data.cutting.fabrics.0.efficiency_from', 'article')->assertJsonPath('data.cutting.fabrics.0.spreads', [])
+            ->assertJsonPath('data.cutting.fabrics.0.article_m', '180.000')->assertJsonPath('data.cutting.fabrics.0.efficiency_pct', '80.00')
+            ->assertJsonMissingPath('data.cutting.fabrics.0.efficiency_from')->assertJsonPath('data.cutting.fabrics.0.spreads', [])
             ->assertJsonPath('data.cutting.totals.spreads', 0)->assertJsonPath('data.cutting.totals.planned', null)
             ->assertJsonPath('data.waste.estimated.source', 'article')->json('data');
 
@@ -98,7 +98,7 @@ class CuttingSpreadTest extends TestCase
             ->assertCreated()->json('data');
         $added = $this->client()->postJson("/api/v1/production/manufacturing-orders/{$of['ulid']}/spreads", ['material' => $interlining['ulid'], 'length_m' => '2.1', 'efficiency_pct' => '88'] + $spread)
             ->assertCreated()->assertJsonPath('data.cutting.fabrics.1.material.reference', 'VESLINE')->assertJsonPath('data.cutting.fabrics.1.in_article', false)
-            ->assertJsonPath('data.cutting.fabrics.1.efficiency_from', 'company')->assertJsonPath('data.cutting.fabrics.1.planned.waste_kg', '0.302')
+            ->assertJsonPath('data.cutting.fabrics.1.efficiency_pct', '80.00')->assertJsonPath('data.cutting.fabrics.1.planned.waste_kg', '0.302')
             ->assertJsonPath('data.cutting.totals.planned.waste_kg', '6.804')->json('data');
         $this->client()->deleteJson("/api/v1/production/spreads/{$added['cutting']['fabrics'][1]['spreads'][0]['ulid']}")->assertOk()->assertJsonCount(1, 'data.cutting.fabrics');
 

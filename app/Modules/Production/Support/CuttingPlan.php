@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
  * depends on the fabric laid, they stay on the OF.
  *
  * Every fabric of the article is listed, with or without spreads, with the efficiency a new spread starts from: the
- * article's for that fabric, else the company's.
+ * company's usual one.
  */
 final class CuttingPlan
 {
@@ -33,7 +33,7 @@ final class CuttingPlan
     {
         $spreads = CuttingSpread::query()->where('production_order_id', $of->id)->orderBy('id')->get();
         $default = $this->cutting->defaultEfficiency();
-        $article = DB::table('article_materials')->where('article_id', $of->article_id)->orderBy('id')->get(['raw_material_id', 'quantity_per_piece', 'efficiency_pct']);
+        $article = DB::table('article_materials')->where('article_id', $of->article_id)->orderBy('id')->get(['raw_material_id', 'quantity_per_piece']);
         $materials = DB::table('raw_materials')->whereIn('id', $article->pluck('raw_material_id')->merge($spreads->pluck('raw_material_id'))->unique())
             ->get(['id', 'ulid', 'reference', 'name', 'unit_id', 'width_cm', 'grammage_gsm'])->keyBy('id');
         $consumed = DB::table('production_order_consumptions')->where('production_order_id', $of->id)->groupBy('raw_material_id')
@@ -57,8 +57,8 @@ final class CuttingPlan
                 'in_article' => $line !== null,
                 // What the article says the OF needs of it: its consumption per piece for the pieces planned.
                 'article_m' => $line === null ? null : $round(bcmul((string) $line->quantity_per_piece, (string) $of->quantity_planned, 6)),
-                'efficiency_pct' => $line?->efficiency_pct !== null ? (string) $line->efficiency_pct : $default,
-                'efficiency_from' => $line?->efficiency_pct !== null ? 'article' : 'company',
+                // The efficiency a new spread starts from: the company's usual one.
+                'efficiency_pct' => $default,
                 // The waste it gives, each type with its share.
                 'waste_types' => array_values(array_map(fn (array $line) => ['waste_type' => $this->cutting->type($line['type'] ?: null), 'share_pct' => $line['pct']],
                     array_filter($waste['lines'], fn (array $line) => $line['method'] === 'cutting'))),
