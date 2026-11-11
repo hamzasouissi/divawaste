@@ -21,7 +21,7 @@ import { KpiComponent, PageHeaderComponent, StatusComponent } from '../../ui/pag
 import { SELECT } from '../../ui/select';
 import { StateComponent } from '../../ui/state';
 import { CreateLotDialog } from '../lots/lot-dialogs';
-import { CuttingComponent } from './cutting';
+import { CuttingComponent } from './spreads';
 import { ManufacturingOrderDialog } from './orders';
 import {
   AMOUNT, ConsumedMaterial, DECIMAL, EXPENSE_CATEGORIES, ManufacturingOrder, OfExpense, OfWaste, ProducedLot, ProducedLotStatus, ProductionLists, blankToNull, decimal, statusTone,
@@ -343,6 +343,14 @@ export class ExpenseDialog {
             <span class="dates dw-faint">{{ o.started_on | dwDate }}@if (o.finished_on) { → {{ o.finished_on | dwDate }} }</span>
           </nav>
 
+          <!-- The sizes it makes, for information: the cutting waste follows the fabric laid, not the sizes. -->
+          @if (o.sizes.length > 0) {
+            <div class="sizes" [attr.aria-label]="t('production.sizes.sizes')">
+              <span class="dw-faint">{{ t('production.sizes.sizes') }}@if (o.size_grid) { · {{ o.size_grid.name }} }</span>
+              @for (s of o.sizes; track s.size) { <span class="size"><b>{{ s.size }}</b> {{ s.quantity | dwNumber }}</span> }
+            </div>
+          }
+
           <div class="dw-grid-4 kpis">
             <dw-kpi [label]="t('production.of.producedPlanned')" [value]="(o.quantity_produced === null ? '—' : (o.quantity_produced | dwNumber)) + ' / ' + (o.quantity_planned | dwNumber)"
               [hint]="o.produced?.source === 'lots' ? t('production.of.fromLots', { count: liveLots() }) : t('production.of.typed')" />
@@ -628,12 +636,16 @@ export class ExpenseDialog {
     </ng-container>
   `,
   styles: `
-    .tabs { margin-block-end: 16px; }
+    .tabs { margin-block-end: 16px; max-inline-size: 100%; overflow-x: auto; scrollbar-width: none; }
     .chain { display: flex; align-items: center; flex-wrap: wrap; gap: var(--dw-2); margin-block-end: var(--dw-4); padding: var(--dw-3) var(--dw-4); background: var(--dw-surface); border: 1px solid var(--dw-line); border-radius: var(--dw-radius); }
     .chain > dw-icon { color: var(--dw-ink-3); }
     .node { display: grid; padding: 4px 10px; border-radius: var(--dw-radius); } .node small { font-size: 11px; color: var(--dw-ink-3); text-transform: uppercase; letter-spacing: 0.04em; }
     .node.current { background: var(--dw-primary-soft, var(--dw-surface-2)); } .dates { margin-inline-start: auto; font-size: 13px; }
     .kpis { margin-block-end: var(--dw-4); }
+    .sizes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: calc(-1 * var(--dw-2)) 0 var(--dw-4); font-size: 13px; }
+    .sizes > span:first-child { margin-inline-end: var(--dw-1); }
+    .size { padding: 2px 10px; border-radius: 999px; background: var(--dw-surface); border: 1px solid var(--dw-line); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .size b { font-weight: 650; margin-inline-end: 2px; }
     .intro { margin: 0; padding: var(--dw-2) var(--dw-4) var(--dw-3); font-size: 13px; }
     .estimate { margin: 0 var(--dw-4) var(--dw-3); padding: var(--dw-2) var(--dw-3) var(--dw-3); border-radius: var(--dw-radius); background: var(--dw-surface-2); font-size: 13px; }
     .estimate p { margin: 0 0 var(--dw-2); } .estimate table { background: var(--dw-surface); }
