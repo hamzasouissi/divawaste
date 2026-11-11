@@ -367,8 +367,6 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
         'materials' => ['sometimes', 'array', 'max:50'],
         'materials.*.material' => ['required', 'string', 'distinct', new TenantExists(RawMaterial::class)],
         'materials.*.quantity_per_piece' => ['required', 'decimal:0,4', 'gt:0'],
-        // The placement efficiency of a fabric (%); empty: the company's default.
-        'materials.*.efficiency_pct' => ['nullable', 'decimal:0,2', 'gt:0', 'lte:100'],
     ];
     $saveArticle = function (Article $article, array $input) use ($id) {
         return DB::transaction(function () use ($article, $input, $id) {
@@ -377,7 +375,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
             if (array_key_exists('materials', $input)) {
                 DB::table('article_materials')->where('article_id', $article->id)->delete();
                 DB::table('article_materials')->insert(array_map(fn (array $line) => ['company_id' => $article->company_id, 'article_id' => $article->id,
-                    'raw_material_id' => $id(RawMaterial::class, $line['material']), 'quantity_per_piece' => $line['quantity_per_piece'], 'efficiency_pct' => $line['efficiency_pct'] ?? null,
+                    'raw_material_id' => $id(RawMaterial::class, $line['material']), 'quantity_per_piece' => $line['quantity_per_piece'],
                     'created_at' => now(), 'updated_at' => now()], $input['materials']));
             }
 
@@ -560,12 +558,18 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
         'consumptions.*.notes' => ['nullable', 'string', 'max:500'],
     ];
     // What the OF consumed. One line per material and received lot: 12 kg of lot A and 8 kg of lot B are two lines. A
-    // line without a lot is "lot non précisé": it is kept as such, no lot is ever chosen for it.
+    // line without a lot is "lot non précisé": it is kept as such, no lot is ever chosen for it. Only the materials of
+    // the article are consumed here (and those the OF already consumed, kept as they were).
     $saveConsumptions = function (ProductionOrder $of, array $lines) use ($id) {
         $base = ['company_id' => $of->getAttribute('company_id'), 'production_order_id' => $of->id, 'created_at' => now(), 'updated_at' => now()];
+        $allowed = DB::table('article_materials')->where('article_id', $of->getAttribute('article_id'))->pluck('raw_material_id')
+            ->merge(DB::table('production_order_consumptions')->where('production_order_id', $of->id)->pluck('raw_material_id'))->map(fn ($id) => (int) $id)->all();
         DB::table('production_order_consumptions')->where('production_order_id', $of->id)->delete();
-        DB::table('production_order_consumptions')->insert(array_map(function (array $line) use ($base, $id) {
+        DB::table('production_order_consumptions')->insert(array_map(function (array $line) use ($base, $id, $allowed) {
             $materialId = $id(RawMaterial::class, $line['material']);
+            if (! in_array($materialId, $allowed, true)) {
+                throw ValidationException::withMessages(['consumptions' => [__('validation.custom.production.material_not_in_article')]]);
+            }
             $batchId = isset($line['batch']) ? DB::table('raw_material_batches')->where('raw_material_id', $materialId)->where('ulid', strtoupper($line['batch']))->value('id') : null;
             if (isset($line['batch']) && $batchId === null) {
                 throw ValidationException::withMessages(['consumptions' => [__('validation.custom.production.batch_of_material')]]);

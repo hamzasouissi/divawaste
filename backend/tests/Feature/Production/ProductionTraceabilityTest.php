@@ -160,13 +160,19 @@ class ProductionTraceabilityTest extends TestCase
         $this->consume($second['ulid'], [['material' => $material, 'batch' => $l1['ulid'], 'quantity' => '95']]);
         $this->assertTrue($this->client()->getJson('/api/v1/production/received-lots?search=L1')->json('data.0.over_consumed'));
 
-        // A lot of another material cannot be named, and a material without any price has an unknown cost — never zero.
+        // Only the materials of the article are consumed: a thread it does not list is refused until it lists it.
         $other = $this->client()->postJson('/api/v1/production/materials', ['reference' => 'FIL', 'name' => 'Fil', 'unit' => 'kg'])->assertCreated()->json('data');
+        $this->client()->putJson("/api/v1/production/manufacturing-orders/{$second['ulid']}/consumptions", ['consumptions' => [['material' => $other['ulid'], 'quantity' => '1']]])
+            ->assertUnprocessable()->assertJsonPath('errors.consumptions.0', __('validation.custom.production.material_not_in_article'));
+        $this->client()->putJson("/api/v1/production/articles/{$this->r['article']['ulid']}", ['reference' => 'JEAN', 'name' => 'Jean', 'client' => $this->r['client']['ulid'],
+            'materials' => [['material' => $material, 'quantity_per_piece' => '0.02'], ['material' => $other['ulid'], 'quantity_per_piece' => '0.01']]])->assertOk();
+        // A lot of another material cannot be named, and a material without any price has an unknown cost — never zero.
         $this->client()->putJson("/api/v1/production/manufacturing-orders/{$second['ulid']}/consumptions", ['consumptions' => [['material' => $other['ulid'], 'batch' => $l1['ulid'], 'quantity' => '1']]])
             ->assertUnprocessable()->assertJsonValidationErrors(['consumptions']);
         $unknown = $this->consume($second['ulid'], [['material' => $material, 'batch' => $l1['ulid'], 'quantity' => '30'], ['material' => $other['ulid'], 'quantity' => '5']]);
         $this->assertSame(['known' => '300.000', 'estimated' => '0.000', 'total' => '300.000', 'complete' => false, 'unknown_lines' => 1], $unknown['finance']['material_cost']);
         $this->assertSame(['unknown', 'no_price', null], [$unknown['materials'][1]['lines'][0]['basis'], $unknown['materials'][1]['lines'][0]['reason'], $unknown['materials'][1]['cost']]);
+        $this->assertSame([true, '0.0100', '5.000'], [$unknown['materials'][1]['in_article'], $unknown['materials'][1]['per_piece'], $unknown['materials'][1]['planned']]);
         $this->assertNull($unknown['finance']['unit_cost']);
 
         // Where the material went, from its own page.

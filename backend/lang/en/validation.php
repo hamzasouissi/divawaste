@@ -191,6 +191,7 @@ return [
             'size_not_in_grid' => 'Size “:size” is not in the size grid of the MO.',
             'size_in_use' => 'Size “:size” has quantities on an MO: it cannot leave the grid.',
             'size_unknown' => 'Size “:size” does not exist: add it first in Sizes.',
+            'material_not_in_article' => 'Only the raw materials of the article are consumed here: add the material to the article first.',
             'size_used' => 'Size “:size” is used by a grid or an MO: it cannot be deleted.',
             'size_order' => 'Give every size, each once.',
             'waste_figure' => 'Give the figure of this calculation (share, rate or weight per unit).',
