@@ -49,6 +49,8 @@ cd "$API"
 php -m | grep -qi '^gd$' || { apt-get install -y php8.3-gd >/dev/null && systemctl reload php8.3-fpm; }
 COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --quiet
 php artisan migrate --force
+# Rights added since the platform was installed reach the roles (the administrator roles get them all).
+php artisan db:seed --class=AuthorizationSeeder --force
 
 say "3/8 Settings (.env)"
 # Testing: a registration's email counts as confirmed at once (no link to click; invitations give their link back)

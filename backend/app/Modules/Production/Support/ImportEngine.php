@@ -373,10 +373,19 @@ final class ImportEngine
             'production_supplier_id' => $v['supplier'] === null ? null : $this->party(ProductionSupplier::class, $v['supplier'], 'suppliers', $also),
             'unit_id' => $unit === null && $existing !== null ? null : DB::table('units')->where('code', $unit ?? 'm')->value('id'),
             'color_label' => $v['color_label'], 'grammage_gsm' => $v['grammage_gsm'], 'width_cm' => $v['width_cm'], 'category' => $v['category'],
-            // A type of waste of the company, by its code or its name: never created from a file.
-            'waste_type_id' => $v['waste_type'] === null ? null : (WasteType::query()->where('code', $v['waste_type'])->orWhere('name', $v['waste_type'])->value('id')
-                ?? throw new RuntimeException(__('imports.errors.unknown', ['what' => __('imports.fields.materials.waste_type'), 'value' => $v['waste_type']]))),
         ], fn ($value) => $value !== null));
+        // A type of waste of the company, by its code or its name, never created from a file: the material leaves it all.
+        if ($v['waste_type'] !== null) {
+            $type = (int) (WasteType::query()->where('code', $v['waste_type'])->orWhere('name', $v['waste_type'])->value('id')
+                ?? throw new RuntimeException(__('imports.errors.unknown', ['what' => __('imports.fields.materials.waste_type'), 'value' => $v['waste_type']])));
+            $material = RawMaterial::query()->where('reference', $v['reference'])->firstOrFail();
+            $cutting = app(CuttingWaste::class);
+            $current = $cutting->shares([(int) $material->id])[(int) $material->id];
+            if ($current !== [['type' => $type, 'pct' => '100.00']]) {
+                $cutting->save((int) $material->getAttribute('company_id'), (int) $material->id, [['type' => $type, 'pct' => '100.00']]);
+                $outcome = $outcome === 'unchanged' ? 'updated' : $outcome;
+            }
+        }
 
         if ($v['batch_number'] !== null) {
             $material = RawMaterial::query()->where('reference', $v['reference'])->firstOrFail();

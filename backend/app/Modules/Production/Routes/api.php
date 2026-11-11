@@ -17,7 +17,9 @@ use App\Modules\Production\Models\ProductionOrderExpense;
 use App\Modules\Production\Models\ProductionSupplier;
 use App\Modules\Production\Models\RawMaterial;
 use App\Modules\Production\Models\RawMaterialBatch;
+use App\Modules\Production\Models\Size;
 use App\Modules\Production\Models\SizeGrid;
+use App\Modules\Production\Support\CuttingWaste;
 use App\Modules\Production\Support\ErpFeeds;
 use App\Modules\Production\Support\FinanceReport;
 use App\Modules\Production\Support\ImportEngine;
@@ -157,9 +159,29 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
         'composition.*.pct' => ['required', 'decimal:0,2', 'gt:0', 'lte:100'],
         'notes' => ['nullable', 'string', 'max:1000'],
         'is_active' => ['sometimes', 'boolean'],
-        // The waste it leaves when used; empty: a fabric leaves the company's cutting scraps.
+        // The waste it leaves when used, each type with its share (100 % in all); empty: a fabric leaves the company's
+        // cutting scraps. `waste_type` alone is one type at 100 %.
         'waste_type' => ['sometimes', 'nullable', 'string', new TenantExists(WasteType::class)],
+        'waste_types' => ['sometimes', 'array', 'max:10'],
+        'waste_types.*.waste_type' => ['required', 'string', 'distinct', new TenantExists(WasteType::class)],
+        'waste_types.*.share_pct' => ['required', 'decimal:0,2', 'gt:0', 'lte:100'],
     ];
+    // The waste types sent, as [type id, share], or null when the form does not speak of them.
+    $materialWaste = function (array $input) use ($id): ?array {
+        if (array_key_exists('waste_types', $input)) {
+            $lines = array_map(fn (array $line) => ['type' => $id(WasteType::class, $line['waste_type']), 'pct' => bcadd((string) $line['share_pct'], '0', 2)], $input['waste_types']);
+            if ($lines !== [] && bccomp(array_reduce($lines, fn (string $sum, array $line) => bcadd($sum, $line['pct'], 2), '0'), '100', 2) !== 0) {
+                throw ValidationException::withMessages(['waste_types' => [__('validation.custom.production.waste_shares')]]);
+            }
+
+            return $lines;
+        }
+        if (array_key_exists('waste_type', $input)) {
+            return $input['waste_type'] === null ? [] : [['type' => $id(WasteType::class, $input['waste_type']), 'pct' => '100.00']];
+        }
+
+        return null;
+    };
     $materialAttributes = function (array $input, ReferenceCodes $codes) use ($id) {
         $composition = $input['composition'] ?? [];
         if ($composition !== [] && bccomp(array_reduce($composition, fn (string $sum, array $line) => bcadd($sum, (string) $line['pct'], 2), '0'), '100', 2) !== 0) {
@@ -171,8 +193,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
             'unit_id' => $codes->id('units', $input['unit']), 'color_family_id' => $codes->id('color_families', $input['color_family'] ?? null),
             'color_label' => $input['color_label'] ?? null, 'grammage_gsm' => $input['grammage_gsm'] ?? null, 'width_cm' => $input['width_cm'] ?? null, 'composition' => $composition === [] ? null : $composition,
             'notes' => $input['notes'] ?? null, 'is_active' => (bool) ($input['is_active'] ?? true),
-            // Not sent: left as it is (an older screen does not know it).
-        ] + (array_key_exists('waste_type', $input) ? ['waste_type_id' => $id(WasteType::class, $input['waste_type'])] : []);
+        ];
     };
 
     Route::get('materials', function (Request $request, ProductionData $data) use ($view, $like, $page, $paged) {
@@ -185,15 +206,33 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
             ->orderBy('reference')->paginate($page($request)), fn (RawMaterial $material) => $data->material($material));
     })->name('production.materials.index');
 
-    Route::post('materials', function (Request $request, ProductionData $data, ReferenceCodes $codes) use ($manage, $materialRules, $materialAttributes) {
+    Route::post('materials', function (Request $request, ProductionData $data, ReferenceCodes $codes, CuttingWaste $cutting) use ($manage, $materialRules, $materialAttributes, $materialWaste) {
         $manage($request);
+        $input = $request->validate($materialRules());
+        $waste = $materialWaste($input);
+        $material = DB::transaction(function () use ($input, $codes, $materialAttributes, $waste, $cutting) {
+            $material = RawMaterial::query()->create($materialAttributes($input, $codes));
+            if ($waste !== null) {
+                $cutting->save((int) $material->getAttribute('company_id'), (int) $material->id, $waste);
+            }
 
-        return response()->json(['data' => $data->material(RawMaterial::query()->create($materialAttributes($request->validate($materialRules()), $codes)))], 201);
+            return $material;
+        });
+
+        return response()->json(['data' => $data->material($material)], 201);
     })->name('production.materials.store');
 
-    Route::put('materials/{material}', function (Request $request, RawMaterial $material, ProductionData $data, ReferenceCodes $codes) use ($manage, $materialRules, $materialAttributes) {
+    Route::put('materials/{material}', function (Request $request, RawMaterial $material, ProductionData $data, ReferenceCodes $codes, CuttingWaste $cutting) use ($manage, $materialRules, $materialAttributes, $materialWaste) {
         $manage($request);
-        $material->update($materialAttributes($request->validate($materialRules($material)), $codes));
+        $input = $request->validate($materialRules($material));
+        // Not sent: the waste types are left as they are (an older screen does not know them).
+        $waste = $materialWaste($input);
+        DB::transaction(function () use ($material, $input, $codes, $materialAttributes, $waste, $cutting) {
+            $material->update($materialAttributes($input, $codes));
+            if ($waste !== null) {
+                $cutting->save((int) $material->getAttribute('company_id'), (int) $material->id, $waste);
+            }
+        });
 
         return response()->json(['data' => $data->material($material)]);
     })->name('production.materials.update');
@@ -517,26 +556,38 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
         }
         ProductionVolumes::sync((int) $of->getAttribute('company_id'));
     };
-    $saveOf = function (ProductionOrder $of, array $input) use ($id, $saveConsumptions) {
-        return DB::transaction(function () use ($of, $input, $id, $saveConsumptions) {
+    /*
+     * The sizes of an OF and the pieces of each: from a grid (its sizes, in its order), or picked one by one from the
+     * company's sizes (in the company's order). A size outside the grid, or unknown to the company, is refused.
+     *
+     * @return array{0: int|null, 1: list<array{size: string, quantity: int}>|null}
+     */
+    $ofSizes = function (array $input): array {
+        $grid = ($input['size_grid'] ?? null) === null ? null : SizeGrid::query()->where('ulid', strtoupper($input['size_grid']))->firstOrFail();
+        $given = collect($input['sizes'] ?? [])->keyBy(fn (array $line) => trim($line['size']));
+        $known = $grid !== null ? $grid->sizes : Size::query()->orderBy('position')->orderBy('id')->pluck('code')->all();
+        if (($unknown = $given->keys()->diff($known))->isNotEmpty()) {
+            throw ValidationException::withMessages(['sizes' => [__($grid !== null ? 'validation.custom.production.size_not_in_grid' : 'validation.custom.production.size_unknown', ['size' => $unknown->first()])]]);
+        }
+        if ($grid === null && $given->isEmpty()) {
+            return [null, null];
+        }
+        $sizes = collect($known)->filter(fn (string $size) => $grid !== null || $given->has($size))
+            ->map(fn (string $size) => ['size' => $size, 'quantity' => (int) ($given[$size]['quantity'] ?? 0)])->values()->all();
+
+        return [$grid?->id, $sizes];
+    };
+    $saveOf = function (ProductionOrder $of, array $input) use ($id, $saveConsumptions, $ofSizes) {
+        return DB::transaction(function () use ($of, $input, $id, $saveConsumptions, $ofSizes) {
             $articleId = $id(Article::class, $input['article']);
             $orderId = $id(CustomerOrder::class, $input['customer_order'] ?? null);
             // An OF made for an order makes an article of that order.
             if ($orderId !== null && ! DB::table('customer_order_lines')->where('customer_order_id', $orderId)->where('article_id', $articleId)->exists()) {
                 throw new BusinessRuleViolation('ARTICLE_NOT_IN_ORDER', 'This article is not on the chosen order.');
             }
-            // The grid and the quantity of each size; a size outside the grid is refused, the grid's order is kept.
-            $sizes = $of->getAttribute('size_quantities');
-            $gridId = $of->getAttribute('size_grid_id');
-            if (array_key_exists('size_grid', $input)) {
-                $grid = $input['size_grid'] === null ? null : SizeGrid::query()->where('ulid', strtoupper($input['size_grid']))->firstOrFail();
-                $gridId = $grid?->id;
-                $given = collect($input['sizes'] ?? [])->keyBy('size');
-                if ($grid !== null && ($unknown = $given->keys()->diff($grid->sizes))->isNotEmpty()) {
-                    throw ValidationException::withMessages(['sizes' => [__('validation.custom.production.size_not_in_grid', ['size' => $unknown->first()])]]);
-                }
-                $sizes = $grid === null ? null : collect($grid->sizes)->map(fn (string $size) => ['size' => $size, 'quantity' => (int) ($given[$size]['quantity'] ?? 0)])->values()->all();
-            }
+            // The grid and the quantity of each size, when the form speaks of them.
+            [$gridId, $sizes] = array_key_exists('size_grid', $input) || array_key_exists('sizes', $input)
+                ? $ofSizes($input) : [$of->getAttribute('size_grid_id'), $of->getAttribute('size_quantities')];
             $sizedTotal = $sizes === null ? 0 : array_sum(array_column($sizes, 'quantity'));
             $of->fill(['order_number' => trim($input['order_number']), 'article_id' => $articleId, 'customer_order_id' => $orderId,
                 'size_grid_id' => $gridId, 'size_quantities' => $sizes,
@@ -595,6 +646,22 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
         return response()->json(['data' => $data->manufacturingOrder($of, detailed: true)]);
     })->name('production.manufacturing-orders.update');
 
+    // Only the sizes of the OF and the pieces of each, from its page: the planned quantity becomes their total.
+    Route::put('manufacturing-orders/{of}/sizes', function (Request $request, ProductionOrder $of, ProductionData $data) use ($manage, $ofSizes) {
+        $manage($request);
+        $input = $request->validate([
+            'size_grid' => ['nullable', 'string', new TenantExists(SizeGrid::class)],
+            'sizes' => ['present', 'array', 'max:40'],
+            'sizes.*.size' => ['required', 'string', 'max:20', 'distinct'],
+            'sizes.*.quantity' => ['required', 'integer', 'between:0,100000000'],
+        ]);
+        [$gridId, $sizes] = $ofSizes($input);
+        $total = $sizes === null ? 0 : array_sum(array_column($sizes, 'quantity'));
+        $of->forceFill(['size_grid_id' => $gridId, 'size_quantities' => $sizes] + ($total > 0 ? ['quantity_planned' => $total] : []))->save();
+
+        return response()->json(['data' => $data->manufacturingOrder($of, detailed: true)]);
+    })->name('production.manufacturing-orders.sizes');
+
     // Only what the OF consumed, without sending the whole order again.
     Route::put('manufacturing-orders/{of}/consumptions', function (Request $request, ProductionOrder $of, ProductionData $data) use ($manage, $ofRules, $saveConsumptions) {
         $manage($request);
@@ -606,7 +673,69 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
     })->name('production.manufacturing-orders.consumptions');
 
     /*
-     * Size grids: the company's lists of sizes, in order, reused by its OFs. A size some OF uses stays in its grid.
+     * Sizes: the company's sizes, in its order (XS S M L XL, 2A 4A 6A…). Grids and OFs take their sizes here; a size a
+     * grid or an OF names stays.
+     */
+    $sizeCodes = fn () => Size::query()->orderBy('position')->orderBy('id')->pluck('code')->all();
+    $sizeUse = function (string $code): array {
+        $grids = SizeGrid::query()->get(['sizes'])->filter(fn (SizeGrid $grid) => in_array($code, $grid->sizes, true))->count();
+        $orders = DB::table('production_orders')->whereNotNull('size_quantities')->pluck('size_quantities')
+            ->filter(fn ($json) => in_array($code, array_column(json_decode((string) $json, true) ?? [], 'size'), true))->count();
+
+        return ['grids' => $grids, 'orders' => $orders];
+    };
+    $sizeRow = fn (Size $size) => ['ulid' => $size->ulid, 'code' => $size->code] + $sizeUse($size->code);
+
+    Route::get('sizes', function (Request $request) use ($view, $sizeRow) {
+        $view($request);
+
+        return ['data' => Size::query()->orderBy('position')->orderBy('id')->get()->map($sizeRow)->values()];
+    })->name('production.sizes.index');
+
+    // One size or several typed at once ("XS S M L"), added after the others in that order; one already there is skipped.
+    Route::post('sizes', function (Request $request) use ($manage, $sizeRow) {
+        $manage($request);
+        $input = $request->validate(['codes' => ['required', 'array', 'min:1', 'max:40'], 'codes.*' => ['required', 'string', 'max:20']]);
+        $position = (int) Size::query()->max('position');
+        $known = Size::query()->pluck('code')->map(fn (string $code) => mb_strtolower($code))->all();
+        foreach (array_unique(array_map('trim', $input['codes'])) as $code) {
+            if ($code !== '' && ! in_array(mb_strtolower($code), $known, true)) {
+                Size::query()->create(['code' => $code, 'position' => $position += 10]);
+                $known[] = mb_strtolower($code);
+            }
+        }
+
+        return response()->json(['data' => Size::query()->orderBy('position')->orderBy('id')->get()->map($sizeRow)->values()], 201);
+    })->name('production.sizes.store');
+
+    // The company's order of its sizes: every size, once, in the new order.
+    Route::put('sizes/order', function (Request $request) use ($manage, $sizeRow) {
+        $manage($request);
+        $input = $request->validate(['sizes' => ['required', 'array'], 'sizes.*' => ['required', 'string', 'distinct']]);
+        $sizes = Size::query()->get()->keyBy(fn (Size $size) => $size->ulid);
+        $ulids = array_map('strtoupper', $input['sizes']);
+        if (count($ulids) !== $sizes->count() || array_diff($ulids, $sizes->keys()->all()) !== []) {
+            throw ValidationException::withMessages(['sizes' => [__('validation.custom.production.size_order')]]);
+        }
+        DB::transaction(fn () => array_map(fn (string $ulid, int $index) => $sizes[$ulid]->update(['position' => ($index + 1) * 10]), $ulids, array_keys($ulids)));
+
+        return ['data' => Size::query()->orderBy('position')->orderBy('id')->get()->map($sizeRow)->values()];
+    })->name('production.sizes.order');
+
+    Route::delete('sizes/{size}', function (Request $request, Size $size) use ($manage, $sizeUse) {
+        $manage($request);
+        $use = $sizeUse($size->code);
+        if ($use['grids'] > 0 || $use['orders'] > 0) {
+            throw ValidationException::withMessages(['size' => [__('validation.custom.production.size_used', ['size' => $size->code])]]);
+        }
+        $size->delete();
+
+        return response()->noContent();
+    })->name('production.sizes.destroy');
+
+    /*
+     * Size grids: lists of the company's sizes reused by its OFs (Adulte: S M L XL), in the company's order. A size some
+     * OF uses stays in its grid.
      */
     $gridRules = fn (?SizeGrid $grid = null) => [
         'name' => ['required', 'string', 'max:80', Rule::unique('size_grids', 'name')->where('company_id', app(TenantContext::class)->companyId())->ignore($grid?->id)],
@@ -614,6 +743,16 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
         'sizes.*' => ['required', 'string', 'max:20', 'distinct'],
         'is_active' => ['sometimes', 'boolean'],
     ];
+    // The sizes of a grid are the company's, in the company's order.
+    $gridSizes = function (array $sizes) use ($sizeCodes): array {
+        $known = $sizeCodes();
+        $sizes = array_map('trim', $sizes);
+        if (($unknown = array_diff($sizes, $known)) !== []) {
+            throw ValidationException::withMessages(['sizes' => [__('validation.custom.production.size_unknown', ['size' => reset($unknown)])]]);
+        }
+
+        return array_values(array_intersect($known, $sizes));
+    };
     $gridRow = fn (SizeGrid $grid) => ['ulid' => $grid->ulid, 'name' => $grid->name, 'sizes' => $grid->sizes, 'is_active' => (bool) $grid->is_active,
         'orders' => DB::table('production_orders')->where('size_grid_id', $grid->id)->count()];
 
@@ -623,18 +762,18 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
         return ['data' => SizeGrid::query()->when(! $request->boolean('with_inactive'), fn (Builder $query) => $query->where('is_active', true))->orderBy('name')->get()->map($gridRow)->values()];
     })->name('production.size-grids.index');
 
-    Route::post('size-grids', function (Request $request) use ($manage, $gridRules, $gridRow) {
+    Route::post('size-grids', function (Request $request) use ($manage, $gridRules, $gridRow, $gridSizes) {
         $manage($request);
         $input = $request->validate($gridRules());
-        $grid = SizeGrid::query()->create(['name' => trim($input['name']), 'sizes' => array_map('trim', $input['sizes']), 'is_active' => $input['is_active'] ?? true]);
+        $grid = SizeGrid::query()->create(['name' => trim($input['name']), 'sizes' => $gridSizes($input['sizes']), 'is_active' => $input['is_active'] ?? true]);
 
         return response()->json(['data' => $gridRow($grid)], 201);
     })->name('production.size-grids.store');
 
-    Route::put('size-grids/{grid}', function (Request $request, SizeGrid $grid) use ($manage, $gridRules, $gridRow) {
+    Route::put('size-grids/{grid}', function (Request $request, SizeGrid $grid) use ($manage, $gridRules, $gridRow, $gridSizes) {
         $manage($request);
         $input = $request->validate($gridRules($grid));
-        $sizes = array_map('trim', $input['sizes']);
+        $sizes = $gridSizes($input['sizes']);
         // A size already given quantities by an OF cannot leave the grid: those figures would lose their size.
         $used = DB::table('production_orders')->where('size_grid_id', $grid->id)->whereNotNull('size_quantities')->pluck('size_quantities')
             ->flatMap(fn ($json) => collect(json_decode((string) $json, true))->filter(fn (array $line) => (int) $line['quantity'] > 0)->pluck('size'))->unique();
