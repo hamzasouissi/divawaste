@@ -18,8 +18,6 @@ use App\Modules\Production\Models\ProductionSupplier;
 use App\Modules\Production\Models\RawMaterial;
 use App\Modules\Production\Models\RawMaterialBatch;
 use App\Modules\Production\Models\SizeGrid;
-use App\Modules\Production\Support\CuttingPlan;
-use App\Modules\Production\Support\CuttingWaste;
 use App\Modules\Production\Support\ErpFeeds;
 use App\Modules\Production\Support\FinanceReport;
 use App\Modules\Production\Support\ImportEngine;
@@ -637,7 +635,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
         $manage($request);
         $input = $request->validate($gridRules($grid));
         $sizes = array_map('trim', $input['sizes']);
-        // A size already given quantities by an OF, or cut in a spread, cannot leave the grid: those figures would lose their size.
+        // A size already given quantities by an OF cannot leave the grid: those figures would lose their size.
         $used = DB::table('production_orders')->where('size_grid_id', $grid->id)->whereNotNull('size_quantities')->pluck('size_quantities')
             ->flatMap(fn ($json) => collect(json_decode((string) $json, true))->filter(fn (array $line) => (int) $line['quantity'] > 0)->pluck('size'))->unique();
         if (($removed = $used->diff($sizes))->isNotEmpty()) {
@@ -649,47 +647,37 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
     })->name('production.size-grids.update');
 
     /*
-     * Cutting (coupe): the spreads (matelas) of an OF, each a fabric, a placement (length, efficiency, pieces of each size
-     * per layer) and its layers, planned then done. They give the fabric used and the cutting waste expected.
+     * Cutting (coupe): the spreads (matelas) of an OF, each a fabric, its length, its layers planned then done and the
+     * efficiency of its placement; the laize and grammage of the rolls laid when they differ from the raw material's.
+     * They give the fabric laid and the cutting waste expected.
      */
     $spreadRules = fn () => [
         'material' => ['required', 'string', new TenantExists(RawMaterial::class)],
-        'batch' => ['nullable', 'string'],
-        'marker_length_m' => ['required', 'decimal:0,3', 'gt:0', 'lte:100'],
-        'efficiency_pct' => ['required', 'decimal:0,2', 'gt:0', 'lte:100'],
-        'end_allowance_cm' => ['nullable', 'decimal:0,2', 'gte:0', 'lte:100'],
-        'ratio' => ['required', 'array', 'min:1', 'max:40'],
-        'ratio.*.size' => ['required', 'string', 'max:20', 'distinct'],
-        'ratio.*.pieces' => ['required', 'integer', 'between:0,1000'],
+        'length_m' => ['required', 'decimal:0,3', 'gt:0', 'lte:100'],
         'layers_planned' => ['required', 'integer', 'between:1,100000'],
         'layers_done' => ['nullable', 'integer', 'between:0,100000'],
+        'efficiency_pct' => ['required', 'decimal:0,2', 'gt:0', 'lte:100'],
+        'width_cm' => ['nullable', 'decimal:0,2', 'gt:0', 'lte:1000'],
+        'grammage_gsm' => ['nullable', 'decimal:0,2', 'gt:0', 'lte:5000'],
         'cut_on' => ['nullable', 'date'],
         'notes' => ['nullable', 'string', 'max:500'],
     ];
-    $spreadValues = function (Request $request, ProductionOrder $of) use ($spreadRules, $id) {
+    $spreadValues = function (Request $request, ProductionOrder $of, ?CuttingSpread $spread = null) use ($spreadRules, $id) {
         $input = $request->validate($spreadRules());
         $materialId = $id(RawMaterial::class, $input['material']);
-        if (app(ReferenceCodes::class)->code('units', (int) DB::table('raw_materials')->where('id', $materialId)->value('unit_id')) !== 'm') {
+        $material = DB::table('raw_materials')->where('id', $materialId)->first(['unit_id', 'width_cm', 'grammage_gsm']);
+        if (app(ReferenceCodes::class)->code('units', (int) $material->unit_id) !== 'm') {
             throw ValidationException::withMessages(['material' => [__('validation.custom.production.spread_fabric')]]);
         }
-        $batchId = isset($input['batch']) ? DB::table('raw_material_batches')->where('raw_material_id', $materialId)->where('ulid', strtoupper($input['batch']))->value('id') : null;
-        if (isset($input['batch']) && $batchId === null) {
-            throw ValidationException::withMessages(['batch' => [__('validation.custom.production.batch_of_material')]]);
-        }
-        $ratio = array_values(array_filter(array_map(fn (array $line) => ['size' => trim($line['size']), 'pieces' => (int) $line['pieces']], $input['ratio']), fn (array $line) => $line['pieces'] > 0));
-        if ($ratio === []) {
-            throw ValidationException::withMessages(['ratio' => [__('validation.custom.production.spread_ratio')]]);
-        }
-        // The sizes of a placement are those of the OF, when it follows a grid.
-        $grid = $of->size_quantities === null ? null : array_column($of->size_quantities, 'size');
-        if ($grid !== null && ($unknown = array_diff(array_column($ratio, 'size'), $grid)) !== []) {
-            throw ValidationException::withMessages(['ratio' => [__('validation.custom.production.size_not_in_grid', ['size' => reset($unknown)])]]);
-        }
+        // A laize or grammage equal to the raw material's is not the spread's own: it follows the raw material.
+        $own = fn (string $key) => ! isset($input[$key]) || ($material->{$key} !== null && bccomp((string) $input[$key], (string) $material->{$key}, 2) === 0) ? null : $input[$key];
+        $done = isset($input['layers_done']) ? (int) $input['layers_done'] : null;
 
-        return ['production_order_id' => $of->id, 'raw_material_id' => $materialId, 'raw_material_batch_id' => $batchId, 'marker_length_m' => $input['marker_length_m'],
-            'efficiency_pct' => $input['efficiency_pct'], 'end_allowance_cm' => $input['end_allowance_cm'] ?? null, 'ratio' => $ratio,
-            'layers_planned' => (int) $input['layers_planned'], 'layers_done' => isset($input['layers_done']) ? (int) $input['layers_done'] : null,
-            'cut_on' => $input['cut_on'] ?? null, 'notes' => $input['notes'] ?? null];
+        return ['production_order_id' => $of->id, 'raw_material_id' => $materialId, 'length_m' => $input['length_m'], 'efficiency_pct' => $input['efficiency_pct'],
+            'width_cm' => $own('width_cm'), 'grammage_gsm' => $own('grammage_gsm'),
+            'layers_planned' => (int) $input['layers_planned'], 'layers_done' => $done,
+            // Cut on the day its layers are entered, unless the user says another day.
+            'cut_on' => $done === null ? null : ($input['cut_on'] ?? $spread?->getAttribute('cut_on')?->toDateString() ?? now()->toDateString()), 'notes' => $input['notes'] ?? null];
     };
     $ofOf = fn (CuttingSpread $spread) => ProductionOrder::query()->findOrFail($spread->getAttribute('production_order_id'));
 
@@ -703,7 +691,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
     Route::put('spreads/{spread}', function (Request $request, CuttingSpread $spread, ProductionData $data) use ($manage, $spreadValues, $ofOf) {
         $manage($request);
         $of = $ofOf($spread);
-        $spread->update($spreadValues($request, $of));
+        $spread->update($spreadValues($request, $of, $spread));
 
         return response()->json(['data' => $data->manufacturingOrder($of, detailed: true)]);
     })->name('production.spreads.update');
@@ -715,29 +703,6 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
 
         return response()->json(['data' => $data->manufacturingOrder($of, detailed: true)]);
     })->name('production.spreads.destroy');
-
-    // The metres really cut become a consumption of the OF, once, when the user asks: never on its own.
-    Route::post('spreads/{spread}/consumption', function (Request $request, CuttingSpread $spread, ProductionData $data, CuttingPlan $plan) use ($manage, $ofOf) {
-        $manage($request);
-        $of = $ofOf($spread);
-        if ($spread->getAttribute('layers_done') === null || (int) $spread->getAttribute('layers_done') === 0) {
-            throw new BusinessRuleViolation('SPREAD_NOT_CUT', 'The layers really cut are not entered yet.');
-        }
-        if ($spread->getAttribute('consumption_recorded_at') !== null) {
-            throw new BusinessRuleViolation('SPREAD_ALREADY_RECORDED', 'This spread is already recorded as a consumption.');
-        }
-        DB::transaction(function () use ($spread, $of, $plan) {
-            DB::table('production_order_consumptions')->insert(['company_id' => $of->getAttribute('company_id'), 'production_order_id' => $of->id,
-                'raw_material_id' => $spread->getAttribute('raw_material_id'), 'raw_material_batch_id' => $spread->getAttribute('raw_material_batch_id'),
-                'quantity' => CuttingWaste::round($plan->metres($spread, (int) $spread->getAttribute('layers_done')), 3),
-                'production_step_id' => DB::table('production_steps')->where('code', 'cutting')->whereNull('company_id')->value('id'),
-                'consumed_on' => $spread->getAttribute('cut_on')?->toDateString(), 'notes' => __('validation.custom.production.spread_consumption', ['layers' => $spread->getAttribute('layers_done')]),
-                'created_at' => now(), 'updated_at' => now()]);
-            $spread->forceFill(['consumption_recorded_at' => now()])->save();
-        });
-
-        return response()->json(['data' => $data->manufacturingOrder($of, detailed: true)]);
-    })->name('production.spreads.consumption');
 
     /*
      * Produced lots (lots fabriqués): the finished goods an OF made, in one or several batches. The client and the order
