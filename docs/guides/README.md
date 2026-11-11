@@ -9,8 +9,8 @@ l'application, le menu du compte (en haut à droite) propose « Guides d'utilisa
 | Guide | Pour qui | Ce qu'il couvre |
 |---|---|---|
 | [1 — Créer votre compte](DivaWaste-Guide-1-Creer-votre-compte.pdf) | Industriel, premier administrateur | Inscription (et mode test : compte prêt tout de suite), secteur, mise en route avec l'assistant, paramètres, import de lots par Excel, Bourse |
-| [2 — Sans ERP, avec production](DivaWaste-Guide-2-Sans-ERP-avec-production.pdf) | Industriel sans ERP | Production saisie dans DivaWaste : OF, matières, lots reçus, déchets rattachés |
-| [3 — Avec ERP, avec production](DivaWaste-Guide-3-Avec-ERP-avec-production.pdf) | Industriel avec ERP | Import des fichiers de l'ERP, colonnes retenues, imports de nuit, API |
+| [2 — Sans ERP, avec production](DivaWaste-Guide-2-Sans-ERP-avec-production.pdf) | Industriel sans ERP | Production saisie dans DivaWaste : OF, matières, lots reçus, déchets rattachés ; chute estimée (déchets produits, efficience), tailles, coupe par matelas, estimé contre pesé |
+| [3 — Avec ERP, avec production](DivaWaste-Guide-3-Avec-ERP-avec-production.pdf) | Industriel avec ERP | Import des fichiers de l'ERP, colonnes retenues, imports de nuit, API ; chute estimée (colonnes Type de déchet et Efficience), tailles et matelas saisis dans DivaWaste |
 | [4 — Référence](DivaWaste-Guide-4-Reference.pdf) | Administrateur, responsable environnement | Types de déchets, autorisations de sortie, cycle de vie d'un lot (prestataire avec ou sans compte), chaque valeur de l'Accueil, trouver un prestataire dans la liste ANGed |
 | [5 — Prestataire et Bourse](DivaWaste-Guide-5-Prestataire-et-Bourse.pdf) | Prestataire ; vendeur sur la Bourse | Compte prestataire, agréments, profil, Bourse côté preneur et côté vendeur |
 | [6 — L'assistant virtuel](DivaWaste-Guide-6-Assistant-virtuel.pdf) | Tous | Ce que fait l'assistant, ce qu'il ne fait jamais, comment lui parler |

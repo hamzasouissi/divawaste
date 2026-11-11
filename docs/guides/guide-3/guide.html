@@ -130,6 +130,7 @@
     <div><b><span class="num">E4</span>Chaque nuit, tout seul</b><span>DivaWaste lit l'export de l'ERP vers 4 h.</span></div>
     <div><b><span class="num">E5</span>En direct, par l'API</b><span>Une clé d'accès pour l'ERP.</span></div>
     <div><b><span class="num">E6</span>Ce qui change ensuite</b><span>Les données de l'ERP se modifient dans l'ERP.</span></div>
+    <div><b><span class="num">E7</span>La chute estimée</b><span>Type de déchet et efficience par l'import ; tailles et matelas ici.</span></div>
     <div><b><span class="num">✓</span>Fiche de test</b><span>Cochez ce qui marche, notez ce qui gêne.</span></div>
   </div>
   <div class="box info"><b>Trois chemins, un seul à choisir.</b> <b>Le fichier</b> (E1–E3) : vous exportez, vous importez, quand vous voulez. <b>Chaque nuit</b> (E4) : l'ERP publie l'export à une adresse, DivaWaste le lit seul. <b>L'API</b> (E5) : l'ERP envoie ses données au fil de l'eau. Commencez par le fichier : il fixe les colonnes que les deux autres réutilisent.</div>
@@ -271,6 +272,25 @@
     <p>Le reste est comme dans le Guide 2 : la page de l'OF, ses déchets, son taux de chute ; <b>Analyse</b> pour tous les OF.</p>
     <div class="two"><div class="shot"><img src="img4/85-of-detail.jpg"></div><div class="shot"><img src="img4/86-stats.jpg"></div></div>
     <div class="box see"><b>✔ Vous devez voir</b> OF-24117 : <b>760 / 800</b>, <b>22 kg</b> de déchets, <b>10,4 %</b> de la matière consommée. Analyse : 37 kg mesurés, <b>19,4 g</b> par pièce pour 1 910 pièces.</div>
+  </div>
+  <div class="foot"><span>DivaWaste · Guide 3 — Avec ERP, avec production</span><span class="pg"></span></div>
+</section>
+
+<!-- ============================================================ E7 -->
+<section class="page">
+  <div class="step">
+    <h3><span class="n">E7</span>La chute estimée, avec un ERP</h3>
+    <p>DivaWaste estime la chute de coupe de chaque OF et la compare aux lots pesés, comme dans le Guide 2 (partie C). Avec un ERP, deux données arrivent par les imports :</p>
+    <table>
+      <tr><th>Fichier</th><th>Colonne</th><th>Ce qu'elle donne</th></tr>
+      <tr><td>Matières premières</td><td class="ans">Type de déchet</td><td>Le déchet que donne la matière, par son nom ou son code (« Chutes de coupe »). Un type inconnu est refusé sur sa ligne, jamais créé.</td></tr>
+      <tr><td>Articles (composition)</td><td class="ans">Efficience</td><td>L'efficience du placement de chaque tissu (82). Vide : l'efficience par défaut de la société.</td></tr>
+    </table>
+    <div class="box tip"><b>Une matière qui donne plusieurs déchets</b> (85 % chutes de coupe, 15 % lisières) se règle sur sa fiche, partie <b>Déchets produits</b> (après <b>Corriger ici quand même</b>) ; le fichier, lui, n'en porte qu'un.</div>
+    <p><b>Les tailles et les matelas</b> ne viennent jamais de l'ERP : ils se saisissent dans DivaWaste même avec un ERP. Sur l'OF, <b>Affecter des tailles</b>, puis l'onglet <b>Coupe</b> : longueur, couches prévues puis coupées, efficience.</p>
+    <div class="shot half"><img src="../guide-2/imgC/c5-cutting.jpg"></div>
+    <div class="shot"><img src="../guide-2/imgC/c6-estimate.jpg"></div>
+    <div class="box see"><b>✔ Vous devez voir</b> dans <b>Lots de déchets</b> : en <b>rouge</b> un type pesé au-dessus de l'estimé, en <b>vert</b> en dessous (une fois tous ses lots pesés).</div>
   </div>
   <div class="foot"><span>DivaWaste · Guide 3 — Avec ERP, avec production</span><span class="pg"></span></div>
 </section>
