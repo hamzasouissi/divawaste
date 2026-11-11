@@ -113,7 +113,7 @@ export interface Article {
 export interface ArticleLine {
   material: string; reference: string; name: string; unit: string; quantity_per_piece: string;
   width_cm: string | null; grammage_gsm: string | null; composition: { material: string; pct: string | number }[];
-  efficiency_pct: string | null; efficiency_applied: string | null; fabric_kg_per_piece: string | null; waste_kg_per_piece: string | null;
+  efficiency_applied: string | null; fabric_kg_per_piece: string | null; waste_kg_per_piece: string | null;
   kind: MaterialKind | null;
   /** What one piece consumes of it in kg, when it can be said. */
   consumed_kg_per_piece: string | null;
@@ -204,6 +204,10 @@ export interface ConsumedMaterial {
   reference: string;
   name: string;
   unit: string;
+  kind: MaterialKind | null;
+  /** A material of the article (with what one piece consumes), or one consumed beside it. */
+  in_article: boolean;
+  per_piece: string | null;
   planned: string | null;
   consumed: string;
   variance: string | null;
@@ -355,8 +359,8 @@ export interface CuttingFabric {
   in_article: boolean;
   /** What the article says the OF needs of it, in metres. */
   article_m: string | null;
-  /** The efficiency a new spread starts from: the article's for this fabric, else the company's. */
-  efficiency_pct: string; efficiency_from: 'article' | 'company';
+  /** The efficiency a new spread starts from: the company's usual one. */
+  efficiency_pct: string;
   waste_types: WasteShare[];
   spreads: CuttingSpread[];
   planned: CuttingTotal | null; done: CuttingTotal | null;

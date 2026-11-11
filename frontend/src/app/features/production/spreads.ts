@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 
 import { Api } from '../../core/api/api';
+import { Company } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
 import { DatePipe, KgPipe, NumberPipe } from '../../core/format/pipes';
@@ -161,7 +162,7 @@ const NEW = 'new:';
           @if (canManage() && !adding().includes(f.material.ulid)) {
             <div class="foot">
               <button pButton text size="small" type="button" (click)="open(f)"><dw-icon>add</dw-icon>{{ t('production.cutting.newSpread') }}</button>
-              <span class="dw-faint">{{ t(f.efficiency_from === 'article' ? 'production.cutting.startsArticle' : 'production.cutting.startsCompany', { pct: (+f.efficiency_pct | dwNumber: 1) }) }}</span>
+              <span class="dw-faint">{{ t('production.cutting.startsCompany', { pct: (+f.efficiency_pct | dwNumber: 1) }) }}</span>
             </div>
           }
         </section>
@@ -177,6 +178,17 @@ const NEW = 'new:';
           <span class="dw-faint">{{ t('production.cutting.otherHint') }}</span>
         </div>
       }
+      <div class="usual">
+        @if (editingUsual()) {
+          <label for="usual-efficiency">{{ t('production.cutting.usualLabel') }}</label>
+          <span class="pct"><input id="usual-efficiency" class="cell" inputmode="decimal" [value]="usualDraft()" (input)="usualDraft.set($any($event.target).value)" (keydown.enter)="saveUsual()" /> %</span>
+          <button pButton type="button" size="small" [disabled]="busy()" (click)="saveUsual()">{{ t('common.save') }}</button>
+          <button pButton text size="small" type="button" severity="secondary" (click)="editingUsual.set(false)">{{ t('common.cancel') }}</button>
+        } @else {
+          <span class="dw-faint">{{ t('production.cutting.usual', { pct: (+usualEfficiency() | dwNumber: 1) }) }}</span>
+          @if (canSetUsual) { <button pButton text size="small" type="button" (click)="usualDraft.set(shown(usualEfficiency())); editingUsual.set(true)"><dw-icon>edit</dw-icon>{{ t('common.edit') }}</button> }
+        }
+      </div>
       <p class="dw-faint formula">{{ t('production.cutting.formula') }}</p>
     </ng-container>
   `,
@@ -217,6 +229,8 @@ const NEW = 'new:';
     .other span { font-size: 12.5px; }
     .empty { margin: 0; padding: var(--dw-5) var(--dw-4); text-align: center; color: var(--dw-ink-3); }
     .formula { margin: 0; font-size: 12px; }
+    .usual { display: flex; flex-wrap: wrap; align-items: center; gap: var(--dw-2); font-size: 12.5px; } .usual label { color: var(--dw-ink-2); }
+    .usual .pct { display: inline-flex; align-items: center; gap: 4px; }
     @media (max-width: 1100px) { .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   `,
 })
@@ -232,6 +246,11 @@ export class CuttingComponent {
   private readonly comma = new Intl.NumberFormat(inject(Locale).intl).format(1.5).includes(',');
 
   protected readonly NEW = NEW;
+  /** The efficiency a new spread starts from, the company's; the article estimates use it until the spreads say theirs. */
+  protected readonly usualEfficiency = computed(() => this.session.company()?.cutting_efficiency_pct ?? '80');
+  protected readonly canSetUsual = this.session.can('company.update');
+  protected readonly editingUsual = signal(false);
+  protected readonly usualDraft = signal('');
   protected readonly fields: Field[] = ['length_m', 'layers_planned', 'layers_done', 'efficiency_pct', 'width_cm', 'grammage_gsm'];
   /** What is typed and not saved yet, by spread (or NEW + fabric for a spread being added). */
   private readonly edits = signal<Record<string, Partial<Row>>>({});
@@ -268,7 +287,7 @@ export class CuttingComponent {
     return { kg, tone: hint === 'over' ? ('danger' as const) : hint === 'under' ? ('success' as const) : ('neutral' as const), hint, gap: Math.abs(gap), pct: expected > 0 ? (Math.abs(gap) / expected) * 100 : 0, unweighed };
   });
 
-  private shown(value: string | null): string {
+  protected shown(value: string | null): string {
     return value === null ? '' : this.comma ? String(+value).replace('.', ',') : String(+value);
   }
 
@@ -379,6 +398,21 @@ export class CuttingComponent {
   }
 
   /** Deleted at once; "Annuler" lays the same spread again. */
+  /** The company's usual efficiency, changed where the spreads are typed: new spreads start from it, article estimates follow it. */
+  protected async saveUsual(): Promise<void> {
+    this.busy.set(true);
+    try {
+      this.session.setCompany(await firstValueFrom(this.api.put<Company>('company', { cutting_efficiency_pct: decimal(this.usualDraft()) })));
+      this.editingUsual.set(false);
+      this.changed.emit(await firstValueFrom(this.api.get<ManufacturingOrder>(`production/manufacturing-orders/${this.of().ulid}`)));
+      this.toast.success('common.saved');
+    } catch (error) {
+      this.toast.error(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
   protected async remove(f: CuttingFabric, s: CuttingSpread): Promise<void> {
     const of = this.of();
     try {

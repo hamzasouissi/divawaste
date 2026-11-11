@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
@@ -11,7 +11,7 @@ import { Textarea } from 'primeng/textarea';
 import { Api } from '../../core/api/api';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { DatePipe, KgPipe, LocalizedPipe, MoneyPipe, NumberPipe } from '../../core/format/pipes';
+import { DatePipe, KgPipe, LocalizedPipe, MoneyPipe, NumberPipe, QuantityPipe } from '../../core/format/pipes';
 import { DateComponent } from '../../ui/date';
 import { DIALOG_PARTS, DialogRef, Dialogs, dialogData } from '../../ui/dialog';
 import { FIELD } from '../../ui/field';
@@ -25,55 +25,62 @@ import { CuttingComponent } from './spreads';
 import { OfSizesDialog, SizeRunComponent } from './sizes';
 import { ManufacturingOrderDialog } from './orders';
 import {
-  AMOUNT, ConsumedMaterial, DECIMAL, EXPENSE_CATEGORIES, ManufacturingOrder, OfExpense, OfWaste, ProducedLot, ProducedLotStatus, ProductionLists, blankToNull, decimal, statusTone,
+  AMOUNT, ConsumedMaterial, DECIMAL, EXPENSE_CATEGORIES, KIND_ICON, ManufacturingOrder, MaterialKind, OfExpense, OfWaste, ProducedLot, ProducedLotStatus, ProductionLists, blankToNull, decimal, statusTone,
 } from './production-data';
 
 /**
- * What an OF consumed. One line per material and received lot: 12 kg of lot A and 8 kg of lot B are two lines. A line
- * without a lot is "lot non précisé" — it is kept as such, nothing is chosen in its place.
+ * What an OF consumed, material by material of its article. One line per received lot: 12 kg of lot A and 8 kg of
+ * lot B are two lines. A line without a lot is "lot non précisé" — it is kept as such, nothing is chosen in its place.
+ * Only the article's materials are offered (and any the OF already consumed beside them, kept as they were).
  */
 @Component({
-  imports: [ReactiveFormsModule, TranslocoDirective, LocalizedPipe, ButtonDirective, InputText, ...FIELD, ...SELECT, ...DIALOG_PARTS, IconComponent, DateComponent],
+  imports: [ReactiveFormsModule, TranslocoDirective, LocalizedPipe, QuantityPipe, ButtonDirective, InputText, ...SELECT, ...DIALOG_PARTS, IconComponent, DateComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
       <dw-dialog-title>{{ t('production.consumed.edit') }} — {{ data.order_number }}</dw-dialog-title>
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <div class="dw-dialog-body">
-          <p class="dw-muted">{{ t('production.consumed.editHint') }}</p>
-          @for (line of lines.controls; track line; let i = $index) {
-            <div class="line" [formGroup]="line">
-              <dw-field [label]="t('production.materials.one')">
-                <dw-select formControlName="material" required>
-                  @for (material of materials(); track material.ulid) { <dw-option [value]="material.ulid" [label]="material.reference + ' — ' + material.name + ' (' + material.unit + ')'" /> }
-                </dw-select>
-              </dw-field>
-              <dw-field [label]="t('production.received.one')">
-                <dw-select formControlName="batch">
-                  <dw-option value="" [label]="t('production.of.anyBatch')" />
-                  @for (batch of batchesOf(line.value.material); track batch.ulid) { <dw-option [value]="batch.ulid" [label]="batch.batch_number + (batch.supplier ? ' — ' + batch.supplier.name : '')" /> }
-                </dw-select>
-              </dw-field>
-              <dw-field [label]="t('fields.quantity')"><input pInputText formControlName="quantity" inputmode="decimal" required /></dw-field>
-              <dw-field [label]="t('production.of.step')">
-                <dw-select formControlName="step">
-                  <dw-option value="" label="—" />
-                  @for (step of stepOptions(); track step.code) { <dw-option [value]="step.code" [label]="step.name | dwLocalized" /> }
-                </dw-select>
-              </dw-field>
-              <dw-field [label]="t('fields.site')">
-                <dw-select formControlName="site">
-                  <dw-option value="" label="—" />
-                  @for (site of sites; track site.ulid) { <dw-option [value]="site.ulid" [label]="site.name" /> }
-                </dw-select>
-              </dw-field>
-              <dw-field [label]="t('fields.date')"><dw-date formControlName="consumed_on" /></dw-field>
-              <button pButton text rounded severity="secondary" class="dw-icon-btn remove" type="button" (click)="lines.removeAt(i)" [attr.aria-label]="t('common.remove')" [title]="t('common.remove')"><dw-icon>close</dw-icon></button>
-            </div>
+          <p class="hint">{{ t('production.consumed.editHint') }}</p>
+          @for (m of blocks(); track m.material) {
+            @let entered = totals()[m.material] || 0;
+            <section class="block" [class.empty]="count(m.material) === 0">
+              <header>
+                <span class="ico"><dw-icon>{{ kindIcon(m.kind) }}</dw-icon></span>
+                <span class="who"><b>{{ m.reference }}</b>@if (m.name !== m.reference) { <span>{{ m.name }}</span> }
+                  @if (!m.in_article) { <span class="tag">{{ t('production.consumed.outsideArticle') }}</span> }</span>
+                <span class="sums">
+                  @if (m.planned !== null) { <span>{{ t('production.consumed.planned') }} <b>{{ m.planned | dwQty: m.unit }}</b></span> }
+                  @if (count(m.material) > 0) { <span [class.over]="m.planned !== null && entered > +m.planned">{{ t('production.consumed.entered') }} <b>{{ entered | dwQty: m.unit }}</b></span> }
+                </span>
+              </header>
+              @if (count(m.material) > 0) {
+                <div class="cols" aria-hidden="true"><span>{{ t('production.received.one') }}</span><span class="end">{{ t('fields.quantity') }}</span><span>{{ t('production.of.step') }}</span><span>{{ t('fields.site') }}</span><span>{{ t('fields.date') }}</span><span></span></div>
+                @for (line of lines.controls; track line; let i = $index) {
+                  @if (line.value.material === m.material) {
+                    <div class="line" [formGroup]="line">
+                      <dw-select formControlName="batch" [ariaLabel]="t('production.received.one')">
+                        <dw-option value="" [label]="t('production.of.anyBatch')" />
+                        @for (batch of batchesOf(m.material); track batch.ulid) { <dw-option [value]="batch.ulid" [label]="batch.batch_number + (batch.supplier ? ' — ' + batch.supplier.name : '')" /> }
+                      </dw-select>
+                      <span class="qty" [style.--sfx]="unitOf(m.unit, t).length"><input pInputText formControlName="quantity" inputmode="decimal" required [attr.aria-label]="t('fields.quantity')" [placeholder]="t('fields.quantity')" /><span class="suffix">{{ unitOf(m.unit, t) }}</span></span>
+                      <dw-select formControlName="step" [placeholder]="t('production.of.step')" [ariaLabel]="t('production.of.step')">
+                        @for (step of stepOptions(); track step.code) { <dw-option [value]="step.code" [label]="step.name | dwLocalized" /> }
+                      </dw-select>
+                      <dw-select formControlName="site" [placeholder]="t('fields.site')" [ariaLabel]="t('fields.site')">
+                        @for (site of sites; track site.ulid) { <dw-option [value]="site.ulid" [label]="site.name" /> }
+                      </dw-select>
+                      <dw-date formControlName="consumed_on" />
+                      <button pButton text rounded severity="secondary" class="dw-icon-btn" type="button" (click)="lines.removeAt(i)" [attr.aria-label]="t('common.remove')" [title]="t('common.remove')"><dw-icon>close</dw-icon></button>
+                    </div>
+                  }
+                }
+              }
+              <button pButton text size="small" type="button" class="add" (click)="add(m.material)"><dw-icon>add</dw-icon>{{ t(count(m.material) > 0 ? 'production.consumed.addLot' : 'production.consumed.enter') }}</button>
+            </section>
           } @empty {
-            <p class="dw-faint">{{ t('production.consumed.none') }}</p>
+            <p class="none"><dw-icon>info</dw-icon><span>{{ t('production.consumed.noArticleMaterials') }}</span></p>
           }
-          <button pButton text type="button" class="add" (click)="add()"><dw-icon>add</dw-icon>{{ t('production.of.addConsumption') }}</button>
         </div>
         <div class="dw-dialog-foot">
           <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
@@ -83,11 +90,35 @@ import {
     </ng-container>
   `,
   styles: `
-    .dw-dialog-body { inline-size: min(1040px, 94vw); display: grid; gap: var(--dw-3); } .dw-dialog-body > p { margin: 0; font-size: 13px; }
-    .line { display: grid; gap: var(--dw-2); grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.3fr) 110px minmax(0, 1fr) minmax(0, 1fr) 150px auto; align-items: end;
-      padding-block-end: var(--dw-3); border-block-end: 1px solid var(--dw-line-soft); }
-    .remove { margin-block-end: 2px; } .add { justify-self: start; }
-    @media (max-width: 900px) { .line { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+    .dw-dialog-body { inline-size: min(1080px, 94vw); display: flex; flex-direction: column; gap: var(--dw-3); }
+    .hint { margin: 0; font-size: 13px; color: var(--dw-ink-2); }
+    .block { flex: none; border: 1px solid var(--dw-line); border-radius: var(--dw-radius-lg, 12px); background: var(--dw-surface); }
+    .block header { border-start-start-radius: inherit; border-start-end-radius: inherit; }
+    header { display: flex; align-items: center; gap: var(--dw-3); padding: 12px 14px; background: var(--dw-surface-2); }
+    .block.empty header { background: none; }
+    .ico { display: grid; place-items: center; flex: none; inline-size: 34px; block-size: 34px; border-radius: 10px; background: var(--dw-primary-soft); color: var(--dw-primary); }
+    .ico dw-icon { font-size: 19px; }
+    .who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-inline-size: 0; flex: 1; font-size: 14px; } .who b { font-weight: 650; overflow-wrap: anywhere; }
+    .who > span:not(.tag) { font-size: 13px; color: var(--dw-ink-3); }
+    .tag { padding: 0 8px; border-radius: 999px; background: var(--dw-warning-soft); color: var(--dw-warning); font-size: 11.5px; line-height: 20px; }
+    .sums { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 16px; font-size: 13px; color: var(--dw-ink-2); font-variant-numeric: tabular-nums; }
+    .sums b { color: var(--dw-ink); font-weight: 650; } .sums .over, .sums .over b { color: var(--dw-danger); }
+    .cols, .line { display: grid; grid-template-columns: minmax(0, 2fr) 150px minmax(0, 1.2fr) minmax(0, 1.2fr) 150px 36px; gap: var(--dw-2); align-items: center; padding-inline: 14px; }
+    .cols { padding-block: 10px 4px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--dw-ink-3); } .cols .end { text-align: end; }
+    .line { padding-block: 4px; }
+    .qty { position: relative; display: block; } .qty input { inline-size: 100%; padding-inline-end: calc(var(--sfx, 2) * 1ch + 18px); text-align: end; font-variant-numeric: tabular-nums; }
+    .suffix { position: absolute; inset-inline-end: 10px; inset-block: 0; display: flex; align-items: center; font-size: 12.5px; color: var(--dw-ink-3); pointer-events: none; }
+    .qty input.ng-invalid.ng-touched { border-color: var(--dw-danger); background: var(--dw-danger-soft); }
+    .add { margin: 4px 6px 8px; }
+    .block.empty .add { margin-block-start: 0; }
+    .none { display: flex; gap: var(--dw-2); align-items: flex-start; margin: 0; padding: var(--dw-4); border-radius: var(--dw-radius); background: var(--dw-surface-2); font-size: 13.5px; }
+    @media (max-width: 900px) {
+      header { flex-wrap: wrap; } .sums { inline-size: 100%; justify-content: flex-start; padding-inline-start: 46px; }
+      .cols { display: none; }
+      .line { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px; grid-template-areas: 'batch batch del' 'qty step step' 'site date date'; padding-block: 10px; border-block-end: 1px solid var(--dw-line-soft); }
+      .line > :nth-child(1) { grid-area: batch; } .line > :nth-child(2) { grid-area: qty; } .line > :nth-child(3) { grid-area: step; }
+      .line > :nth-child(4) { grid-area: site; } .line > :nth-child(5) { grid-area: date; } .line > :nth-child(6) { grid-area: del; }
+    }
   `,
 })
 export class ConsumptionsDialog {
@@ -97,29 +128,53 @@ export class ConsumptionsDialog {
   private readonly ref = inject(DialogRef);
   private readonly fb = inject(FormBuilder);
   private readonly lists = inject(ProductionLists);
-  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly sites = inject(Session).sitesFor('sites.view');
-  protected readonly materials = toSignal(this.lists.materials(), { initialValue: [] });
+  private readonly materials = toSignal(this.lists.materials(), { initialValue: [] });
   protected readonly stepOptions = toSignal(this.lists.steps(), { initialValue: [] });
   protected readonly busy = signal(false);
   protected readonly lines = this.fb.array((this.data.consumptions ?? []).map((line) => this.line(line.material, line.batch ?? '', String(+line.quantity), line.step ?? '', line.site ?? '', line.consumed_on ?? '', line.notes ?? '')));
   protected readonly form = this.fb.nonNullable.group({ consumptions: this.lines });
+  private readonly value = toSignal(this.lines.valueChanges, { initialValue: this.lines.getRawValue() });
 
-  private line(material = '', batch = '', quantity = '', step = '', site = '', consumedOn = '', notes = ''): FormGroup {
-    const line = this.fb.nonNullable.group({ material: [material, Validators.required], batch: [batch], quantity: [quantity, [Validators.required, DECIMAL]], step: [step], site: [site], consumed_on: [consumedOn], notes: [notes] });
-    // A received lot belongs to one material: choosing another material forgets it.
-    line.controls.material.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => line.controls.batch.setValue(''));
+  /** The article's materials, in its order; then any the OF consumed beside them. */
+  protected readonly blocks = computed(() => (this.data.materials ?? []).filter((m) => m.in_article || m.lines.length > 0));
+  /** What is typed so far for each material. */
+  protected readonly totals = computed(() => {
+    const totals: Record<string, number> = {};
+    for (const line of this.value()) {
+      const quantity = Number(String(line['quantity'] ?? '').replace(',', '.'));
+      totals[line['material'] as string] = (totals[line['material'] as string] ?? 0) + (Number.isFinite(quantity) ? quantity : 0);
+    }
 
-    return line;
+    return totals;
+  });
+
+  private line(material: string, batch = '', quantity = '', step = '', site = '', consumedOn = '', notes = ''): FormGroup {
+    return this.fb.nonNullable.group({ material: [material, Validators.required], batch: [batch], quantity: [quantity, [Validators.required, DECIMAL]], step: [step], site: [site], consumed_on: [consumedOn], notes: [notes] });
   }
 
-  protected add(): void {
-    this.lines.push(this.line());
+  protected count(material: string): number {
+    return this.value().filter((line) => line['material'] === material).length;
+  }
+
+  /** A new lot line starts where the last one of the material (or of the OF) was consumed: same step, site and date. */
+  protected add(material: string): void {
+    const all = this.lines.getRawValue();
+    const last = [...all].reverse().find((line) => line['material'] === material) ?? all.at(-1);
+    this.lines.push(this.line(material, '', '', (last?.['step'] as string) ?? '', (last?.['site'] as string) ?? '', (last?.['consumed_on'] as string) ?? ''));
   }
 
   protected batchesOf(material: string): { ulid: string; batch_number: string; supplier: { name: string } | null }[] {
     return this.materials().find((item) => item.ulid === material)?.batches ?? [];
+  }
+
+  protected kindIcon(kind: MaterialKind | null): string {
+    return (kind && KIND_ICON[kind]) || 'inventory_2';
+  }
+
+  protected unitOf(unit: string, t: (key: string) => string): string {
+    return t('units.' + unit);
   }
 
   protected async submit(): Promise<void> {
@@ -319,7 +374,7 @@ export class ExpenseDialog {
  * that cost and is worth.
  */
 @Component({
-  imports: [SizeRunComponent, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KpiComponent, ButtonDirective, IconComponent, DatePipe, NumberPipe, MoneyPipe, KgPipe, LocalizedPipe, SegmentedComponent, CuttingComponent],
+  imports: [SizeRunComponent, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, KpiComponent, ButtonDirective, IconComponent, DatePipe, NumberPipe, MoneyPipe, KgPipe, QuantityPipe, LocalizedPipe, SegmentedComponent, CuttingComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -341,7 +396,7 @@ export class ExpenseDialog {
             <span class="node current"><small>{{ t('production.of.one') }}</small><strong class="dw-mono">{{ o.order_number }}</strong></span>
             <dw-icon>chevron_right</dw-icon>
             <span class="node"><small>{{ t('production.articles.one') }}</small><strong>{{ o.article.reference }}</strong> <span class="dw-faint">{{ o.article.name }}</span></span>
-            <span class="dates dw-faint">{{ o.started_on | dwDate }}@if (o.finished_on) { → {{ o.finished_on | dwDate }} }</span>
+            <span class="node dates"><small>{{ t(o.finished_on ? 'production.of.period' : 'production.of.startedOn') }}</small><strong>{{ o.started_on | dwDate }}@if (o.finished_on) { → {{ o.finished_on | dwDate }} }</strong></span>
           </nav>
 
           <!-- The sizes it makes, for information: the cutting waste follows the fabric laid, not the sizes. -->
@@ -350,6 +405,8 @@ export class ExpenseDialog {
               @if (o.sizes.length > 0) {
                 <span class="sizes-label"><b>{{ t('production.sizes.sizes') }}</b>@if (o.size_grid) { <span class="dw-faint">{{ o.size_grid.name }}</span> }</span>
                 <dw-size-run [sizes]="sizeRun().sizes" [quantities]="sizeRun().quantities" [totalLabel]="t('production.sizes.totalShort')" />
+              } @else {
+                <span class="sizes-label"><b>{{ t('production.sizes.sizes') }}</b><span class="dw-faint">{{ t('production.sizes.noneOnOf') }}</span></span>
               }
               @if (canCut) {
                 <button pButton text size="small" type="button" class="size-edit" (click)="editSizes(o)"><dw-icon>{{ o.sizes.length > 0 ? 'edit' : 'straighten' }}</dw-icon>{{ t(o.sizes.length > 0 ? 'production.sizes.change' : 'production.sizes.assign') }}</button>
@@ -365,7 +422,7 @@ export class ExpenseDialog {
                 : (o.waste?.unweighed_lots ?? 0) > 0 ? t('production.waste.notWeighed', { count: o.waste?.unweighed_lots })
                 : t('production.of.wasteLots', { count: o.waste?.lots ?? 0 })" />
             @if (o.finance; as f) {
-              <dw-kpi [label]="t('production.finance.totalCost')" [value]="f.total_cost | dwMoney: f.currency" [tone]="f.cost_complete ? 'neutral' : 'warning'"
+              <dw-kpi [label]="t('production.finance.totalCost')" [value]="!f.cost_complete && +f.total_cost === 0 ? '—' : (f.total_cost | dwMoney: f.currency)" [tone]="f.cost_complete ? 'neutral' : 'warning'"
                 [hint]="f.cost_complete ? (f.unit_cost ? t('production.finance.perPiece', { amount: (f.unit_cost | dwMoney: f.currency) }) : '') : t('production.finance.incomplete')" />
               <dw-kpi [label]="t('production.finance.gain')" [value]="f.gain.amount === null ? t('production.finance.notCalculable') : (f.gain.amount | dwMoney: f.currency)"
                 [tone]="f.gain.amount === null ? 'neutral' : (+f.gain.amount >= 0 ? 'success' : 'danger')"
@@ -475,60 +532,87 @@ export class ExpenseDialog {
               </section>
             }
 
-            <!-- Materials consumed: OF → material → received lot → supplier. -->
+            <!-- Materials consumed: one row per material of the article, its received lots underneath. -->
             <section class="dw-panel">
               <div class="dw-panel-head">
                 <h2 class="dw-h2">{{ t('production.consumed.title') }}</h2>
-                @if (canManage) { <button pButton text size="small" type="button" (click)="consume(o)"><dw-icon>edit</dw-icon>{{ t('production.consumed.edit') }}</button> }
+                @if (canManage) { <button pButton text size="small" type="button" (click)="consume(o)"><dw-icon>edit_note</dw-icon>{{ t('production.consumed.edit') }}</button> }
               </div>
               <p class="dw-muted intro">{{ t('production.consumed.intro') }}</p>
-              @for (m of o.materials ?? []; track m.material) {
-                <div class="material">
-                  <div class="mhead">
-                    <a class="mname" [routerLink]="['/production/catalog', m.material]"><strong class="dw-mono">{{ m.reference }}</strong> {{ m.name }}</a>
-                    <div class="figures">
-                      <span><small>{{ t('production.consumed.planned') }}</small>{{ m.planned === null ? '—' : (m.planned | dwNumber: 1) + ' ' + m.unit }}</span>
-                      <span><small>{{ t('production.consumed.actual') }}</small><strong>{{ m.consumed | dwNumber: 1 }} {{ m.unit }}</strong></span>
-                      <span [class.over]="(m.variance_pct ?? 0) > 0" [class.under]="(m.variance_pct ?? 0) < 0"><small>{{ t('production.consumed.variance') }}</small>
-                        {{ m.variance === null ? '—' : ((+m.variance > 0 ? '+' : '') + (m.variance | dwNumber: 1) + ' ' + m.unit + (m.variance_pct === null ? '' : ' (' + (m.variance_pct > 0 ? '+' : '') + (m.variance_pct | dwNumber: 1) + ' %)')) }}</span>
-                      @if (o.finance) { <span><small>{{ t('production.cost') }}</small><strong>{{ m.cost === null ? t('production.unknown') : (m.cost | dwMoney: o.finance.currency) }}</strong></span> }
-                    </div>
-                  </div>
-                  @if (m.planned !== null && m.lines.length > 0) {
-                    <div class="bar" [title]="(m.consumed | dwNumber: 1) + ' / ' + (m.planned | dwNumber: 1) + ' ' + m.unit"><span [style.inline-size.%]="share(m)" [class.over]="+m.consumed > +m.planned"></span></div>
-                  }
-                  @if (m.lines.length === 0) {
-                    <p class="dw-faint none">{{ t('production.consumed.notYet') }}</p>
-                  } @else {
-                    <div class="scroll">
-                      <table class="dw-table">
-                        <thead><tr><th>{{ t('production.received.one') }}</th><th>{{ t('production.received.supplier') }}</th><th>{{ t('production.consumed.where') }}</th><th>{{ t('fields.date') }}</th>
-                          <th class="num">{{ t('fields.quantity') }}</th>@if (o.finance) { <th class="num">{{ t('production.received.unitCost') }}</th><th class="num">{{ t('production.cost') }}</th> }</tr></thead>
-                        <tbody>
-                          @for (line of m.lines; track $index) {
-                            <tr>
-                              <td>@if (line.batch_number) { <strong class="dw-mono">{{ line.batch_number }}</strong> } @else { <span class="tag unknown">{{ t('production.of.anyBatch') }}</span> }</td>
-                              <td>{{ line.supplier?.name ?? '—' }}</td>
-                              <td>{{ line.step_name ? (line.step_name | dwLocalized) : '—' }}@if (line.site_name) { <span class="dw-faint"> · {{ line.site_name }}</span> }</td>
-                              <td>{{ line.consumed_on | dwDate }}</td>
-                              <td class="num">{{ line.quantity | dwNumber: 1 }} {{ m.unit }}</td>
-                              @if (o.finance; as f) {
-                                <td class="num">{{ line.unit_cost === null ? '—' : (line.unit_cost | dwMoney: f.currency) }}</td>
-                                <td class="num">
-                                  @if (line.basis === 'unknown') { <span class="tag missing" [title]="t('production.costReason.' + (line.reason ?? 'no_price'))">{{ t('production.unknown') }}</span> }
-                                  @else { {{ line.cost | dwMoney: f.currency }} @if (line.basis === 'average') { <span class="tag est" [title]="t('production.consumed.averageHint')">{{ t('production.estimated') }}</span> } }
-                                </td>
-                              }
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    </div>
-                    @if (+m.unallocated > 0) { <p class="note warn"><dw-icon>info</dw-icon>{{ t('production.consumed.unallocated', { quantity: (m.unallocated | dwNumber: 1), unit: m.unit, known: (m.allocated | dwNumber: 1) }) }}</p> }
-                  }
-                </div>
-              } @empty {
+              @if ((o.materials ?? []).length === 0) {
                 <p class="empty">{{ t('production.consumed.empty') }}</p>
+              } @else {
+                <div class="scroll">
+                  <table class="dw-table cons">
+                    <thead><tr>
+                      <th>{{ t('production.materials.one') }}</th>
+                      <th class="num">{{ t('production.consumed.planned') }}</th>
+                      <th class="num">{{ t('production.consumed.actual') }}</th>
+                      <th class="prog">{{ t('production.consumed.progress') }}</th>
+                      <th class="num var-col">{{ t('production.consumed.variance') }}</th>
+                      @if (o.finance) { <th class="num money-col">{{ t('production.cost') }}</th> }
+                      <th class="chev" [attr.aria-label]="t('production.consumed.lots')"></th>
+                    </tr></thead>
+                    @for (m of o.materials; track m.material) {
+                      @let open = expanded().includes(m.material);
+                      @let over = m.planned !== null && m.lines.length > 0 && +m.consumed > +m.planned;
+                      <tbody [class.open]="open">
+                        <tr class="main" [class.clickable]="m.lines.length > 0" (click)="m.lines.length > 0 && toggle(m.material)">
+                          <td class="mcell">
+                            <div class="mat">
+                              <span class="ico" [class.off]="m.lines.length === 0"><dw-icon>{{ kindIcon(m.kind) }}</dw-icon></span>
+                              <span class="who">
+                                <a class="ref" [routerLink]="['/production/catalog', m.material]" (click)="$event.stopPropagation()">{{ m.reference }}</a>
+                                <span class="nm">@if (m.name !== m.reference) { {{ m.name }} }@if (!m.in_article) { <span class="tag est">{{ t('production.consumed.outsideArticle') }}</span> }</span>
+                              </span>
+                            </div>
+                          </td>
+                          <td class="num"><small class="m-label">{{ t('production.consumed.planned') }}</small>@if (m.planned === null) { <span class="dw-faint">—</span> } @else { {{ m.planned | dwQty: m.unit }}
+                            @if (m.per_piece) { <div class="sub">{{ +m.per_piece | dwNumber: 4 }} {{ t('production.articles.perPieceUnit.' + m.unit) }}</div> } }</td>
+                          <td class="num"><small class="m-label">{{ t('production.consumed.actual') }}</small>@if (m.lines.length === 0) { <span class="pending">{{ t('production.consumed.notEntered') }}</span> } @else {
+                            <strong>{{ m.consumed | dwQty: m.unit }}</strong><div class="sub">{{ t('production.consumed.linesCount', { count: m.lines.length }) }}</div> }</td>
+                          <td class="prog">@if (m.planned !== null && +m.planned > 0 && m.lines.length > 0) {
+                            <div class="meter"><div class="bar"><span [style.inline-size.%]="share(m)" [class.over]="over"></span></div><span class="pct" [class.over]="over">{{ ratio(m) | dwNumber: 0 }} %</span></div> }</td>
+                          <td class="num var-col">@if (m.variance === null) { <span class="dw-faint">—</span> } @else {
+                            <span class="delta" [class.over]="+m.variance > 0" [class.under]="+m.variance < 0">{{ m.variance | dwQty: m.unit : true }}</span>
+                            @if (m.variance_pct !== null) { <div class="sub" [class.over]="m.variance_pct > 0" [class.under]="m.variance_pct < 0">{{ m.variance_pct > 0 ? '+' : '' }}{{ m.variance_pct | dwNumber: 1 }} %</div> } }</td>
+                          @if (o.finance; as f) { <td class="num money-col">@if (m.lines.length === 0) { <span class="dw-faint">—</span> } @else if (m.cost === null) { <span class="tag missing" [title]="t('production.finance.materialUnknownHint')">{{ t('production.unknown') }}</span> } @else { {{ m.cost | dwMoney: f.currency }}
+                            @if (+(m.cost_estimated ?? 0) > 0) { <div class="sub"><span class="tag est" [title]="t('production.consumed.averageHint')">{{ t('production.estimated') }}</span></div> } }</td> }
+                          <td class="chev">@if (m.lines.length > 0) { <button type="button" class="fold" [attr.aria-expanded]="open" [attr.aria-label]="t('production.consumed.lots')" (click)="$event.stopPropagation(); toggle(m.material)"><dw-icon>{{ open ? 'expand_less' : 'expand_more' }}</dw-icon></button> }</td>
+                        </tr>
+                        @if (open) {
+                          <tr class="detail"><td [attr.colspan]="o.finance ? 7 : 6">
+                            <div class="lots">
+                              <table class="dw-table">
+                                <thead><tr><th>{{ t('production.received.one') }}</th><th>{{ t('production.received.supplier') }}</th><th>{{ t('production.consumed.where') }}</th><th>{{ t('fields.date') }}</th>
+                                  <th class="num">{{ t('fields.quantity') }}</th>@if (o.finance) { <th class="num">{{ t('production.received.unitCost') }}</th><th class="num">{{ t('production.cost') }}</th> }</tr></thead>
+                                <tbody>
+                                  @for (line of m.lines; track $index) {
+                                    <tr>
+                                      <td>@if (line.batch_number) { <strong class="dw-mono">{{ line.batch_number }}</strong> } @else { <span class="tag unknown">{{ t('production.of.anyBatch') }}</span> }</td>
+                                      <td>{{ line.supplier?.name ?? '—' }}</td>
+                                      <td>{{ line.step_name ? (line.step_name | dwLocalized) : '—' }}@if (line.site_name) { <span class="dw-faint"> · {{ line.site_name }}</span> }</td>
+                                      <td>{{ line.consumed_on | dwDate }}</td>
+                                      <td class="num">{{ line.quantity | dwQty: m.unit }}</td>
+                                      @if (o.finance; as f) {
+                                        <td class="num">{{ line.unit_cost === null ? '—' : (line.unit_cost | dwMoney: f.currency) }}</td>
+                                        <td class="num">
+                                          @if (line.basis === 'unknown') { <span class="tag missing" [title]="t('production.costReason.' + (line.reason ?? 'no_price'))">{{ t('production.unknown') }}</span> }
+                                          @else { {{ line.cost | dwMoney: f.currency }} @if (line.basis === 'average') { <span class="tag est" [title]="t('production.consumed.averageHint')">{{ t('production.estimated') }}</span> } }
+                                        </td>
+                                      }
+                                    </tr>
+                                  }
+                                </tbody>
+                              </table>
+                              @if (+m.unallocated > 0) { <p class="note warn"><dw-icon>info</dw-icon>{{ +m.allocated > 0 ? t('production.consumed.unallocated', { quantity: (m.unallocated | dwNumber: 1), unit: unitShort(m.unit), known: (m.allocated | dwNumber: 1) }) : t('production.consumed.noLotNamed') }}</p> }
+                            </div>
+                          </td></tr>
+                        }
+                      </tbody>
+                    }
+                  </table>
+                </div>
               }
             </section>
 
@@ -646,9 +730,9 @@ export class ExpenseDialog {
     .chain { display: flex; align-items: center; flex-wrap: wrap; gap: var(--dw-2); margin-block-end: var(--dw-4); padding: var(--dw-3) var(--dw-4); background: var(--dw-surface); border: 1px solid var(--dw-line); border-radius: var(--dw-radius); }
     .chain > dw-icon { color: var(--dw-ink-3); }
     .node { display: grid; padding: 4px 10px; border-radius: var(--dw-radius); } .node small { font-size: 11px; color: var(--dw-ink-3); text-transform: uppercase; letter-spacing: 0.04em; }
-    .node.current { background: var(--dw-primary-soft, var(--dw-surface-2)); } .dates { margin-inline-start: auto; font-size: 13px; }
+    .node.current { background: var(--dw-primary-soft, var(--dw-surface-2)); } .node.dates { margin-inline-start: auto; text-align: end; } .node.dates strong { font-weight: 560; }
     .kpis { margin-block-end: var(--dw-4); }
-    .sizes { display: flex; flex-wrap: wrap; align-items: center; gap: var(--dw-3); margin: 0 0 var(--dw-4); padding: 10px 14px; border-radius: var(--dw-radius-lg); background: var(--dw-surface); box-shadow: var(--dw-shadow); }
+    .sizes { display: flex; flex-wrap: wrap; align-items: center; gap: var(--dw-3); margin: 0 0 var(--dw-4); padding: 10px 14px 10px 18px; border-radius: var(--dw-radius-lg); background: var(--dw-surface); box-shadow: var(--dw-shadow); }
     .sizes-label { display: grid; font-size: 13px; line-height: 18px; } .sizes-label b { font-weight: 650; } .sizes-label span { font-size: 12px; }
     .sizes dw-size-run { min-inline-size: 0; max-inline-size: 100%; }
     .size-edit { margin-inline-start: auto; }
@@ -660,13 +744,46 @@ export class ExpenseDialog {
     .empty { margin: 0; padding: var(--dw-5) var(--dw-4); text-align: center; color: var(--dw-ink-3); }
     .steps { display: flex; align-items: center; flex-wrap: wrap; gap: var(--dw-3); padding: var(--dw-3) var(--dw-4); }
     .step { display: grid; gap: 1px; padding: 8px 12px; border: 1px solid var(--dw-line); border-radius: var(--dw-radius); font-size: 13px; }
-    .material { border-block-start: 1px solid var(--dw-line-soft); padding-block: var(--dw-3); }
-    .mhead { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--dw-4); flex-wrap: wrap; padding-inline: var(--dw-4); }
-    .mname { font-size: 14px; } .figures { display: flex; gap: var(--dw-5); flex-wrap: wrap; font-variant-numeric: tabular-nums; }
-    .figures span { display: grid; font-size: 13px; } .figures small { font-size: 11px; color: var(--dw-ink-3); }
-    .bar { block-size: 6px; margin: var(--dw-2) var(--dw-4); border-radius: 3px; background: var(--dw-surface-3, var(--dw-surface-2)); overflow: hidden; }
-    .bar span { display: block; block-size: 100%; background: var(--dw-primary); } .bar span.over { background: var(--dw-danger); }
-    .none { margin: var(--dw-2) var(--dw-4) 0; font-size: 13px; }
+    table.cons { min-inline-size: 760px; }
+    table.cons > thead th { white-space: nowrap; }
+    table.cons > tbody > tr.main > td { padding-block: 14px; vertical-align: middle; }
+    table.cons > tbody + tbody { border-block-start: 0; }
+    tr.main.clickable { cursor: pointer; } tr.main.clickable:hover > td { background: var(--dw-surface-2); }
+    tbody.open > tr.main, tbody.open > tr.main > td { background: var(--dw-surface-2); border-block-end-color: transparent; }
+    .mat { display: flex; align-items: center; gap: 12px; min-inline-size: 220px; }
+    .ico { display: grid; place-items: center; flex: none; inline-size: 36px; block-size: 36px; border-radius: 10px; background: var(--dw-primary-soft); color: var(--dw-primary); }
+    .ico.off { background: var(--dw-surface-2); color: var(--dw-ink-3); } .ico dw-icon { font-size: 20px; }
+    .who { display: grid; min-inline-size: 0; } .ref { font-weight: 650; color: var(--dw-ink); text-decoration: none; overflow-wrap: anywhere; } .ref:hover { color: var(--dw-primary); text-decoration: underline; }
+    .nm { font-size: 12.5px; color: var(--dw-ink-3); }
+    .sub { margin-block-start: 2px; font-size: 12px; color: var(--dw-ink-3); font-weight: 400; }
+    .pending { display: inline-block; padding: 1px 9px; border-radius: 999px; background: var(--dw-surface-2); color: var(--dw-ink-3); font-size: 12px; white-space: nowrap; }
+    .prog { inline-size: 170px; }
+    .meter { display: flex; align-items: center; gap: 8px; }
+    .bar { flex: 1; block-size: 6px; border-radius: 3px; background: var(--dw-surface-3, var(--dw-line-soft)); overflow: hidden; }
+    .bar span { display: block; block-size: 100%; border-radius: 3px; background: var(--dw-primary); } .bar span.over { background: var(--dw-danger); }
+    .pct { inline-size: 42px; text-align: end; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--dw-ink-2); }
+    .delta { font-weight: 600; } .m-label { display: none; }
+    .chev { inline-size: 44px; text-align: end; }
+    .fold { display: inline-grid; place-items: center; inline-size: 30px; block-size: 30px; border: 0; border-radius: 8px; background: none; color: var(--dw-ink-3); cursor: pointer; }
+    .fold:hover { background: var(--dw-surface-3, var(--dw-line-soft)); color: var(--dw-ink); }
+    tr.detail > td { padding: 0 var(--dw-4) var(--dw-3) 64px !important; background: var(--dw-surface-2); }
+    .lots { border: 1px solid var(--dw-line); border-radius: var(--dw-radius); background: var(--dw-surface); overflow: hidden; }
+    .lots td { white-space: nowrap; } .lots .note { margin: 0; padding: 8px 12px; border-block-start: 1px solid var(--dw-line-soft); }
+    @media (max-width: 1100px) { .money-col { display: none; } }
+    .dw-stack > * { min-inline-size: 0; }
+    @media (max-width: 760px) {
+      /* A phone reads one card per material: who it is, then planned and consumed side by side. */
+      table.cons, table.cons > tbody, tr.detail, tr.detail > td { display: block; } table.cons { min-inline-size: 0; } table.cons > thead { display: none; }
+      table.cons > tbody { border-block-end: 1px solid var(--dw-line-soft); }
+      tr.main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 40px; align-items: start; }
+      table.cons > tbody > tr.main > td { padding: 2px 16px 12px; border: 0; text-align: start; }
+      table.cons > tbody > tr.main > td.mcell { grid-column: 1 / -1; padding-block: 14px 8px; }
+      table.cons > tbody > tr.main > td.chev { grid-column: 3; grid-row: 2; padding-inline: 0 8px; }
+      .prog, table.cons .var-col, table.cons .money-col { display: none; }
+      .m-label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--dw-ink-3); }
+      .mat { min-inline-size: 0; gap: 10px; } .ico { inline-size: 32px; block-size: 32px; }
+      tr.detail > td { padding: 0 var(--dw-3) var(--dw-3) !important; } .lots { overflow-x: auto; }
+    }
     .scroll { overflow-x: auto; } table { inline-size: 100%; }
     .num { text-align: end; white-space: nowrap; } .act { text-align: end; }
     .over { color: var(--dw-danger); } .under { color: var(--dw-success); } tr.off td { color: var(--dw-ink-3); text-decoration: line-through; } tr.off td:last-child, tr.off td:nth-last-child(2) { text-decoration: none; }
@@ -686,7 +803,7 @@ export class ExpenseDialog {
     .amount { display: grid; justify-items: end; font-variant-numeric: tabular-nums; } .amount strong { font-size: 20px; } .amount span { font-size: 12.5px; color: var(--dw-ink-2); }
     .gain.good .amount strong { color: var(--dw-success); } .gain.bad .amount strong { color: var(--dw-danger); }
     .notes { margin: 4px 0 0; white-space: pre-line; }
-    @media (max-width: 900px) { .money { grid-template-columns: minmax(0, 1fr); } .dates { margin-inline-start: 0; inline-size: 100%; } }
+    @media (max-width: 900px) { .money { grid-template-columns: minmax(0, 1fr); } .node.dates { margin-inline-start: 0; text-align: start; } }
   `,
 })
 export class OfDetailPage implements OnInit {
@@ -772,6 +889,28 @@ export class OfDetailPage implements OnInit {
         this.loading.set(false);
       },
     });
+  }
+
+  /** The materials whose received lots are shown. */
+  protected readonly expanded = signal<string[]>([]);
+
+  protected toggle(material: string): void {
+    this.expanded.update((open) => (open.includes(material) ? open.filter((item) => item !== material) : [...open, material]));
+  }
+
+  protected kindIcon(kind: MaterialKind | null): string {
+    return (kind && KIND_ICON[kind]) || 'inventory_2';
+  }
+
+  protected unitShort(unit: string): string {
+    return this.transloco.translate('units.' + unit);
+  }
+
+  /** Consumed against planned, in %, uncapped. */
+  protected ratio(material: ConsumedMaterial): number {
+    const planned = Number(material.planned ?? 0);
+
+    return planned > 0 ? (Number(material.consumed) / planned) * 100 : 0;
   }
 
   /** Consumed as a share of planned, capped: the bar shows "how far", the figures say by how much it is over. */

@@ -79,28 +79,33 @@ describe('production: received lots, consumption, produced lots, invoices', () =
     expect(api.post).not.toHaveBeenCalled();
   });
 
-  it('keeps one consumption line per received lot and sends "lot non précisé" as no lot', async () => {
-    const order = { ulid: 'O1', order_number: 'OF-1', consumptions: [
+  it('offers the materials of the article, one block each, and keeps one consumption line per received lot', async () => {
+    const consumed = (material: string, inArticle: boolean, lines: number) => ({ material, reference: material, name: material, unit: 'kg', in_article: inArticle, lines: Array(lines).fill({}) });
+    const order = { ulid: 'O1', order_number: 'OF-1', materials: [consumed('M1', true, 2), consumed('M2', true, 0), consumed('M9', false, 0)], consumptions: [
       { material: 'M1', reference: 'DEN', name: 'Denim', unit: 'kg', batch: 'B1', batch_number: 'L1', quantity: '12.000', step: 'cutting', site: 'S1', consumed_on: '2026-09-02', notes: null },
       { material: 'M1', reference: 'DEN', name: 'Denim', unit: 'kg', batch: null, batch_number: null, quantity: '3.000', step: null, site: null, consumed_on: null, notes: null },
     ] };
     const dialog = inner(create(ConsumptionsDialog, order));
+    // Only the article's materials (and one the OF consumed beside them) are offered.
+    expect(dialog.blocks().map((m: { material: string }) => m.material)).toEqual(['M1', 'M2']);
     expect(dialog.lines.length).toBe(2);
+    expect(dialog.count('M1')).toBe(2);
+    expect(dialog.totals()['M1']).toBe(15);
     expect(dialog.batchesOf('M1').map((item: { batch_number: string }) => item.batch_number)).toEqual(['L1', 'L2']);
 
-    // A second lot of the same material is a second line.
-    dialog.add();
-    dialog.lines.at(2).patchValue({ material: 'M1', batch: 'B2', quantity: '8' });
+    // A second lot of the same material is a second line; a new line takes the stage and site of the line above.
+    dialog.add('M1');
+    dialog.lines.at(2).patchValue({ batch: 'B2', quantity: '8', step: 'cutting', site: 'S1' });
+    dialog.add('M2');
+    expect(dialog.lines.at(3).getRawValue()).toMatchObject({ material: 'M2', batch: '', step: 'cutting', site: 'S1' });
+    dialog.lines.at(3).patchValue({ quantity: '1,5' });
     await dialog.submit();
     expect(api.put).toHaveBeenCalledWith('production/manufacturing-orders/O1/consumptions', { consumptions: [
       { material: 'M1', batch: 'B1', quantity: '12', step: 'cutting', site: 'S1', consumed_on: '2026-09-02', notes: null },
       { material: 'M1', batch: null, quantity: '3', step: null, site: null, consumed_on: null, notes: null },
-      { material: 'M1', batch: 'B2', quantity: '8', step: null, site: null, consumed_on: null, notes: null },
+      { material: 'M1', batch: 'B2', quantity: '8', step: 'cutting', site: 'S1', consumed_on: null, notes: null },
+      { material: 'M2', batch: null, quantity: '1.5', step: 'cutting', site: 'S1', consumed_on: null, notes: null },
     ] });
-
-    // Changing the material of a line forgets its lot: a lot belongs to one material.
-    dialog.lines.at(0).controls.material.setValue('M2');
-    expect(dialog.lines.at(0).controls.batch.value).toBe('');
   });
 
   it('creates a produced lot on its OF, with no supplier anywhere', async () => {

@@ -3206,13 +3206,9 @@
       "consumptionHint": "What one piece should consume of each raw material. Used to compare planned and actual on a manufacturing order.",
       "perPiece": "Per piece",
       "addMaterial": "Add a raw material",
-      "efficiency": "Efficiency %",
-      "efficiencyHint": "For a fabric: the marker efficiency (%). Empty: the company's ({{pct}} %).",
       "cuttingWaste": "Expected cutting waste",
       "cuttingWastePerPiece": "{{g}} g / piece",
       "cuttingWasteNone": "No fabric with its width and weight: no estimate.",
-      "defaultEfficiency": "Cutting waste is estimated with a marker efficiency of {{pct}} % for the fabrics whose article does not give its own.",
-      "defaultEfficiencyLabel": "Default efficiency (%)",
       "cuttingFormula": "Waste per piece = consumption (m) × width × weight × (100 − efficiency) %. Only fabrics in metres with a width and a weight count.",
       "materialsHeader": "Materials",
       "materialsCount": "{{count}} RM",
@@ -3228,7 +3224,7 @@
       "fabricsCount": "{{count}} fabric(s)",
       "suppliesCount": "{{count}} supply and packaging item(s)",
       "fabricsTitle": "Fabrics and cutting waste",
-      "fabricsIntro": "For one piece: the fabric consumed, the share the marker does not keep (100 − efficiency), and the type of waste these scraps are.",
+      "fabricsIntro": "For one piece: the fabric consumed, the cutting waste it should leave and the type of waste it gives.",
       "fabric": "Fabric",
       "default": "default",
       "perPieceTotal": "Total per piece",
@@ -3240,7 +3236,15 @@
       "toComplete": "to complete",
       "cannotCount": "A figure is missing to count it in kg: the rate, the weight per unit, or the weight of one piece of the material.",
       "suppliesNoWaste": "no waste expected",
-      "othersCount": "{{count}} other material(s): threads, trims, packaging"
+      "othersCount": "{{count}} other material(s): threads, trims, packaging",
+      "estimateNote": "Estimated before cutting, at the company's usual efficiency. On an MO, the cutting waste is computed from its spreads (Cutting tab).",
+      "perPieceUnit": {
+        "m": "m / piece",
+        "kg": "kg / piece",
+        "piece": "u. / piece"
+      },
+      "byTypeTitle": "Waste by type, for one piece",
+      "heaviest": "mostly {{name}} ({{pct}} %)"
     },
     "orders": {
       "title": "Orders",
@@ -3304,7 +3308,8 @@
       "wasteLots": "{{count}} waste lot(s)",
       "producedHint": "As soon as the order has produced lots, this quantity is their sum.",
       "tabMake": "Steps and consumption",
-      "tabMoney": "Costs and gain"
+      "tabMoney": "Costs and gain",
+      "period": "Period"
     },
     "ofStatus": {
       "planned": "Planned",
@@ -3524,10 +3529,10 @@
     },
     "consumed": {
       "title": "Raw materials consumed",
-      "edit": "Edit consumption",
-      "editHint": "One line per raw material and received lot: 12 kg of lot A and 8 kg of lot B are two lines. If you do not know which lot the raw material came from, leave \"Lot not specified\".",
+      "edit": "Enter consumption",
+      "editHint": "One line per received lot: 12 kg of lot A and 8 kg of lot B are two lines. Only the raw materials of the article are offered. Unknown lot: leave “Lot not specified”.",
       "none": "No consumption entered.",
-      "intro": "Order → raw material consumed → received lot → supplier. Planned comes from the consumption per piece of the article.",
+      "intro": "Each raw material of the article: what was planned, what was consumed, and where it came from (click a row to see its received lots).",
       "empty": "No raw material planned or consumed for this order.",
       "planned": "Planned",
       "actual": "Consumed",
@@ -3536,7 +3541,17 @@
       "notYet": "Nothing consumed yet.",
       "materialsHint": "raw material(s) planned or consumed",
       "averageHint": "Lot not specified: valued at the average price of the lots of this raw material.",
-      "unallocated": "{{quantity}} {{unit}} with no lot specified; the origin of {{known}} {{unit}} is known."
+      "unallocated": "{{quantity}} {{unit}} with no lot specified; the origin of {{known}} {{unit}} is known.",
+      "progress": "Progress",
+      "notEntered": "Not entered yet",
+      "linesCount": "{{count}} entry(ies)",
+      "lots": "Received lots",
+      "outsideArticle": "Not in article",
+      "entered": "Entered",
+      "addLot": "Add a lot",
+      "enter": "Enter a consumption",
+      "noArticleMaterials": "The article of this MO has no raw materials yet. Add them on its page (Catalogue › Articles), then enter here what was consumed.",
+      "noLotNamed": "No received lot named: the cost comes from the average price of the material, when known."
     },
     "produced": {
       "title": "Produced lots",
@@ -3735,7 +3750,8 @@
       "quantities": "Pieces per size",
       "fillAll": "Same quantity everywhere:",
       "apply": "Apply",
-      "totalShort": "Total"
+      "totalShort": "Total",
+      "noneOnOf": "No sizes assigned"
     },
     "cutting": {
       "tab": "Cutting",
@@ -3771,14 +3787,15 @@
       "totalCut": "Total cut",
       "totalPlanned": "Total planned",
       "newSpread": "Add a spread",
-      "startsArticle": "Starting efficiency: {{pct}} % (article)",
-      "startsCompany": "Starting efficiency: {{pct}} % (default)",
+      "startsCompany": "Starting efficiency: {{pct}} %",
       "noFabric": "The article of this MO has no fabric in metres. Add a fabric below to enter its spreads.",
       "otherFabric": "Other fabric (interlining, lining…)",
       "otherHint": "For a fabric the article does not list.",
       "formula": "Fabric = plies × length × width × weight. Waste = fabric × (100 − efficiency) %. Before cutting: plies planned; after: plies cut.",
       "deleted": "Spread {{fabric}} deleted.",
-      "ofPlanned": "of {{value}} planned"
+      "ofPlanned": "of {{value}} planned",
+      "usual": "A new spread starts from the company's usual efficiency: {{pct}} %.",
+      "usualLabel": "Usual efficiency"
     }
   },
   "help": {
@@ -3880,7 +3897,8 @@
     "l": "l",
     "piece": "pieces",
     "piece_one": "piece",
-    "package": "packages"
+    "package": "packages",
+    "m": "m"
   },
   "tolerance": {
     "title": "Gaps at reception",

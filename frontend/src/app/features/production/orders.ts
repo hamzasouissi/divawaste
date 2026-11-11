@@ -396,15 +396,26 @@ export class ManufacturingOrderDialog {
         <dw-data-table [columns]="columns" [rows]="list.rows()" [loading]="list.loading()" [error]="list.error()" [total]="list.total()" [pageIndex]="list.page() - 1" [pageSize]="list.perPage()"
           [clickable]="true" [emptyTitle]="t('production.of.empty')" [emptyHint]="t('production.emptyHint')" emptyIcon="precision_manufacturing"
           (page)="list.setPage($event.pageIndex + 1, $event.pageSize)" (rowClick)="open($event)" (retry)="list.reload()">
-          <ng-template dwCell="number" let-of><span class="dw-mono">{{ of.order_number }}</span>@if (of.customer_order) { <div class="dw-faint dw-mono">{{ of.customer_order.order_number }}</div> }</ng-template>
-          <ng-template dwCell="article" let-of>{{ of.article.reference }}<div class="dw-faint">{{ of.article.name }}</div></ng-template>
-          <ng-template dwCell="quantity" let-of>{{ of.quantity_produced ?? '—' | dwNumber }} / {{ of.quantity_planned | dwNumber }}</ng-template>
-          <ng-template dwCell="steps" let-of>@for (step of of.steps; track step.step) { <div>{{ step.name | dwLocalized }} <span class="dw-faint">· {{ step.site_name }}</span></div> } @empty { — }</ng-template>
+          <ng-template dwCell="number" let-of><span class="dw-mono num">{{ of.order_number }}</span>@if (of.customer_order) { <div class="dw-faint sub">{{ t('production.orders.one') }} <span class="dw-mono">{{ of.customer_order.order_number }}</span></div> }</ng-template>
+          <ng-template dwCell="article" let-of><span class="art">{{ of.article.reference }}</span>@if (of.article.name !== of.article.reference) { <div class="dw-faint sub">{{ of.article.name }}</div> }</ng-template>
+          <ng-template dwCell="quantity" let-of>
+            <div class="made"><span><strong>{{ of.quantity_produced === null ? '—' : (of.quantity_produced | dwNumber) }}</strong><span class="dw-faint"> / {{ of.quantity_planned | dwNumber }}</span></span>
+              @if (of.quantity_produced !== null && of.quantity_planned > 0) { <span class="track"><span [style.inline-size.%]="made(of)"></span></span> }</div></ng-template>
+          <ng-template dwCell="steps" let-of>@if (of.steps.length === 0) { <span class="dw-faint">—</span> } @else {
+            <div class="chain">@for (step of of.steps; track step.step; let last = $last) { <span>{{ step.name | dwLocalized }}</span>@if (!last) { <dw-icon>chevron_right</dw-icon> } }</div>
+            <div class="dw-faint sub">{{ sitesOf(of) }}</div> }</ng-template>
           <ng-template dwCell="dates" let-of>{{ of.started_on | dwDate }}@if (of.finished_on) { <div class="dw-faint">→ {{ of.finished_on | dwDate }}</div> }</ng-template>
           <ng-template dwCell="status" let-of><dw-status kind="accreditation" [value]="tone(of.status)" [label]="t('production.ofStatus.' + of.status)" /></ng-template>
         </dw-data-table>
       </div>
     </ng-container>
+  `,
+  styles: `
+    .num { font-weight: 600; } .art { font-weight: 560; } .sub { margin-block-start: 2px; font-size: 12.5px; }
+    .made { display: grid; justify-items: end; gap: 6px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .track { display: block; inline-size: 96px; block-size: 4px; border-radius: 2px; background: var(--dw-surface-3, var(--dw-line-soft)); overflow: hidden; }
+    .track span { display: block; block-size: 100%; border-radius: 2px; background: var(--dw-primary); }
+    .chain { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; } .chain dw-icon { font-size: 16px; color: var(--dw-ink-3); }
   `,
 })
 export class ManufacturingOrdersPage {
@@ -432,6 +443,16 @@ export class ManufacturingOrdersPage {
     { key: 'dates', header: 'production.of.startedOn', hideBelow: 1100 },
     { key: 'status', header: 'fields.status' },
   ];
+
+  /** How far the OF is: pieces made against planned, capped at the full bar. */
+  protected made(of: ManufacturingOrder): number {
+    return Math.min(100, ((of.quantity_produced ?? 0) / of.quantity_planned) * 100);
+  }
+
+  /** Where its steps are made, each site once. */
+  protected sitesOf(of: ManufacturingOrder): string {
+    return [...new Set(of.steps.map((step) => step.site_name))].join(' · ');
+  }
 
   /** The page of the OF: what it consumed, made, wasted, cost and is worth. */
   protected open(of: ManufacturingOrder): void {
