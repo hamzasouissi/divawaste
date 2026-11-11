@@ -106,14 +106,14 @@ export interface Article {
   /** What one piece is expected to consume; for a fabric, the waste its cutting is expected to leave (kg per piece). */
   materials: ArticleLine[];
   /** Null figures: no fabric of the article has its width and weight. */
-  cutting_waste: { default_efficiency_pct: string; fabric_kg_per_piece: string | null; cutting_kg_per_piece: string | null; other_kg_per_piece: string | null; waste_kg_per_piece: string | null; by_type: WasteByType[] };
+  cutting_waste: { default_efficiency_pct: string; fabric_kg_per_piece: string | null; other_kg_per_piece: string | null; waste_kg_per_piece: string | null; by_type: WasteByType[] };
 }
 
 /** A line of a composition; for a fabric, what its cutting is expected to leave and the type of waste it is. */
 export interface ArticleLine {
   material: string; reference: string; name: string; unit: string; quantity_per_piece: string;
   width_cm: string | null; grammage_gsm: string | null; composition: { material: string; pct: string | number }[];
-  efficiency_applied: string | null; fabric_kg_per_piece: string | null; waste_kg_per_piece: string | null;
+  fabric_kg_per_piece: string | null; waste_kg_per_piece: string | null;
   kind: MaterialKind | null;
   /** What one piece consumes of it in kg, when it can be said. */
   consumed_kg_per_piece: string | null;
