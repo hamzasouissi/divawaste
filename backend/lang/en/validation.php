@@ -191,8 +191,6 @@ return [
             'size_not_in_grid' => 'Size “:size” is not in the size grid of the MO.',
             'size_in_use' => 'Size “:size” has quantities on an MO: it cannot leave the grid.',
             'spread_fabric' => 'A spread is cut from a fabric counted in metres.',
-            'spread_ratio' => 'Give at least one piece per layer.',
-            'spread_consumption' => 'Spread: :layers layers cut',
         ],
         'tolerance' => ['order' => 'The blocking limit cannot be below the warning limit.', 'duplicate' => 'A rule already exists for this waste type and this channel.'],
         'measure' => ['unit' => 'This waste type is declared in :unit: give the quantity in that unit.', 'weight' => 'The net weight is required for weighed waste.'],

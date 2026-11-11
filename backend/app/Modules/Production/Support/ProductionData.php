@@ -302,7 +302,7 @@ final class ProductionData
             'produced_lots' => $produced->map(fn ($lot) => $this->producedLot($lot)),
             'produced' => $figures['produced'],
             'waste' => $this->waste($of) + ['estimated' => $this->estimatedWaste($of, $cutting)],
-            'cutting' => $cutting === null ? null : array_diff_key($cutting, ['by_type' => 0]),
+            'cutting' => array_diff_key($cutting, ['by_type' => 0]),
             'expenses' => ! $money ? [] : DB::table('production_order_expenses as e')->leftJoin('production_suppliers as s', 's.id', '=', 'e.production_supplier_id')
                 ->where('e.production_order_id', $of->id)->orderBy('e.incurred_on')->orderBy('e.id')
                 ->get(['e.ulid', 'e.category', 'e.description', 'e.amount', 'e.currency_code', 'e.incurred_on', 'e.reference', 'e.notes', 's.ulid as supplier', 's.name as supplier_name'])
@@ -398,7 +398,7 @@ final class ProductionData
      * weighed on the OF are not cutting scraps.
      *
      * Once the OF has its spreads (matelas), they say it instead (source "cutting"): what the layers planned leave, then
-     * what the layers really cut leave, with the efficiency of each placement.
+     * what the layers really cut leave, with the efficiency of each placement; per piece, for the pieces of the OF.
      *
      * @param  array<string, mixed>|null  $cutting
      * @return array<string, mixed>|null
@@ -412,15 +412,15 @@ final class ProductionData
             'lots' => $typeId === 0 ? 0 : (int) ($weighed[$typeId]->lots ?? 0),
             'unweighed_lots' => $typeId === 0 ? 0 : (int) ($weighed[$typeId]->unweighed ?? 0),
         ];
-        if ($cutting !== null && $cutting['totals']['planned']['waste_kg'] !== null) {
-            $pieces = $cutting['totals']['planned']['pieces'];
+        if ($cutting !== null && ($cutting['totals']['planned']['waste_kg'] ?? null) !== null) {
+            $pieces = (int) $of->quantity_planned;
             $done = $cutting['totals']['done'];
 
             return [
                 'source' => 'cutting',
                 'per_piece_kg' => $pieces > 0 ? CuttingWaste::round(bcdiv($cutting['totals']['planned']['waste_kg'], (string) $pieces, 8), 4) : null,
                 'planned_kg' => $cutting['totals']['planned']['waste_kg'], 'planned_pieces' => $pieces,
-                'produced_kg' => $done['waste_kg'] ?? null, 'produced_pieces' => $done['pieces'] ?? null,
+                'produced_kg' => $done['waste_kg'] ?? null, 'produced_pieces' => $of->quantity_produced === null ? null : (int) $of->quantity_produced,
                 'by_type' => collect($cutting['by_type'])->filter(fn (array $row) => $row['planned_kg'] !== null)->map(fn (array $row) => [
                     'waste_type' => $this->cutting->type($row['type_id'] === 0 ? null : $row['type_id']),
                     'per_piece_kg' => $pieces > 0 ? CuttingWaste::round(bcdiv($row['planned_kg'], (string) $pieces, 8), 4) : null,

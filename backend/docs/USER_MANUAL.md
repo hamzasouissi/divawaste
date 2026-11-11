@@ -688,17 +688,21 @@ gain could not be calculated and why; totals only add the gains that exist. **Ex
 - **Ordres de fabrication** — `/production/manufacturing-orders`: number, article (one of the order's when an order is
   chosen), planned and produced quantities, dates, status, then:
   - **Tailles**: the OF may follow a grid and give its quantity of each size; the planned quantity is then their total.
-  - **Coupe** (tab of the OF): one line per **matelas** (spread) — the fabric (in metres), optionally its received lot,
-    the **length** and **efficience** of the placement, the **pieces of each size per layer**, the **couches prévues**
-    then, after cutting, the **couches réalisées** (and optionally the spread ends, in cm per layer). For each matelas:
-    pieces = couches × pieces per layer (by size), fabric = couches × length (m, then kg with laize and grammage),
-    chute estimée = fabric × (100 − efficience) %. The garments are counted on the **main fabric** (most metres): an
-    interlining or a lining adds its fabric and its waste, not pieces. "Par taille" sets ordered, planned and cut
-    pieces side by side (cut below ordered in red) and shares each matelas's waste by its pieces (an estimate).
-    "Coupé et consommé" sets the metres cut beside the consumption entered; the button on a matelas records its
-    metres cut as a consumption of the OF, once and only when asked.
-    As soon as an OF has matelas, its estimated waste (Déchets tab, statistics) comes from them — couches prévues,
-    then réalisées — instead of the article's estimate.
+    The sizes are shown on the OF for information: the cutting waste follows the fabric laid, not the sizes.
+  - **Coupe** (tab of the OF): one card per **fabric** — those of the article are listed already, with their laize,
+    grammage, what the article says the OF needs, and the waste type they give; "Autre tissu" adds a fabric the
+    article does not list (an interlining, a lining). In each card, one row per **matelas**, typed in place: the
+    **length** of the spread (m, its ends included), the **couches prévues**, after cutting the **couches coupées**,
+    the **efficience** (starting from the article's for that fabric, else the company's), and, only when the rolls
+    laid differ from the raw material, their **laize** or **grammage** (empty boxes show the raw material's in grey).
+    A row is saved when a box is left; the figures follow the typing, with the working written under each row:
+    fabric (m) = couches × length; fabric (kg) = m × laize × grammage; chute = kg × (100 − efficience) %.
+    Before cutting the figures come from the couches prévues, then from the couches coupées; a matelas with its
+    couches coupées is **Coupé**, dated the day they were entered. Above the cards: matelas cut, fabric, chute
+    estimée (and its % of the fabric) and the weighed cutting waste, red above the estimate, green below once
+    every lot is weighed.
+    As soon as an OF has matelas, its estimated waste (Déchets tab, statistics) comes from them instead of the
+    article's estimate; per piece, it is that waste over the pieces of the OF.
   - **Étapes**: the stages the OF goes through, **each on its own site** (cut on one site, sewn on another), with
     the pieces done at each. The stages offered are the platform's (coupe, confection, lavage, teinture, finition,
     contrôle qualité, emballage) plus the ones the company adds;
