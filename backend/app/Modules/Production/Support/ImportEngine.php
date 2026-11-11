@@ -59,7 +59,7 @@ final class ImportEngine
         'clients' => ['code' => ['text', false], 'name' => ['text', true], 'country_code' => ['text', false], 'contact_name' => ['text', false], 'email' => ['text', false], 'phone' => ['text', false]],
         'suppliers' => ['code' => ['text', false], 'name' => ['text', true], 'country_code' => ['text', false], 'contact_name' => ['text', false], 'email' => ['text', false], 'phone' => ['text', false]],
         'materials' => ['reference' => ['text', true], 'name' => ['text', false], 'category' => ['text', false], 'supplier' => ['text', false], 'unit' => ['text', false], 'color_label' => ['text', false],
-            'grammage_gsm' => ['decimal', false], 'width_cm' => ['decimal', false], 'waste_type' => ['text', false], 'batch_number' => ['text', false], 'received_on' => ['date', false], 'batch_quantity' => ['decimal', false]],
+            'grammage_gsm' => ['decimal', false], 'width_cm' => ['decimal', false], 'nature' => ['text', false], 'unit_weight_kg' => ['decimal', false], 'waste_type' => ['text', false], 'batch_number' => ['text', false], 'received_on' => ['date', false], 'batch_quantity' => ['decimal', false]],
         'articles' => ['reference' => ['text', true], 'name' => ['text', false], 'family' => ['text', false], 'client' => ['text', false], 'material' => ['text', false], 'quantity_per_piece' => ['decimal', false],
             'efficiency_pct' => ['decimal', false]],
         'orders' => ['order_number' => ['text', true], 'client' => ['text', true], 'article' => ['text', true], 'quantity' => ['integer', true], 'unit_price' => ['decimal', false],
@@ -98,7 +98,7 @@ final class ImportEngine
 
     /** What a cell of each column looks like, shown next to the column in the wizard. */
     public const EXAMPLES = [
-        'efficiency_pct' => '82', 'reference' => 'DEN-12OZ', 'batch_number' => 'R-2026-0412', 'supplier' => 'Tissages du Nord', 'supplier_batch_reference' => 'TN-88541', 'received_on' => '12/03/2026',
+        'efficiency_pct' => '82', 'nature' => 'Tissu', 'unit_weight_kg' => '0,45', 'reference' => 'DEN-12OZ', 'batch_number' => 'R-2026-0412', 'supplier' => 'Tissages du Nord', 'supplier_batch_reference' => 'TN-88541', 'received_on' => '12/03/2026',
         'batch_quantity' => '1250,5', 'unit_price' => '8,450', 'total_amount' => '10566,725', 'delivery_cost' => '120', 'currency' => 'TND', 'delivery_note' => 'BL-4471',
         'invoice_reference' => 'FA-2026-118', 'manufacturing_order' => 'OF-2026-014', 'material' => 'DEN-12OZ', 'consumed_quantity' => '842,3', 'consumed_on' => '18/03/2026',
         'lot_number' => 'LF-2026-014-A', 'quantity' => '1200', 'produced_on' => '25/03/2026', 'status' => 'livré', 'delivered_on' => '28/03/2026', 'step' => 'Coupe', 'site' => 'NAB',
@@ -155,6 +155,8 @@ final class ImportEngine
         'issued_on' => ['date', 'date facture', 'date d emission', 'invoice date'],
         'status' => ['statut', 'etat', 'status'],
         'category' => ['categorie', 'type', 'nature', 'famille', 'category'],
+        'nature' => ['nature de la matiere', 'nature matiere', 'type de matiere', 'type matiere', 'genre', 'kind'],
+        'unit_weight_kg' => ['poids unitaire', 'poids unitaire kg', 'poids piece', 'poids par piece', 'unit weight'],
         'description' => ['description', 'libelle', 'designation', 'objet'],
         'expenses.reference' => ['piece', 'n piece', 'justificatif', 'reference', 'ref', 'facture', 'n facture', 'document'],
         'number' => ['n facture', 'numero facture', 'facture', 'numero', 'n', 'invoice number', 'number'],
@@ -226,6 +228,11 @@ final class ImportEngine
     {
         return array_keys($this->sitesTouched);
     }
+
+    /** What a raw material is, as files say it. */
+    private const NATURES = ['tissu' => 'fabric', 'tissus' => 'fabric', 'fabric' => 'fabric', 'maille' => 'fabric', 'fil' => 'thread', 'fils' => 'thread', 'thread' => 'thread',
+        'fourniture' => 'trim', 'fournitures' => 'trim', 'accessoire' => 'trim', 'accessoires' => 'trim', 'trim' => 'trim', 'emballage' => 'packaging', 'emballages' => 'packaging',
+        'packaging' => 'packaging', 'chimique' => 'chemical', 'produitchimique' => 'chemical', 'produitschimiques' => 'chemical', 'chemical' => 'chemical', 'autre' => 'other', 'other' => 'other'];
 
     private const UNITS = ['m' => 'm', 'metre' => 'm', 'metres' => 'm', 'meter' => 'm', 'ml' => 'm', 'kg' => 'kg', 'kilo' => 'kg', 'kilogramme' => 'kg', 'kilogram' => 'kg',
         'piece' => 'piece', 'pieces' => 'piece', 'pc' => 'piece', 'pcs' => 'piece', 'u' => 'piece', 'unite' => 'piece', 'unit' => 'piece'];
@@ -373,6 +380,8 @@ final class ImportEngine
             'production_supplier_id' => $v['supplier'] === null ? null : $this->party(ProductionSupplier::class, $v['supplier'], 'suppliers', $also),
             'unit_id' => $unit === null && $existing !== null ? null : DB::table('units')->where('code', $unit ?? 'm')->value('id'),
             'color_label' => $v['color_label'], 'grammage_gsm' => $v['grammage_gsm'], 'width_cm' => $v['width_cm'], 'category' => $v['category'],
+            'kind' => $v['nature'] === null ? null : (self::NATURES[self::normalize($v['nature'])] ?? throw new RuntimeException(__('imports.errors.nature', ['value' => $v['nature']]))),
+            'unit_weight_kg' => $v['unit_weight_kg'],
         ], fn ($value) => $value !== null));
         // A type of waste of the company, by its code or its name, never created from a file: the material leaves it all.
         if ($v['waste_type'] !== null) {
@@ -381,8 +390,10 @@ final class ImportEngine
             $material = RawMaterial::query()->where('reference', $v['reference'])->firstOrFail();
             $cutting = app(CuttingWaste::class);
             $current = $cutting->shares([(int) $material->id])[(int) $material->id];
-            if ($current !== [['type' => $type, 'pct' => '100.00']]) {
-                $cutting->save((int) $material->getAttribute('company_id'), (int) $material->id, [['type' => $type, 'pct' => '100.00']]);
+            $line = RawMaterial::defaultWasteLine($type, $material->getAttribute('kind'), DB::table('units')->where('id', $material->getAttribute('unit_id'))->value('code') === 'm');
+            // The same type already said, with whatever calculation: left as it is.
+            if (count($current) !== 1 || $current[0]['type'] !== $type) {
+                $cutting->save((int) $material->getAttribute('company_id'), (int) $material->id, [$line]);
                 $outcome = $outcome === 'unchanged' ? 'updated' : $outcome;
             }
         }

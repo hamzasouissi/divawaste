@@ -60,7 +60,8 @@ final class CuttingPlan
                 'efficiency_pct' => $line?->efficiency_pct !== null ? (string) $line->efficiency_pct : $default,
                 'efficiency_from' => $line?->efficiency_pct !== null ? 'article' : 'company',
                 // The waste it gives, each type with its share.
-                'waste_types' => array_map(fn (array $line) => ['waste_type' => $this->cutting->type($line['type'] ?: null), 'share_pct' => $line['pct']], $waste['lines']),
+                'waste_types' => array_values(array_map(fn (array $line) => ['waste_type' => $this->cutting->type($line['type'] ?: null), 'share_pct' => $line['pct']],
+                    array_filter($waste['lines'], fn (array $line) => $line['method'] === 'cutting'))),
                 'spreads' => $rows->all(),
                 'planned' => $this->sum($rows, 'planned'),
                 'done' => $this->sum($rows, 'done'),

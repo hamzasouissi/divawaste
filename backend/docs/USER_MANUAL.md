@@ -669,12 +669,21 @@ gain could not be calculated and why; totals only add the gains that exist. **Ex
 - **Matières et articles** — `/production/catalog`:
   - a **matière première** has a reference, a supplier, a unit (metre, kilogram or piece), a colour or Pantone
     reference, a composition (must total 100 %) and its **lots reçus** (deliveries: batch number, date, quantity).
-    Its **déchets produits** are the types of waste it leaves when cut, each with its **share** (one type: all of it;
-    several: 85 % Chutes de coupe, 15 % Lisières, totalling 100 %). "Nouveau type de déchet" creates a type of the
-    company without leaving the form. Empty, a fabric (metres, laize and grammage) leaves the company's "Chutes de
-    coupe" (marked "défaut"). One type also comes in with the materials file (column "Type de déchet", by the name or
-    the code of a type of the company; never created from a file). Every estimate (article, OF, statistics) shares
-    the waste of a fabric between its types by these shares;
+    Its **nature** says what it is: Tissu, Fil, Fourniture, Emballage, Produit chimique or Autre (a material in metres
+    with laize and grammage is a fabric without saying). The form asks for the laize and grammage of a material in
+    metres, and for the **poids d'une pièce** of one counted in pieces (a carton: 0.45 kg), so that its waste can be
+    counted in kg. Its **déchets produits** are the types of waste it leaves, each with its own **calcul**:
+      - **Part de la chute de coupe** (a fabric): fabric consumed × (100 − efficience) % × share; the shares of these
+        lines make 100 % (85 % Chutes de coupe, 15 % Lisières);
+      - **Taux de perte**: kg consumed × rate (thread lost at sewing: 4 %);
+      - **Poids par unité**: quantity consumed × kg per unit (an empty cone of 30 g per cone used);
+      - **Toute la matière**: all the kg consumed (packaging thrown away).
+    Each line says in words what it will count, and warns when a figure is missing (no laize, no unit weight).
+    "Nouveau type de déchet" creates a type of the company without leaving the form. Empty, a fabric leaves the
+    company's "Chutes de coupe" (marked "défaut"). The materials file brings the nature (column "Nature"), the unit
+    weight ("Poids unitaire") and one waste type ("Type de déchet", by the name or code of a type of the company,
+    never created from a file; its calculation follows the nature: cutting for a fabric, all of it for packaging, a
+    loss rate to give for the rest);
   - an **article** has a reference, a family, a client, and its **consommation par pièce** of each material.
     For a fabric (a material in metres with its **laize** and **grammage**), the line also takes the **efficience** of
     its placement (%); empty, the company's default applies (80 % until changed, "Modifier" above the list of articles).
@@ -684,19 +693,24 @@ gain could not be calculated and why; totals only add the gains that exist. **Ex
     consumption (m) × laize × grammage × (100 − efficience) %. The consumption is the gross one, from the placement
     (marker length ÷ pieces in the marker): the waste is inside it. Supplies (buttons, labels, threads) and materials
     without laize or grammage give no estimate rather than a wrong one. The efficience also comes in with the
-    composition file (column "Efficience").
-- **Tailles** — third tab of `/production/catalog`, in two parts:
-  - the company's **sizes**, in order: several typed at once ("XS S M L XL"), dragged to change the order (with the
-    keyboard: the arrows of a focused size); a size a grid or an OF uses cannot be deleted;
-  - the **grilles** (optional): a name and some of those sizes, ticked ("Adulte : S M L XL", "Enfant : 2A 4A …"),
-    kept in the company's order. A size that an OF gave quantities to cannot leave its grid.
+    composition file (column "Efficience"). Below the fabrics, **Fils, emballages et autres matières**: each material
+    that leaves a waste without a placement, with its calculation and its grams per piece ("à compléter" when a figure
+    is missing); then, folded, the supplies that leave nothing. The article's expected waste per piece is the cutting
+    of its fabrics plus these.
+- **Tailles** — third tab of `/production/catalog`:
+  - the **grilles de tailles** first, each shown as its size run ("Adulte : S M L XL", "Enfant : 2A 4A …"); a grid is
+    a name and sizes clicked, in the company's order, with a preview; a size not yet in the list is typed in the
+    grid's form and added at once. A size that an OF gave quantities to cannot leave its grid;
+  - below, **toutes les tailles**, in the order they read: several typed at once ("XS S M L XL"), dragged to change
+    the order (keyboard: the arrows of a focused size); a size a grid or an OF uses (green dot) cannot be deleted.
   Sizes are never an ERP's: they are managed here even with an ERP.
 - **Commandes** — `/production/orders`: number, client, dates, status, and the articles ordered with quantities.
 - **Ordres de fabrication** — `/production/manufacturing-orders`: number, article (one of the order's when an order is
   chosen), planned and produced quantities, dates, status, then:
-  - **Tailles**: on the OF page, under the chain, "Affecter des tailles" (then "Modifier"): the sizes of a grid, or
-    sizes chosen one by one, and the pieces of each; the planned quantity becomes their total ("Retirer les tailles"
-    removes them). The OF form no longer asks for them. The sizes are shown on the OF for information: the cutting
+  - **Tailles**: on the OF page, under the chain, the size run of the OF (pieces of each size and the total), and
+    "Affecter des tailles" (then "Modifier"): the sizes of a grid, or chosen one by one, and the pieces of each typed
+    in the size run ("Même quantité partout" fills them all); the planned quantity becomes their total ("Retirer les
+    tailles" removes them). The OF form no longer asks for them. The sizes are shown on the OF for information: the cutting
     waste follows the fabric laid, not the sizes. With an ERP too, since an ERP never sends them.
   - **Coupe** (tab of the OF): one card per **fabric** — those of the article are listed already, with their laize,
     grammage, what the article says the OF needs, and the waste type they give; "Autre tissu" adds a fabric the

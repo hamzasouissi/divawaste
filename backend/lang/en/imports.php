@@ -13,7 +13,7 @@ return [
         'suppliers' => ['code' => 'Code', 'name' => 'Name', 'country_code' => 'Country (code)', 'contact_name' => 'Contact', 'email' => 'Email', 'phone' => 'Phone'],
         'materials' => [
             'reference' => 'Reference', 'name' => 'Description', 'category' => 'Category', 'supplier' => 'Default supplier', 'unit' => 'Unit (m, kg, piece)', 'color_label' => 'Colour', 'waste_type' => 'Waste type produced',
-            'grammage_gsm' => 'Weight (g/m²)', 'width_cm' => 'Width (cm)', 'batch_number' => 'Received batch no.', 'received_on' => 'Reception date', 'batch_quantity' => 'Quantity received',
+            'grammage_gsm' => 'Weight (g/m²)', 'width_cm' => 'Width (cm)', 'nature' => 'Nature (fabric, thread, trim, packaging, chemical, other)', 'unit_weight_kg' => 'Weight of one piece (kg)', 'batch_number' => 'Received batch no.', 'received_on' => 'Reception date', 'batch_quantity' => 'Quantity received',
         ],
         'articles' => [
             'reference' => 'Reference', 'name' => 'Description', 'family' => 'Family', 'client' => 'Client', 'material' => 'Raw material',
@@ -68,6 +68,7 @@ return [
         'column_required' => 'Say which column holds ":field".',
         'required' => '":field" is empty.',
         'unknown' => 'Unknown :what: ":value".',
+        'nature' => 'Unknown nature: “:value” (expected: fabric, thread, trim, packaging, chemical or other).',
         'efficiency' => 'Invalid efficiency: “:value” (expected: a percentage between 0 and 100).',
         'unit' => 'Unknown unit: ":value" (expected: m, kg or piece).',
         'unexpected' => 'This line could not be saved.',
