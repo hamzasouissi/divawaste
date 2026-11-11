@@ -484,6 +484,10 @@ export class ExpenseDialog {
                   </div>
                 </div>
               }
+              @if ((o.cutting?.fabrics ?? []).length > 0 && (o.cutting?.totals?.spreads ?? 0) === 0) {
+                <p class="cut-hint"><dw-icon>content_cut</dw-icon><span>{{ t('production.waste.noSpreadsYet') }}</span>
+                  <button pButton text size="small" type="button" (click)="tab.set('cut')">{{ t('production.cutting.tab') }}</button></p>
+              }
               @if ((o.waste?.lots ?? 0) === 0 && (o.waste?.rows ?? []).length === 0) {
                 <p class="empty">{{ t('production.waste.empty') }}</p>
               } @else if (!o.waste?.can_view_lots) {
@@ -740,6 +744,8 @@ export class ExpenseDialog {
     .estimate { margin: 0 var(--dw-4) var(--dw-3); padding: var(--dw-2) var(--dw-3) var(--dw-3); border-radius: var(--dw-radius); background: var(--dw-surface-2); font-size: 13px; }
     .estimate p { margin: 0 0 var(--dw-2); } .estimate table { background: var(--dw-surface); }
     .estimate .over { color: var(--dw-danger); } .estimate .under { color: var(--dw-success); }
+    .cut-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 var(--dw-4) var(--dw-3); padding: 8px 12px; border-radius: var(--dw-radius); background: var(--dw-info-soft); color: var(--dw-info); font-size: 13px; }
+    .cut-hint dw-icon { font-size: 18px; }
     .gap { display: flex; justify-content: flex-end; align-items: center; gap: 2px; margin-block-start: 2px; font-size: 12px; font-weight: 600; } .gap dw-icon { font-size: 14px; }
     .empty { margin: 0; padding: var(--dw-5) var(--dw-4); text-align: center; color: var(--dw-ink-3); }
     .steps { display: flex; align-items: center; flex-wrap: wrap; gap: var(--dw-3); padding: var(--dw-3) var(--dw-4); }
