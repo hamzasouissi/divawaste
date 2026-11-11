@@ -692,13 +692,14 @@ gain could not be calculated and why; totals only add the gains that exist. **Ex
     loss rate to give for the rest);
   - an **article** has a reference, a family, a client, and its **consommation par pièce** of each material, typed
     in the unit of the material ("1,35 m / pièce"). An article says **no efficience**: the efficience belongs to each
-    matelas of an OF (Coupe tab). Before the matelas, the article's cutting waste is estimated at the company's
-    **efficience habituelle** (80 % until changed, "Modifier" at the foot of the Coupe tab of any OF).
+    matelas of an OF (Coupe tab), and the article **never estimates the cutting waste**: it is computed on the OF, from
+    its matelas and the efficience of each, as soon as they are entered. The company's **efficience habituelle** (80 %
+    until changed, "Modifier" at the foot of the Coupe tab) is only what a new matelas starts from.
     The list shows the number of materials and the **chute de coupe estimée** per piece; a click opens the
     **article page**: the waste of one piece by type (one bar, each type its grams and its share), the fabrics with
     consumption, laize, grammage, fabric and waste per piece and the waste type each gives, then the supplies
-    (folded). The estimate is consumption (m) × laize × grammage × (100 − efficience habituelle) %. The consumption is
-    the gross one, from the placement (marker length ÷ pieces in the marker): the waste is inside it. Supplies
+    (folded); for a fabric, the fabric per piece and the types of waste its cutting gives, without grams. The
+    consumption is the gross one, from the placement (marker length ÷ pieces in the marker). Supplies
     (buttons, labels, threads) and materials without laize or grammage give no estimate rather than a wrong one. A
     composition file brings no efficience (an "Efficience" column is not read). Below the fabrics, **Fils, emballages et autres matières**: each material
     that leaves a waste without a placement, with its calculation and its grams per piece ("à compléter" when a figure

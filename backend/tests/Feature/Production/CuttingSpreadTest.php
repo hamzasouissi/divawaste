@@ -61,7 +61,7 @@ class CuttingSpreadTest extends TestCase
             ->assertJsonPath('data.cutting.fabrics.0.article_m', '180.000')->assertJsonPath('data.cutting.fabrics.0.efficiency_pct', '80.00')
             ->assertJsonMissingPath('data.cutting.fabrics.0.efficiency_from')->assertJsonPath('data.cutting.fabrics.0.spreads', [])
             ->assertJsonPath('data.cutting.totals.spreads', 0)->assertJsonPath('data.cutting.totals.planned', null)
-            ->assertJsonPath('data.waste.estimated.source', 'article')->json('data');
+            ->assertJsonPath('data.waste.estimated', null)->json('data');
 
         // A spread: 6.02 m, 20 layers planned, 82 %. 120.4 m × 1.5 m × 200 g = 36.12 kg of fabric; 18 % of it is 6.502 kg.
         $spread = ['material' => $fabric['ulid'], 'length_m' => '6.02', 'layers_planned' => 20, 'efficiency_pct' => '82'];
@@ -119,8 +119,8 @@ class CuttingSpreadTest extends TestCase
         $this->client()->putJson("/api/v1/production/manufacturing-orders/{$of['ulid']}/sizes", ['size_grid' => $grid['ulid'], 'sizes' => [['size' => 'S', 'quantity' => 20], ['size' => 'M', 'quantity' => 40], ['size' => 'L', 'quantity' => 40], ['size' => 'XL', 'quantity' => 20]]])
             ->assertOk()->assertJsonPath('data.sizes.0', ['size' => 'XS', 'quantity' => 0])->assertJsonPath('data.quantity_planned', 120);
 
-        // Removed by mistake: the OF goes back to the estimate of its article.
-        $this->client()->deleteJson("/api/v1/production/spreads/{$ulid}")->assertOk()->assertJsonPath('data.cutting.totals.spreads', 0)->assertJsonPath('data.waste.estimated.source', 'article');
+        // Removed: without spreads, no cutting estimate is left.
+        $this->client()->deleteJson("/api/v1/production/spreads/{$ulid}")->assertOk()->assertJsonPath('data.cutting.totals.spreads', 0)->assertJsonPath('data.waste.estimated', null);
     }
 
     private function client(): static
