@@ -131,7 +131,7 @@
     <div><b><span class="num">P4</span>Les déchets de l'OF</b><span>Chaque lot de déchets rattaché à son OF.</span></div>
     <div><b><span class="num">P5</span>Consommé et produit</b><span>Pour calculer le taux de chute et les déchets par pièce.</span></div>
     <div><b><span class="num">P6</span>Lire les résultats</b><span>Sur l'OF, la page Analyse et l'Accueil.</span></div>
-    <div><b><span class="num">C</span>Chute estimée et coupe</b><span>Déchets produits, efficience, tailles, matelas, estimé contre pesé.</span></div>
+    <div><b><span class="num">C</span>Chute estimée et coupe</b><span>Déchets produits, tailles, matelas et leur efficience, estimé contre pesé.</span></div>
     <div><b><span class="num">✓</span>Fiche de test</b><span>Cochez ce qui marche, notez ce qui gêne.</span></div>
   </div>
   <div class="box tip"><b>Comment lire ce guide.</b> L'élément à cliquer est <span class="ring">entouré en rouge</span> ; l'encadré vert dit <b>ce que vous devez voir</b>. Les mots de l'écran sont en <b>gras</b>.</div>
@@ -275,12 +275,12 @@
 <section class="page">
   <div class="step">
     <h3><span class="n">P5</span>Ce que l'OF a consommé et produit</h3>
-    <ol class="do"><li>Page de l'OF, onglet <b>Étapes et consommations</b> › <b>Modifier les consommations</b> › <b>Ajouter une consommation</b>.</li>
-      <li><b>Matière première</b> (DEN-12), <b>Quantité</b> (720 m), <b>Étape</b> (Coupe), <b>Site</b>. <b>Lot reçu</b> : si vous savez de quelle livraison vient le tissu ; sinon, « Lot non précisé ». <b>Enregistrer</b>.</li></ol>
+    <ol class="do"><li>Page de l'OF, onglet <b>Étapes et consommations</b> › <b>Saisir les consommations</b>. Chaque matière première de l'article a son bloc, avec son prévu : sous <b>DEN-12</b>, <b>Saisir une consommation</b>.</li>
+      <li><b>Quantité</b> (720 m), <b>Étape</b> (Coupe), <b>Site</b>, <b>Date</b>. <b>Lot reçu</b> : si vous savez de quelle livraison vient le tissu ; sinon, « Lot non précisé ». <b>Enregistrer</b>.</li></ol>
     <div class="shot"><img src="img3/60-consumption.jpg"></div>
     <ol class="do" start="3"><li>En haut de l'OF, <b>Modifier</b> › <b>Quantité produite</b> : 480. <b>Enregistrer</b>.</li></ol>
-    <div class="two"><div class="shot"><img src="img3/61-of-produced.jpg"></div><div class="shot"><img src="img3/63-of-consumed.jpg"></div></div>
-    <div class="box see"><b>✔ Vous devez voir</b> pour DEN-12 : <b>Prévu 700 m</b> (500 jeans × 1,4 m), <b>Consommé 720 m</b>, <b>Écart +20 m (+2,9 %)</b>.</div>
+    <div class="two" style="grid-template-columns: 0.7fr 1.3fr; align-items: center"><div class="shot"><img src="img3/61-of-produced.jpg"></div><div class="shot"><img src="img3/63-of-consumed.jpg"></div></div>
+    <div class="box see"><b>✔ Vous devez voir</b> pour DEN-12 : <b>Prévu 700 m</b> (500 jeans × 1,4 m), <b>Consommé 720 m</b>, la barre à <b>103 %</b> en rouge, <b>Écart +20 m (+2,9 %)</b>. Cliquez la ligne : ses lots reçus. Seules les matières de l'article sont proposées : une autre matière s'ajoute d'abord à l'article.</div>
   </div>
   <div class="foot"><span>DivaWaste · Guide 2 — Sans ERP, avec production</span><span class="pg"></span></div>
 </section>
@@ -348,8 +348,8 @@
 
 <section class="page">
   <div class="step">
-    <h3><span class="n">C2</span>L'efficience et la chute estimée de l'article</h3>
-    <ol class="do"><li>Onglet <b>Articles</b> › JEAN-501 › <b>Modifier</b> : pour chaque tissu, sa <b>consommation par pièce</b> (1,35 m, la consommation brute du placement) et son <b>efficience %</b> (82). Laissée vide : l'efficience par défaut de la société (réglable au-dessus de la liste des articles, 80 % au départ).</li>
+    <h3><span class="n">C2</span>La chute estimée de l'article</h3>
+    <ol class="do"><li>Onglet <b>Articles</b> › JEAN-501 › <b>Modifier</b> : pour chaque matière, sa <b>consommation par pièce</b> (1,35 m / pièce pour le denim, la consommation brute du placement). L'article ne dit pas d'efficience : elle est celle de chaque matelas (C4). Avant les matelas, l'estimation prend l'<b>efficience habituelle</b> de la société (82 % ici ; réglable en bas de l'onglet Coupe d'un OF).</li>
       <li>Ouvrez l'article : la chute par pièce et le déchet qu'elle donne.</li></ol>
     <div class="shot"><img src="imgC/c3-article.jpg"></div>
     <div class="box see"><b>✔ Vous devez voir</b> <b>172,7 g / pièce</b> : la coupe du denim (1,35 m × 1,50 m × 407 g = 824 g, dont 18 % de chute : <b>148,4 g</b>, partagés 85 % / 15 %) et, dans <b>Fils, emballages et autres matières</b>, <b>24,4 g</b> (carton 24 g, fil 0,3 g, cône 0,1 g).</div>
@@ -376,7 +376,7 @@
   <div class="step">
     <h3><span class="n">C4</span>La coupe : les matelas</h3>
     <ol class="do"><li>Page de l'OF, onglet <b>Coupe</b>. Chaque tissu de l'article a sa carte (laize, grammage, besoin de l'article, déchets produits).</li>
-      <li><b>Ajouter un matelas</b> : <b>Longueur</b> (7,24 m, bouts compris), <b>Couches prévues</b> (50), <b>Efficience</b> (proposée : celle de l'article). <b>Ajouter</b>.</li>
+      <li><b>Ajouter un matelas</b> : <b>Longueur</b> (7,24 m, bouts compris), <b>Couches prévues</b> (50), <b>Efficience</b> (proposée : l'efficience habituelle, 82 %). <b>Ajouter</b>.</li>
       <li>Après la coupe, tapez les <b>Couches coupées</b> (48) directement dans la ligne : elle s'enregistre en quittant la case et passe <b>Coupé</b>.</li>
       <li>Rouleaux d'une autre laize ? Tapez-la dans la ligne (148) : la case devient orange, ce matelas seulement.</li></ol>
     <div class="shot"><img src="imgC/c5-cutting.jpg"></div>
