@@ -73,7 +73,11 @@ const UNIT: Record<string, string> = { m: 'm', kg: 'kg', piece: 'pc' };
                         <td class="num">{{ +line.efficiency_applied! | dwNumber: 0 }} %@if (line.efficiency_pct === null) { <span class="tag">{{ t('production.articles.default') }}</span> }</td>
                         <td class="num used">{{ grams(line.fabric_kg_per_piece) | dwNumber: 1 }} g</td>
                         <td class="num"><strong>{{ grams(line.waste_kg_per_piece) | dwNumber: 1 }} g</strong></td>
-                        <td class="type">{{ line.waste_type?.name ?? t('production.waste.typeUnknown') }}@if (line.waste_type_inherited) { <span class="tag" [title]="t('production.materials.wasteTypeInherited')">{{ t('production.articles.default') }}</span> }</td>
+                        <td class="type">
+                          @for (w of line.waste_types; track $index) {
+                            <div>{{ w.waste_type?.name ?? t('production.waste.typeUnknown') }}@if (line.waste_types.length > 1) { <span class="dw-faint"> · {{ +w.share_pct | dwNumber: 0 }} % · {{ +w.waste_kg_per_piece * 1000 | dwNumber: 1 }} g</span> }</div>
+                          }
+                          @if (line.waste_type_inherited) { <span class="tag" [title]="t('production.materials.wasteTypeInherited')">{{ t('production.articles.default') }}</span> }</td>
                       </tr>
                     }
                   </tbody>

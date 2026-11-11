@@ -196,8 +196,10 @@ export class ReceivedLotDialog {
                       <div><dt>{{ t('lots.color') }}</dt><dd>@if (m.color_family) { <dw-color [code]="m.color_family" /> }@if (m.color_family && m.color_label) { · }{{ m.color_label ?? (m.color_family ? '' : '—') }}</dd></div>
                       <div><dt>{{ t('lots.grammage') }}</dt><dd>{{ m.grammage_gsm ? (+m.grammage_gsm) + ' g/m²' : '—' }}</dd></div>
                       <div><dt>{{ t('production.materials.width') }}</dt><dd>{{ m.width_cm ? (+m.width_cm) + ' cm' : '—' }}</dd></div>
-                      <div><dt>{{ t('production.materials.wasteType') }}</dt><dd>{{ m.waste_type_applied?.name ?? '—' }}
-                        @if (m.waste_type_inherited) { <div class="dw-faint">{{ t('production.materials.wasteTypeInherited') }}</div> }</dd></div>
+                      <div><dt>{{ t('production.materials.wasteProduced') }}</dt><dd>
+                        @for (w of m.waste_types; track $index) { <div>{{ w.waste_type?.name ?? t('production.waste.typeUnknown') }}@if (m.waste_types.length > 1) { <span class="dw-faint"> · {{ +w.share_pct | dwNumber: 1 }} %</span> }</div> }
+                        @empty { — }
+                        @if (m.waste_types_inherited) { <div class="dw-faint">{{ t('production.materials.wasteTypeInherited') }}</div> }</dd></div>
                       <div><dt>{{ t('production.material.waste') }}</dt><dd>{{ m.summary?.waste_kg | dwKg }} <span class="dw-faint">· {{ t('production.material.wasteLots', { count: m.summary?.waste_lots ?? 0 }) }}</span></dd></div>
                       @if (m.notes) { <div><dt>{{ t('fields.notes') }}</dt><dd>{{ m.notes }}</dd></div> }
                     </dl>

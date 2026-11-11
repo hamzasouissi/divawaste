@@ -80,10 +80,9 @@ export interface RawMaterial {
   composition: { material: string; pct: string }[];
   notes: string | null;
   is_active: boolean;
-  /** The waste it leaves when used: its own (waste_type), and the one applied (a fabric without one: the cutting scraps). */
-  waste_type: { ulid: string; name: string } | null;
-  waste_type_applied: { ulid: string; name: string } | null;
-  waste_type_inherited: boolean;
+  /** The waste it leaves when used, each type with its share; for a fabric that says nothing, the cutting scraps (inherited). */
+  waste_types: WasteShare[];
+  waste_types_inherited: boolean;
   batches: MaterialBatch[];
   average_unit_cost: string | null;
   summary?: {
@@ -112,9 +111,11 @@ export interface ArticleLine {
   material: string; reference: string; name: string; unit: string; quantity_per_piece: string;
   width_cm: string | null; grammage_gsm: string | null; composition: { material: string; pct: string | number }[];
   efficiency_pct: string | null; efficiency_applied: string | null; fabric_kg_per_piece: string | null; waste_kg_per_piece: string | null;
-  waste_type: { ulid: string; name: string } | null; waste_type_inherited: boolean;
+  /** The waste the line gives per piece, by type (the material's shares). */
+  waste_types: (WasteShare & { waste_kg_per_piece: string })[]; waste_type_inherited: boolean;
 }
 
+export interface WasteShare { waste_type: { ulid: string; name: string } | null; share_pct: string }
 export interface WasteByType { waste_type: { ulid: string; name: string } | null; lines: number; waste_kg_per_piece: string }
 
 export type OrderStatus = 'open' | 'in_progress' | 'completed' | 'cancelled';
@@ -301,6 +302,9 @@ export interface ManufacturingOrder {
   finance?: OfFinance | null;
 }
 
+/** One of the company's sizes, and how many grids and OFs name it. */
+export interface Size { ulid: string; code: string; grids: number; orders: number }
+
 /** A company's list of sizes, in order, chosen by its OFs. */
 export interface SizeGrid { ulid: string; name: string; sizes: string[]; is_active: boolean; orders: number }
 
@@ -326,7 +330,7 @@ export interface CuttingFabric {
   article_m: string | null;
   /** The efficiency a new spread starts from: the article's for this fabric, else the company's. */
   efficiency_pct: string; efficiency_from: 'article' | 'company';
-  waste_type: { ulid: string; name: string } | null;
+  waste_types: WasteShare[];
   spreads: CuttingSpread[];
   planned: CuttingTotal | null; done: CuttingTotal | null;
   consumed_m: string | null;
@@ -361,5 +365,6 @@ export class ProductionLists {
   articles = (): Observable<Article[]> => this.all<Article>('articles');
   orders = (): Observable<CustomerOrder[]> => this.all<CustomerOrder>('orders');
   sizeGrids = (): Observable<SizeGrid[]> => this.api.get<SizeGrid[]>('production/size-grids');
+  sizes = (): Observable<Size[]> => this.api.get<Size[]>('production/sizes');
   steps = (): Observable<ProductionStep[]> => this.api.get<ProductionStep[]>('production/steps').pipe(map((steps) => steps.filter((step) => step.is_active)));
 }

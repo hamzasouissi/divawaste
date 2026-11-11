@@ -66,7 +66,7 @@ const NEW = 'new:';
                 <span class="fact warn"><dw-icon>warning</dw-icon>{{ t('production.cutting.noWidth') }}</span>
               }
               @if (f.article_m) { <span class="fact">{{ t('production.cutting.articleNeeds') }} <b>{{ +f.article_m | dwNumber: 1 }} m</b></span> }
-              @if (f.waste_type) { <span class="fact">{{ f.waste_type.name }}</span> }
+              @for (w of f.waste_types; track $index) { <span class="fact">{{ w.waste_type?.name ?? t('production.waste.typeUnknown') }}@if (f.waste_types.length > 1) { <b>{{ +w.share_pct | dwNumber: 1 }} %</b> }</span> }
             </div>
           </header>
 
@@ -341,7 +341,7 @@ export class CuttingComponent {
       return;
     }
     this.extra.update((list) => [...list, { material: { ulid: m.ulid, reference: m.reference, name: m.name, width_cm: m.width_cm, grammage_gsm: m.grammage_gsm },
-      in_article: false, article_m: null, efficiency_pct: this.session.company()?.cutting_efficiency_pct ?? '80', efficiency_from: 'company', waste_type: null,
+      in_article: false, article_m: null, efficiency_pct: this.session.company()?.cutting_efficiency_pct ?? '80', efficiency_from: 'company', waste_types: [],
       spreads: [], planned: null, done: null, consumed_m: null }]);
     this.open(this.fabrics().find((f) => f.material.ulid === ulid)!);
   }
