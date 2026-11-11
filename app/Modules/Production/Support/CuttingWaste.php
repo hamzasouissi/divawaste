@@ -17,8 +17,9 @@ use Illuminate\Support\Facades\DB;
  *     whole      kg consumed                                      packaging thrown away
  *
  * The consumption per piece of a fabric is the gross one (marker length ÷ pieces in the marker): the waste is inside it.
- * Its weight is metres × laize × grammage; kilograms are as they are; pieces weigh the material's unit weight. Before
- * the spreads of an OF say theirs, the efficiency is the company's usual one. A fabric that says nothing leaves all the company's "Chutes de
+ * Its weight is metres × laize × grammage; kilograms are as they are; pieces weigh the material's unit weight. The
+ * cutting waste of a fabric is never estimated from the article: it needs the spreads of an OF and the efficiency of
+ * each (CuttingPlan); here its cutting lines give no figure. A fabric that says nothing leaves all the company's "Chutes de
  * coupe"; anything that cannot be computed (no laize, no unit weight, no rate) gives no figure rather than a wrong one.
  */
 final class CuttingWaste
@@ -182,18 +183,18 @@ final class CuttingWaste
 
     /**
      * One line of a composition, per piece: the material consumed (in kg when it can be said), and each waste it leaves
-     * by its own calculation. A waste line that cannot be computed gives null. `inherited`: the material says nothing,
-     * a fabric is assumed to leave all the company's cutting scraps.
+     * by its own calculation. A waste line that cannot be computed gives null — a cutting line always, since the cutting
+     * waste comes from the spreads of an OF and their efficiency. `inherited`: the material says nothing, a fabric is
+     * assumed to leave all the company's cutting scraps.
      *
-     * @return array{efficiency_applied: string|null, fabric_kg: string|null, consumed_kg: string|null, cutting_kg: string|null,
+     * @return array{fabric_kg: string|null, consumed_kg: string|null, cutting_kg: string|null,
      *               waste_kg: string|null, lines: list<array<string, mixed>>, by_type: array<int, string>, cutting_by_type: array<int, string>, other_by_type: array<int, string>, inherited: bool}
      */
-    public function line(string $quantity, ?string $unit, mixed $widthCm, mixed $grammageGsm, string $default, ?int $materialId = null, mixed $unitWeightKg = null): array
+    public function line(string $quantity, ?string $unit, mixed $widthCm, mixed $grammageGsm, ?int $materialId = null, mixed $unitWeightKg = null): array
     {
         $fabric = $unit === 'm' && $widthCm !== null && $grammageGsm !== null;
         $consumed = self::kilograms($quantity, $unit, $widthCm, $grammageGsm, $unitWeightKg);
-        $applied = $fabric ? $default : null;
-        $cutting = $fabric ? bcdiv(bcmul((string) $consumed, bcsub('100', (string) $applied, 2), 10), '100', 8) : null;
+        $cutting = null;
         $types = $materialId === null ? ['lines' => $fabric ? [self::cuttingLine($this->scrapsType() ?? 0)] : [], 'inherited' => $fabric] : $this->applied($materialId, $fabric);
 
         $lines = [];
@@ -217,7 +218,7 @@ final class CuttingWaste
             }
         }
 
-        return ['efficiency_applied' => $applied, 'fabric_kg' => $fabric ? $consumed : null, 'consumed_kg' => $consumed, 'cutting_kg' => $cutting,
+        return ['fabric_kg' => $fabric ? $consumed : null, 'consumed_kg' => $consumed, 'cutting_kg' => $cutting,
             'waste_kg' => $all === [] ? null : self::total($all), 'lines' => $lines, 'by_type' => $all, 'cutting_by_type' => $cut, 'other_by_type' => $other, 'inherited' => $types['inherited']];
     }
 
@@ -256,14 +257,13 @@ final class CuttingWaste
         if ($articleIds === []) {
             return [];
         }
-        $default = $this->defaultEfficiency();
         $rows = DB::table('article_materials as am')->join('raw_materials as m', 'm.id', '=', 'am.raw_material_id')->join('units as u', 'u.id', '=', 'm.unit_id')
             ->whereIn('am.article_id', $articleIds)
             ->get(['am.article_id', 'am.raw_material_id', 'am.quantity_per_piece', 'u.code as unit', 'm.width_cm', 'm.grammage_gsm', 'm.unit_weight_kg']);
         $this->shares($rows->pluck('raw_material_id')->map(fn ($id) => (int) $id)->unique()->values()->all());
         $out = [];
         foreach ($rows as $row) {
-            $line = $this->line((string) $row->quantity_per_piece, $row->unit, $row->width_cm, $row->grammage_gsm, $default, (int) $row->raw_material_id, $row->unit_weight_kg);
+            $line = $this->line((string) $row->quantity_per_piece, $row->unit, $row->width_cm, $row->grammage_gsm, (int) $row->raw_material_id, $row->unit_weight_kg);
             if ($line['waste_kg'] === null) {
                 continue;
             }

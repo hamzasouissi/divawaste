@@ -159,9 +159,9 @@ final class ProductionData
         // What one piece is expected to consume, and for a fabric the waste its cutting is expected to leave.
         $materials = DB::table('article_materials as am')->join('raw_materials as m', 'm.id', '=', 'am.raw_material_id')->where('am.article_id', $article->id)->orderBy('am.id')
             ->get(['m.id', 'm.ulid', 'm.reference', 'm.name', 'm.kind', 'm.unit_id', 'm.width_cm', 'm.grammage_gsm', 'm.unit_weight_kg', 'm.composition', 'am.quantity_per_piece'])
-            ->map(function ($row) use ($default) {
+            ->map(function ($row) {
                 $unit = $this->codes->code('units', (int) $row->unit_id);
-                $cut = $this->cutting->line((string) $row->quantity_per_piece, $unit, $row->width_cm, $row->grammage_gsm, $default, (int) $row->id, $row->unit_weight_kg);
+                $cut = $this->cutting->line((string) $row->quantity_per_piece, $unit, $row->width_cm, $row->grammage_gsm, (int) $row->id, $row->unit_weight_kg);
 
                 return ['material' => $row->ulid, 'reference' => $row->reference, 'name' => $row->name, 'kind' => $row->kind, 'unit' => $unit, 'quantity_per_piece' => (string) $row->quantity_per_piece,
                     'width_cm' => $row->width_cm === null ? null : (string) $row->width_cm, 'grammage_gsm' => $row->grammage_gsm === null ? null : (string) $row->grammage_gsm,
@@ -169,10 +169,10 @@ final class ProductionData
                     // The waste it gives per piece, line by line with its calculation; null where it cannot be computed.
                     'waste_types' => array_map(fn (array $line) => $this->wasteLine($line) + ['waste_kg_per_piece' => $line['kg'] === null ? null : CuttingWaste::round($line['kg'], 6)], $cut['lines']),
                     'consumed_kg_per_piece' => $cut['consumed_kg'] === null ? null : CuttingWaste::round($cut['consumed_kg'], 6),
-                    'waste_type_inherited' => $cut['inherited'], 'by_type_exact' => $cut['by_type'], 'efficiency_applied' => $cut['efficiency_applied'],
+                    'waste_type_inherited' => $cut['inherited'], 'by_type_exact' => $cut['by_type'],
                     'fabric_kg_per_piece' => $cut['fabric_kg'] === null ? null : CuttingWaste::round($cut['fabric_kg'], 4), 'waste_kg_per_piece' => $cut['waste_kg'] === null ? null : CuttingWaste::round($cut['waste_kg'], 4),
                     'fabric_kg_exact' => $cut['fabric_kg'], 'waste_kg_exact' => $cut['waste_kg'],
-                    'cutting_kg_exact' => CuttingWaste::total($cut['cutting_by_type']), 'other_kg_exact' => CuttingWaste::total($cut['other_by_type'])];
+                    'other_kg_exact' => CuttingWaste::total($cut['other_by_type'])];
             });
         $cut = $materials->filter(fn (array $line) => $line['waste_kg_exact'] !== null);
         $total = fn (string $key) => $cut->isEmpty() ? null : CuttingWaste::round($cut->reduce(fn (string $sum, array $line) => bcadd($sum, $line[$key] ?? '0', 8), '0'), 4);
@@ -181,12 +181,13 @@ final class ProductionData
             'ulid' => $article->ulid, 'reference' => $article->reference, 'name' => $article->name, 'family' => $article->family,
             'client' => $this->named('production_clients', $article->production_client_id),
             'notes' => $article->notes, 'is_active' => $article->is_active,
-            'materials' => $materials->map(fn (array $line) => array_diff_key($line, ['fabric_kg_exact' => 0, 'waste_kg_exact' => 0, 'by_type_exact' => 0, 'cutting_kg_exact' => 0, 'other_kg_exact' => 0]))->values(),
-            // The waste one piece is expected to leave: the cutting of its fabrics, then the rest (threads, packaging…).
+            'materials' => $materials->map(fn (array $line) => array_diff_key($line, ['fabric_kg_exact' => 0, 'waste_kg_exact' => 0, 'by_type_exact' => 0, 'other_kg_exact' => 0]))->values(),
+            // The waste one piece is expected to leave from the article: threads, packaging… — the cutting of its fabrics comes from the spreads of an OF.
             'cutting_waste' => [
                 'default_efficiency_pct' => $default,
-                'fabric_kg_per_piece' => $total('fabric_kg_exact'),
-                'cutting_kg_per_piece' => $total('cutting_kg_exact'),
+                // The fabric one piece consumes, in kg; its cutting waste comes from the spreads of an OF.
+                'fabric_kg_per_piece' => ($fabrics = $materials->filter(fn (array $line) => $line['fabric_kg_exact'] !== null))->isEmpty() ? null
+                    : CuttingWaste::round($fabrics->reduce(fn (string $sum, array $line) => bcadd($sum, $line['fabric_kg_exact'], 8), '0'), 4),
                 'other_kg_per_piece' => $total('other_kg_exact'),
                 'waste_kg_per_piece' => $total('waste_kg_exact'),
                 // The same waste by the type it is (each line shared by its material's shares), the heaviest first.
