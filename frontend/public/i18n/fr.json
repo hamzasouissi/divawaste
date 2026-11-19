@@ -204,9 +204,12 @@
       "productionLots": "Lots reçus et fabriqués",
       "providerProfile": "Profil et déchets acceptés",
       "allDocuments": "Tous les documents",
-      "sitesZones": "Sites et zones"
+      "sitesZones": "Sites et zones",
+      "customViews": "Vues",
+      "customViewsBuilder": "Concepteur"
     },
-    "platformRegistry": "Liste ANGed"
+    "platformRegistry": "Liste ANGed",
+    "customViews": "Vues personnalisées"
   },
   "auth": {
     "pitch": "Tracer, valoriser et déclarer vos déchets industriels.",
@@ -2875,7 +2878,9 @@
     "provider.marketplace.offer": "Faire, négocier, accepter ou retirer des offres",
     "contracts.view": "Voir les contrats avec les prestataires",
     "contracts.manage": "Rédiger, mettre en vigueur et résilier les contrats",
-    "provider.contracts.view": "Voir les contrats conclus avec nos clients"
+    "provider.contracts.view": "Voir les contrats conclus avec nos clients",
+    "custom_views.view": "Ouvrir les vues personnalisées",
+    "custom_views.manage": "Créer et placer des vues personnalisées"
   },
   "colors": {
     "title": "Couleurs",
@@ -4815,5 +4820,11 @@
       "sorter": "Tri",
       "storer": "Stockage"
     }
+  },
+  "customViews": {
+    "title": "Vues personnalisées",
+    "builderTitle": "Concepteur de vues",
+    "subtitle": "Des tableaux construits par votre équipe à partir de vos données : lots, enlèvements, sites, production…",
+    "all": "Toutes les vues"
   }
 }

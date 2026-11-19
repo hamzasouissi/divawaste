@@ -96,6 +96,9 @@ final class PermissionCatalog
             // Purchase prices, selling prices, expenses and the gain of an order: not everyone who follows production sees money.
             'production.finance.view' => [self::C, $ind],
             'sync_conflicts.resolve' => [self::S, $ind],
+            // Custom views (DivaBI): open the views the company built; build, change and place them.
+            'custom_views.view' => [self::C, $ind],
+            'custom_views.manage' => [self::C, $ind],
             'provider.profile.manage' => [self::C, $prv],
             'provider.accreditations.manage' => [self::C, $prv],
             'provider.pickups.view' => [self::C, $prv],

@@ -204,9 +204,12 @@
       "productionLots": "Received and produced lots",
       "providerProfile": "Profile and accepted waste",
       "allDocuments": "All documents",
-      "sitesZones": "Sites and zones"
+      "sitesZones": "Sites and zones",
+      "customViews": "Views",
+      "customViewsBuilder": "Builder"
     },
-    "platformRegistry": "ANGed list"
+    "platformRegistry": "ANGed list",
+    "customViews": "Custom views"
   },
   "auth": {
     "pitch": "Trace, recover and declare your industrial waste.",
@@ -2875,7 +2878,9 @@
     "provider.marketplace.offer": "Make, negotiate, accept or withdraw offers",
     "contracts.view": "See the contracts with providers",
     "contracts.manage": "Write, put in force and terminate contracts",
-    "provider.contracts.view": "See the contracts made with our clients"
+    "provider.contracts.view": "See the contracts made with our clients",
+    "custom_views.view": "Open custom views",
+    "custom_views.manage": "Build and place custom views"
   },
   "colors": {
     "title": "Colours",
@@ -4815,5 +4820,11 @@
       "sorter": "Sorting",
       "storer": "Storage"
     }
+  },
+  "customViews": {
+    "title": "Custom views",
+    "builderTitle": "View builder",
+    "subtitle": "Tables your team builds from your data: lots, pickups, sites, production…",
+    "all": "All views"
   }
 }

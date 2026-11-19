@@ -20,6 +20,7 @@ import { IconComponent } from '../../ui/icon';
 import { StepsComponent } from '../../ui/steps';
 import { COLOR } from '../../ui/swatch';
 import { MenuAction, MenuComponent } from '../../ui/menu';
+import { CustomViewsSlotComponent } from '../../ui/custom-views-slot';
 
 type LotAction = 'weigh' | 'pickup' | 'print' | 'store' | 'split' | 'sell' | 'origin';
 
@@ -28,7 +29,7 @@ type LotAction = 'weigh' | 'pickup' | 'print' | 'store' | 'split' | 'sell' | 'or
  * where it came from and what it became (M2-06), and which pickup took it.
  */
 @Component({
-  imports: [...COLOR, TermPipe, CodePipe, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LocalizedPipe, LotMeasurePipe, IconComponent, ButtonDirective, MenuComponent, Tooltip, StepsComponent],
+  imports: [...COLOR, TermPipe, CodePipe, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LocalizedPipe, LotMeasurePipe, IconComponent, ButtonDirective, MenuComponent, Tooltip, StepsComponent, CustomViewsSlotComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -197,6 +198,8 @@ type LotAction = 'weigh' | 'pickup' | 'print' | 'store' | 'split' | 'sell' | 'or
                   </div>
                 </section>
               }
+              <!-- Custom views placed on the lot page (DivaBI): they receive this lot. -->
+              <dw-custom-views-slot name="waste_lot.detail" [context]="{ lot_ulid: l.ulid }" />
             </div>
           </div>
         }
