@@ -3006,7 +3006,10 @@
     "Paramètres": "Settings",
     "Réception et écarts": "Reception and variances",
     "DivaWaste": "DivaWaste",
-    "Liste ANGed": "ANGed list"
+    "Liste ANGed": "ANGed list",
+    "Vues personnalisées": "Custom views",
+    "Concepteur de vues": "View builder",
+    "Vue personnalisée": "Custom view"
   },
   "partners": {
     "title": "Partners without an account",

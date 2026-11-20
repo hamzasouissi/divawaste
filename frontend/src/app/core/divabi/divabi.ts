@@ -37,6 +37,8 @@ export class DivaBi {
   /** null while loading, false when DivaBI cannot be reached or is not configured. */
   readonly ready = signal<boolean | null>(null);
   readonly canBuild = signal(false);
+  /** Why DivaBI could not start (shown by the custom views pages). */
+  readonly error = signal<unknown>(null);
 
   /** Whether the user may open custom views at all (the API checks it again). */
   allowed(): boolean {
@@ -50,11 +52,13 @@ export class DivaBi {
     this.loading ??= this.start().then(
       () => {
         this.ready.set(true);
+        this.error.set(null);
         return true;
       },
       (error: unknown) => {
         console.warn('DivaBI unavailable', error);
         this.loading = null;
+        this.error.set(error);
         this.ready.set(false);
         return false;
       },

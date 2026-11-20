@@ -13,7 +13,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'throttle:60,1'])->prefix('custom-v
     Route::get('session', function (Request $request, DivaBiToken $tokens) {
         $user = $request->user();
         abort_unless($user->can('custom_views.view') || $user->can('custom_views.manage'), 403);
-        abort_unless(DivaBiToken::configured(), 503, 'Custom views are not configured (DIVABI_KEY).');
+        abort_unless(DivaBiToken::configured(), 503, 'Custom views are off: DIVABI_KEY is empty or shorter than 32 characters in the environment file this API reads (.env, or .env.demo for the demo). Set it, then php artisan config:clear.');
         $issued = $tokens->issue($user);
 
         return ['data' => [

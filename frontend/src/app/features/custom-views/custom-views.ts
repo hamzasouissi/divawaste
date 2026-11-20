@@ -34,7 +34,7 @@ export class CustomViewsPage implements OnInit {
   /** From the route: 'views' or 'builder'. */
   readonly tab = input<string>('views');
   private readonly failed = signal(false);
-  protected readonly unavailable = computed(() => (this.failed() ? new Error('DivaBI') : null));
+  protected readonly unavailable = computed(() => (this.failed() ? (this.divabi.error() ?? new Error('DivaBI')) : null));
 
   ngOnInit(): void {
     this.start();
@@ -66,7 +66,7 @@ export class CustomViewPage implements OnInit {
   protected readonly divabi = inject(DivaBi);
   readonly view = input.required<string>();
   private readonly failed = signal(false);
-  protected readonly unavailable = computed(() => (this.failed() ? new Error('DivaBI') : null));
+  protected readonly unavailable = computed(() => (this.failed() ? (this.divabi.error() ?? new Error('DivaBI')) : null));
 
   ngOnInit(): void {
     this.start();
