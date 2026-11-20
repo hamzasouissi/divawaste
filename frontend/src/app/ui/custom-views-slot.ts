@@ -15,7 +15,7 @@ import { DivaBi } from '../core/divabi/divabi';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (divabi.ready()) {
-      <section class="dw-panel" [hidden]="empty()" *transloco="let t">
+      <section class="dw-panel" [style.display]="empty() ? 'none' : null" *transloco="let t">
         <div class="dw-panel-head"><h2 class="dw-h2">{{ title() || t('customViews.title') }}</h2></div>
         <div class="dw-panel-body">
           <divabi-slot [attr.name]="name()" [attr.context]="contextJson()" [attr.layout]="layout()" (divabi-slot-loaded)="loaded($event)"></divabi-slot>

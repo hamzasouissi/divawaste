@@ -3,10 +3,14 @@
 namespace Tests\Feature\CustomViews;
 
 use App\Modules\CustomViews\Support\DivaBiPackage;
+use App\Modules\Identity\Authorization\AccessResolver;
+use App\Modules\Identity\Models\UserRoleAssignment;
+use App\Modules\Tenancy\Support\CompanyModules;
 use App\Modules\Tenancy\TableClassification;
 use Database\Seeders\AuthorizationSeeder;
 use Database\Seeders\ReferenceDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\Concerns\InteractsWithTenants;
 use Tests\TestCase;
@@ -66,9 +70,36 @@ class DivaBiSessionTest extends TestCase
         $this->makeSite($company, 'KOR');
         $manager = $this->makeMember($company, ['environment_manager' => $nabeul]);
 
-        $token = $this->withToken($this->tokenFor($manager, $company))->getJson('/api/v1/custom-views/session')->assertOk()->json('data.token');
+        // Custom views are a company permission: a role given on one site only does not open them.
+        $this->withToken($this->tokenFor($manager, $company))->getJson('/api/v1/custom-views/session')->assertForbidden();
 
-        $this->assertSame([$nabeul->ulid], $this->claims($token)['perms']['lots.view']);
+        // With the company-wide right to open views, the token keeps the manager's site limits.
+        $role = DB::table('roles')->insertGetId(['company_id' => $company->id, 'name' => 'views_reader', 'guard_name' => 'web',
+            'label' => '{"fr":"Lecteur de vues"}', 'audience' => 'industrial', 'is_system' => false, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('role_has_permissions')->insert(['role_id' => $role, 'permission_id' => DB::table('permissions')->where('name', 'custom_views.view')->value('id')]);
+        $this->tenant()->runAs($company, fn () => UserRoleAssignment::query()->create(['user_id' => $manager->id, 'role_id' => $role, 'site_id' => null]));
+        app(AccessResolver::class)->flushAll();
+
+        $response = $this->withToken($this->tokenFor($manager, $company))->getJson('/api/v1/custom-views/session')->assertOk();
+
+        $this->assertFalse($response->json('data.can_build'));
+        $perms = $this->claims($response->json('data.token'))['perms'];
+        $this->assertSame([$nabeul->ulid], $perms['lots.view']);
+        $this->assertNull($perms['custom_views.view']);
+        $this->assertArrayNotHasKey('custom_views.manage', $perms);
+    }
+
+    public function test_switched_off_modules_are_left_out_of_the_token(): void
+    {
+        $company = $this->makeCompany();
+        $this->makeSite($company, 'NAB');
+        $admin = $this->makeMember($company, ['client_admin' => null]);
+        CompanyModules::set($company, ['production' => false, 'marketplace' => false]);
+
+        $perms = $this->claims($this->withToken($this->tokenFor($admin, $company))->getJson('/api/v1/custom-views/session')->assertOk()->json('data.token'))['perms'];
+
+        $this->assertEmpty(array_filter(array_keys($perms), fn (string $name) => str_starts_with($name, 'production.') || str_starts_with($name, 'marketplace.')));
+        $this->assertArrayHasKey('lots.view', $perms);
     }
 
     public function test_users_without_custom_views_are_refused_and_the_feature_is_off_without_a_key(): void

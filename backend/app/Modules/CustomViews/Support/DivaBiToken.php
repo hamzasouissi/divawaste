@@ -6,6 +6,8 @@ use App\Modules\Identity\Authorization\AccessResolver;
 use App\Modules\Identity\Authorization\PermissionCatalog;
 use App\Modules\Identity\Enums\PermissionScope;
 use App\Modules\Identity\Models\User;
+use App\Modules\Tenancy\Models\Company;
+use App\Modules\Tenancy\Support\CompanyModules;
 use App\Modules\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -60,9 +62,10 @@ final class DivaBiToken
     public function permissions(User $user): array
     {
         $siteUlids = DB::table('sites')->where('company_id', $this->context->companyId())->pluck('ulid', 'id');
+        $modules = CompanyModules::of(Company::query()->findOrFail($this->context->companyId()));
         $granted = [];
         foreach (PermissionCatalog::permissions() as $name => [$scope]) {
-            if ($scope === PermissionScope::Platform) {
+            if ($scope === PermissionScope::Platform || ! self::moduleAllows($name, $modules)) {
                 continue;
             }
             if ($scope === PermissionScope::Company) {
@@ -81,5 +84,22 @@ final class DivaBiToken
         }
 
         return $granted;
+    }
+
+    /**
+     * The parts of the product the company switched off hide their screens (Session.moduleAllows on the frontend):
+     * custom views hide their data the same way, so the builder never offers what the user's menus do not show.
+     *
+     * @param  array<string, bool>  $modules
+     */
+    private static function moduleAllows(string $permission, array $modules): bool
+    {
+        return match (true) {
+            str_starts_with($permission, 'production.finance') => $modules['production'] && $modules['production_finance'],
+            str_starts_with($permission, 'production.') => $modules['production'],
+            str_starts_with($permission, 'marketplace.') => $modules['marketplace'],
+            str_starts_with($permission, 'contracts.') => $modules['contracts'],
+            default => true,
+        };
     }
 }

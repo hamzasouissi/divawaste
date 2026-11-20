@@ -32,6 +32,7 @@ final class RouteMetadata extends Strategy
         'Notifications' => 'In-app notifications and notification preferences (M7-01).',
         'Audit' => 'Audit trail of a company (M7-02).',
         'Common' => 'Reference data shared by every screen.',
+        'CustomViews' => 'Custom views: the short-lived token that lets the screens read DivaBI with the user\'s own permissions.',
     ];
 
     public function __invoke(ExtractedEndpointData $endpointData, array $settings = []): array
