@@ -26,6 +26,9 @@ final readonly class CreateWasteLotData
         public ?array $composition = null,
         public ?array $extraAttributes = null,
         public ?string $notes = null,
+        // Why the lot was scrapped: the plant's code and reason (free text).
+        public ?string $scrapCode = null,
+        public ?string $scrapReason = null,
         public ?string $generatedAt = null,
         public ?int $deviceId = null,
         public string $source = 'web',

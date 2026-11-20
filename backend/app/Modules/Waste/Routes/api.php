@@ -137,6 +137,19 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         return new WasteLotResource($lot);
     })->name('lots.origin');
 
+    // Why the lot was scrapped (code and reason, as the plant writes them): given or corrected after creation.
+    Route::put('lots/{lot}/scrap', function (Request $request, WasteLot $lot) {
+        abort_unless($request->user()->can('lots.update', $lot->site_id), 403);
+        $input = $request->validate(['scrap_code' => ['nullable', 'string', 'max:30'], 'scrap_reason' => ['nullable', 'string', 'max:500']]);
+        $lot->forceFill([
+            'scrap_code' => ($input['scrap_code'] ?? null) === null ? null : trim($input['scrap_code']),
+            'scrap_reason' => ($input['scrap_reason'] ?? null) === null ? null : trim($input['scrap_reason']),
+            'updated_by_user_id' => $request->user()->id,
+        ])->save();
+
+        return new WasteLotResource($lot);
+    })->name('lots.scrap');
+
     Route::get('lots/{lot}/events', function (Request $request, WasteLot $lot) {
         abort_unless($request->user()->can('lots.view', $lot->site_id), 403);
 

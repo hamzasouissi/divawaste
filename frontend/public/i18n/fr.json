@@ -1175,6 +1175,18 @@
       "lead": "Une ligne par lot. Il faut au moins le site et le type de déchet ; le poids, la date, la zone, l'emballage et votre référence sont facultatifs. Sans zone, le lot va dans l'aire de stockage du site. Une ligne dont la référence a déjà été importée n'est pas créée deux fois.",
       "daviTip": "Plus simple : glissez ce fichier dans l'assistant virtuel. Il vérifie chaque ligne et vous demande votre accord avant d'importer.",
       "seeLots": "Voir les lots"
+    },
+    "scrapCode": "Code de rebut",
+    "scrapReason": "Motif de rebut",
+    "editScrap": "Motif de rebut",
+    "scrapHint": "Le code et le motif tels que l’atelier les note (par exemple UE24 — trous dans le tissu).",
+    "materialCost": "Coût matière",
+    "materialValue": "Valeur matière du déchet",
+    "costUnknown": "Non calculable (lot matière, prix ou poids de la matière inconnu)",
+    "costBasis": {
+      "lot": "d’après le lot matière",
+      "consumption": "d’après le lot consommé par l’OF",
+      "latest": "d’après le dernier lot reçu"
     }
   },
   "stock": {

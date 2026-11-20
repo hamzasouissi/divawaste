@@ -163,6 +163,8 @@ function writeText(key: string, value: string): void {
                 }
                 <dw-composition-editor [lines]="composition" />
               </div>
+              <dw-field [label]="t('lots.scrapCode')"><input pInputText formControlName="scrap_code" maxlength="30" placeholder="UE24" /></dw-field>
+              <dw-field [label]="t('lots.scrapReason')"><input pInputText formControlName="scrap_reason" maxlength="500" /></dw-field>
               <dw-field class="dw-span-2" [label]="t('fields.notes')"><textarea pTextarea formControlName="notes" rows="2" maxlength="1000"></textarea></dw-field>
             </dw-more>
           </div>
@@ -227,6 +229,8 @@ export class CreateLotDialog {
     packaging_type: [null as string | null],
     color_family: [null as string | null],
     grammage_gsm: [''],
+    scrap_code: [''],
+    scrap_reason: [''],
     notes: [''],
   });
   /** Typed here, or left empty: the lot then takes the composition of its raw material, else the defaults of its type. */
@@ -337,6 +341,7 @@ export class CreateLotDialog {
         weight_estimated: value.net_weight_kg ? value.weight_estimated : false,
         package_count: this.packaging() && value.package_count ? Number(value.package_count) : null,
         quantity: unit ? decimal(value.quantity) : null, unit, grammage_gsm: value.grammage_gsm ? decimal(value.grammage_gsm) : null, notes: value.notes || null,
+        scrap_code: value.scrap_code.trim() || null, scrap_reason: value.scrap_reason.trim() || null,
       }));
       this.toast.success('lots.created', { number: lot.lot_number });
       writeText(PLACE_KEY, value.zone);
@@ -911,3 +916,52 @@ export class MoveLotsDialog {
   }
 }
 
+
+/** Why the lot was scrapped: the plant's code and reason, given or corrected after creation. */
+@Component({
+  imports: [...DIALOG, ButtonDirective, InputText, ...FIELD, ...DIALOG_PARTS],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <ng-container *transloco="let t">
+      <dw-dialog-title>{{ t('lots.editScrap') }} — {{ data.lot.lot_number }}</dw-dialog-title>
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div class="dw-dialog-body">
+          <p class="dw-muted">{{ t('lots.scrapHint') }}</p>
+          <dw-field [label]="t('lots.scrapCode')"><input pInputText formControlName="scrap_code" maxlength="30" placeholder="UE24" /></dw-field>
+          <dw-field [label]="t('lots.scrapReason')"><input pInputText formControlName="scrap_reason" maxlength="500" /></dw-field>
+        </div>
+        <div class="dw-dialog-foot">
+          <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
+          <button pButton type="submit" [disabled]="busy()">{{ t('common.save') }}</button>
+        </div>
+      </form>
+    </ng-container>
+  `,
+  styles: '.dw-dialog-body { display: grid; gap: var(--dw-3); inline-size: min(480px, 86vw); } .dw-muted { margin: 0; font-size: 13px; }',
+})
+export class ScrapLotDialog {
+  protected readonly data = dialogData<LotActionData>();
+  private readonly api = inject(Api);
+  private readonly toast = inject(Toast);
+  private readonly ref = inject(DialogRef);
+  protected readonly busy = signal(false);
+  protected readonly form = inject(FormBuilder).nonNullable.group({
+    scrap_code: [this.data.lot.scrap_code ?? ''],
+    scrap_reason: [this.data.lot.scrap_reason ?? ''],
+  });
+
+  protected async submit(): Promise<void> {
+    this.busy.set(true);
+    const value = this.form.getRawValue();
+    try {
+      this.ref.close(await firstValueFrom(this.api.put<Lot>(`lots/${this.data.lot.ulid}/scrap`, {
+        scrap_code: value.scrap_code.trim() || null, scrap_reason: value.scrap_reason.trim() || null,
+      })));
+      this.toast.success('common.saved');
+    } catch (error) {
+      this.toast.error(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+}

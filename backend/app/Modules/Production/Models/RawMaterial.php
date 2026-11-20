@@ -5,6 +5,7 @@ namespace App\Modules\Production\Models;
 use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Common\Models\Concerns\HasPublicUlid;
 use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
+use App\Modules\Waste\Support\LotCost;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -43,5 +44,15 @@ class RawMaterial extends Model
     protected function casts(): array
     {
         return ['is_active' => 'boolean', 'composition' => 'array', 'grammage_gsm' => 'decimal:2', 'width_cm' => 'decimal:2'];
+    }
+
+    protected static function booted(): void
+    {
+        // What the material weighs changes the weight of its batches, so the cost per kg of the lots cut from them.
+        static::updated(function (self $material) {
+            if ($material->wasChanged(['unit_id', 'width_cm', 'grammage_gsm', 'unit_weight_kg'])) {
+                LotCost::refreshMaterials([(int) $material->id]);
+            }
+        });
     }
 }

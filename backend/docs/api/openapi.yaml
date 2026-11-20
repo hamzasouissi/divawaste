@@ -65131,3 +65131,48 @@ paths:
           description: 'Custom views are not configured (DIVABI_KEY).'
       tags:
         - CustomViews
+  /api/v1/lots/{lot}/scrap:
+    put:
+      summary: 'Scrap lots'
+      operationId: scrapLots
+      description: "Why the lot was scrapped (code and reason, as the plant writes them): given or corrected after creation.\n\nPermission: `lots.update`."
+      parameters: []
+      responses:
+        200:
+          description: 'The lot, with its scrap code and reason.'
+        401:
+          description: 'No valid session or token.'
+        403:
+          description: 'The user may not update lots on this site.'
+        404:
+          description: 'No such lot in the company.'
+        422:
+          description: 'A parameter is missing or invalid; `errors` names each one.'
+      tags:
+        - Waste
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scrap_code:
+                  type: string
+                  description: 'Must not be greater than 30 characters.'
+                  example: UE24
+                  nullable: true
+                scrap_reason:
+                  type: string
+                  description: 'Must not be greater than 500 characters.'
+                  example: 'Trous dans le tissu au niveau de la coupe'
+                  nullable: true
+    parameters:
+      -
+        in: path
+        name: lot
+        description: 'Public identifier (ULID) of the lot.'
+        example: 01M520MXD2AJ2PDBYRQZ1Z1Y6G
+        required: true
+        schema:
+          type: string

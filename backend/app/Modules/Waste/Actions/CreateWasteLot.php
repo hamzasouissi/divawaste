@@ -68,6 +68,8 @@ final class CreateWasteLot
                 'grammage_gsm' => $data->grammageGsm ?? $material['grammage_gsm'] ?? $type->default_grammage_gsm,
                 'extra_attributes' => $data->extraAttributes,
                 'notes' => $data->notes,
+                'scrap_code' => $data->scrapCode,
+                'scrap_reason' => $data->scrapReason,
                 'generated_at' => $data->generatedAt ?? now(),
                 'created_by_user_id' => $actor->id,
                 'created_device_id' => $data->deviceId,

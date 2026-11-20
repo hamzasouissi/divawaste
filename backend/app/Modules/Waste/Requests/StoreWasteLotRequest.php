@@ -67,6 +67,8 @@ class StoreWasteLotRequest extends FormRequest
             'composition.*.pct' => ['required', 'decimal:0,2'],
             'extra_attributes' => ['nullable', 'array'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'scrap_code' => ['nullable', 'string', 'max:30'],
+            'scrap_reason' => ['nullable', 'string', 'max:500'],
             'generated_at' => ['nullable', 'date', 'before_or_equal:now'],
         ] + LotOrigin::rules();
     }
@@ -105,6 +107,8 @@ class StoreWasteLotRequest extends FormRequest
             composition: $validated['composition'] ?? null,
             extraAttributes: $validated['extra_attributes'] ?? null,
             notes: $v('notes'),
+            scrapCode: $v('scrap_code'),
+            scrapReason: $v('scrap_reason'),
             generatedAt: $v('generated_at'),
             deviceId: $deviceId,
             source: $source,

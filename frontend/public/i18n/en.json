@@ -1175,6 +1175,18 @@
       "lead": "One line per lot. The site and the waste type are needed; the weight, date, zone, packaging and your reference are optional. Without a zone, the lot goes to the storage area of its site. A line whose reference was already imported is not created twice.",
       "daviTip": "Simpler: drop this file on the virtual assistant. It checks every line and asks for your agreement before importing.",
       "seeLots": "See the lots"
+    },
+    "scrapCode": "Scrap code",
+    "scrapReason": "Scrap reason",
+    "editScrap": "Scrap reason",
+    "scrapHint": "The code and reason as the workshop writes them (e.g. UE24 — holes in the fabric).",
+    "materialCost": "Material cost",
+    "materialValue": "Material value of the waste",
+    "costUnknown": "Cannot be computed (material batch, price or material weight unknown)",
+    "costBasis": {
+      "lot": "from the material batch",
+      "consumption": "from the batch the order consumed",
+      "latest": "from the last batch received"
     }
   },
   "stock": {

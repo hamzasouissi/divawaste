@@ -307,6 +307,15 @@ export interface Named {
   name: string;
 }
 
+/** basis: 'lot' (the lot's own batch), 'consumption' (the batch its OF consumed), 'latest' (last batch received by its date). */
+export interface LotMaterialCost {
+  per_kg: string | null;
+  value: string | null;
+  currency: string | null;
+  basis: 'lot' | 'consumption' | 'latest' | null;
+  batch: { ulid: string; batch_number: string; received_on: string | null } | null;
+}
+
 export interface Lot {
   ulid: string;
   lot_number: string;
@@ -341,6 +350,11 @@ export interface Lot {
    * (to be checked), averaged from grouped lots, kept from the lot split; null = not known. */
   composition_source?: CompositionSource | null;
   notes: string | null;
+  /** Why the lot was scrapped, as the plant writes it (UE24, "trous dans le tissu"). */
+  scrap_code?: string | null;
+  scrap_reason?: string | null;
+  /** What its material cost, priced by a batch of the raw material; null for people who may not see production costs. */
+  material_cost?: LotMaterialCost | null;
   qr: string | null;
   label_print_count: number;
   version: number;

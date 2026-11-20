@@ -95,6 +95,7 @@ final class DivaBiPackage
                 'hidden_columns' => array_values(array_unique(array_intersect(array_merge($definition['hidden'] ?? [], $config['always_hidden'] ?? []), $cols))),
                 'column_requires' => $columnRequires,
                 'column_labels' => ($definition['columns'] ?? []) + array_intersect_key($config['common_columns'] ?? [], array_flip($cols)),
+                'relationship_labels' => $definition['relations'] ?? [],
                 'value_labels' => self::valueLabels($config['value_labels'][$table] ?? [], $cols, $dictionaries),
                 'display_column' => $definition['display'] ?? null,
                 'route' => $definition['route'] ?? null,
