@@ -10,6 +10,7 @@ export const INDUSTRIAL_ROUTES: Routes = [
   // Custom views (DivaBI): the company's own tables, built from any data it may read.
   { path: 'custom-views', canActivate: [permissionGuard('custom_views.view', 'custom_views.manage')], loadComponent: () => import('./custom-views/custom-views').then((m) => m.CustomViewsPage), data: { tab: 'views' }, title: 'Vues personnalisées — DivaWaste' },
   { path: 'custom-views/builder', canActivate: [permissionGuard('custom_views.manage')], loadComponent: () => import('./custom-views/custom-views').then((m) => m.CustomViewsPage), data: { tab: 'builder' }, title: 'Concepteur de vues — DivaWaste' },
+  { path: 'custom-views/:view/edit', canActivate: [permissionGuard('custom_views.manage')], loadComponent: () => import('./custom-views/custom-views').then((m) => m.CustomViewsPage), data: { tab: 'builder' }, title: 'Concepteur de vues — DivaWaste' },
   { path: 'custom-views/:view', canActivate: [permissionGuard('custom_views.view', 'custom_views.manage')], loadComponent: () => import('./custom-views/custom-views').then((m) => m.CustomViewPage), title: 'Vue personnalisée — DivaWaste' },
   { path: 'lots', canActivate: [permissionGuard('lots.view')], loadComponent: () => import('./lots/lots').then((m) => m.LotsPage), title: 'Lots — DivaWaste' },
   { path: 'lots/import', canActivate: [permissionGuard('lots.create')], loadComponent: () => import('./production/import').then((m) => m.ImportPage), data: { lots: true }, title: 'Importer des lots — DivaWaste' },

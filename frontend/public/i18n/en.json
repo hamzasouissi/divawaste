@@ -4828,6 +4828,7 @@
     "title": "Custom views",
     "builderTitle": "View builder",
     "subtitle": "Tables your team builds from your data: lots, pickups, sites, production…",
-    "all": "All views"
+    "all": "All views",
+    "edit": "Edit"
   }
 }

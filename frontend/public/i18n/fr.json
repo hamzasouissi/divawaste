@@ -4828,6 +4828,7 @@
     "title": "Vues personnalisées",
     "builderTitle": "Concepteur de vues",
     "subtitle": "Des tableaux construits par votre équipe à partir de vos données : lots, enlèvements, sites, production…",
-    "all": "Toutes les vues"
+    "all": "Toutes les vues",
+    "edit": "Modifier"
   }
 }

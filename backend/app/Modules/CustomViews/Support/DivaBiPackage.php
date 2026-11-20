@@ -25,10 +25,15 @@ final class DivaBiPackage
     /**
      * @param  array<string, mixed>  $config  config('divabi')
      * @param  callable(string): list<string>  $columns  column names of a table
+     * @param  (callable(string): (array<string, mixed>|null))|null  $translations  the application's translations of a language (fr, en)
      * @return array<string, mixed>
      */
-    public static function build(array $config, callable $columns): array
+    public static function build(array $config, callable $columns, ?callable $translations = null): array
     {
+        $dictionaries = [];
+        foreach ($translations !== null ? ['fr', 'en'] : [] as $locale) {
+            $dictionaries[$locale] = $translations($locale) ?? [];
+        }
         $permissions = PermissionCatalog::permissions();
         $entities = [];
 
@@ -90,6 +95,7 @@ final class DivaBiPackage
                 'hidden_columns' => array_values(array_unique(array_intersect(array_merge($definition['hidden'] ?? [], $config['always_hidden'] ?? []), $cols))),
                 'column_requires' => $columnRequires,
                 'column_labels' => ($definition['columns'] ?? []) + array_intersect_key($config['common_columns'] ?? [], array_flip($cols)),
+                'value_labels' => self::valueLabels($config['value_labels'][$table] ?? [], $cols, $dictionaries),
                 'display_column' => $definition['display'] ?? null,
                 'route' => $definition['route'] ?? null,
             ], fn ($value) => $value !== null && $value !== []) + ['access' => 'allow'];
@@ -133,6 +139,37 @@ final class DivaBiPackage
     }
 
     /** @param  array<string, mixed>  ...$parts */
+    /**
+     * {column: {value: {locale: label}}} from the translation groups config('divabi.value_labels') names per column.
+     *
+     * @param  array<string, string>  $columns  column => translation group ("status.lot")
+     * @param  list<string>  $existing  columns the table has
+     * @param  array<string, array<string, mixed>>  $dictionaries  locale => translations
+     * @return array<string, array<string, array<string, string>>>
+     */
+    private static function valueLabels(array $columns, array $existing, array $dictionaries): array
+    {
+        $labels = [];
+        foreach ($columns as $column => $group) {
+            if (! in_array($column, $existing, true)) {
+                continue;
+            }
+            foreach ($dictionaries as $locale => $dictionary) {
+                $node = $dictionary;
+                foreach (explode('.', $group) as $key) {
+                    $node = is_array($node) ? ($node[$key] ?? null) : null;
+                }
+                foreach (is_array($node) ? $node : [] as $value => $label) {
+                    if (is_string($label)) {
+                        $labels[$column][(string) $value][$locale] = $label;
+                    }
+                }
+            }
+        }
+
+        return $labels;
+    }
+
     private static function version(array ...$parts): string
     {
         return substr(hash('sha256', json_encode($parts)), 0, 12);

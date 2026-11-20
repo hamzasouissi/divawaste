@@ -119,7 +119,8 @@ class DivaBiSessionTest extends TestCase
 
     public function test_the_package_opens_only_listed_tables_under_the_company_rules(): void
     {
-        $package = DivaBiPackage::build(config('divabi'), fn (string $table) => Schema::getColumnListing($table));
+        $translations = fn (string $locale) => json_decode((string) file_get_contents(base_path("../frontend/public/i18n/{$locale}.json")), true);
+        $package = DivaBiPackage::build(config('divabi'), fn (string $table) => Schema::getColumnListing($table), $translations);
 
         $lots = $package['entities']['waste_lots'];
         $this->assertSame('allow', $lots['access']);
@@ -131,6 +132,14 @@ class DivaBiSessionTest extends TestCase
         $this->assertSame(['pickups.price'], $package['entities']['pickup_lots']['column_requires']['unit_price']);
         foreach (['users', 'personal_access_tokens', 'user_invitations', 'audit_logs', 'permissions'] as $closed) {
             $this->assertSame(['access' => 'deny'], $package['entities'][$closed], $closed);
+        }
+        // Stored values carry the application's own labels, in both languages.
+        $this->assertSame(['fr' => 'Stocké', 'en' => 'In stock'], $lots['value_labels']['status']['stored']);
+        foreach (config('divabi.value_labels') as $table => $columns) {
+            foreach ($columns as $column => $group) {
+                $this->assertTrue(Schema::hasColumn($table, $column), "{$table}.{$column}");
+                $this->assertNotEmpty($package['entities'][$table]['value_labels'][$column] ?? [], "{$table}.{$column} <- {$group}");
+            }
         }
         // Every table the configuration opens exists and is classified.
         foreach (array_keys(config('divabi.entities')) as $table) {

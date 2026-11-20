@@ -852,3 +852,21 @@ table.dw-table tbody td .p-button {
   .dw-no-print { display: none !important; }
   body { background: #fff; }
 }
+
+/* Custom views (DivaBI web components): DivaBI's look follows DivaWaste's tokens. */
+divabi-studio, divabi-view, divabi-slot {
+  --divabi-font: inherit;
+  --divabi-text: var(--dw-ink);
+  --divabi-text-2: var(--dw-ink-2);
+  --divabi-muted: var(--dw-ink-3);
+  --divabi-border: var(--dw-line);
+  --divabi-border-strong: var(--dw-line-strong);
+  --divabi-surface: var(--dw-surface);
+  --divabi-soft: var(--dw-surface-2);
+  --divabi-hover: var(--dw-surface-3);
+  --divabi-primary: var(--dw-primary);
+  --divabi-primary-soft: var(--dw-primary-soft);
+  --divabi-on-primary: var(--dw-on-primary);
+  --divabi-radius: var(--dw-radius-lg, 12px);
+  display: block;
+}

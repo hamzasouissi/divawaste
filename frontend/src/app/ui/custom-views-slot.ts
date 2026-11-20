@@ -24,8 +24,7 @@ import { DivaBi } from '../core/divabi/divabi';
     }
   `,
   styles: `
-    divabi-slot { display: block; --divabi-font: inherit; --divabi-primary: var(--dw-primary); --divabi-primary-soft: var(--dw-primary-soft);
-      --divabi-text: var(--dw-ink); --divabi-muted: var(--dw-ink-3); --divabi-border: var(--dw-line-soft); --divabi-surface: var(--dw-surface); --divabi-soft: var(--dw-surface-2); }
+    divabi-slot { min-width: 0; }
   `,
 })
 export class CustomViewsSlotComponent implements OnInit {

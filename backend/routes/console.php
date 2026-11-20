@@ -407,7 +407,13 @@ Artisan::command('api:docs', function () {
 // Custom views: writes DivaBI's application package (tables custom views may read, row rules, slots) from the live
 // schema, TableClassification, PermissionCatalog and config/divabi.php. Copy the file to DivaBI's applications/divawaste/.
 Artisan::command('divabi:package {path? : file to write; standard output when omitted}', function () {
-    $package = DivaBiPackage::build(config('divabi'), fn (string $table) => Schema::getColumnListing($table));
+    // Labels of stored values come from the application's own translations (frontend/public/i18n), when present.
+    $translations = function (string $locale): ?array {
+        $file = base_path("../frontend/public/i18n/{$locale}.json");
+
+        return is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
+    };
+    $package = DivaBiPackage::build(config('divabi'), fn (string $table) => Schema::getColumnListing($table), $translations);
     $json = json_encode($package, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n";
     $path = $this->argument('path');
     if ($path === null) {

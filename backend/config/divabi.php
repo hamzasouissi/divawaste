@@ -156,6 +156,36 @@ return [
     // JSON columns holding {"fr": …, "en": …}: shown in the reader's language.
     'localized_columns' => ['name', 'label', 'description', 'short_name'],
 
+    // Labels of stored values (statuses, kinds…): readers see "Stocké", not "stored". Each column names the group of the
+    // application's own translations (frontend/public/i18n/{fr,en}.json) that labels its values, so there is one source.
+    'value_labels' => [
+        'capacity_alerts' => ['capacity_type' => 'limits.name', 'alert_level' => 'status.alert'],
+        'companies' => ['company_type' => 'platform.companies.types', 'status' => 'status.company'],
+        'contract_charges' => ['basis' => 'contracts.bases', 'direction' => 'marketplace.directions'],
+        'contract_prices' => ['pricing_mode' => 'marketplace.modes', 'direction' => 'marketplace.directions'],
+        'contracts' => ['party_role' => 'contracts.roles', 'status' => 'status.contract', 'frequency' => 'contracts.frequencies',
+            'pickup_fee_direction' => 'marketplace.directions', 'monthly_fee_direction' => 'marketplace.directions'],
+        'customer_order_invoices' => ['kind' => 'production.invoiceKind'],
+        'customer_orders' => ['status' => 'production.orderStatus'],
+        'marketplace_listings' => ['status' => 'status.listing', 'asking_pricing_mode' => 'marketplace.modes', 'asking_direction' => 'marketplace.directions'],
+        'marketplace_negotiations' => ['status' => 'status.negotiation'],
+        'marketplace_proposals' => ['pricing_mode' => 'marketplace.modes', 'direction' => 'marketplace.directions'],
+        'pickup_lots' => ['line_status' => 'status.line', 'pricing_mode' => 'marketplace.modes', 'tolerance_status' => 'status.tolerance', 'weight_basis' => 'lots.weightBasis'],
+        'pickups' => ['status' => 'status.pickup', 'tolerance_status' => 'status.tolerance'],
+        'produced_lots' => ['status' => 'production.producedStatus'],
+        'production_order_expenses' => ['category' => 'production.expenseCategory'],
+        'production_orders' => ['status' => 'production.ofStatus'],
+        'sites' => ['site_kind' => 'sites.kinds'],
+        'stock_thresholds' => ['alert_level' => 'status.alert'],
+        'waste_lot_events' => ['from_status' => 'status.lot', 'to_status' => 'status.lot', 'source' => 'terms.sources'],
+        'waste_lot_lineage' => ['relation_type' => 'origin'],
+        'waste_lot_operations' => ['operation_type' => 'origin'],
+        'waste_lots' => ['origin_type' => 'origin', 'status' => 'status.lot', 'composition_source' => 'lots.compositionSource', 'weight_basis' => 'lots.weightBasis'],
+        'waste_tolerance_rules' => ['direction' => 'tolerance.rules.directions', 'basis' => 'tolerance.basis'],
+        'waste_types' => ['measurement_method' => 'wasteTypes.methods'],
+        'zones' => ['space_method' => 'sites.spaceMethods'],
+    ],
+
     // Places of the application where views can be shown, and what each passes to the view.
     'slots' => [
         'menu' => ['label' => ['fr' => 'Menu « Vues personnalisées »', 'en' => '"Custom views" menu']],
