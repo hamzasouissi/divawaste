@@ -63,8 +63,7 @@ return [
                 'material_cost_per_kg' => ['fr' => 'Coût matière (par kg)', 'en' => 'Material cost (per kg)'],
                 'material_value' => ['fr' => 'Valeur matière du déchet', 'en' => 'Material value of the waste'],
                 'cost_currency_code' => ['fr' => 'Devise du coût', 'en' => 'Cost currency'],
-                'scrap_code' => ['fr' => 'Code de rebut', 'en' => 'Scrap code'],
-                'scrap_reason' => ['fr' => 'Motif de rebut', 'en' => 'Scrap reason'],
+                'scrap_note' => ['fr' => 'Précision sur le rebut', 'en' => 'Scrap note'],
                 'cost_basis' => ['fr' => 'Prix établi', 'en' => 'Price basis'],
             ],
             // The cost of the material is a production cost: only for those who may see them.
@@ -72,7 +71,12 @@ return [
             'relations' => [
                 'raw_material_batch' => ['fr' => 'Lot matière', 'en' => 'Material batch'],
                 'cost_batch' => ['fr' => 'Lot matière du prix', 'en' => 'Pricing batch'],
+                'scrap_reason' => ['fr' => 'Motif de rebut', 'en' => 'Scrap reason'],
             ]],
+        // The company's scrap reasons: lots are counted, weighed and valued per reason.
+        'scrap_reasons' => ['permission' => 'lots.view', 'label' => ['fr' => 'Motifs de rebut', 'en' => 'Scrap reasons'], 'display' => 'label',
+            'columns' => ['code' => ['fr' => 'Code', 'en' => 'Code'], 'label' => ['fr' => 'Motif', 'en' => 'Reason'], 'category' => ['fr' => 'Famille de causes', 'en' => 'Cause family'],
+                'color' => ['fr' => 'Couleur', 'en' => 'Colour'], 'sort_order' => ['fr' => 'Ordre', 'en' => 'Order']]],
         'waste_lot_compositions' => ['permission' => 'lots.view', 'label' => ['fr' => 'Compositions des lots', 'en' => 'Lot compositions']],
         'waste_lot_events' => ['permission' => 'lots.view', 'label' => ['fr' => 'Historique des lots', 'en' => 'Lot history'], 'hidden' => ['payload']],
         'waste_lot_operations' => ['permission' => 'lots.view', 'label' => ['fr' => 'Divisions et regroupements', 'en' => 'Splits and groupings']],
@@ -224,6 +228,7 @@ return [
             'cost_basis' => 'lots.costBasis'],
         'waste_tolerance_rules' => ['direction' => 'tolerance.rules.directions', 'basis' => 'tolerance.basis'],
         'waste_types' => ['measurement_method' => 'wasteTypes.methods'],
+        'scrap_reasons' => ['category' => 'scrapReasons.categories'],
         'zones' => ['space_method' => 'sites.spaceMethods'],
     ],
 

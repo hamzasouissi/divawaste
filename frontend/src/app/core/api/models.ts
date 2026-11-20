@@ -308,6 +308,31 @@ export interface Named {
 }
 
 /** basis: 'lot' (the lot's own batch), 'consumption' (the batch its OF consumed), 'latest' (last batch received by its date). */
+/** The family of causes of a scrap reason: the 6 M of a cause-and-effect diagram. */
+export type ScrapCategory = 'material' | 'machine' | 'method' | 'manpower' | 'measurement' | 'environment';
+export const SCRAP_CATEGORIES: ScrapCategory[] = ['material', 'machine', 'method', 'manpower', 'measurement', 'environment'];
+
+/** A scrap reason as a lot names it. */
+export interface ScrapReasonRef {
+  ulid: string;
+  code: string;
+  label: string;
+  category: ScrapCategory | null;
+  /** #RRGGBB, or null for the default tint. */
+  color: string | null;
+}
+
+/** A scrap reason of the company's list, with what its lots weigh (inside the sites the user may read). */
+export interface ScrapReason extends ScrapReasonRef {
+  description: string | null;
+  sort_order: number;
+  is_active: boolean;
+  lots: number;
+  weight_kg: string;
+  /** For who may see production costs, when all its lots share one currency. */
+  material_value: { amount: string; currency: string } | null;
+}
+
 export interface LotMaterialCost {
   per_kg: string | null;
   value: string | null;
@@ -350,9 +375,9 @@ export interface Lot {
    * (to be checked), averaged from grouped lots, kept from the lot split; null = not known. */
   composition_source?: CompositionSource | null;
   notes: string | null;
-  /** Why the lot was scrapped, as the plant writes it (UE24, "trous dans le tissu"). */
-  scrap_code?: string | null;
-  scrap_reason?: string | null;
+  /** Why the material was scrapped: a reason of the company's list (UE24 "Trous dans le tissu"), and the lot's own note. */
+  scrap_reason?: ScrapReasonRef | null;
+  scrap_note?: string | null;
   /** What its material cost, priced by a batch of the raw material; null for people who may not see production costs. */
   material_cost?: LotMaterialCost | null;
   qr: string | null;

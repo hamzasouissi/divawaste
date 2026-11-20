@@ -50,7 +50,7 @@ final class TransformLots
             foreach ($data->outputs as $output) {
                 $zoneId = $output['zone'] === null ? $lot->zone_id
                     : Zone::query()->where('ulid', $output['zone'])->where('site_id', $lot->site_id)->valueOrFail('id');
-                $child = $this->derive($lot, 'split', (string) $output['net_weight_kg'], (int) $zoneId, $actor, $composition, $lot->only(LotOrigin::FIELDS), $output['package_count'] ?? null);
+                $child = $this->derive($lot, 'split', (string) $output['net_weight_kg'], (int) $zoneId, $actor, $composition, $lot->only([...LotOrigin::FIELDS, 'scrap_reason_id']), $output['package_count'] ?? null);
                 $this->link($operation, $lot, $child, 'split', (string) $output['net_weight_kg'], $actor);
                 $outputs[] = $child;
             }
@@ -83,7 +83,8 @@ final class TransformLots
 
             // The group keeps an origin only where every lot agrees: two OFs in one bale is no longer "this OF".
             $origin = [];
-            foreach (LotOrigin::FIELDS as $field) {
+            // So does the scrap reason: one reason for all of them, or none.
+            foreach ([...LotOrigin::FIELDS, 'scrap_reason_id'] as $field) {
                 $origin[$field] = $inputs->pluck($field)->unique()->count() === 1 ? $first->getAttribute($field) : null;
             }
             $group = $this->derive($first, 'grouping', $total, $zoneId, $actor, LotComposition::weightedAverage($inputs->all(), $total), $origin, $data->packageCount);

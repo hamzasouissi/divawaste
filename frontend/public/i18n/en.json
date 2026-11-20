@@ -1176,10 +1176,9 @@
       "daviTip": "Simpler: drop this file on the virtual assistant. It checks every line and asks for your agreement before importing.",
       "seeLots": "See the lots"
     },
-    "scrapCode": "Scrap code",
     "scrapReason": "Scrap reason",
     "editScrap": "Scrap reason",
-    "scrapHint": "The code and reason as the workshop writes them (e.g. UE24 — holes in the fabric).",
+    "scrapHint": "The reason comes from the company’s list, so scraps can be counted and weighed per reason. The note belongs to this lot.",
     "materialCost": "Material cost",
     "materialValue": "Material value of the waste",
     "costUnknown": "Cannot be computed (material batch, price or material weight unknown)",
@@ -1187,7 +1186,12 @@
       "lot": "from the material batch",
       "consumption": "from the batch the order consumed",
       "latest": "from the last batch received"
-    }
+    },
+    "scrapNote": "Note",
+    "scrapNoReason": "No reason",
+    "scrapPick": "Choose a reason",
+    "scrapManage": "Manage reasons",
+    "scrapNoneYet": "The company has no scrap reason yet."
   },
   "stock": {
     "title": "Waste stock",
@@ -3021,7 +3025,8 @@
     "Liste ANGed": "ANGed list",
     "Vues personnalisées": "Custom views",
     "Concepteur de vues": "View builder",
-    "Vue personnalisée": "Custom view"
+    "Vue personnalisée": "Custom view",
+    "Motifs de rebut": "Scrap reasons"
   },
   "partners": {
     "title": "Partners without an account",
@@ -4543,6 +4548,10 @@
       "apiKeys": {
         "title": "API access keys",
         "hint": "Connect your ERP or your tools to DivaWaste"
+      },
+      "scrapReasons": {
+        "title": "Scrap reasons",
+        "hint": "Why material is scrapped, for statistics per reason"
       }
     },
     "modules": {
@@ -4842,5 +4851,47 @@
     "subtitle": "Tables your team builds from your data: lots, pickups, sites, production…",
     "all": "All views",
     "edit": "Edit"
+  },
+  "scrapReasons": {
+    "title": "Scrap reasons",
+    "subtitle": "The list of reasons for scrapping: each lot names one, so scraps can be counted, weighed and valued per reason.",
+    "new": "New reason",
+    "edit": "Edit reason",
+    "code": "Code",
+    "label": "Reason",
+    "category": "Cause family",
+    "noCategory": "No family",
+    "color": "Colour",
+    "description": "Description",
+    "active": "In use",
+    "inactive": "No longer used",
+    "showInactive": "Show reasons no longer used",
+    "lots": "Lots",
+    "weight": "Weight",
+    "value": "Material value",
+    "share": "Share of weight",
+    "empty": "No scrap reason",
+    "emptyHint": "Create the reasons the workshop uses (e.g. UE24 — holes in the fabric).",
+    "deactivate": "Stop using",
+    "activate": "Use again",
+    "delete": "Delete",
+    "deleteConfirm": "Delete reason {{code}}? No lot names it.",
+    "inUse": "Lots name this reason: it can no longer be used, but it stays on those lots.",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "saved": "Reason saved",
+    "pareto": "Scrapped weight by reason",
+    "seeLots": "See the lots",
+    "categoryHint": "The 6 Ms of a cause-and-effect diagram: to group reasons in statistics.",
+    "categories": {
+      "material": "Material",
+      "machine": "Machine",
+      "method": "Method",
+      "manpower": "Manpower",
+      "measurement": "Measurement",
+      "environment": "Environment"
+    },
+    "allTime": "All time",
+    "cumulative": "Cumulative share"
   }
 }

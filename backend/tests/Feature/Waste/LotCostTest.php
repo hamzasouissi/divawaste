@@ -16,7 +16,7 @@ use Tests\Concerns\InteractsWithTenants;
 use Tests\TestCase;
 
 /**
- * What the material of a waste lot cost, from the batch of raw material it was cut from, and why it was scrapped.
+ * What the material of a waste lot cost, from the batch of raw material it was cut from (scrap reasons: ScrapReasonsTest).
  *
  * The fabric of these tests: 100 m of a 150 cm laize at 200 g/m² weigh 30 kg; bought 300 + 30 of delivery, so 11 a kilo.
  * The batch that prices a lot: its own; else the one its OF consumed; else the last one received by the lot's date.
@@ -124,17 +124,6 @@ class LotCostTest extends TestCase
         $this->assertSame(['11.0000', 'latest'], [(string) $row->material_cost_per_kg, $row->cost_basis]);
     }
 
-    public function test_the_scrap_code_and_reason_are_given_at_creation_or_afterwards(): void
-    {
-        $lot = $this->lot(['scrap_code' => 'UE24', 'scrap_reason' => 'Trous dans le tissu']);
-        $this->assertSame(['UE24', 'Trous dans le tissu'], [$lot['scrap_code'], $lot['scrap_reason']]);
-
-        $updated = $this->withToken($this->token)->putJson("/api/v1/lots/{$lot['ulid']}/scrap", ['scrap_code' => ' UE25 ', 'scrap_reason' => null])->assertOk()->json('data');
-        $this->assertSame(['UE25', null], [$updated['scrap_code'], $updated['scrap_reason']]);
-
-        $this->withToken($this->token)->putJson("/api/v1/lots/{$lot['ulid']}/scrap", ['scrap_code' => str_repeat('x', 31)])->assertStatus(422);
-    }
-
     public function test_only_people_who_may_see_production_costs_see_the_cost(): void
     {
         $lot = $this->lot();
@@ -143,7 +132,7 @@ class LotCostTest extends TestCase
         $seen = $this->withToken($this->tokenFor($auditor, $this->company))->getJson("/api/v1/lots/{$lot['ulid']}")->assertOk()->json('data');
 
         $this->assertNull($seen['material_cost']);
-        $this->withToken($this->tokenFor($auditor, $this->company))->putJson("/api/v1/lots/{$lot['ulid']}/scrap", ['scrap_code' => 'UE1'])->assertForbidden();
+        $this->withToken($this->tokenFor($auditor, $this->company))->putJson("/api/v1/lots/{$lot['ulid']}/scrap", ['scrap_note' => 'x'])->assertForbidden();
     }
 
     public function test_the_command_costs_every_lot_again(): void

@@ -52,6 +52,7 @@ const GROUPS: { label: string; cards: SettingsCard[] }[] = [
       { path: '/settings/reception', icon: 'scale', key: 'reception', permissions: ['waste_types.view'] },
       { path: '/settings/packaging', icon: 'inventory', key: 'packaging', permissions: ['sites.view'] },
       { path: '/settings/colors', icon: 'palette', key: 'colors', permissions: ['waste_types.view'], module: 'colors' },
+      { path: '/settings/scrap-reasons', icon: 'report', key: 'scrapReasons', permissions: ['lots.view', 'waste_types.manage'] },
     ],
   },
   {

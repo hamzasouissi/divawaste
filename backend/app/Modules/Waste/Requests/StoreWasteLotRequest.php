@@ -11,6 +11,7 @@ use App\Modules\Tenancy\Rules\TenantExists;
 use App\Modules\Tenancy\TenantContext;
 use App\Modules\Waste\DTOs\CreateWasteLotData;
 use App\Modules\Waste\Rules\ValidComposition;
+use App\Modules\Waste\Support\ScrapReasons;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -67,8 +68,9 @@ class StoreWasteLotRequest extends FormRequest
             'composition.*.pct' => ['required', 'decimal:0,2'],
             'extra_attributes' => ['nullable', 'array'],
             'notes' => ['nullable', 'string', 'max:1000'],
-            'scrap_code' => ['nullable', 'string', 'max:30'],
-            'scrap_reason' => ['nullable', 'string', 'max:500'],
+            // Why the material was scrapped: a reason of the company's list (ULID), and a note of the lot's own.
+            'scrap_reason' => ['nullable', 'string', ScrapReasons::rule()],
+            'scrap_note' => ['nullable', 'string', 'max:500'],
             'generated_at' => ['nullable', 'date', 'before_or_equal:now'],
         ] + LotOrigin::rules();
     }
@@ -107,8 +109,8 @@ class StoreWasteLotRequest extends FormRequest
             composition: $validated['composition'] ?? null,
             extraAttributes: $validated['extra_attributes'] ?? null,
             notes: $v('notes'),
-            scrapCode: $v('scrap_code'),
             scrapReason: $v('scrap_reason'),
+            scrapNote: $v('scrap_note'),
             generatedAt: $v('generated_at'),
             deviceId: $deviceId,
             source: $source,

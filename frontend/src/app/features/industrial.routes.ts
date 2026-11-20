@@ -55,6 +55,7 @@ export const INDUSTRIAL_ROUTES: Routes = [
   { path: 'settings/modules', canActivate: [permissionGuard('company.update')], loadComponent: () => import('./settings/settings').then((m) => m.ModulesPage), title: 'Modules — DivaWaste' },
   { path: 'settings/api-keys', canActivate: [permissionGuard('company.update')], loadComponent: () => import('./settings/api-keys').then((m) => m.ApiKeysPage), title: 'Clés d’accès API — DivaWaste' },
   { path: 'settings/reception', canActivate: [permissionGuard('waste_types.view')], loadComponent: () => import('./settings/settings').then((m) => m.ReceptionSettingsPage), title: 'Réception et écarts — DivaWaste' },
+  { path: 'settings/scrap-reasons', canActivate: [permissionGuard('lots.view')], loadComponent: () => import('./settings/scrap-reasons').then((m) => m.ScrapReasonsPage), title: 'Motifs de rebut — DivaWaste' },
   { path: 'settings/colors', canActivate: [permissionGuard('waste_types.view')], loadComponent: () => import('./settings/settings').then((m) => m.ColorsSettingsPage), title: 'Couleurs — DivaWaste' },
   { path: 'settings/packaging', canActivate: [permissionGuard('sites.view')], loadComponent: () => import('./settings/settings').then((m) => m.PackagingSettingsPage), title: 'Conditionnements — DivaWaste' },
   // Notifications emitted by the API point here.

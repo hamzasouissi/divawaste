@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 class WasteLotResource extends JsonResource
 {
     /** Relations the resource reads: eager load them on collections (strict models forbid lazy loading). */
-    public const RELATIONS = ['site:id,ulid,code,name', 'zone:id,ulid,code,name', 'wasteType:id,ulid,code,name', 'activeQrTag:id,waste_lot_id,tag_value,print_count'];
+    public const RELATIONS = ['site:id,ulid,code,name', 'zone:id,ulid,code,name', 'wasteType:id,ulid,code,name', 'activeQrTag:id,waste_lot_id,tag_value,print_count', 'scrapReason:id,ulid,code,label,category,color'];
 
     /**
      * @return array<string, mixed>
@@ -55,9 +55,9 @@ class WasteLotResource extends JsonResource
             // checked), 'grouping' (average of grouped lots), 'split' (kept from the lot split); null = not known.
             'composition_source' => $this->composition_label === null ? null : $this->composition_source,
             'notes' => $this->notes,
-            // Why the lot was scrapped, as the plant writes it (code UE24, reason "trous dans le tissu").
-            'scrap_code' => $this->scrap_code,
-            'scrap_reason' => $this->scrap_reason,
+            // Why the lot was scrapped: a reason of the company's list (UE24 "Trous dans le tissu"), and the lot's own note.
+            'scrap_reason' => $this->scrap_reason_id === null ? null : $this->scrapReason?->summary(),
+            'scrap_note' => $this->scrap_note,
             // What its material cost, from the batch it was cut from — production costs, for those who may see them.
             // basis: 'lot' (its own batch), 'consumption' (the batch its OF consumed), 'latest' (last batch received by its date).
             'material_cost' => $request->user()?->can('production.finance.view') ? [

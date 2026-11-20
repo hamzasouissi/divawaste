@@ -65135,11 +65135,11 @@ paths:
     put:
       summary: 'Scrap lots'
       operationId: scrapLots
-      description: "Why the lot was scrapped (code and reason, as the plant writes them): given or corrected after creation.\n\nPermission: `lots.update`."
+      description: "Why the lot was scrapped (a reason of the company's list, and a note of its own): given or corrected after creation.\n\nPermission: `lots.update`."
       parameters: []
       responses:
         200:
-          description: 'The lot, with its scrap code and reason.'
+          description: 'The lot, with its scrap reason and note.'
         401:
           description: 'No valid session or token.'
         403:
@@ -65157,21 +65157,217 @@ paths:
             schema:
               type: object
               properties:
-                scrap_code:
-                  type: string
-                  description: 'Must not be greater than 30 characters.'
-                  example: UE24
-                  nullable: true
                 scrap_reason:
                   type: string
+                  description: 'ULID of an active scrap reason of the company (or the one the lot already has).'
+                  example: 01M520MXD2AJ2PDBYRQZ1Z1Y6G
+                  nullable: true
+                scrap_note:
+                  type: string
                   description: 'Must not be greater than 500 characters.'
-                  example: 'Trous dans le tissu au niveau de la coupe'
+                  example: 'Au niveau de la coupe'
                   nullable: true
     parameters:
       -
         in: path
         name: lot
         description: 'Public identifier (ULID) of the lot.'
+        example: 01M520MXD2AJ2PDBYRQZ1Z1Y6G
+        required: true
+        schema:
+          type: string
+  /api/v1/scrap-reasons:
+    get:
+      summary: 'Index scrap reasons'
+      operationId: indexScrapReasons
+      description: "Scrap reasons (motifs de rebut): the company's list, which lots name so they can be counted, weighed and valued per reason. Each reason comes with its lots, their weight and (for who may see production costs) the value of their material, inside the sites whose lots the user may read, over an optional period.\n\nPermissions: `lots.view`, `lots.create`, `lots.update` or `waste_types.view`."
+      parameters:
+        -
+          in: query
+          name: with_inactive
+          description: 'Also the reasons no longer used.'
+          example: false
+          required: false
+          schema:
+            type: boolean
+        -
+          in: query
+          name: from
+          description: 'Lots generated from this date.'
+          example: '2026-01-01'
+          required: false
+          schema:
+            type: string
+        -
+          in: query
+          name: to
+          description: 'Lots generated up to this date.'
+          example: '2026-12-31'
+          required: false
+          schema:
+            type: string
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  data:
+                    -
+                      ulid: 01M520MXD2AJ2PDBYRQZ1Z1Y6G
+                      code: UE24
+                      label: 'Trous dans le tissu'
+                      category: material
+                      color: '#E5484D'
+                      description: null
+                      sort_order: 10
+                      is_active: true
+                      lots: 12
+                      weight_kg: '342.500'
+                      material_value:
+                        amount: '3767.500'
+                        currency: TND
+        401:
+          description: 'No valid session or token.'
+        403:
+          description: 'The user reads no lots.'
+      tags:
+        - Waste
+    post:
+      summary: 'Store scrap reasons'
+      operationId: storeScrapReasons
+      description: "A new scrap reason of the company.\n\nPermission: `waste_types.manage`."
+      parameters: []
+      responses:
+        201:
+          description: 'The reason.'
+        401:
+          description: 'No valid session or token.'
+        403:
+          description: 'The user does not hold `waste_types.manage`.'
+        422:
+          description: 'A parameter is missing or invalid; `errors` names each one.'
+      tags:
+        - Waste
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: 'Unique in the company; letters, digits, . _ / -. Must not be greater than 30 characters.'
+                  example: UE24
+                label:
+                  type: string
+                  description: 'Must not be greater than 150 characters.'
+                  example: 'Trous dans le tissu'
+                category:
+                  type: string
+                  description: 'Family of causes (the 6 M).'
+                  example: material
+                  enum:
+                    - material
+                    - machine
+                    - method
+                    - manpower
+                    - measurement
+                    - environment
+                  nullable: true
+                color:
+                  type: string
+                  description: '#RRGGBB.'
+                  example: '#E5484D'
+                  nullable: true
+                description:
+                  type: string
+                  description: 'Must not be greater than 500 characters.'
+                  example: null
+                  nullable: true
+                is_active:
+                  type: boolean
+                  example: true
+              required:
+                - code
+                - label
+  /api/v1/scrap-reasons/order:
+    put:
+      summary: 'Order scrap reasons'
+      operationId: orderScrapReasons
+      description: "The order the list is shown in, given as every reason's ULID from first to last.\n\nPermission: `waste_types.manage`."
+      parameters: []
+      responses:
+        200:
+          description: 'The reasons in their new order.'
+        401:
+          description: 'No valid session or token.'
+        403:
+          description: 'The user does not hold `waste_types.manage`.'
+        422:
+          description: 'A parameter is missing or invalid; `errors` names each one.'
+      tags:
+        - Waste
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reasons:
+                  type: array
+                  items:
+                    type: string
+                  example:
+                    - 01M520MXD2AJ2PDBYRQZ1Z1Y6G
+              required:
+                - reasons
+  '/api/v1/scrap-reasons/{scrapReason}':
+    put:
+      summary: 'Update scrap reasons'
+      operationId: updateScrapReasons
+      description: "Changes a reason; `is_active: false` stops it being chosen while the lots that name it keep it.\n\nPermission: `waste_types.manage`."
+      parameters: []
+      responses:
+        200:
+          description: 'The reason.'
+        401:
+          description: 'No valid session or token.'
+        403:
+          description: 'The user does not hold `waste_types.manage`.'
+        404:
+          description: 'Unknown identifier, or a record of another company: both answer the same way.'
+        422:
+          description: 'A parameter is missing or invalid; `errors` names each one.'
+      tags:
+        - Waste
+    delete:
+      summary: 'Destroy scrap reasons'
+      operationId: destroyScrapReasons
+      description: "Only a reason no lot names: one in use is deactivated instead, so the lots keep it.\n\nPermission: `waste_types.manage`."
+      parameters: []
+      responses:
+        204:
+          description: 'Deleted.'
+        401:
+          description: 'No valid session or token.'
+        403:
+          description: 'The user does not hold `waste_types.manage`.'
+        404:
+          description: 'Unknown identifier, or a record of another company: both answer the same way.'
+        409:
+          description: '`SCRAP_REASON_IN_USE`: lots name this reason.'
+      tags:
+        - Waste
+    parameters:
+      -
+        in: path
+        name: scrapReason
+        description: 'Public identifier (ULID) of the scrap reason.'
         example: 01M520MXD2AJ2PDBYRQZ1Z1Y6G
         required: true
         schema:

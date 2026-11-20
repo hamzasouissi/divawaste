@@ -17,6 +17,7 @@ import { LotActionData, LotCompositionDialog, LotOriginDialog, LotPackagesDialog
 import { CreateListingDialog, CreateListingData } from '../marketplace/listing-dialogs';
 import { Dialogs } from '../../ui/dialog';
 import { IconComponent } from '../../ui/icon';
+import { ScrapReasonComponent } from '../../ui/scrap-reason';
 import { StepsComponent } from '../../ui/steps';
 import { COLOR } from '../../ui/swatch';
 import { MenuAction, MenuComponent } from '../../ui/menu';
@@ -29,7 +30,7 @@ type LotAction = 'weigh' | 'pickup' | 'print' | 'store' | 'split' | 'sell' | 'or
  * where it came from and what it became (M2-06), and which pickup took it.
  */
 @Component({
-  imports: [...COLOR, TermPipe, CodePipe, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LocalizedPipe, LotMeasurePipe, MoneyPipe, IconComponent, ButtonDirective, MenuComponent, Tooltip, StepsComponent, CustomViewsSlotComponent],
+  imports: [...COLOR, TermPipe, CodePipe, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LocalizedPipe, LotMeasurePipe, MoneyPipe, IconComponent, ButtonDirective, MenuComponent, Tooltip, StepsComponent, CustomViewsSlotComponent, ScrapReasonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -100,8 +101,11 @@ type LotAction = 'weigh' | 'pickup' | 'print' | 'store' | 'split' | 'sell' | 'or
                         <div><dt>{{ t('lots.regulatoryCode') }}</dt><dd class="dw-mono">{{ l.regulatory_code ?? '—' }}</dd></div>
                         <div><dt>{{ t('lots.origin') }}</dt><dd>{{ t('origin.' + l.origin_type) }}</dd></div>
                         <div><dt>{{ t('lots.generatedAt') }}</dt><dd>{{ l.generated_at | dwDate: 'datetime' }}</dd></div>
-                        @if (l.scrap_code || l.scrap_reason) {
-                          <div class="wide"><dt>{{ t('lots.scrapReason') }}</dt><dd>@if (l.scrap_code) { <span class="dw-mono">{{ l.scrap_code }}</span> }@if (l.scrap_code && l.scrap_reason) { · }{{ l.scrap_reason ?? '' }}</dd></div>
+                        @if (l.scrap_reason || l.scrap_note) {
+                          <div class="wide"><dt>{{ t('lots.scrapReason') }}</dt><dd class="scrap">
+                            @if (l.scrap_reason) { <dw-scrap-reason [reason]="l.scrap_reason" /> }
+                            @if (l.scrap_note) { <span class="dw-muted">{{ l.scrap_note }}</span> }
+                          </dd></div>
                         }
                         @if (l.notes) { <div class="wide"><dt>{{ t('fields.notes') }}</dt><dd>{{ l.notes }}</dd></div> }
                       </dl>
@@ -218,6 +222,7 @@ type LotAction = 'weigh' | 'pickup' | 'print' | 'store' | 'split' | 'sell' | 'or
     </ng-container>
   `,
   styles: `
+    dd.scrap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
     .lifecycle { margin-block-end: 20px; }
     .groups { display: grid; gap: 22px; } .group { display: grid; gap: 10px; } .group + .group { padding-block-start: 18px; border-block-start: 1px solid var(--dw-line-soft); } .wide { grid-column: 1 / -1; }
     .edit { all: unset; display: inline-grid; place-items: center; width: 26px; height: 26px; margin-inline-start: 4px; border-radius: 7px; vertical-align: middle; color: var(--dw-ink-3); cursor: pointer; transition: background-color 140ms, color 140ms; }

@@ -36,7 +36,7 @@ class WasteLot extends Model
         'regulatory_waste_code_id', 'gross_weight_kg', 'tare_weight_kg', 'net_weight_kg', 'weight_basis', 'package_count', 'package_count_confirmed', 'quantity', 'unit_id',
         'color_family_id', 'color_label', 'grammage_gsm', 'composition_label', 'composition_source', 'extra_attributes', 'notes', 'generated_at',
         'created_by_user_id', 'created_device_id', 'production_order_id', 'production_step_id', 'raw_material_id', 'raw_material_batch_id',
-        'scrap_code', 'scrap_reason',
+        'scrap_reason_id', 'scrap_note',
     ];
 
     protected function casts(): array
@@ -99,6 +99,16 @@ class WasteLot extends Model
     public function wasteType(): BelongsTo
     {
         return $this->belongsTo(WasteType::class);
+    }
+
+    /**
+     * Why the material was scrapped: a reason of the company's list.
+     *
+     * @return BelongsTo<ScrapReason, $this>
+     */
+    public function scrapReason(): BelongsTo
+    {
+        return $this->belongsTo(ScrapReason::class);
     }
 
     /**

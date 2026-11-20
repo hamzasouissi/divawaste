@@ -13,6 +13,7 @@ use App\Modules\Sites\Actions\EvaluateStockThresholds;
 use App\Modules\Sites\Models\Zone;
 use App\Modules\Sites\Support\StockQuery;
 use App\Modules\Tenancy\Rules\TenantExists;
+use App\Modules\Tenancy\TenantContext;
 use App\Modules\Waste\Actions\CreateWasteLot;
 use App\Modules\Waste\Actions\LotComposition;
 use App\Modules\Waste\Actions\TransformLots;
@@ -20,13 +21,17 @@ use App\Modules\Waste\Actions\TransitionLot;
 use App\Modules\Waste\DTOs\GroupWasteLotsData;
 use App\Modules\Waste\DTOs\SplitWasteLotData;
 use App\Modules\Waste\Enums\LotStatus;
+use App\Modules\Waste\Enums\ScrapCategory;
+use App\Modules\Waste\Models\ScrapReason;
 use App\Modules\Waste\Models\WasteLot;
 use App\Modules\Waste\Models\WasteLotEvent;
 use App\Modules\Waste\Requests\StoreWasteLotRequest;
 use App\Modules\Waste\Resources\WasteLotResource;
 use App\Modules\Waste\Rules\ValidComposition;
 use App\Modules\Waste\Support\LotLabel;
+use App\Modules\Waste\Support\ScrapReasons;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
@@ -54,6 +59,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             'filter.raw_material' => ['nullable', 'string', 'ulid'],
             // Lots still waiting for their weight.
             'filter.unweighed' => ['nullable', 'boolean'],
+            'filter.scrap_reason' => ['nullable', 'string', 'ulid'],
             'sort' => ['nullable', Rule::in(['generated_at', '-generated_at', 'net_weight_kg', '-net_weight_kg', 'lot_number', '-lot_number'])],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
@@ -72,6 +78,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
             ->when($filter['to'] ?? null, fn ($query, $value) => $query->where('generated_at', '<', now()->parse($value)->addDay()->startOfDay()))
             ->when($filter['production_order'] ?? null, fn ($query, $value) => $query->whereIn('production_order_id', ProductionOrder::query()->select('id')->where('ulid', strtoupper($value))))
             ->when($filter['unweighed'] ?? false, fn ($query) => $query->whereNull('net_weight_kg'))
+            ->when($filter['scrap_reason'] ?? null, fn ($query, $value) => $query->whereIn('scrap_reason_id', ScrapReason::query()->select('id')->where('ulid', strtoupper($value))))
             ->when($filter['raw_material'] ?? null, fn ($query, $value) => $query->whereIn('raw_material_id', RawMaterial::query()->select('id')->where('ulid', strtoupper($value))))
             // Lot numbers are searched by prefix so the (company_id, lot_number) index is used.
             ->when($filter['search'] ?? null, fn ($query, $value) => $query->where('lot_number', 'like', addcslashes(strtoupper($value), '%_\\').'%'))
@@ -137,17 +144,27 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         return new WasteLotResource($lot);
     })->name('lots.origin');
 
-    // Why the lot was scrapped (code and reason, as the plant writes them): given or corrected after creation.
+    // Why the lot was scrapped (a reason of the company's list, and a note of its own): given or corrected after creation.
     Route::put('lots/{lot}/scrap', function (Request $request, WasteLot $lot) {
         abort_unless($request->user()->can('lots.update', $lot->site_id), 403);
-        $input = $request->validate(['scrap_code' => ['nullable', 'string', 'max:30'], 'scrap_reason' => ['nullable', 'string', 'max:500']]);
+        $current = $lot->scrapReason?->ulid;
+        $input = $request->validate([
+            // A reason no longer in use stays valid on the lot that already has it.
+            'scrap_reason' => ['nullable', 'string', 'ulid', function (string $attribute, mixed $value, Closure $fail) use ($current) {
+                $ulid = strtoupper((string) $value);
+                if ($ulid !== $current && ! ScrapReason::query()->where('ulid', $ulid)->where('is_active', true)->exists()) {
+                    $fail(__('validation.exists', ['attribute' => $attribute]));
+                }
+            }],
+            'scrap_note' => ['nullable', 'string', 'max:500'],
+        ]);
         $lot->forceFill([
-            'scrap_code' => ($input['scrap_code'] ?? null) === null ? null : trim($input['scrap_code']),
-            'scrap_reason' => ($input['scrap_reason'] ?? null) === null ? null : trim($input['scrap_reason']),
+            'scrap_reason_id' => ScrapReasons::idOf($input['scrap_reason'] ?? null),
+            'scrap_note' => ($input['scrap_note'] ?? null) === null ? null : (trim($input['scrap_note']) ?: null),
             'updated_by_user_id' => $request->user()->id,
         ])->save();
 
-        return new WasteLotResource($lot);
+        return new WasteLotResource($lot->load('scrapReason'));
     })->name('lots.scrap');
 
     Route::get('lots/{lot}/events', function (Request $request, WasteLot $lot) {
@@ -365,4 +382,117 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
         return (new WasteLotResource($group))->response()->setStatusCode(201);
     })->name('lots.group');
+});
+
+/*
+ * Scrap reasons (motifs de rebut): the company's list, which lots name so they can be counted, weighed and valued per
+ * reason. Read by whoever records or reads lots, kept by whoever keeps the company's waste catalogue. A reason a lot
+ * names is deactivated, never deleted.
+ */
+Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
+    $reasonRules = fn (?ScrapReason $reason = null) => [
+        'code' => [$reason ? 'sometimes' : 'required', 'string', 'max:30', 'regex:/^[\pL\pN._\/-]+$/u',
+            Rule::unique('scrap_reasons', 'code')->where('company_id', app(TenantContext::class)->companyId())->ignore($reason?->getKey())],
+        'label' => [$reason ? 'sometimes' : 'required', 'string', 'max:150'],
+        'category' => ['nullable', Rule::enum(ScrapCategory::class)],
+        'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+        'description' => ['nullable', 'string', 'max:500'],
+        'is_active' => ['sometimes', 'boolean'],
+    ];
+    $reasonValues = function (array $input) {
+        if (isset($input['code'])) {
+            $input['code'] = mb_strtoupper(trim($input['code']));
+        }
+        if (isset($input['label'])) {
+            $input['label'] = trim($input['label']);
+        }
+        if (isset($input['color'])) {
+            $input['color'] = strtoupper($input['color']);
+        }
+
+        return $input;
+    };
+    /*
+     * Each reason with what it weighs: lots, kilograms and (for who may see production costs) the value of their
+     * material, inside the sites whose lots the user may read, over an optional period.
+     */
+    $reasonRows = function (Request $request, Collection $reasons, ?string $from = null, ?string $to = null): Collection {
+        $siteIds = app(AccessResolver::class)->siteIdsFor($request->user(), 'lots.view');
+        $money = $request->user()->can('production.finance.view');
+        $totals = $siteIds === [] ? collect() : DB::table('waste_lots')
+            ->where('company_id', app(TenantContext::class)->companyId())->whereNull('deleted_at')->whereNotNull('scrap_reason_id')
+            ->when($siteIds !== null, fn ($query) => $query->whereIn('site_id', $siteIds))
+            ->when($from, fn ($query, $value) => $query->where('generated_at', '>=', $value))
+            ->when($to, fn ($query, $value) => $query->where('generated_at', '<', now()->parse($value)->addDay()->startOfDay()))
+            ->groupBy('scrap_reason_id')
+            ->get(['scrap_reason_id', DB::raw('count(*) as lots'), DB::raw('coalesce(sum(net_weight_kg), 0) as weight_kg'), DB::raw('sum(material_value) as material_value'),
+                DB::raw('count(distinct cost_currency_code) as currencies'), DB::raw('max(cost_currency_code) as currency')])
+            ->keyBy('scrap_reason_id');
+
+        return $reasons->map(function (ScrapReason $reason) use ($totals, $money) {
+            $total = $totals->get($reason->id);
+
+            return $reason->summary() + [
+                'description' => $reason->description,
+                'sort_order' => $reason->sort_order,
+                'is_active' => $reason->is_active,
+                'lots' => (int) ($total->lots ?? 0),
+                'weight_kg' => number_format((float) ($total->weight_kg ?? 0), 3, '.', ''),
+                // One currency or the value is not added up.
+                'material_value' => $money && $total !== null && $total->material_value !== null && (int) $total->currencies === 1
+                    ? ['amount' => number_format((float) $total->material_value, 3, '.', ''), 'currency' => $total->currency] : null,
+            ];
+        })->values();
+    };
+    $mayRead = fn (Request $request) => abort_unless(collect(['lots.view', 'lots.create', 'lots.update', 'waste_types.view'])->contains(fn ($permission) => $request->user()->can($permission)), 403);
+    $manage = fn (Request $request) => abort_unless($request->user()->can('waste_types.manage'), 403);
+
+    Route::get('scrap-reasons', function (Request $request) use ($mayRead, $reasonRows) {
+        $mayRead($request);
+        $input = $request->validate(['with_inactive' => ['nullable', 'boolean'], 'from' => ['nullable', 'date'], 'to' => ['nullable', 'date', 'after_or_equal:from']]);
+        $reasons = ScrapReason::query()->when(! ($input['with_inactive'] ?? false), fn ($query) => $query->where('is_active', true))
+            ->orderBy('sort_order')->orderBy('code')->get();
+
+        return ['data' => $reasonRows($request, $reasons, $input['from'] ?? null, $input['to'] ?? null)];
+    })->name('scrap_reasons.index');
+
+    Route::post('scrap-reasons', function (Request $request) use ($manage, $reasonRules, $reasonValues, $reasonRows) {
+        $manage($request);
+        $values = $reasonValues($request->validate($reasonRules()));
+        $values['sort_order'] = (int) ScrapReason::query()->max('sort_order') + 10;
+        $reason = ScrapReason::query()->create($values);
+
+        return response()->json(['data' => $reasonRows($request, collect([$reason]))->first()], 201);
+    })->name('scrap_reasons.store');
+
+    // The order the list is shown in, given as every reason's ULID from first to last.
+    Route::put('scrap-reasons/order', function (Request $request) use ($manage, $reasonRows) {
+        $manage($request);
+        $ulids = array_map('strtoupper', $request->validate(['reasons' => ['required', 'array', 'max:500'], 'reasons.*' => ['required', 'string', 'distinct', new TenantExists(ScrapReason::class)]])['reasons']);
+        DB::transaction(function () use ($ulids) {
+            foreach ($ulids as $index => $ulid) {
+                ScrapReason::query()->where('ulid', $ulid)->update(['sort_order' => ($index + 1) * 10]);
+            }
+        });
+
+        return ['data' => $reasonRows($request, ScrapReason::query()->orderBy('sort_order')->orderBy('code')->get())];
+    })->name('scrap_reasons.order');
+
+    Route::put('scrap-reasons/{scrapReason}', function (Request $request, ScrapReason $scrapReason) use ($manage, $reasonRules, $reasonValues, $reasonRows) {
+        $manage($request);
+        $scrapReason->update($reasonValues($request->validate($reasonRules($scrapReason))));
+
+        return ['data' => $reasonRows($request, collect([$scrapReason]))->first()];
+    })->name('scrap_reasons.update');
+
+    // Only a reason no lot names: one in use is deactivated instead, so the lots keep it.
+    Route::delete('scrap-reasons/{scrapReason}', function (Request $request, ScrapReason $scrapReason) use ($manage) {
+        $manage($request);
+        if (WasteLot::withTrashed()->where('scrap_reason_id', $scrapReason->id)->exists()) {
+            throw new BusinessRuleViolation('SCRAP_REASON_IN_USE', 'Lots name this reason: deactivate it instead.');
+        }
+        $scrapReason->delete();
+
+        return response()->noContent();
+    })->name('scrap_reasons.destroy');
 });

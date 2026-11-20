@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { catchError, firstValueFrom, forkJoin, of } from 'rxjs';
 import { ulid } from 'ulid';
@@ -10,7 +11,7 @@ import { Textarea } from 'primeng/textarea';
 import { AutoFocus } from 'primeng/autofocus';
 
 import { Api, openBlob } from '../../core/api/api';
-import { Lot, OpenOrder, Zone } from '../../core/api/models';
+import { Lot, OpenOrder, ScrapReason, Zone } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { ReferenceData } from '../../core/data/reference';
 import { Toast } from '../../core/feedback/toast';
@@ -163,8 +164,13 @@ function writeText(key: string, value: string): void {
                 }
                 <dw-composition-editor [lines]="composition" />
               </div>
-              <dw-field [label]="t('lots.scrapCode')"><input pInputText formControlName="scrap_code" maxlength="30" placeholder="UE24" /></dw-field>
-              <dw-field [label]="t('lots.scrapReason')"><input pInputText formControlName="scrap_reason" maxlength="500" /></dw-field>
+              <dw-field [label]="t('lots.scrapReason')">
+                <dw-select formControlName="scrap_reason" [placeholder]="t('lots.scrapPick')" clearable>
+                  <dw-option [value]="null" [label]="t('lots.scrapNoReason')" />
+                  @for (reason of scrapReasons(); track reason.ulid) { <dw-option [value]="reason.ulid" [label]="reason.code + ' — ' + reason.label" [swatch]="reason.color" /> }
+                </dw-select>
+              </dw-field>
+              <dw-field [label]="t('lots.scrapNote')"><input pInputText formControlName="scrap_note" maxlength="500" /></dw-field>
               <dw-field class="dw-span-2" [label]="t('fields.notes')"><textarea pTextarea formControlName="notes" rows="2" maxlength="1000"></textarea></dw-field>
             </dw-more>
           </div>
@@ -201,6 +207,8 @@ export class CreateLotDialog {
   private readonly locale = inject(Locale);
   protected readonly sites = this.session.sitesFor('lots.create');
   protected readonly types = toSignal(this.reference.wasteTypes(), { initialValue: [] });
+  /** The company's scrap reasons in use: a lot names one, for the statistics per reason. */
+  protected readonly scrapReasons = toSignal(this.api.get<ScrapReason[]>('scrap-reasons').pipe(catchError(() => of([] as ScrapReason[]))), { initialValue: [] as ScrapReason[] });
   /** Every zone of the sites where the user may create lots, as "Site · Zone" (L-01). */
   protected readonly places = signal<{ site: string; siteName: string; zone: Zone }[]>([]);
   protected readonly more = signal(false);
@@ -229,8 +237,8 @@ export class CreateLotDialog {
     packaging_type: [null as string | null],
     color_family: [null as string | null],
     grammage_gsm: [''],
-    scrap_code: [''],
-    scrap_reason: [''],
+    scrap_reason: [null as string | null],
+    scrap_note: [''],
     notes: [''],
   });
   /** Typed here, or left empty: the lot then takes the composition of its raw material, else the defaults of its type. */
@@ -341,7 +349,7 @@ export class CreateLotDialog {
         weight_estimated: value.net_weight_kg ? value.weight_estimated : false,
         package_count: this.packaging() && value.package_count ? Number(value.package_count) : null,
         quantity: unit ? decimal(value.quantity) : null, unit, grammage_gsm: value.grammage_gsm ? decimal(value.grammage_gsm) : null, notes: value.notes || null,
-        scrap_code: value.scrap_code.trim() || null, scrap_reason: value.scrap_reason.trim() || null,
+        scrap_reason: value.scrap_reason || null, scrap_note: value.scrap_note.trim() || null,
       }));
       this.toast.success('lots.created', { number: lot.lot_number });
       writeText(PLACE_KEY, value.zone);
@@ -917,9 +925,9 @@ export class MoveLotsDialog {
 }
 
 
-/** Why the lot was scrapped: the plant's code and reason, given or corrected after creation. */
+/** Why the lot was scrapped: a reason of the company's list and a note of the lot's own, given or corrected after creation. */
 @Component({
-  imports: [...DIALOG, ButtonDirective, InputText, ...FIELD, ...DIALOG_PARTS],
+  imports: [...DIALOG, ButtonDirective, InputText, RouterLink, ...SELECT, ...FIELD, ...DIALOG_PARTS],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -927,8 +935,17 @@ export class MoveLotsDialog {
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <div class="dw-dialog-body">
           <p class="dw-muted">{{ t('lots.scrapHint') }}</p>
-          <dw-field [label]="t('lots.scrapCode')"><input pInputText formControlName="scrap_code" maxlength="30" placeholder="UE24" /></dw-field>
-          <dw-field [label]="t('lots.scrapReason')"><input pInputText formControlName="scrap_reason" maxlength="500" /></dw-field>
+          <dw-field [label]="t('lots.scrapReason')">
+            <dw-select formControlName="scrap_reason" [placeholder]="t('lots.scrapPick')" clearable>
+              <dw-option [value]="null" [label]="t('lots.scrapNoReason')" />
+              @for (reason of reasons(); track reason.ulid) { <dw-option [value]="reason.ulid" [label]="reason.code + ' — ' + reason.label" [swatch]="reason.color" /> }
+            </dw-select>
+          </dw-field>
+          @if (loaded() && reasons().length === 0) {
+            <p class="dw-faint none">{{ t('lots.scrapNoneYet') }}
+              @if (session.can('waste_types.manage')) { <a routerLink="/settings/scrap-reasons" dwDialogClose>{{ t('lots.scrapManage') }}</a> }</p>
+          }
+          <dw-field [label]="t('lots.scrapNote')"><input pInputText formControlName="scrap_note" maxlength="500" /></dw-field>
         </div>
         <div class="dw-dialog-foot">
           <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
@@ -937,29 +954,45 @@ export class MoveLotsDialog {
       </form>
     </ng-container>
   `,
-  styles: '.dw-dialog-body { display: grid; gap: var(--dw-3); inline-size: min(480px, 86vw); } .dw-muted { margin: 0; font-size: 13px; }',
+  styles: '.dw-dialog-body { display: grid; gap: var(--dw-3); inline-size: min(480px, 86vw); } .dw-muted { margin: 0; font-size: 13px; } .none { margin: 0; font-size: 13px; }',
 })
 export class ScrapLotDialog {
   protected readonly data = dialogData<LotActionData>();
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
   private readonly ref = inject(DialogRef);
+  protected readonly session = inject(Session);
   protected readonly busy = signal(false);
+  protected readonly loaded = signal(false);
+  /** Reasons in use, and the lot's own even if it is no longer used. */
+  protected readonly reasons = signal<ScrapReason[]>([]);
   protected readonly form = inject(FormBuilder).nonNullable.group({
-    scrap_code: [this.data.lot.scrap_code ?? ''],
-    scrap_reason: [this.data.lot.scrap_reason ?? ''],
+    scrap_reason: [this.data.lot.scrap_reason?.ulid ?? null as string | null],
+    scrap_note: [this.data.lot.scrap_note ?? ''],
   });
+
+  constructor() {
+    this.api.get<ScrapReason[]>('scrap-reasons', { with_inactive: true }).subscribe({
+      next: (reasons) => {
+        this.reasons.set(reasons.filter((reason) => reason.is_active || reason.ulid === this.data.lot.scrap_reason?.ulid));
+        this.loaded.set(true);
+      },
+      error: () => this.loaded.set(true),
+    });
+  }
 
   protected async submit(): Promise<void> {
     this.busy.set(true);
     const value = this.form.getRawValue();
     try {
       this.ref.close(await firstValueFrom(this.api.put<Lot>(`lots/${this.data.lot.ulid}/scrap`, {
-        scrap_code: value.scrap_code.trim() || null, scrap_reason: value.scrap_reason.trim() || null,
+        scrap_reason: value.scrap_reason || null, scrap_note: value.scrap_note.trim() || null,
       })));
       this.toast.success('common.saved');
     } catch (error) {
-      this.toast.error(error);
+      if (!this.toast.applyValidation(this.form, error)) {
+        this.toast.error(error);
+      }
     } finally {
       this.busy.set(false);
     }
