@@ -39,6 +39,7 @@ use App\Modules\Tenancy\Models\CompanyUser;
 use App\Modules\Tenancy\TenantContext;
 use App\Modules\Waste\Actions\CreateWasteLot;
 use App\Modules\Waste\DTOs\CreateWasteLotData;
+use App\Modules\Waste\Models\ScrapReason;
 use App\Modules\Waste\Models\WasteLot;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -316,6 +317,15 @@ class DemoSeeder extends Seeder
             $weights = ['CHUTES' => [118, 96, 142, 87, 131, 104], 'FILS' => [22, 18, 27], 'REBUTS' => [41, 36], 'CARTON' => [64, 58, 71], 'PLAST' => [19, 24], 'TEINT' => [33, 28]];
             $zoneFor = ['CHUTES' => 'COUPE', 'FILS' => 'CONF', 'REBUTS' => 'CONF', 'CARTON' => 'STOCK', 'PLAST' => 'STOCK', 'TEINT' => 'TEINT'];
             $lots = [];
+            // The workshop's scrap reasons, so the statistics per reason are not empty: as on a real floor, a few causes
+            // make most of the scrap.
+            $reasons = collect([
+                ['UE24', 'Trous dans le tissu', 'material', '#E5484D'], ['UE25', 'Couture décalée', 'manpower', '#3E63DD'],
+                ['UE31', 'Tache d’huile', 'machine', '#F5A524'], ['UE40', 'Erreur de coupe', 'method', '#12A594'], ['UE52', 'Teinte non conforme', 'measurement', '#8E4EC6'],
+            ])->values()->map(fn (array $reason, int $i) => ScrapReason::query()->create(['code' => $reason[0], 'label' => $reason[1], 'category' => $reason[2],
+                'color' => $reason[3], 'sort_order' => ($i + 1) * 10]));
+            $byWeight = [0, 0, 0, 0, 1, 1, 1, 2, 2, 3, 0, 1, 4];
+            $scrapped = 0;
             foreach ([2, 1, 0] as $monthsAgo) {
                 foreach ($sites as $siteCode => $site) {
                     foreach ($weights as $typeCode => $series) {
@@ -339,6 +349,7 @@ class DemoSeeder extends Seeder
                             };
                             $lot = $createLot->handle(new CreateWasteLotData(siteUlid: $site->ulid, zoneUlid: $zone->ulid, wasteTypeUlid: $types[$typeCode]->ulid,
                                 netWeightKg: (string) ($kg + $monthsAgo * 3), packagingType: $typeCode === 'TEINT' ? 'drum' : 'bale', generatedAt: $at->toDateTimeString(),
+                                scrapReason: in_array($typeCode, ['CHUTES', 'REBUTS'], true) ? $reasons[$byWeight[$scrapped++ % count($byWeight)]]->ulid : null,
                                 productionOrder: $of), $sami);
                             $lots[$monthsAgo][$siteCode][] = $lot;
                         }

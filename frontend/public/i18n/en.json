@@ -204,9 +204,12 @@
       "productionLots": "Received and produced lots",
       "providerProfile": "Profile and accepted waste",
       "allDocuments": "All documents",
-      "sitesZones": "Sites and zones"
+      "sitesZones": "Sites and zones",
+      "customViews": "Views",
+      "customViewsBuilder": "Builder"
     },
-    "platformRegistry": "ANGed list"
+    "platformRegistry": "ANGed list",
+    "customViews": "Custom views"
   },
   "auth": {
     "pitch": "Trace, recover and declare your industrial waste.",
@@ -1172,7 +1175,23 @@
       "lead": "One line per lot. The site and the waste type are needed; the weight, date, zone, packaging and your reference are optional. Without a zone, the lot goes to the storage area of its site. A line whose reference was already imported is not created twice.",
       "daviTip": "Simpler: drop this file on the virtual assistant. It checks every line and asks for your agreement before importing.",
       "seeLots": "See the lots"
-    }
+    },
+    "scrapReason": "Scrap reason",
+    "editScrap": "Scrap reason",
+    "scrapHint": "The reason comes from the company’s list, so scraps can be counted and weighed per reason. The note belongs to this lot.",
+    "materialCost": "Material cost",
+    "materialValue": "Material value of the waste",
+    "costUnknown": "Cannot be computed (material batch, price or material weight unknown)",
+    "costBasis": {
+      "lot": "from the material batch",
+      "consumption": "from the batch the order consumed",
+      "latest": "from the last batch received"
+    },
+    "scrapNote": "Note",
+    "scrapNoReason": "No reason",
+    "scrapPick": "Choose a reason",
+    "scrapManage": "Manage reasons",
+    "scrapNoneYet": "The company has no scrap reason yet."
   },
   "stock": {
     "title": "Waste stock",
@@ -2875,7 +2894,9 @@
     "provider.marketplace.offer": "Make, negotiate, accept or withdraw offers",
     "contracts.view": "See the contracts with providers",
     "contracts.manage": "Write, put in force and terminate contracts",
-    "provider.contracts.view": "See the contracts made with our clients"
+    "provider.contracts.view": "See the contracts made with our clients",
+    "custom_views.view": "Open custom views",
+    "custom_views.manage": "Build and place custom views"
   },
   "colors": {
     "title": "Colours",
@@ -3001,7 +3022,11 @@
     "Paramètres": "Settings",
     "Réception et écarts": "Reception and variances",
     "DivaWaste": "DivaWaste",
-    "Liste ANGed": "ANGed list"
+    "Liste ANGed": "ANGed list",
+    "Vues personnalisées": "Custom views",
+    "Concepteur de vues": "View builder",
+    "Vue personnalisée": "Custom view",
+    "Motifs de rebut": "Scrap reasons"
   },
   "partners": {
     "title": "Partners without an account",
@@ -4523,6 +4548,10 @@
       "apiKeys": {
         "title": "API access keys",
         "hint": "Connect your ERP or your tools to DivaWaste"
+      },
+      "scrapReasons": {
+        "title": "Scrap reasons",
+        "hint": "Why material is scrapped, for statistics per reason"
       }
     },
     "modules": {
@@ -4815,5 +4844,54 @@
       "sorter": "Sorting",
       "storer": "Storage"
     }
+  },
+  "customViews": {
+    "title": "Custom views",
+    "builderTitle": "View builder",
+    "subtitle": "Tables your team builds from your data: lots, pickups, sites, production…",
+    "all": "All views",
+    "edit": "Edit"
+  },
+  "scrapReasons": {
+    "title": "Scrap reasons",
+    "subtitle": "The list of reasons for scrapping: each lot names one, so scraps can be counted, weighed and valued per reason.",
+    "new": "New reason",
+    "edit": "Edit reason",
+    "code": "Code",
+    "label": "Reason",
+    "category": "Cause family",
+    "noCategory": "No family",
+    "color": "Colour",
+    "description": "Description",
+    "active": "In use",
+    "inactive": "No longer used",
+    "showInactive": "Show reasons no longer used",
+    "lots": "Lots",
+    "weight": "Weight",
+    "value": "Material value",
+    "share": "Share of weight",
+    "empty": "No scrap reason",
+    "emptyHint": "Create the reasons the workshop uses (e.g. UE24 — holes in the fabric).",
+    "deactivate": "Stop using",
+    "activate": "Use again",
+    "delete": "Delete",
+    "deleteConfirm": "Delete reason {{code}}? No lot names it.",
+    "inUse": "Lots name this reason: it can no longer be used, but it stays on those lots.",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "saved": "Reason saved",
+    "pareto": "Scrapped weight by reason",
+    "seeLots": "See the lots",
+    "categoryHint": "The 6 Ms of a cause-and-effect diagram: to group reasons in statistics.",
+    "categories": {
+      "material": "Material",
+      "machine": "Machine",
+      "method": "Method",
+      "manpower": "Manpower",
+      "measurement": "Measurement",
+      "environment": "Environment"
+    },
+    "allTime": "All time",
+    "cumulative": "Cumulative share"
   }
 }

@@ -10,6 +10,7 @@ use App\Modules\Sites\Models\Site;
 use App\Modules\Sites\Models\Zone;
 use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
 use App\Modules\Waste\Enums\LotStatus;
+use App\Modules\Waste\Support\LotCost;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -35,6 +36,7 @@ class WasteLot extends Model
         'regulatory_waste_code_id', 'gross_weight_kg', 'tare_weight_kg', 'net_weight_kg', 'weight_basis', 'package_count', 'package_count_confirmed', 'quantity', 'unit_id',
         'color_family_id', 'color_label', 'grammage_gsm', 'composition_label', 'composition_source', 'extra_attributes', 'notes', 'generated_at',
         'created_by_user_id', 'created_device_id', 'production_order_id', 'production_step_id', 'raw_material_id', 'raw_material_batch_id',
+        'scrap_reason_id', 'scrap_note',
     ];
 
     protected function casts(): array
@@ -57,6 +59,8 @@ class WasteLot extends Model
             'treated_at' => 'datetime',
             'closed_at' => 'datetime',
             'version' => 'integer',
+            'material_cost_per_kg' => 'decimal:4',
+            'material_value' => 'decimal:3',
         ];
     }
 
@@ -64,6 +68,12 @@ class WasteLot extends Model
     {
         // Optimistic-lock / sync base version.
         static::updating(fn (self $lot) => $lot->version = $lot->version + 1);
+        // The cost of the material follows the batch it was cut from and the lot's weight, whichever way they were set.
+        static::saving(function (self $lot) {
+            if (! $lot->exists || $lot->isDirty(LotCost::INPUTS)) {
+                LotCost::apply($lot);
+            }
+        });
         static::forceDeleting(fn () => throw new BusinessRuleViolation('LOT_NOT_DELETABLE', 'Lots are never physically deleted.'));
     }
 
@@ -89,6 +99,16 @@ class WasteLot extends Model
     public function wasteType(): BelongsTo
     {
         return $this->belongsTo(WasteType::class);
+    }
+
+    /**
+     * Why the material was scrapped: a reason of the company's list.
+     *
+     * @return BelongsTo<ScrapReason, $this>
+     */
+    public function scrapReason(): BelongsTo
+    {
+        return $this->belongsTo(ScrapReason::class);
     }
 
     /**

@@ -79,6 +79,14 @@ const NAVIGATION: Record<Exclude<Audience, 'none'>, GroupDef[]> = {
           ],
         },
         { label: 'nav.reports', icon: 'summarize', tabs: [tab('/reports', 'nav.reports', ['reports.view'])] },
+        {
+          label: 'nav.customViews',
+          icon: 'table_view',
+          tabs: [
+            tab('/custom-views', 'nav.tabs.customViews', ['custom_views.view', 'custom_views.manage']),
+            tab('/custom-views/builder', 'nav.tabs.customViewsBuilder', ['custom_views.manage']),
+          ],
+        },
       ],
     },
     // Production comes after the waste it explains: where a waste comes from, what it was made of, for whom. The

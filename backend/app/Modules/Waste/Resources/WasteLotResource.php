@@ -7,6 +7,7 @@ use App\Modules\Production\Support\LotOrigin;
 use App\Modules\Waste\Models\WasteLot;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @mixin WasteLot
@@ -14,7 +15,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class WasteLotResource extends JsonResource
 {
     /** Relations the resource reads: eager load them on collections (strict models forbid lazy loading). */
-    public const RELATIONS = ['site:id,ulid,code,name', 'zone:id,ulid,code,name', 'wasteType:id,ulid,code,name', 'activeQrTag:id,waste_lot_id,tag_value,print_count'];
+    public const RELATIONS = ['site:id,ulid,code,name', 'zone:id,ulid,code,name', 'wasteType:id,ulid,code,name', 'activeQrTag:id,waste_lot_id,tag_value,print_count', 'scrapReason:id,ulid,code,label,category,color'];
 
     /**
      * @return array<string, mixed>
@@ -54,6 +55,18 @@ class WasteLotResource extends JsonResource
             // checked), 'grouping' (average of grouped lots), 'split' (kept from the lot split); null = not known.
             'composition_source' => $this->composition_label === null ? null : $this->composition_source,
             'notes' => $this->notes,
+            // Why the lot was scrapped: a reason of the company's list (UE24 "Trous dans le tissu"), and the lot's own note.
+            'scrap_reason' => $this->scrap_reason_id === null ? null : $this->scrapReason?->summary(),
+            'scrap_note' => $this->scrap_note,
+            // What its material cost, from the batch it was cut from — production costs, for those who may see them.
+            // basis: 'lot' (its own batch), 'consumption' (the batch its OF consumed), 'latest' (last batch received by its date).
+            'material_cost' => $request->user()?->can('production.finance.view') ? [
+                'per_kg' => $this->material_cost_per_kg,
+                'value' => $this->material_value,
+                'currency' => $this->cost_currency_code,
+                'basis' => $this->cost_basis,
+                'batch' => $this->cost_batch_id === null ? null : (array) DB::table('raw_material_batches')->where('id', $this->cost_batch_id)->first(['ulid', 'batch_number', 'received_on']),
+            ] : null,
             // Where the waste comes from in production: OF, order, client, article, stage, raw material, supplier (null when unknown).
             'origin' => app(LotOrigin::class)->describe($this->resource),
             'qr' => $this->activeQrTag?->tag_value,

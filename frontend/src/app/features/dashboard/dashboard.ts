@@ -17,6 +17,7 @@ import { Period, PeriodFilterComponent, presetPeriod } from '../../ui/period';
 import { StateComponent } from '../../ui/state';
 import { IconComponent } from '../../ui/icon';
 import { AttentionComponent, AttentionItem } from '../../ui/attention';
+import { CustomViewsSlotComponent } from '../../ui/custom-views-slot';
 
 
 /**
@@ -30,7 +31,7 @@ interface ProductionSummary {
 
 @Component({
   imports: [
-    RouterLink, TranslocoDirective, ButtonDirective, ChartComponent, KpiComponent, PageHeaderComponent, StatusComponent, PeriodFilterComponent, StateComponent, DatePipe, KgPipe, MoneyPipe, NumberPipe, IconComponent, AttentionComponent,
+    RouterLink, TranslocoDirective, ButtonDirective, ChartComponent, KpiComponent, PageHeaderComponent, StatusComponent, PeriodFilterComponent, StateComponent, DatePipe, KgPipe, MoneyPipe, NumberPipe, IconComponent, AttentionComponent, CustomViewsSlotComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -188,9 +189,12 @@ interface ProductionSummary {
           </div>
         }
       </dw-state>
+      <!-- Custom views the company placed on its dashboard (DivaBI). -->
+      <dw-custom-views-slot class="custom-views" name="dashboard" layout="stack" />
     </ng-container>
   `,
   styles: `
+    .custom-views { display: block; margin-block-start: 22px; }
     .prod-sub { margin: 2px 0 0; font-size: 13px; }
     .prod { display: grid; gap: var(--dw-3); }
     .prod-figures { display: flex; gap: var(--dw-5); flex-wrap: wrap; } .prod-figures div { display: grid; gap: 2px; } .prod-figures strong { font-size: 18px; }

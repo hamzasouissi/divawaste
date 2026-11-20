@@ -10,25 +10,27 @@ import { Api, openBlob } from '../../core/api/api';
 import { Lot, LotDetailMeta, LotEvent } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { CodePipe, DatePipe, KgPipe, LocalizedPipe, LotMeasurePipe, TermPipe } from '../../core/format/pipes';
+import { CodePipe, DatePipe, KgPipe, LocalizedPipe, LotMeasurePipe, MoneyPipe, TermPipe } from '../../core/format/pipes';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
-import { LotActionData, LotCompositionDialog, LotOriginDialog, LotPackagesDialog, SplitLotDialog, StoreLotDialog, WeighLotDialog } from './lot-dialogs';
+import { LotActionData, LotCompositionDialog, LotOriginDialog, LotPackagesDialog, ScrapLotDialog, SplitLotDialog, StoreLotDialog, WeighLotDialog } from './lot-dialogs';
 import { CreateListingDialog, CreateListingData } from '../marketplace/listing-dialogs';
 import { Dialogs } from '../../ui/dialog';
 import { IconComponent } from '../../ui/icon';
+import { ScrapReasonComponent } from '../../ui/scrap-reason';
 import { StepsComponent } from '../../ui/steps';
 import { COLOR } from '../../ui/swatch';
 import { MenuAction, MenuComponent } from '../../ui/menu';
+import { CustomViewsSlotComponent } from '../../ui/custom-views-slot';
 
-type LotAction = 'weigh' | 'pickup' | 'print' | 'store' | 'split' | 'sell' | 'origin';
+type LotAction = 'weigh' | 'pickup' | 'print' | 'store' | 'split' | 'sell' | 'origin' | 'scrap';
 
 /**
  * A lot and its whole story: what it is, where it is, every change with its time and author (M2-05),
  * where it came from and what it became (M2-06), and which pickup took it.
  */
 @Component({
-  imports: [...COLOR, TermPipe, CodePipe, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LocalizedPipe, LotMeasurePipe, IconComponent, ButtonDirective, MenuComponent, Tooltip, StepsComponent],
+  imports: [...COLOR, TermPipe, CodePipe, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LocalizedPipe, LotMeasurePipe, MoneyPipe, IconComponent, ButtonDirective, MenuComponent, Tooltip, StepsComponent, CustomViewsSlotComponent, ScrapReasonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -99,6 +101,12 @@ type LotAction = 'weigh' | 'pickup' | 'print' | 'store' | 'split' | 'sell' | 'or
                         <div><dt>{{ t('lots.regulatoryCode') }}</dt><dd class="dw-mono">{{ l.regulatory_code ?? '—' }}</dd></div>
                         <div><dt>{{ t('lots.origin') }}</dt><dd>{{ t('origin.' + l.origin_type) }}</dd></div>
                         <div><dt>{{ t('lots.generatedAt') }}</dt><dd>{{ l.generated_at | dwDate: 'datetime' }}</dd></div>
+                        @if (l.scrap_reason || l.scrap_note) {
+                          <div class="wide"><dt>{{ t('lots.scrapReason') }}</dt><dd class="scrap">
+                            @if (l.scrap_reason) { <dw-scrap-reason [reason]="l.scrap_reason" /> }
+                            @if (l.scrap_note) { <span class="dw-muted">{{ l.scrap_note }}</span> }
+                          </dd></div>
+                        }
                         @if (l.notes) { <div class="wide"><dt>{{ t('fields.notes') }}</dt><dd>{{ l.notes }}</dd></div> }
                       </dl>
                     </div>
@@ -118,6 +126,14 @@ type LotAction = 'weigh' | 'pickup' | 'print' | 'store' | 'split' | 'sell' | 'or
                       <div><dt>{{ t('production.orders.one') }}</dt><dd class="dw-mono">{{ o.customer_order ?? '—' }}</dd></div>
                       <div><dt>{{ t('lots.rawMaterial') }}</dt><dd>{{ o.raw_material ? o.raw_material.reference + ' — ' + o.raw_material.name : '—' }} @if (o.batch) { <span class="dw-faint">· {{ t('production.materials.batchNumber') }} {{ o.batch.batch_number }}</span> }</dd></div>
                       <div><dt>{{ t('production.suppliers.one') }}</dt><dd>{{ o.supplier ?? '—' }}</dd></div>
+                      @if (l.material_cost; as c) {
+                        <div><dt>{{ t('lots.materialCost') }}</dt><dd>
+                          @if (c.per_kg) { {{ c.per_kg | dwMoney: c.currency }} / kg
+                            <span class="dw-faint">· {{ t('lots.costBasis.' + c.basis) }}@if (c.batch) { {{ c.batch.batch_number }} }</span>
+                          } @else { <span class="dw-faint">{{ t('lots.costUnknown') }}</span> }
+                        </dd></div>
+                        @if (c.value) { <div><dt>{{ t('lots.materialValue') }}</dt><dd><strong>{{ c.value | dwMoney: c.currency }}</strong></dd></div> }
+                      }
                     </dl>
                   </div>
                 </section>
@@ -197,6 +213,8 @@ type LotAction = 'weigh' | 'pickup' | 'print' | 'store' | 'split' | 'sell' | 'or
                   </div>
                 </section>
               }
+              <!-- Custom views placed on the lot page (DivaBI): they receive this lot. -->
+              <dw-custom-views-slot name="waste_lot.detail" [context]="{ lot_ulid: l.ulid }" />
             </div>
           </div>
         }
@@ -204,6 +222,7 @@ type LotAction = 'weigh' | 'pickup' | 'print' | 'store' | 'split' | 'sell' | 'or
     </ng-container>
   `,
   styles: `
+    dd.scrap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
     .lifecycle { margin-block-end: 20px; }
     .groups { display: grid; gap: 22px; } .group { display: grid; gap: 10px; } .group + .group { padding-block-start: 18px; border-block-start: 1px solid var(--dw-line-soft); } .wide { grid-column: 1 / -1; }
     .edit { all: unset; display: inline-grid; place-items: center; width: 26px; height: 26px; margin-inline-start: 4px; border-radius: 7px; vertical-align: middle; color: var(--dw-ink-3); cursor: pointer; transition: background-color 140ms, color 140ms; }
@@ -294,6 +313,7 @@ export class LotDetailPage implements OnInit {
       { key: 'split', label: 'lots.split', icon: 'call_split', show: this.transformable() && lot.net_weight_kg !== null && !['piece', 'l', 'm3'].includes(lot.unit ?? '') && can('lots.split') },
       { key: 'sell', label: 'marketplace.sellLot', icon: 'storefront', show: this.session.uses('marketplace') && this.transformable() && !this.meta()?.listing && can('marketplace.manage') },
       { key: 'origin', label: 'lots.editOrigin', icon: 'account_tree', show: this.session.uses('production') && can('lots.update') },
+      { key: 'scrap', label: 'lots.editScrap', icon: 'report', show: can('lots.update') },
     ];
 
     return all.filter((action) => action.show);
@@ -325,12 +345,12 @@ export class LotDetailPage implements OnInit {
     }
   }
 
-  protected act(action: 'store' | 'weigh' | 'split' | 'origin' | 'packages' | 'composition'): void {
+  protected act(action: 'store' | 'weigh' | 'split' | 'origin' | 'packages' | 'composition' | 'scrap'): void {
     const lot = this.lot();
     if (!lot) {
       return;
     }
-    const component = action === 'store' ? StoreLotDialog : action === 'weigh' ? WeighLotDialog : action === 'origin' ? LotOriginDialog : action === 'packages' ? LotPackagesDialog
+    const component = action === 'store' ? StoreLotDialog : action === 'weigh' ? WeighLotDialog : action === 'origin' ? LotOriginDialog : action === 'scrap' ? ScrapLotDialog : action === 'packages' ? LotPackagesDialog
       : action === 'composition' ? LotCompositionDialog : SplitLotDialog;
     const composition = (this.meta()?.composition ?? []).map((line) => ({ material: line.material, pct: line.pct }));
     this.dialog.open<unknown, LotActionData & { composition: typeof composition }, Lot | Lot[]>(component, { data: { lot, composition } }).afterClosed().subscribe((result) => result && this.load());

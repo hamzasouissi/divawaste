@@ -5,6 +5,7 @@ namespace App\Modules\Production\Models;
 use App\Modules\Audit\Models\Concerns\Auditable;
 use App\Modules\Common\Models\Concerns\HasPublicUlid;
 use App\Modules\Tenancy\Models\Concerns\BelongsToCompany;
+use App\Modules\Waste\Support\LotCost;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -23,5 +24,16 @@ class RawMaterialBatch extends Model
     protected function casts(): array
     {
         return ['received_on' => 'date', 'quantity' => 'decimal:3', 'unit_price' => 'decimal:4', 'total_amount' => 'decimal:3', 'delivery_cost' => 'decimal:3', 'tax_rate_pct' => 'decimal:2'];
+    }
+
+    protected static function booted(): void
+    {
+        // A batch imported, or its price or quantity corrected, prices the waste of its material again (the lots cut from
+        // it, and those priced by the last batch received).
+        static::saved(function (self $batch) {
+            if ($batch->wasRecentlyCreated || $batch->wasChanged(['quantity', 'unit_price', 'total_amount', 'delivery_cost', 'currency_code', 'received_on', 'raw_material_id'])) {
+                LotCost::refreshMaterials(array_values(array_unique(array_filter([(int) $batch->raw_material_id, (int) $batch->getOriginal('raw_material_id')]))));
+            }
+        });
     }
 }

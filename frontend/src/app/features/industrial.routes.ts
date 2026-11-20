@@ -7,6 +7,11 @@ export const INDUSTRIAL_ROUTES: Routes = [
   { path: 'dashboard', canActivate: [permissionGuard('dashboard.view')], loadComponent: () => import('./dashboard/dashboard').then((m) => m.DashboardPage), title: 'Tableau de bord — DivaWaste' },
   { path: 'davi/train', loadComponent: () => import('./davi/train').then((m) => m.DaviTrainPage), title: 'Entraîner l\'assistant — DivaWaste' },
   { path: 'onboarding', loadComponent: () => import('./account/account').then((m) => m.OnboardingPage), title: 'Mise en route — DivaWaste' },
+  // Custom views (DivaBI): the company's own tables, built from any data it may read.
+  { path: 'custom-views', canActivate: [permissionGuard('custom_views.view', 'custom_views.manage')], loadComponent: () => import('./custom-views/custom-views').then((m) => m.CustomViewsPage), data: { tab: 'views' }, title: 'Vues personnalisées — DivaWaste' },
+  { path: 'custom-views/builder', canActivate: [permissionGuard('custom_views.manage')], loadComponent: () => import('./custom-views/custom-views').then((m) => m.CustomViewsPage), data: { tab: 'builder' }, title: 'Concepteur de vues — DivaWaste' },
+  { path: 'custom-views/:view/edit', canActivate: [permissionGuard('custom_views.manage')], loadComponent: () => import('./custom-views/custom-views').then((m) => m.CustomViewsPage), data: { tab: 'builder' }, title: 'Concepteur de vues — DivaWaste' },
+  { path: 'custom-views/:view', canActivate: [permissionGuard('custom_views.view', 'custom_views.manage')], loadComponent: () => import('./custom-views/custom-views').then((m) => m.CustomViewPage), title: 'Vue personnalisée — DivaWaste' },
   { path: 'lots', canActivate: [permissionGuard('lots.view')], loadComponent: () => import('./lots/lots').then((m) => m.LotsPage), title: 'Lots — DivaWaste' },
   { path: 'lots/import', canActivate: [permissionGuard('lots.create')], loadComponent: () => import('./production/import').then((m) => m.ImportPage), data: { lots: true }, title: 'Importer des lots — DivaWaste' },
   { path: 'lots/:ulid', canActivate: [permissionGuard('lots.view')], loadComponent: () => import('./lots/lot-detail').then((m) => m.LotDetailPage), title: 'Lot — DivaWaste' },
@@ -50,6 +55,7 @@ export const INDUSTRIAL_ROUTES: Routes = [
   { path: 'settings/modules', canActivate: [permissionGuard('company.update')], loadComponent: () => import('./settings/settings').then((m) => m.ModulesPage), title: 'Modules — DivaWaste' },
   { path: 'settings/api-keys', canActivate: [permissionGuard('company.update')], loadComponent: () => import('./settings/api-keys').then((m) => m.ApiKeysPage), title: 'Clés d’accès API — DivaWaste' },
   { path: 'settings/reception', canActivate: [permissionGuard('waste_types.view')], loadComponent: () => import('./settings/settings').then((m) => m.ReceptionSettingsPage), title: 'Réception et écarts — DivaWaste' },
+  { path: 'settings/scrap-reasons', canActivate: [permissionGuard('lots.view')], loadComponent: () => import('./settings/scrap-reasons').then((m) => m.ScrapReasonsPage), title: 'Motifs de rebut — DivaWaste' },
   { path: 'settings/colors', canActivate: [permissionGuard('waste_types.view')], loadComponent: () => import('./settings/settings').then((m) => m.ColorsSettingsPage), title: 'Couleurs — DivaWaste' },
   { path: 'settings/packaging', canActivate: [permissionGuard('sites.view')], loadComponent: () => import('./settings/settings').then((m) => m.PackagingSettingsPage), title: 'Conditionnements — DivaWaste' },
   // Notifications emitted by the API point here.

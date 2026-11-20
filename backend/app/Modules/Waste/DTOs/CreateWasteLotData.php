@@ -26,6 +26,9 @@ final readonly class CreateWasteLotData
         public ?array $composition = null,
         public ?array $extraAttributes = null,
         public ?string $notes = null,
+        // Why the lot was scrapped: a reason of the company's list (ULID), and the lot's own note.
+        public ?string $scrapReason = null,
+        public ?string $scrapNote = null,
         public ?string $generatedAt = null,
         public ?int $deviceId = null,
         public string $source = 'web',

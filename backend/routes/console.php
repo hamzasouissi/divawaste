@@ -6,6 +6,7 @@ use App\Modules\Catalog\Support\Colors;
 use App\Modules\Common\Docs\ApiRoutes;
 use App\Modules\Common\Docs\DemoData;
 use App\Modules\Contracts\Actions\ManageContracts;
+use App\Modules\CustomViews\Support\DivaBiPackage;
 use App\Modules\Identity\Models\User;
 use App\Modules\Marketplace\Actions\ManageListings;
 use App\Modules\Notifications\Actions\NotifyUsers;
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Knuckles\Scribe\Scribe;
 
@@ -401,3 +403,35 @@ Artisan::command('api:docs', function () {
 
     return $missing === [] && $unknown === [] ? 0 : 1;
 })->purpose('Generate the API documentation (OpenAPI, Postman, HTML) from the routes and check it covers every route');
+
+// Costs again every waste lot of a raw material (after prices imported outside the application, or once after the
+// migration that added the costs). Lots keep their version: the cost is not something they hold.
+Artisan::command('lots:costs {--company= : ULID of one company; every company when omitted}', function () {
+    $materials = DB::table('raw_materials as m')
+        ->when($this->option('company'), fn ($q, $ulid) => $q->join('companies as c', 'c.id', '=', 'm.company_id')->where('c.ulid', strtoupper((string) $ulid)))
+        ->pluck('m.id')->map(fn ($id) => (int) $id)->all();
+    $count = App\Modules\Waste\Support\LotCost::refreshMaterials($materials);
+    $this->info("{$count} lot(s) of ".count($materials).' raw material(s) costed again.');
+})->purpose('Waste lots: cost of their material from the batch they were cut from');
+
+// Custom views: writes DivaBI's application package (tables custom views may read, row rules, slots) from the live
+// schema, TableClassification, PermissionCatalog and config/divabi.php. Copy the file to DivaBI's applications/divawaste/.
+Artisan::command('divabi:package {path? : file to write; standard output when omitted}', function () {
+    // Labels of stored values come from the application's own translations (frontend/public/i18n), when present.
+    $translations = function (string $locale): ?array {
+        $file = base_path("../frontend/public/i18n/{$locale}.json");
+
+        return is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
+    };
+    $package = DivaBiPackage::build(config('divabi'), fn (string $table) => Schema::getColumnListing($table), $translations);
+    $json = json_encode($package, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n";
+    $path = $this->argument('path');
+    if ($path === null) {
+        $this->line($json);
+
+        return;
+    }
+    File::put($path, $json);
+    $readable = count(array_filter($package['entities'], fn (array $entity) => $entity['access'] === 'allow'));
+    $this->info("DivaBI package written to {$path}: {$readable} readable tables, ".count($package['slots']).' slots.');
+})->purpose('Custom views: generate the DivaBI application package of DivaWaste');

@@ -204,9 +204,12 @@
       "productionLots": "Lots reçus et fabriqués",
       "providerProfile": "Profil et déchets acceptés",
       "allDocuments": "Tous les documents",
-      "sitesZones": "Sites et zones"
+      "sitesZones": "Sites et zones",
+      "customViews": "Vues",
+      "customViewsBuilder": "Concepteur"
     },
-    "platformRegistry": "Liste ANGed"
+    "platformRegistry": "Liste ANGed",
+    "customViews": "Vues personnalisées"
   },
   "auth": {
     "pitch": "Tracer, valoriser et déclarer vos déchets industriels.",
@@ -1172,7 +1175,23 @@
       "lead": "Une ligne par lot. Il faut au moins le site et le type de déchet ; le poids, la date, la zone, l'emballage et votre référence sont facultatifs. Sans zone, le lot va dans l'aire de stockage du site. Une ligne dont la référence a déjà été importée n'est pas créée deux fois.",
       "daviTip": "Plus simple : glissez ce fichier dans l'assistant virtuel. Il vérifie chaque ligne et vous demande votre accord avant d'importer.",
       "seeLots": "Voir les lots"
-    }
+    },
+    "scrapReason": "Motif de rebut",
+    "editScrap": "Motif de rebut",
+    "scrapHint": "Le motif vient de la liste de la société, pour compter et peser les rebuts par motif. La précision est propre à ce lot.",
+    "materialCost": "Coût matière",
+    "materialValue": "Valeur matière du déchet",
+    "costUnknown": "Non calculable (lot matière, prix ou poids de la matière inconnu)",
+    "costBasis": {
+      "lot": "d’après le lot matière",
+      "consumption": "d’après le lot consommé par l’OF",
+      "latest": "d’après le dernier lot reçu"
+    },
+    "scrapNote": "Précision",
+    "scrapNoReason": "Aucun motif",
+    "scrapPick": "Choisir un motif",
+    "scrapManage": "Gérer les motifs",
+    "scrapNoneYet": "La société n’a pas encore de motif de rebut."
   },
   "stock": {
     "title": "Stock de déchets",
@@ -2875,7 +2894,9 @@
     "provider.marketplace.offer": "Faire, négocier, accepter ou retirer des offres",
     "contracts.view": "Voir les contrats avec les prestataires",
     "contracts.manage": "Rédiger, mettre en vigueur et résilier les contrats",
-    "provider.contracts.view": "Voir les contrats conclus avec nos clients"
+    "provider.contracts.view": "Voir les contrats conclus avec nos clients",
+    "custom_views.view": "Ouvrir les vues personnalisées",
+    "custom_views.manage": "Créer et placer des vues personnalisées"
   },
   "colors": {
     "title": "Couleurs",
@@ -3001,7 +3022,11 @@
     "Paramètres": "Paramètres",
     "Réception et écarts": "Réception et écarts",
     "DivaWaste": "DivaWaste",
-    "Liste ANGed": "Liste ANGed"
+    "Liste ANGed": "Liste ANGed",
+    "Vues personnalisées": "Vues personnalisées",
+    "Concepteur de vues": "Concepteur de vues",
+    "Vue personnalisée": "Vue personnalisée",
+    "Motifs de rebut": "Motifs de rebut"
   },
   "partners": {
     "title": "Partenaires sans compte",
@@ -4523,6 +4548,10 @@
       "apiKeys": {
         "title": "Clés d'accès API",
         "hint": "Relier votre ERP ou vos outils à DivaWaste"
+      },
+      "scrapReasons": {
+        "title": "Motifs de rebut",
+        "hint": "Les raisons de rebut, pour les statistiques par motif"
       }
     },
     "modules": {
@@ -4815,5 +4844,54 @@
       "sorter": "Tri",
       "storer": "Stockage"
     }
+  },
+  "customViews": {
+    "title": "Vues personnalisées",
+    "builderTitle": "Concepteur de vues",
+    "subtitle": "Des tableaux construits par votre équipe à partir de vos données : lots, enlèvements, sites, production…",
+    "all": "Toutes les vues",
+    "edit": "Modifier"
+  },
+  "scrapReasons": {
+    "title": "Motifs de rebut",
+    "subtitle": "La liste des raisons de rebut : chaque lot en désigne une, pour compter, peser et valoriser les rebuts par motif.",
+    "new": "Nouveau motif",
+    "edit": "Modifier le motif",
+    "code": "Code",
+    "label": "Motif",
+    "category": "Famille de causes",
+    "noCategory": "Sans famille",
+    "color": "Couleur",
+    "description": "Description",
+    "active": "En usage",
+    "inactive": "Plus utilisé",
+    "showInactive": "Afficher les motifs plus utilisés",
+    "lots": "Lots",
+    "weight": "Poids",
+    "value": "Valeur matière",
+    "share": "Part du poids",
+    "empty": "Aucun motif de rebut",
+    "emptyHint": "Créez les motifs que l’atelier utilise (par exemple UE24 — trous dans le tissu).",
+    "deactivate": "Ne plus utiliser",
+    "activate": "Utiliser de nouveau",
+    "delete": "Supprimer",
+    "deleteConfirm": "Supprimer le motif {{code}} ? Aucun lot ne le désigne.",
+    "inUse": "Des lots désignent ce motif : il ne peut plus être utilisé, mais il reste sur ces lots.",
+    "moveUp": "Monter",
+    "moveDown": "Descendre",
+    "saved": "Motif enregistré",
+    "pareto": "Répartition du poids rebuté par motif",
+    "seeLots": "Voir les lots",
+    "categoryHint": "Les 6 M d’un diagramme causes-effet : pour regrouper les motifs dans les statistiques.",
+    "categories": {
+      "material": "Matière",
+      "machine": "Machine",
+      "method": "Méthode",
+      "manpower": "Main-d’œuvre",
+      "measurement": "Mesure",
+      "environment": "Milieu"
+    },
+    "allTime": "Depuis le début",
+    "cumulative": "Part cumulée"
   }
 }

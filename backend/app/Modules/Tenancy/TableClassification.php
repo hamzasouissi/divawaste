@@ -16,7 +16,7 @@ final class TableClassification
         'zone_capacities', 'zone_accepted_waste_types', 'zone_accepted_colors', 'packaging_volumes', 'capacity_alerts', 'partner_requirements',
         'user_role_assignments', 'user_invitations', 'company_subscriptions', 'invoices',
         'invoice_items', 'payments', 'waste_types', 'waste_tolerance_rules', 'stock_thresholds', 'devices', 'sync_operations', 'waste_lots',
-        'waste_lot_compositions', 'lot_tags', 'waste_lot_operations', 'waste_lot_lineage', 'waste_lot_events',
+        'waste_lot_compositions', 'lot_tags', 'waste_lot_operations', 'waste_lot_lineage', 'waste_lot_events', 'scrap_reasons',
         // Provider-owned, read by industrials through the directory.
         'provider_profiles', 'provider_accepted_wastes', 'provider_accreditations', 'provider_partnerships',
         // Owned by the industrial: partners that have no account on the platform.
