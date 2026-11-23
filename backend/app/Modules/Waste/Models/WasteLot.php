@@ -36,7 +36,7 @@ class WasteLot extends Model
         'regulatory_waste_code_id', 'gross_weight_kg', 'tare_weight_kg', 'net_weight_kg', 'weight_basis', 'package_count', 'package_count_confirmed', 'quantity', 'unit_id',
         'color_family_id', 'color_label', 'grammage_gsm', 'composition_label', 'composition_source', 'extra_attributes', 'notes', 'generated_at',
         'created_by_user_id', 'created_device_id', 'production_order_id', 'production_step_id', 'raw_material_id', 'raw_material_batch_id',
-        'scrap_reason_id', 'scrap_note',
+        'scrap_reason_id', 'scrap_note', 'material_quantity', 'material_unit_id', 'material_unit_price',
     ];
 
     protected function casts(): array
@@ -61,6 +61,9 @@ class WasteLot extends Model
             'version' => 'integer',
             'material_cost_per_kg' => 'decimal:4',
             'material_value' => 'decimal:3',
+            'material_quantity' => 'decimal:4',
+            'material_unit_price' => 'decimal:5',
+            'material_unit_cost' => 'decimal:5',
         ];
     }
 

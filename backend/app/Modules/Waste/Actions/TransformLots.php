@@ -50,7 +50,8 @@ final class TransformLots
             foreach ($data->outputs as $output) {
                 $zoneId = $output['zone'] === null ? $lot->zone_id
                     : Zone::query()->where('ulid', $output['zone'])->where('site_id', $lot->site_id)->valueOrFail('id');
-                $child = $this->derive($lot, 'split', (string) $output['net_weight_kg'], (int) $zoneId, $actor, $composition, $lot->only([...LotOrigin::FIELDS, 'scrap_reason_id']), $output['package_count'] ?? null);
+                $child = $this->derive($lot, 'split', (string) $output['net_weight_kg'], (int) $zoneId, $actor, $composition,
+                    $lot->only([...LotOrigin::FIELDS, 'scrap_reason_id']) + $this->materialShare($lot, (string) $output['net_weight_kg']), $output['package_count'] ?? null);
                 $this->link($operation, $lot, $child, 'split', (string) $output['net_weight_kg'], $actor);
                 $outputs[] = $child;
             }
@@ -87,6 +88,14 @@ final class TransformLots
             foreach ([...LotOrigin::FIELDS, 'scrap_reason_id'] as $field) {
                 $origin[$field] = $inputs->pluck($field)->unique()->count() === 1 ? $first->getAttribute($field) : null;
             }
+            // The quantity of material adds up when every lot counts the same material in the same unit; a typed price
+            // stays when they all have it.
+            $same = fn (string $field) => $inputs->pluck($field)->unique()->count() === 1;
+            if ($same('raw_material_id') && $same('material_unit_id') && $inputs->every(fn (WasteLot $l) => $l->material_quantity !== null)) {
+                $origin['material_quantity'] = $inputs->reduce(fn ($sum, WasteLot $l) => bcadd($sum, (string) $l->material_quantity, 4), '0');
+                $origin['material_unit_id'] = $first->material_unit_id;
+                $origin['material_unit_price'] = $same('material_unit_price') ? $first->material_unit_price : null;
+            }
             $group = $this->derive($first, 'grouping', $total, $zoneId, $actor, LotComposition::weightedAverage($inputs->all(), $total), $origin, $data->packageCount);
             $group = $this->transition->handle($group, LotStatus::Stored, $actor);
 
@@ -97,6 +106,25 @@ final class TransformLots
 
             return $group;
         });
+    }
+
+    /**
+     * A part of a split lot keeps the unit and typed price of its material, and the share of its quantity its weight is.
+     *
+     * @return array{material_quantity?: string|null, material_unit_id?: int|null, material_unit_price?: string|null}
+     */
+    private function materialShare(WasteLot $lot, string $netKg): array
+    {
+        if ($lot->material_quantity === null) {
+            return [];
+        }
+        $weight = (string) $lot->net_weight_kg;
+
+        return [
+            'material_quantity' => bccomp($weight, '0', 3) > 0 ? bcdiv(bcmul((string) $lot->material_quantity, $netKg, 8), $weight, 4) : null,
+            'material_unit_id' => $lot->material_unit_id,
+            'material_unit_price' => $lot->material_unit_price,
+        ];
     }
 
     private function assertTransformable(WasteLot $lot): void

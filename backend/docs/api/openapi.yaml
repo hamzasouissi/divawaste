@@ -25351,6 +25351,25 @@ paths:
                   description: ''
                   example: architecto
                   nullable: true
+                material_quantity:
+                  type: string
+                  description: 'How much of the raw material the lot is, in material_unit (by default the material''s own). Must have 0-4 decimal places. Must be greater than 0.'
+                  example: '2.156'
+                  nullable: true
+                material_unit:
+                  type: string
+                  description: 'Unit of material_quantity and of material_unit_price.'
+                  example: m
+                  enum:
+                    - m
+                    - kg
+                    - piece
+                  nullable: true
+                material_unit_price:
+                  type: string
+                  description: 'A price per material_unit typed by the person, in the company''s currency (cost_basis entered); empty: the batches price the lot. Only with `production.finance.view`.'
+                  example: '3.5'
+                  nullable: true
               required:
                 - site
                 - zone

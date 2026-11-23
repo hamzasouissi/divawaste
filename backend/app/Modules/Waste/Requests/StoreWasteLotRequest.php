@@ -118,6 +118,9 @@ class StoreWasteLotRequest extends FormRequest
             productionStep: $v('production_step'),
             rawMaterial: $v('raw_material'),
             rawMaterialBatch: $v('raw_material_batch'),
+            materialQuantity: $v('material_quantity'),
+            materialUnit: $v('material_unit'),
+            materialUnitPrice: $v('material_unit_price'),
             weightEstimated: (bool) ($validated['weight_estimated'] ?? false),
             packageCount: isset($validated['package_count']) ? (int) $validated['package_count'] : null,
         );

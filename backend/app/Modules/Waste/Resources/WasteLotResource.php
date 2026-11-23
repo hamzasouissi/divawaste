@@ -58,9 +58,15 @@ class WasteLotResource extends JsonResource
             // Why the lot was scrapped: a reason of the company's list (UE24 "Trous dans le tissu"), and the lot's own note.
             'scrap_reason' => $this->scrap_reason_id === null ? null : $this->scrapReason?->summary(),
             'scrap_note' => $this->scrap_note,
-            // What its material cost, from the batch it was cut from — production costs, for those who may see them.
-            // basis: 'lot' (its own batch), 'consumption' (the batch its OF consumed), 'latest' (last batch received by its date).
+            // How much of its raw material the lot is, in which unit of it (m, kg, piece); null when not given.
+            'material_quantity' => $this->material_quantity === null ? null : ['quantity' => $this->material_quantity, 'unit' => self::code('units', $this->material_unit_id)],
+            // What its material cost — production costs, for those who may see them. basis: 'entered' (a price typed on
+            // the lot), 'lot' (its own batch), 'consumption' (the batch its OF consumed), 'latest' (last batch received by its date).
+            // unit_cost: per unit of its material quantity (or of the material); unit_price: the typed one, if any.
             'material_cost' => $request->user()?->can('production.finance.view') ? [
+                'unit_cost' => $this->material_unit_cost,
+                'unit' => self::code('units', $this->material_unit_id) ?? self::code('units', $this->raw_material_id === null ? null : (int) DB::table('raw_materials')->where('id', $this->raw_material_id)->value('unit_id')),
+                'unit_price' => $this->material_unit_price,
                 'per_kg' => $this->material_cost_per_kg,
                 'value' => $this->material_value,
                 'currency' => $this->cost_currency_code,
