@@ -14,7 +14,7 @@
 # live schema) → 6 read-only database account (SELECT on those tables only) → 7 DivaBI's .env → 8 checks against the
 # live database (isolation, guards) → 9 service → 10 nginx /divabi/ → 11 DivaWaste caches → 12 final checks.
 # It stops at the first error: the checks of step 8 must pass before the service starts or nginx routes to it.
-set -euo pipefail
+set -Eeuo pipefail
 
 APP=/var/www/divawaste-textile
 API=$APP/backend
@@ -24,7 +24,10 @@ DATA=/var/lib/divabi
 BUNDLE=/root/divabi.bundle
 PORT=8050
 DB_USER=divabi_ro
-say() { printf '\n\033[1;32m== %s\033[0m\n' "$*"; }
+STEP="start"
+say() { STEP=$1; printf '\n\033[1;32m== %s\033[0m\n' "$*"; }
+# Whatever stops the script says where; custom views stay off (the API answers 503) until it runs to the end.
+trap 'echo; echo "install-divabi.sh stopped at step $STEP (line $LINENO). Custom views stay off until it runs to the end: fix the cause shown above, then run it again."' ERR
 setenv() { if grep -q "^$1=" "$API/.env"; then sed -i "s|^$1=.*|$1=$2|" "$API/.env"; else echo "$1=$2" >> "$API/.env"; fi; }
 # Empty when the variable is not there (never an error: the script stops on errors).
 envget() { { grep -E "^$1=" "$API/.env" || true; } | tail -1 | cut -d= -f2- | tr -d '"'; }
@@ -38,15 +41,23 @@ for candidate in python3.13 python3.12 python3.11 python3; do
 done
 if [ -z "$PY" ]; then
   echo "Python 3.11 or later is needed: installing python3.11."
+  apt-get update -qq
   apt-get install -y python3.11 python3.11-venv >/dev/null
   PY=$(command -v python3.11)
 fi
-"$PY" -m venv --help >/dev/null 2>&1 || apt-get install -y "$(basename "$PY")-venv" >/dev/null
+# Debian and Ubuntu ship venv without ensurepip (package python3.X-venv): `-m venv` then fails half-way.
+if ! "$PY" -c 'import ensurepip' 2>/dev/null; then
+  VENV_PACKAGE="python$("$PY" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')-venv"
+  echo "Installing $VENV_PACKAGE (virtual environments)."
+  apt-get update -qq
+  apt-get install -y "$VENV_PACKAGE" >/dev/null
+fi
 echo "Python: $PY ($("$PY" --version))"
 
 say "2/12 Code in $CODE"
 if [ -f "$BUNDLE" ]; then
-  git bundle verify "$BUNDLE" >/dev/null
+  # Verified from a repository (git refuses outside one): the bundle holds the whole history, nothing else is needed.
+  git -C "$APP" bundle verify "$BUNDLE" >/dev/null
   if [ -d "$CODE/.git" ]; then
     if [ -n "$(git -C "$CODE" status --porcelain --untracked-files=no)" ]; then
       echo "Files of $CODE were changed on the server: nothing was updated."; exit 1
@@ -69,7 +80,8 @@ chown -R divabi:divabi "$DATA"
 chmod 750 "$DATA"
 
 say "3/12 Python environment"
-[ -x "$CODE/.venv/bin/python" ] || "$PY" -m venv "$CODE/.venv"
+# An environment left without pip by an earlier failed attempt is made again.
+[ -x "$CODE/.venv/bin/pip" ] || { rm -rf "$CODE/.venv"; "$PY" -m venv "$CODE/.venv"; }
 "$CODE/.venv/bin/pip" install -q --upgrade pip
 "$CODE/.venv/bin/pip" install -q -r "$CODE/requirements.txt"
 
