@@ -9,8 +9,9 @@
 #   - the Pantone files in /root/pantones                         (scp -r ...\pantones-master root@SERVER:/root/pantones)
 #
 # Steps: 1 backup (database, .env, uploaded files, screens, nginx, commit) → 2 code (git pull, composer, migrate)
-# → 3 settings (.env: automatic approval, DAVI) → 4 data (ANGed lists, Pantone) → 5 screens → 6 nginx (/guides, longer
-# timeout for the assistant) → 7 restart → 8 checks. It stops at the first error; the backup folder is printed first.
+# → 3 settings (.env: automatic approval, DAVI) → 4 data (ANGed lists, Pantone, material costs of the lots) → 5 screens
+# → 6 nginx (/guides, longer timeout for the assistant) → 7 restart → 8 custom views (DivaBI, once installed: see
+# install-divabi.sh) → 9 checks. It stops at the first error; the backup folder is printed first.
 set -euo pipefail
 
 APP=/var/www/divawaste-textile
@@ -26,7 +27,7 @@ envget() { grep -E "^$1=" "$API/.env" | tail -1 | cut -d= -f2- | tr -d '"'; }
 [ "$(id -u)" = 0 ] || { echo "Run as root."; exit 1; }
 cd "$APP"
 
-say "1/8 Backup in $BACKUP"
+say "1/9 Backup in $BACKUP"
 mkdir -p "$BACKUP"
 chmod 700 /root/backups
 git rev-parse HEAD > "$BACKUP/commit.txt"
@@ -37,9 +38,13 @@ cp "$API/.env" "$BACKUP/backend.env"
 tar -czf "$BACKUP/storage-app.tar.gz" -C "$API/storage" app
 [ -d "$APP/web" ] && tar -czf "$BACKUP/web.tar.gz" -C "$APP" web
 cp "$SITE" "$BACKUP/nginx-site.conf"
+# The custom views the companies saved, their places and relationships (DivaBI's own database), copied consistently.
+if [ -f /var/lib/divabi/divabi.sqlite3 ]; then
+  /opt/divabi/.venv/bin/python -c 'import sqlite3, sys; sqlite3.connect(sys.argv[1]).backup(sqlite3.connect(sys.argv[2]))' /var/lib/divabi/divabi.sqlite3 "$BACKUP/divabi.sqlite3"
+fi
 ls -lh "$BACKUP"
 
-say "2/8 Code: git pull, composer, migrations"
+say "2/9 Code: git pull, composer, migrations"
 if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
   echo "Files of the repository were changed on the server (list in $BACKUP/git-status.txt). Nothing was updated."; exit 1
 fi
@@ -52,7 +57,7 @@ php artisan migrate --force
 # Rights added since the platform was installed reach the roles (the administrator roles get them all).
 php artisan db:seed --class=AuthorizationSeeder --force
 
-say "3/8 Settings (.env)"
+say "3/9 Settings (.env)"
 # Testing: a registration's email counts as confirmed at once (no link to click; invitations give their link back)
 # and the account is approved at the same time. false on both brings back the email link and Diva Software's review.
 setenv AUTO_VERIFY_EMAILS true
@@ -65,7 +70,7 @@ if [ -z "$(envget DAVI_KEY)" ]; then
 fi
 echo "MAIL_MAILER=$(envget MAIL_MAILER)  MAIL_HOST=$(envget MAIL_HOST)  MAIL_FROM_ADDRESS=$(envget MAIL_FROM_ADDRESS)"
 
-say "4/8 Data: ANGed lists, Pantone"
+say "4/9 Data: ANGed lists, Pantone"
 php artisan registry:import-anged
 if [ -d /root/pantones ]; then
   DIR=/root/pantones; [ -d /root/pantones/pantones-master ] && DIR=/root/pantones/pantones-master
@@ -73,8 +78,10 @@ if [ -d /root/pantones ]; then
 else
   echo "No /root/pantones folder: the colour catalogue is left as it is."
 fi
+# What the material of each waste lot cost (from its raw-material batches): derived figures, written again in full.
+php artisan lots:costs
 
-say "5/8 Screens"
+say "5/9 Screens"
 if [ -d "$APP/web-new" ] && [ -f "$APP/web-new/index.html" ]; then
   rm -rf "$APP/web.previous"
   [ -d "$APP/web" ] && mv "$APP/web" "$APP/web.previous"
@@ -84,7 +91,7 @@ else
   echo "No $APP/web-new/index.html: the screens are left as they are."
 fi
 
-say "6/8 nginx: /guides and the assistant's timeout"
+say "6/9 nginx: /guides and the assistant's timeout"
 if ! grep -q "location ^~ /guides/" "$SITE"; then
   sed -i "0,/client_max_body_size[^;]*;/s||&\n\n    # The user guides (PDF), straight from the repository.\n    location ^~ /guides/ {\n        alias $APP/docs/guides/;\n        index index.html;\n    }\n    location = /guides { return 301 /guides/; }|" "$SITE"
 fi
@@ -98,7 +105,7 @@ else
   echo "nginx refused the new configuration: the previous one is put back."; cp "$BACKUP/nginx-site.conf" "$SITE"; nginx -t && systemctl reload nginx; exit 1
 fi
 
-say "7/8 Caches, workers, scheduler"
+say "7/9 Caches, workers, scheduler"
 cd "$API"
 php artisan optimize:clear >/dev/null
 php artisan config:cache
@@ -112,7 +119,16 @@ if ! crontab -u www-data -l 2>/dev/null | grep -q "$API/artisan schedule:run"; t
   echo "Scheduler added to www-data's crontab."
 fi
 
-say "8/8 Checks"
+say "8/9 Custom views (DivaBI)"
+# Installed once by hand (install-divabi.sh); then each update regenerates its package from the new schema, keeps its
+# read-only account to those tables and restarts it. A DivaBI problem does not undo the update of the application.
+if [ -d /opt/divabi/.git ] || [ -f /root/divabi.bundle ]; then
+  bash "$API/scripts/server/install-divabi.sh" || echo "DivaBI was not updated (see above): custom views keep running the previous version, or are off."
+else
+  echo "DivaBI is not installed: custom views are off. To install it, see backend/scripts/server/install-divabi.sh."
+fi
+
+say "9/9 Checks"
 PORT=$(grep -oE "listen +[0-9]+" "$SITE" | head -1 | grep -oE "[0-9]+")
 printf 'API      /up       : '; curl -s -o /dev/null -w '%{http_code}\n' "http://127.0.0.1:$PORT/up"
 printf 'Screens  /         : '; curl -s -o /dev/null -w '%{http_code}\n' "http://127.0.0.1:$PORT/"

@@ -142,9 +142,10 @@ The script (`backend/scripts/server/update-demo.sh`) stops at the first error. I
 `/root/backups/divawaste-textile/<date-time>/` (database dump, `.env`, `storage/app`, `web/`, nginx site, commit),
 `git pull --ff-only`, `composer install --no-dev`, `migrate --force`, `.env` settings (`AUTO_VERIFY_EMAILS=true` and `AUTO_APPROVE_SIGNUPS=true`: an account is usable at once,
 `DAVI_URL`, a `DAVI_KEY` if there is none — printed once at the end), the ANGed lists, the Pantone catalogue (if
-`/root/pantones` exists), the new screens (if `web-new/` exists; the previous ones go to `web.previous/`), the nginx
-`/guides/` location and a 300 s FastCGI timeout (checked with `nginx -t`, put back if refused), caches, PHP-FPM reload,
-worker restart, scheduler, then checks (`/up`, `/`, `/guides/`, counts).
+`/root/pantones` exists), the material costs of the lots (`lots:costs`), the new screens (if `web-new/` exists; the
+previous ones go to `web.previous/`), the nginx `/guides/` location and a 300 s FastCGI timeout (checked with
+`nginx -t`, put back if refused), caches, PHP-FPM reload, worker restart, scheduler, custom views (DivaBI, once
+installed: see below), then checks (`/up`, `/`, `/guides/`, counts).
 
 ### Restore the demo from a backup
 
@@ -171,6 +172,34 @@ lab repository) opens an SSH tunnel — on the server, `127.0.0.1:8040` leads to
 server's API for every account (`DAVI_ANY_ACCOUNT=1`). It asks once for the server's `DAVI_KEY` and keeps it in
 `%USERPROFILE%\.davi\server-key`. While the PC or the tunnel is off, the assistant answers that it is unavailable; the
 rest of the application works.
+
+### Custom views (DivaBI) on the demo
+
+DivaBI runs on the server itself: code in `/opt/divabi`, its own data (saved views, places, relationships, the package)
+in `/var/lib/divabi`, service `divabi` (systemd, user `divabi`, `127.0.0.1:8050`), reached by the browser through the
+nginx location `/divabi/` of the demo's site. It reads the demo database with the account `divabi_ro`, which holds
+`SELECT` on the tables the package opens and nothing else (users, tokens and the audit trail stay out of its reach).
+The screens get a short-lived token from the API (`DIVABI_KEY` in `backend/.env`, the same secret as
+`DIVABI_DIVAWASTE_SECRET` in `/opt/divabi/.env`).
+
+Install it once, then each `update-demo.sh` keeps it up to date. DivaBI has no remote repository: its code travels as a
+git bundle.
+
+```powershell
+git -C C:\Projects\divabi bundle create C:\Users\DELL\Downloads\divabi.bundle main
+scp C:\Users\DELL\Downloads\divabi.bundle root@46.62.254.192:/root/divabi.bundle
+```
+
+```bash
+bash /var/www/divawaste-textile/backend/scripts/server/install-divabi.sh
+```
+
+`install-divabi.sh` installs Python 3.11 if needed, takes the code from the bundle, creates `DIVABI_KEY` if there is
+none, generates the package from the live schema, gives `divabi_ro` its rights, and runs DivaBI's read-only checks on
+the live data (tenant and site isolation, guards). Only once they pass does it start the service and add the nginx
+location. A new version of DivaBI: copy a new bundle the same way; the next update (or the script alone) installs it.
+The backup of each update holds `divabi.sqlite3`; to restore it, `systemctl stop divabi`, copy it back to
+`/var/lib/divabi/` (owner `divabi`), `systemctl start divabi`. Logs: `journalctl -u divabi`.
 
 ### Emails
 
