@@ -69,7 +69,18 @@ class ScrapReasonsTest extends TestCase
     /** @return array<string, mixed> */
     private function reason(array $values, ?string $token = null): array
     {
+        $this->as();
+
         return $this->withToken($token ?? $this->admin)->postJson('/api/v1/scrap-reasons', $values)->assertCreated()->json('data');
+    }
+
+    /**
+     * The auth guard keeps the user of the previous request: after a request with another company's token, the next
+     * one would still run as that user. Called before switching tokens.
+     */
+    private function as(): void
+    {
+        app('auth')->forgetGuards();
     }
 
     /** @return array<string, mixed> */
@@ -91,6 +102,7 @@ class ScrapReasonsTest extends TestCase
         $elsewhere = $this->makeCompany();
         $this->reason(['code' => 'UE24', 'label' => 'Ailleurs'], $this->tokenFor($this->makeMember($elsewhere, ['client_admin' => null]), $elsewhere));
 
+        $this->as();
         $list = $this->withToken($this->admin)->getJson('/api/v1/scrap-reasons')->assertOk()->json('data');
         $this->assertSame(['UE24', 'UE25'], array_column($list, 'code'));
 
@@ -114,6 +126,7 @@ class ScrapReasonsTest extends TestCase
         // Another company's reason does not exist here.
         $elsewhere = $this->makeCompany();
         $theirs = $this->reason(['code' => 'Z1', 'label' => 'Z'], $this->tokenFor($this->makeMember($elsewhere, ['client_admin' => null]), $elsewhere));
+        $this->as();
         $this->withToken($this->admin)->putJson("/api/v1/scrap-reasons/{$theirs['ulid']}", ['label' => 'mine'])->assertNotFound();
     }
 
@@ -150,6 +163,27 @@ class ScrapReasonsTest extends TestCase
         $children = $this->withToken($this->admin)->postJson("/api/v1/lots/{$lot['ulid']}/split", ['outputs' => [['net_weight_kg' => '6'], ['net_weight_kg' => '4']]])->assertCreated()->json('data');
 
         $this->assertSame(['UE24', 'UE24'], array_map(fn (array $child) => $child['scrap_reason']['code'] ?? null, $children));
+
+        // Still one scrap of 10 kg: the lot split stays, closed, beside its two parts, and is counted once.
+        $row = collect($this->withToken($this->admin)->getJson('/api/v1/scrap-reasons')->json('data'))->firstWhere('code', 'UE24');
+        $this->assertSame([1, '10.000', ['amount' => '110.000', 'currency' => 'TND']], [$row['lots'], $row['weight_kg'], $row['material_value']]);
+    }
+
+    public function test_a_grouping_keeps_one_reason_and_counts_each_scrap_once(): void
+    {
+        $holes = $this->reason(['code' => 'UE24', 'label' => 'Trous']);
+        $seam = $this->reason(['code' => 'UE25', 'label' => 'Couture']);
+        $a = $this->lot('2', ['scrap_reason' => $holes['ulid']]);
+        $b = $this->lot('3', ['scrap_reason' => $holes['ulid']]);
+        $c = $this->lot('4', ['scrap_reason' => $seam['ulid']]);
+
+        $same = $this->withToken($this->admin)->postJson('/api/v1/lots/group', ['lots' => [$a['ulid'], $b['ulid']], 'zone' => $this->zone])->assertCreated()->json('data');
+        $this->assertSame('UE24', $same['scrap_reason']['code']);
+        $mixed = $this->withToken($this->admin)->postJson('/api/v1/lots/group', ['lots' => [$same['ulid'], $c['ulid']], 'zone' => $this->zone])->assertCreated()->json('data');
+        $this->assertNull($mixed['scrap_reason']);
+
+        $rows = collect($this->withToken($this->admin)->getJson('/api/v1/scrap-reasons')->json('data'))->keyBy('code');
+        $this->assertSame([[2, '5.000'], [1, '4.000']], [[$rows['UE24']['lots'], $rows['UE24']['weight_kg']], [$rows['UE25']['lots'], $rows['UE25']['weight_kg']]]);
     }
 
     public function test_each_reason_says_what_its_lots_weigh_and_cost_inside_the_sites_one_may_read(): void

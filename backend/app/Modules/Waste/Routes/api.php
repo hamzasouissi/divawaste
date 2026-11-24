@@ -414,13 +414,15 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     };
     /*
      * Each reason with what it weighs: lots, kilograms and (for who may see production costs) the value of their
-     * material, inside the sites whose lots the user may read, over an optional period.
+     * material, inside the sites whose lots the user may read, over an optional period. Only lots as they were produced
+     * count (like every statistic of the waste generated): a split or grouped lot stays, closed, beside the lots made from
+     * it, and the same scrap would otherwise be counted twice.
      */
     $reasonRows = function (Request $request, Collection $reasons, ?string $from = null, ?string $to = null): Collection {
         $siteIds = app(AccessResolver::class)->siteIdsFor($request->user(), 'lots.view');
         $money = $request->user()->can('production.finance.view');
         $totals = $siteIds === [] ? collect() : DB::table('waste_lots')
-            ->where('company_id', app(TenantContext::class)->companyId())->whereNull('deleted_at')->whereNotNull('scrap_reason_id')
+            ->where('company_id', app(TenantContext::class)->companyId())->whereNull('deleted_at')->whereNotNull('scrap_reason_id')->where('origin_type', 'created')
             ->when($siteIds !== null, fn ($query) => $query->whereIn('site_id', $siteIds))
             ->when($from, fn ($query, $value) => $query->where('generated_at', '>=', $value))
             ->when($to, fn ($query, $value) => $query->where('generated_at', '<', now()->parse($value)->addDay()->startOfDay()))

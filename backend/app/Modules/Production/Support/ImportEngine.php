@@ -21,6 +21,7 @@ use App\Modules\Tenancy\TenantContext;
 use App\Modules\Waste\Actions\CreateWasteLot;
 use App\Modules\Waste\Models\WasteLot;
 use App\Modules\Waste\Requests\StoreWasteLotRequest;
+use App\Modules\Waste\Support\LotCost;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
@@ -309,40 +310,44 @@ final class ImportEngine
         $this->cache = [];
         $result = ['total' => count($rows), 'created' => 0, 'updated' => 0, 'unchanged' => 0, 'also_created' => [], 'errors' => []];
 
-        DB::beginTransaction();
-        try {
-            foreach ($rows as $index => $row) {
-                $line = $index + 2; // the heading is line 1
-                try {
-                    $values = [];
-                    foreach ($fields as $field => [$type, $required]) {
-                        $column = $mapping[$field] ?? null;
-                        $values[$field] = $column === null ? null : $this->parse($row[$column] ?? null, $type, $field);
-                        if ($required && $values[$field] === null) {
-                            throw new RuntimeException(__('imports.errors.required', ['field' => __("imports.fields.{$target}.{$field}")]));
+        // Batches, prices and consumptions cost waste lots again: once per material and OF when the import is written, not
+        // once a line, and not at all for a dry run.
+        LotCost::deferred(function () use ($rows, $fields, $mapping, $target, $dryRun, &$result) {
+            DB::beginTransaction();
+            try {
+                foreach ($rows as $index => $row) {
+                    $line = $index + 2; // the heading is line 1
+                    try {
+                        $values = [];
+                        foreach ($fields as $field => [$type, $required]) {
+                            $column = $mapping[$field] ?? null;
+                            $values[$field] = $column === null ? null : $this->parse($row[$column] ?? null, $type, $field);
+                            if ($required && $values[$field] === null) {
+                                throw new RuntimeException(__('imports.errors.required', ['field' => __("imports.fields.{$target}.{$field}")]));
+                            }
+                        }
+                        // One line fails alone: what it wrote before failing is undone, the others go on.
+                        DB::transaction(function () use ($target, $values, &$result) {
+                            // Counted only once the line has gone through: a line that fails created nothing.
+                            $also = $result['also_created'];
+                            $outcome = $this->{'import'.Str::studly($target)}($values, $also);
+                            $result[$outcome]++;
+                            $result['also_created'] = $also;
+                        });
+                    } catch (Throwable $error) {
+                        $known = $error instanceof RuntimeException && ! $error instanceof \PDOException;
+                        $result['errors'][] = ['line' => $line, 'message' => $known ? $error->getMessage() : __('imports.errors.unexpected')];
+                        if (! $known) {
+                            report($error);
                         }
                     }
-                    // One line fails alone: what it wrote before failing is undone, the others go on.
-                    DB::transaction(function () use ($target, $values, &$result) {
-                        // Counted only once the line has gone through: a line that fails created nothing.
-                        $also = $result['also_created'];
-                        $outcome = $this->{'import'.Str::studly($target)}($values, $also);
-                        $result[$outcome]++;
-                        $result['also_created'] = $also;
-                    });
-                } catch (Throwable $error) {
-                    $known = $error instanceof RuntimeException && ! $error instanceof \PDOException;
-                    $result['errors'][] = ['line' => $line, 'message' => $known ? $error->getMessage() : __('imports.errors.unexpected')];
-                    if (! $known) {
-                        report($error);
-                    }
                 }
+                $dryRun ? DB::rollBack() : DB::commit();
+            } catch (Throwable $error) {
+                DB::rollBack();
+                throw $error;
             }
-            $dryRun ? DB::rollBack() : DB::commit();
-        } catch (Throwable $error) {
-            DB::rollBack();
-            throw $error;
-        }
+        }, flush: ! $dryRun);
 
         return $result;
     }
@@ -402,6 +407,10 @@ final class ImportEngine
             $changed = $this->sync('raw_material_batches', ['raw_material_id' => $material->id, 'batch_number' => $v['batch_number']], $batch,
                 // A new lot is delivered, unless said otherwise, by the supplier of its material; an existing lot keeps its own.
                 ['company_id' => $material->company_id, 'ulid' => strtoupper((string) Str::ulid()), 'production_supplier_id' => $material->production_supplier_id, 'import_source' => 'import']);
+            if ($changed) {
+                // Written without the batch model (and its hook): the lots of the material are costed again here.
+                LotCost::refreshMaterials([(int) $material->id]);
+            }
             $outcome = $outcome === 'unchanged' && $changed ? 'updated' : $outcome;
         }
 
@@ -505,8 +514,12 @@ final class ImportEngine
             $quantity = $v['consumed_quantity'] ?? throw new RuntimeException(__('imports.errors.required', ['field' => __('imports.fields.manufacturing_orders.consumed_quantity')]));
             $batchId = $v['batch_number'] === null ? null : (DB::table('raw_material_batches')->where('raw_material_id', $materialId)->where('batch_number', $v['batch_number'])->value('id')
                 ?? throw new RuntimeException(__('imports.errors.unknown', ['what' => __('imports.fields.manufacturing_orders.batch_number'), 'value' => $v['batch_number']])));
-            $touched = $this->sync('production_order_consumptions', ['production_order_id' => $of->id, 'raw_material_id' => $materialId, 'raw_material_batch_id' => $batchId],
-                ['quantity' => $quantity], ['company_id' => $companyId]) || $touched;
+            if ($this->sync('production_order_consumptions', ['production_order_id' => $of->id, 'raw_material_id' => $materialId, 'raw_material_batch_id' => $batchId],
+                ['quantity' => $quantity], ['company_id' => $companyId])) {
+                // Its lots without a batch of their own are priced by the batch it consumed.
+                LotCost::refreshOrders([(int) $of->id]);
+                $touched = true;
+            }
         }
 
         return $outcome === 'unchanged' && $touched ? 'updated' : $outcome;
@@ -560,6 +573,9 @@ final class ImportEngine
         $changed = $this->sync('production_order_consumptions', ['production_order_id' => $of->id, 'raw_material_id' => $material->id, 'raw_material_batch_id' => $batchId, 'production_step_id' => $stepId],
             array_filter(['quantity' => $v['consumed_quantity'], 'site_id' => $v['site'] === null ? null : $this->site($companyId, $v['site'], 'consumptions.site'), 'consumed_on' => $v['consumed_on']],
                 fn ($value) => $value !== null), ['company_id' => $companyId]);
+        if ($changed) {
+            LotCost::refreshOrders([(int) $of->id]);
+        }
 
         return ! $exists ? 'created' : ($changed ? 'updated' : 'unchanged');
     }

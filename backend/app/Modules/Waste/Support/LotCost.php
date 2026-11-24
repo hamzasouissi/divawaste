@@ -5,6 +5,7 @@ namespace App\Modules\Waste\Support;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Production\Support\CuttingWaste;
 use App\Modules\Waste\Models\WasteLot;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -22,6 +23,9 @@ use Illuminate\Support\Facades\DB;
 final class LotCost
 {
     private const NONE = ['material_cost_per_kg' => null, 'material_value' => null, 'cost_currency_code' => null, 'cost_batch_id' => null, 'cost_basis' => null];
+
+    /** @var array{materials: array<int, true>, orders: array<int, true>}|null costings put off while deferred() runs */
+    private static ?array $deferred = null;
 
     /** Columns of a lot the cost depends on: a change in any of them costs the lot again. */
     public const INPUTS = ['raw_material_batch_id', 'raw_material_id', 'production_order_id', 'net_weight_kg', 'generated_at'];
@@ -123,13 +127,68 @@ final class LotCost
      */
     public static function refreshMaterials(array $materialIds): int
     {
-        if ($materialIds === []) {
+        if (self::$deferred !== null) {
+            self::$deferred['materials'] += array_fill_keys($materialIds, true);
+
             return 0;
         }
+
+        return $materialIds === [] ? 0 : self::refresh(fn ($q) => $q->whereIn('raw_material_id', $materialIds)
+            ->orWhereIn('raw_material_batch_id', DB::table('raw_material_batches')->whereIn('raw_material_id', $materialIds)->select('id')));
+    }
+
+    /**
+     * What OFs consumed changed: their lots are costed again, as a lot without its own batch is priced by the batch its
+     * OF consumed of its material.
+     *
+     * @param  list<int>  $orderIds
+     */
+    public static function refreshOrders(array $orderIds): int
+    {
+        if (self::$deferred !== null) {
+            self::$deferred['orders'] += array_fill_keys($orderIds, true);
+
+            return 0;
+        }
+
+        return $orderIds === [] ? 0 : self::refresh(fn ($q) => $q->whereIn('production_order_id', $orderIds));
+    }
+
+    /**
+     * Runs $work with every costing it asks for (directly or through the batch and material hooks) put off until it
+     * ends, then done once per material and per OF: an import of a thousand lines costs each lot once, not once a line.
+     * With $flush false (a dry run, rolled back) nothing is costed.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $work
+     * @return T
+     */
+    public static function deferred(callable $work, bool $flush = true): mixed
+    {
+        if (self::$deferred !== null) {
+            return $work();
+        }
+        self::$deferred = ['materials' => [], 'orders' => []];
+        try {
+            $result = $work();
+            $pending = self::$deferred;
+        } finally {
+            self::$deferred = null;
+        }
+        if ($flush) {
+            self::refreshMaterials(array_keys($pending['materials']));
+            self::refreshOrders(array_keys($pending['orders']));
+        }
+
+        return $result;
+    }
+
+    /** @param  callable(Builder): mixed  $lots  which lots */
+    private static function refresh(callable $lots): int
+    {
         $count = 0;
-        DB::table('waste_lots')->whereNull('deleted_at')
-            ->where(fn ($q) => $q->whereIn('raw_material_id', $materialIds)
-                ->orWhereIn('raw_material_batch_id', DB::table('raw_material_batches')->whereIn('raw_material_id', $materialIds)->select('id')))
+        DB::table('waste_lots')->whereNull('deleted_at')->where($lots)
             ->select(['id', 'company_id', 'raw_material_batch_id', 'raw_material_id', 'production_order_id', 'net_weight_kg', 'generated_at'])
             ->chunkById(500, function ($lots) use (&$count) {
                 foreach ($lots as $lot) {

@@ -11,6 +11,7 @@ use App\Modules\Tenancy\Models\Company;
 use Database\Seeders\AuthorizationSeeder;
 use Database\Seeders\ReferenceDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Tests\Concerns\InteractsWithTenants;
 use Tests\TestCase;
@@ -65,8 +66,9 @@ class LotCostTest extends TestCase
     /** @return array<string, mixed> */
     private function lot(array $more = []): array
     {
-        return $this->withToken($this->token)->postJson('/api/v1/lots', ['site' => $this->site->ulid, 'zone' => $this->zone, 'waste_type' => $this->type,
-            'net_weight_kg' => '2.5', 'raw_material' => $this->fabric->ulid, 'raw_material_batch' => $this->batch->ulid] + $more)->assertCreated()->json('data');
+        // $more wins over the defaults (with `+` the defaults would: a lot asked without its batch would still name it).
+        return $this->withToken($this->token)->postJson('/api/v1/lots', array_merge(['site' => $this->site->ulid, 'zone' => $this->zone, 'waste_type' => $this->type,
+            'net_weight_kg' => '2.5', 'raw_material' => $this->fabric->ulid, 'raw_material_batch' => $this->batch->ulid], $more))->assertCreated()->json('data');
     }
 
     public function test_a_lot_cut_from_a_batch_costs_its_weight_of_that_material(): void
@@ -143,5 +145,63 @@ class LotCostTest extends TestCase
         $this->artisan('lots:costs')->assertSuccessful();
 
         $this->assertSame('27.500', (string) DB::table('waste_lots')->where('ulid', $lot['ulid'])->value('material_value'));
+    }
+
+    /**
+     * An OF of an article cut from the fabric, and a lot of its waste that names the fabric but no batch, produced after
+     * a dearer delivery R-2 (30 a kilo): until the OF says what it consumed, R-2 prices the lot.
+     *
+     * @return array{0: string, 1: string} the OF's ULID, the lot's ULID
+     */
+    private function lotOfAnOf(): array
+    {
+        $post = fn (string $path, array $body) => $this->withToken($this->token)->postJson("/api/v1/production/{$path}", $body)->assertCreated()->json('data');
+        $this->tenant()->runAs($this->company, fn () => RawMaterialBatch::query()->create(['raw_material_id' => $this->fabric->id, 'batch_number' => 'R-2',
+            'quantity' => '100', 'received_on' => '2026-06-01', 'total_amount' => '900', 'currency_code' => 'TND']));
+        $article = $post('articles', ['reference' => 'TOP', 'name' => 'Top', 'materials' => [['material' => $this->fabric->ulid, 'quantity_per_piece' => '0.5']]]);
+        $of = $post('manufacturing-orders', ['order_number' => 'OF-T', 'article' => $article['ulid'], 'quantity_planned' => 100]);
+        $lot = $this->lot(['raw_material_batch' => null, 'production_order' => $of['ulid'], 'generated_at' => '2026-07-01T10:00:00Z']);
+        $this->assertSame(['latest', 'R-2'], [$lot['material_cost']['basis'], $lot['material_cost']['batch']['batch_number']]);
+
+        return [$of['ulid'], $lot['ulid']];
+    }
+
+    /** @return list<string|null> basis, batch number and cost per kg of a lot, as stored */
+    private function costOf(string $lot): array
+    {
+        $row = DB::table('waste_lots as l')->leftJoin('raw_material_batches as b', 'b.id', '=', 'l.cost_batch_id')->where('l.ulid', $lot)
+            ->first(['l.cost_basis', 'b.batch_number', 'l.material_cost_per_kg']);
+
+        return [$row->cost_basis, $row->batch_number, $row->material_cost_per_kg === null ? null : (string) $row->material_cost_per_kg];
+    }
+
+    public function test_what_the_of_consumed_prices_its_lots_once_it_is_entered(): void
+    {
+        [$of, $lot] = $this->lotOfAnOf();
+
+        $this->withToken($this->token)->putJson("/api/v1/production/manufacturing-orders/{$of}/consumptions",
+            ['consumptions' => [['material' => $this->fabric->ulid, 'batch' => $this->batch->ulid, 'quantity' => '10']]])->assertOk();
+
+        $this->assertSame(['consumption', 'R-1', '11.0000'], $this->costOf($lot));
+    }
+
+    public function test_imported_consumptions_and_batches_price_the_lots_again_but_not_a_dry_run(): void
+    {
+        [, $lot] = $this->lotOfAnOf();
+        $run = fn (string $target, string $csv, array $mapping, bool $dry = false) => $this->withToken($this->token)->post('/api/v1/production/imports/run',
+            ['target' => $target, 'file' => UploadedFile::fake()->createWithContent("{$target}.csv", $csv), 'mapping' => $mapping] + ($dry ? ['dry_run' => '1'] : []),
+            ['Accept' => 'application/json'])->assertOk()->json('data');
+        $consumed = "OF,Matière,Consommation,Lot\nOF-T,10044,10,R-1\n";
+        $mapping = ['manufacturing_order' => 0, 'material' => 1, 'consumed_quantity' => 2, 'batch_number' => 3];
+
+        $this->assertSame(1, $run('consumptions', $consumed, $mapping, dry: true)['created']);
+        $this->assertSame(['latest', 'R-2', '30.0000'], $this->costOf($lot), 'a dry run changes nothing');
+
+        $this->assertSame(1, $run('consumptions', $consumed, $mapping)['created']);
+        $this->assertSame(['consumption', 'R-1', '11.0000'], $this->costOf($lot));
+
+        // The materials file corrects the quantity of R-1 (written without the batch model): 330 for 15 kg, 22 a kilo.
+        $this->assertSame(1, $run('materials', "Référence,Lot,Quantité lot\n10044,R-1,50\n", ['reference' => 0, 'batch_number' => 1, 'batch_quantity' => 2])['updated']);
+        $this->assertSame(['consumption', 'R-1', '22.0000'], $this->costOf($lot));
     }
 }

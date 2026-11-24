@@ -15,7 +15,8 @@ export interface DivaBiSession {
 }
 
 interface DivaBiGlobal {
-  configure(options: { app: string; baseUrl: string; locale?: string; tokenProvider: () => Promise<string> }): void;
+  /** Merges what it is given; a new tokenProvider drops the token DivaBI held. */
+  configure(options: { app?: string; baseUrl?: string; locale?: string; tokenProvider?: () => Promise<string> }): void;
 }
 
 /**
@@ -34,6 +35,11 @@ export class DivaBi {
 
   private loading: Promise<boolean> | null = null;
   private firstToken: string | null = null;
+  /** User and company DivaBI was started for ("user|company"). */
+  private startedFor: string | null = null;
+  /** Bumped by each reset: a start begun for a previous user or company writes nothing once it ends. */
+  private generation = 0;
+  private listening = false;
   /** null while loading, false when DivaBI cannot be reached or is not configured. */
   readonly ready = signal<boolean | null>(null);
   readonly canBuild = signal(false);
@@ -46,16 +52,30 @@ export class DivaBi {
   }
 
   load(): Promise<boolean> {
+    // Signing out, signing in as someone else or switching company does not reload the page: DivaBI must not keep the
+    // token, the rights or the views of the previous user or company. It starts again for the new one.
+    const who = this.who();
+    if (who !== this.startedFor) {
+      this.reset();
+    }
     if (!this.allowed()) {
       return Promise.resolve(false);
     }
-    this.loading ??= this.start().then(
+    this.startedFor = who;
+    const generation = this.generation;
+    this.loading ??= this.start(generation).then(
       () => {
+        if (generation !== this.generation) {
+          return false;
+        }
         this.ready.set(true);
         this.error.set(null);
         return true;
       },
       (error: unknown) => {
+        if (generation !== this.generation) {
+          return false;
+        }
         console.warn('DivaBI unavailable', error);
         this.loading = null;
         this.error.set(error);
@@ -67,17 +87,27 @@ export class DivaBi {
     return this.loading;
   }
 
-  private async start(): Promise<void> {
+  private async start(generation: number): Promise<void> {
     const first = await this.newSession();
+    if (generation !== this.generation) {
+      return;
+    }
     this.firstToken = first.token;
     this.canBuild.set(first.can_build);
     const base = first.url.replace(/\/$/, '');
     await this.loadScript(`${base}/static/divabi.js`);
+    if (generation !== this.generation) {
+      return;
+    }
     const divabi = (window as unknown as { DivaBI?: DivaBiGlobal }).DivaBI;
     if (!divabi) {
       throw new Error('DivaBI script loaded without its API');
     }
     divabi.configure({ app: 'divawaste', baseUrl: base, locale: this.transloco.getActiveLang(), tokenProvider: () => this.token() });
+    if (this.listening) {
+      return;
+    }
+    this.listening = true;
     // Links of a view lead to our own screens (/lots/…): the router opens them without reloading the application.
     document.addEventListener('divabi-navigate', (event) => {
       const path = (event as CustomEvent<{ path: string }>).detail?.path;
@@ -86,6 +116,25 @@ export class DivaBi {
         void this.router.navigateByUrl(path);
       }
     });
+  }
+
+  private who(): string | null {
+    const user = this.session.me()?.ulid;
+    const company = this.session.company()?.ulid;
+
+    return user && company ? `${user}|${company}` : null;
+  }
+
+  /** Forgets the previous session: its token (also inside DivaBI, which drops it when given a provider again) and its rights. */
+  private reset(): void {
+    this.generation++;
+    this.startedFor = null;
+    this.loading = null;
+    this.firstToken = null;
+    this.ready.set(null);
+    this.canBuild.set(false);
+    this.error.set(null);
+    (window as unknown as { DivaBI?: DivaBiGlobal }).DivaBI?.configure({ tokenProvider: () => this.token() });
   }
 
   private newSession(): Promise<DivaBiSession> {

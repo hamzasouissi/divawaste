@@ -35,6 +35,7 @@ use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\Rules\TenantExists;
 use App\Modules\Tenancy\Support\CompanyModules;
 use App\Modules\Tenancy\TenantContext;
+use App\Modules\Waste\Support\LotCost;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -579,6 +580,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
                 'production_step_id' => isset($line['step']) ? DB::table('production_steps')->where('code', $line['step'])->value('id') : null,
                 'site_id' => $id(Site::class, $line['site'] ?? null), 'consumed_on' => $line['consumed_on'] ?? null, 'notes' => $line['notes'] ?? null];
         }, $lines));
+        // Its waste lots without a batch of their own are priced by the batch it consumed: costed again.
+        LotCost::refreshOrders([(int) $of->id]);
     };
     // The pieces made by an OF are the sum of its produced lots as soon as it has some.
     $syncProduced = function (ProductionOrder $of) {
