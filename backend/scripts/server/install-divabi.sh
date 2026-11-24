@@ -2,8 +2,9 @@
 # Installs or updates DivaBI, the engine of custom views ("Vues personnalisées"), beside the hosted demo.
 #
 # From the PC, the DivaBI code as a git bundle (DivaBI has no remote repository):
-#   git -C C:\Projects\divabi bundle create C:\Users\DELL\Downloads\divabi.bundle main
-#   scp C:\Users\DELL\Downloads\divabi.bundle root@SERVER:/root/divabi.bundle
+#   git -C C:\Projects\divabi bundle create C:\Users\DELL\Downloads\divabi-deploy.bundle main
+#   scp C:\Users\DELL\Downloads\divabi-deploy.bundle root@SERVER:/root/divabi.bundle
+# (not Downloads\divabi.bundle: that one is the origin of the DivaBI repository on the PC)
 #
 # On the server, as root (update-demo.sh also runs it on every update once DivaBI is installed):
 #   bash /var/www/divawaste-textile/backend/scripts/server/install-divabi.sh

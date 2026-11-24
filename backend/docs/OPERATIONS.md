@@ -186,8 +186,8 @@ Install it once, then each `update-demo.sh` keeps it up to date. DivaBI has no r
 git bundle.
 
 ```powershell
-git -C C:\Projects\divabi bundle create C:\Users\DELL\Downloads\divabi.bundle main
-scp C:\Users\DELL\Downloads\divabi.bundle root@46.62.254.192:/root/divabi.bundle
+git -C C:\Projects\divabi bundle create C:\Users\DELL\Downloads\divabi-deploy.bundle main
+scp C:\Users\DELL\Downloads\divabi-deploy.bundle root@46.62.254.192:/root/divabi.bundle
 ```
 
 ```bash
