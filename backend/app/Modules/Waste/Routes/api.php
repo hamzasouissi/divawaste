@@ -139,7 +139,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::put('lots/{lot}/origin', function (Request $request, WasteLot $lot, LotOrigin $origin) {
         abort_unless($request->user()->can('lots.update', $lot->site_id), 403);
         $input = $request->validate(LotOrigin::rules());
-        $lot->forceFill($origin->resolve($input, (int) $lot->site_id, (int) $lot->zone_id) + ['updated_by_user_id' => $request->user()->id])->save();
+        $lot->forceFill($origin->resolve($input, (int) $lot->site_id, (int) $lot->zone_id) + $origin->material($input)
+            + ['updated_by_user_id' => $request->user()->id])->save();
 
         return new WasteLotResource($lot);
     })->name('lots.origin');

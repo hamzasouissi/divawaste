@@ -36,7 +36,36 @@ final class LotOrigin
                 ->where(fn ($query) => $query->whereNull('company_id')->orWhere('company_id', app(TenantContext::class)->companyId()))],
             'raw_material' => ['nullable', 'string', new TenantExists(RawMaterial::class)],
             'raw_material_batch' => ['nullable', 'string', 'ulid'],
+            // How much of the material the lot is, in one of its units (by default its own), and a price per that unit —
+            // a production cost, so typed only by who may see them. No price: the batches price it.
+            'material_quantity' => ['nullable', 'decimal:0,4', 'gt:0', 'lte:99999999'],
+            'material_unit' => ['nullable', 'string', Rule::in(ProductionData::MATERIAL_UNITS)],
+            'material_unit_price' => ['nullable', 'decimal:0,5', 'gte:0', 'lte:99999999',
+                Rule::prohibitedIf(fn () => ! (bool) request()->user()?->can('production.finance.view'))],
         ];
+    }
+
+    /**
+     * The quantity, unit and typed price of the lot's material, for the keys that were given (a form that does not
+     * send them leaves them as they are).
+     *
+     * @param  array<string, mixed>  $input
+     * @return array{material_quantity?: string|null, material_unit_id?: int|null, material_unit_price?: string|null}
+     */
+    public function material(array $input): array
+    {
+        $values = [];
+        if (array_key_exists('material_quantity', $input)) {
+            $values['material_quantity'] = $input['material_quantity'] === null ? null : (string) $input['material_quantity'];
+        }
+        if (array_key_exists('material_unit', $input)) {
+            $values['material_unit_id'] = $input['material_unit'] === null ? null : (int) DB::table('units')->where('code', $input['material_unit'])->value('id');
+        }
+        if (array_key_exists('material_unit_price', $input)) {
+            $values['material_unit_price'] = $input['material_unit_price'] === null ? null : (string) $input['material_unit_price'];
+        }
+
+        return $values;
     }
 
     /**

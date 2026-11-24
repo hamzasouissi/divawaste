@@ -307,7 +307,6 @@ export interface Named {
   name: string;
 }
 
-/** basis: 'lot' (the lot's own batch), 'consumption' (the batch its OF consumed), 'latest' (last batch received by its date). */
 /** The family of causes of a scrap reason: the 6 M of a cause-and-effect diagram. */
 export type ScrapCategory = 'material' | 'machine' | 'method' | 'manpower' | 'measurement' | 'environment';
 export const SCRAP_CATEGORIES: ScrapCategory[] = ['material', 'machine', 'method', 'manpower', 'measurement', 'environment'];
@@ -334,10 +333,16 @@ export interface ScrapReason extends ScrapReasonRef {
 }
 
 export interface LotMaterialCost {
+  /** Per unit of the lot's material quantity (else of the material): the typed price, or the batch's. */
+  unit_cost: string | null;
+  unit: string | null;
+  /** The price typed on the lot; null when the batches price it. */
+  unit_price: string | null;
   per_kg: string | null;
   value: string | null;
   currency: string | null;
-  basis: 'lot' | 'consumption' | 'latest' | null;
+  /** entered: typed on the lot; lot: its own batch; consumption: the batch its OF consumed; latest: last batch received by its date. */
+  basis: 'entered' | 'lot' | 'consumption' | 'latest' | null;
   batch: { ulid: string; batch_number: string; received_on: string | null } | null;
 }
 
@@ -380,6 +385,8 @@ export interface Lot {
   scrap_note?: string | null;
   /** What its material cost, priced by a batch of the raw material; null for people who may not see production costs. */
   material_cost?: LotMaterialCost | null;
+  /** How much of its raw material the lot is, in which unit of it (m, kg, piece). */
+  material_quantity?: { quantity: string; unit: string | null } | null;
   qr: string | null;
   label_print_count: number;
   version: number;

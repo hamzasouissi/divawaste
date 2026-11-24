@@ -1069,7 +1069,7 @@
     "productionOrderHint": "Optional. The stage is deduced from the zone, the raw material from the order.",
     "rawMaterial": "Raw material",
     "materialOfOrder": "The one of the order",
-    "editOrigin": "Origin",
+    "editOrigin": "Origin and material",
     "originHint": "Where this lot comes from in production. Leave empty what you do not know: the stage is deduced from the zone, the raw material from the order.",
     "stepOfZone": "The one of the zone",
     "quantityIn": "Quantity ({{unit}})",
@@ -1185,13 +1185,29 @@
     "costBasis": {
       "lot": "from the material batch",
       "consumption": "from the batch the order consumed",
-      "latest": "from the last batch received"
+      "latest": "from the last batch received",
+      "entered": "price entered on the lot"
     },
     "scrapNote": "Note",
     "scrapNoReason": "No reason",
     "scrapPick": "Choose a reason",
     "scrapManage": "Manage reasons",
-    "scrapNoneYet": "The company has no scrap reason yet."
+    "scrapNoneYet": "The company has no scrap reason yet.",
+    "materialPart": "Raw material it comes from",
+    "materialPick": "Choose a raw material",
+    "noMaterial": "No material",
+    "materialOfOrderHint": "★: the materials of the chosen order.",
+    "materialBatch": "Material batch",
+    "batchLatest": "The last batch received",
+    "materialQuantity": "Material quantity",
+    "materialQuantityPh": "e.g. 2.156",
+    "materialQuantityHint": "How much of the material this waste is, as on a scrap report.",
+    "materialUnit": "Unit",
+    "unitOfMaterial": "The material’s own ({{unit}})",
+    "materialUnitPrice": "Unit price (per {{unit}})",
+    "materialPriceFromBatch": "Empty: {{price}} per {{unit}}, the price of the material batch.",
+    "materialPriceNone": "No batch price known: type it to value this waste.",
+    "materialTotal": "Total cost:"
   },
   "stock": {
     "title": "Waste stock",

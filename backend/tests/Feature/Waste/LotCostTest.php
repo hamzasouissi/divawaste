@@ -204,4 +204,73 @@ class LotCostTest extends TestCase
         $this->assertSame(1, $run('materials', "Référence,Lot,Quantité lot\n10044,R-1,50\n", ['reference' => 0, 'batch_number' => 1, 'batch_quantity' => 2])['updated']);
         $this->assertSame(['consumption', 'R-1', '22.0000'], $this->costOf($lot));
     }
+
+    public function test_a_price_typed_on_the_lot_costs_its_material_quantity_like_a_scrap_report(): void
+    {
+        // 2.156 m at 3.50 a metre; a metre of this fabric weighs 1.5 × 200 g = 0.3 kg, so 11.6666 a kilo.
+        $lot = $this->lot(['raw_material_batch' => null, 'material_quantity' => '2.156', 'material_unit' => 'm', 'material_unit_price' => '3.5']);
+
+        $this->assertSame(['entered', '3.50000', 'm', '3.50000', '7.546', '11.6666', 'TND', null],
+            [$lot['material_cost']['basis'], $lot['material_cost']['unit_cost'], $lot['material_cost']['unit'], $lot['material_cost']['unit_price'],
+                $lot['material_cost']['value'], $lot['material_cost']['per_kg'], $lot['material_cost']['currency'], $lot['material_cost']['batch']]);
+        $this->assertSame(['quantity' => '2.1560', 'unit' => 'm'], $lot['material_quantity']);
+    }
+
+    public function test_a_material_quantity_without_a_typed_price_is_priced_by_the_batch_per_unit(): void
+    {
+        // The batch: 300 + 30 for 100 m, 3.30 a metre.
+        $metres = $this->lot(['material_quantity' => '2']);
+        $this->assertSame(['lot', '3.30000', 'm', '6.600', '11.0000'],
+            [$metres['material_cost']['basis'], $metres['material_cost']['unit_cost'], $metres['material_cost']['unit'], $metres['material_cost']['value'], $metres['material_cost']['per_kg']]);
+
+        // The same fabric counted in kilograms: 11 a kilo.
+        $kilos = $this->lot(['material_quantity' => '2', 'material_unit' => 'kg']);
+        $this->assertSame(['11.00000', 'kg', '22.000'], [$kilos['material_cost']['unit_cost'], $kilos['material_cost']['unit'], $kilos['material_cost']['value']]);
+
+        // Without a quantity, the weight prices it as before; the unit cost is the material's.
+        $weighed = $this->lot();
+        $this->assertSame(['3.30000', 'm', '27.500'], [$weighed['material_cost']['unit_cost'], $weighed['material_cost']['unit'], $weighed['material_cost']['value']]);
+    }
+
+    public function test_only_people_who_may_see_production_costs_may_type_a_price(): void
+    {
+        $operator = $this->tokenFor($this->makeMember($this->company, ['workshop_operator' => $this->site]), $this->company);
+
+        $this->withToken($operator)->postJson('/api/v1/lots', ['site' => $this->site->ulid, 'zone' => $this->zone, 'waste_type' => $this->type,
+            'net_weight_kg' => '2.5', 'raw_material' => $this->fabric->ulid, 'material_unit_price' => '3.5'])
+            ->assertUnprocessable()->assertJsonValidationErrors('material_unit_price');
+        // The quantity is not a cost: they may give it.
+        $this->withToken($operator)->postJson('/api/v1/lots', ['site' => $this->site->ulid, 'zone' => $this->zone, 'waste_type' => $this->type,
+            'net_weight_kg' => '2.5', 'raw_material' => $this->fabric->ulid, 'material_quantity' => '2', 'material_unit' => 'm'])->assertCreated();
+    }
+
+    public function test_the_origin_dialog_sets_the_quantity_and_price_and_keeps_what_it_does_not_send(): void
+    {
+        $lot = $this->lot(['raw_material_batch' => null]);
+
+        $this->withToken($this->token)->putJson("/api/v1/lots/{$lot['ulid']}/origin", ['raw_material' => $this->fabric->ulid,
+            'material_quantity' => '4', 'material_unit' => 'm', 'material_unit_price' => '2.25'])->assertOk();
+        $row = DB::table('waste_lots')->where('ulid', $lot['ulid'])->first(['material_value', 'cost_basis', 'material_unit_cost']);
+        $this->assertSame(['9.000', 'entered', '2.25000'], [(string) $row->material_value, $row->cost_basis, (string) $row->material_unit_cost]);
+
+        // An older screen that only sends the origin leaves the quantity and the price alone.
+        $this->withToken($this->token)->putJson("/api/v1/lots/{$lot['ulid']}/origin", ['raw_material' => $this->fabric->ulid])->assertOk();
+        $this->assertSame('9.000', (string) DB::table('waste_lots')->where('ulid', $lot['ulid'])->value('material_value'));
+
+        // Cleared: the batches price it again.
+        $this->withToken($this->token)->putJson("/api/v1/lots/{$lot['ulid']}/origin", ['raw_material' => $this->fabric->ulid, 'material_unit_price' => null])->assertOk();
+        $row = DB::table('waste_lots')->where('ulid', $lot['ulid'])->first(['material_value', 'cost_basis']);
+        $this->assertSame(['13.200', 'latest'], [(string) $row->material_value, $row->cost_basis]);
+    }
+
+    public function test_a_split_shares_the_material_quantity_by_weight(): void
+    {
+        $lot = $this->lot(['material_quantity' => '10', 'material_unit' => 'm', 'net_weight_kg' => '4']);
+
+        $parts = $this->withToken($this->token)->postJson("/api/v1/lots/{$lot['ulid']}/split", ['outputs' => [['net_weight_kg' => '1'], ['net_weight_kg' => '3']]])
+            ->assertSuccessful()->json('data');
+
+        $this->assertSame(['2.5000', '7.5000'], array_map(fn ($part) => $part['material_quantity']['quantity'], $parts));
+        $this->assertSame(['8.250', '24.750'], array_map(fn ($part) => $part['material_cost']['value'], $parts));
+    }
 }

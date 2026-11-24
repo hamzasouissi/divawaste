@@ -26,6 +26,7 @@ import { SELECT } from '../../ui/select';
 import { zoneMismatch } from '../../ui/zone-fill';
 import { COLOR } from '../../ui/swatch';
 import { CompositionEditorComponent, compositionArray, compositionLine, compositionTotal, compositionValue } from '../../ui/composition';
+import { LotMaterialComponent, lotMaterialForm, lotMaterialValue } from './lot-material';
 
 const DIALOG = [ReactiveFormsModule, TranslocoDirective] as const;
 const WEIGHT = [Validators.required, Validators.min(0), Validators.max(999999), Validators.pattern(/^\d+([.,]\d{1,3})?$/)];
@@ -62,7 +63,7 @@ function writeText(key: string, value: string): void {
  * defaults of the waste type. The lot ULID is generated here so a double submission cannot create two lots.
  */
 @Component({
-  imports: [...DIALOG, LocalizedPipe, CodePipe, ButtonDirective, InputText, Textarea, CheckboxComponent, ...FIELD, ...SELECT, ...COLOR, ...DIALOG_PARTS, AutoFocus, CompositionEditorComponent, MoreComponent, SegmentedComponent],
+  imports: [...DIALOG, LocalizedPipe, CodePipe, ButtonDirective, InputText, Textarea, CheckboxComponent, ...FIELD, ...SELECT, ...COLOR, ...DIALOG_PARTS, AutoFocus, CompositionEditorComponent, MoreComponent, SegmentedComponent, LotMaterialComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -138,20 +139,19 @@ function writeText(key: string, value: string): void {
                 </dw-field>
               }
               <dw-field [label]="t('lots.grammage')"><input pInputText formControlName="grammage_gsm" inputmode="decimal" /></dw-field>
-              @if (session.uses('production') && orders().length > 0) {
-                <dw-field [label]="t('lots.productionOrder')">
-                  <dw-select formControlName="production_order">
-                    <dw-option [value]="null" [label]="t('lots.noProductionOrder')" />
-                    @for (order of orders(); track order.ulid) { <dw-option [value]="order.ulid" [label]="order.order_number + ' — ' + order.article.reference" /> }
-                  </dw-select>
-                  <small dwHint>{{ t('lots.productionOrderHint') }}</small>
-                </dw-field>
-                <dw-field [label]="t('lots.rawMaterial')">
-                  <dw-select formControlName="raw_material">
-                    <dw-option [value]="null" [label]="t('lots.materialOfOrder')" />
-                    @for (material of materials(); track material.ulid) { <dw-option [value]="material.ulid" [label]="material.reference + ' — ' + material.name" /> }
-                  </dw-select>
-                </dw-field>
+              @if (session.uses('production')) {
+                @if (orders().length > 0) {
+                  <dw-field class="dw-span-2" [label]="t('lots.productionOrder')">
+                    <dw-select formControlName="production_order">
+                      <dw-option [value]="null" [label]="t('lots.noProductionOrder')" />
+                      @for (order of orders(); track order.ulid) { <dw-option [value]="order.ulid" [label]="order.order_number + ' — ' + order.article.reference" /> }
+                    </dw-select>
+                    <small dwHint>{{ t('lots.productionOrderHint') }}</small>
+                  </dw-field>
+                }
+                <!-- The raw material the waste is, as a scrap report counts it: which one, how much of it, at what price. -->
+                <h3 class="dw-span-2 dw-h3">{{ t('lots.materialPart') }}</h3>
+                <dw-lot-material [form]="material" [preferred]="materialUlids()" [fallback]="!!chosen().production_order" />
               }
               <!-- What the waste is made of: known from the label, the supplier or the operator — no raw material needed. -->
               <div class="dw-span-2 composition">
@@ -233,7 +233,6 @@ export class CreateLotDialog {
     package_count: ['', [Validators.pattern(/^[1-9]\d{0,5}$/)]],
     // Opened from the page of an OF: that OF is proposed.
     production_order: [(dialogData<{ production_order?: string } | undefined>()?.production_order ?? null) as string | null],
-    raw_material: [null as string | null],
     packaging_type: [null as string | null],
     color_family: [null as string | null],
     grammage_gsm: [''],
@@ -241,16 +240,19 @@ export class CreateLotDialog {
     scrap_note: [''],
     notes: [''],
   });
+  /** Its raw material: which one, which batch, how much of it and at what price (LotMaterialComponent). */
+  protected readonly material = lotMaterialForm();
   /** Typed here, or left empty: the lot then takes the composition of its raw material, else the defaults of its type. */
   protected readonly composition = compositionArray(this.fb);
   protected readonly compositionTotal = compositionTotal;
 
-  private readonly chosen = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
+  protected readonly chosen = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
   private readonly openOrders = toSignal(this.api.get<OpenOrder[]>('production/open-orders').pipe(catchError(() => of([] as OpenOrder[]))), { initialValue: [] });
   /** The manufacturing orders that come to the chosen site (an OF without stages may be anywhere). */
   protected readonly orders = computed(() => this.openOrders().filter((order) => order.steps.length === 0 || order.steps.some((step) => step.site === this.chosen().site)));
   /** The materials of the chosen OF: with a single one, the lot takes it without asking. */
   protected readonly materials = computed(() => this.openOrders().find((order) => order.ulid === this.chosen().production_order)?.materials ?? []);
+  protected readonly materialUlids = computed(() => this.materials().map((material) => material.ulid));
   protected readonly chosenType = computed(() => this.types().find((type) => type.ulid === this.chosen().waste_type));
   /** The defaults of the chosen type, in words, as the lot will take them when nothing is typed. */
   protected readonly typeComposition = computed(() => (this.chosenType()?.default_composition ?? []).map((line) => `${line.material} ${Number(line.pct)} %`).join(' / '));
@@ -334,9 +336,13 @@ export class CreateLotDialog {
     if (unit && this.form.controls.quantity.value.trim() === '') {
       this.form.controls.quantity.setErrors({ required: true });
     }
-    if (this.form.invalid || this.composition.invalid || (this.composition.length > 0 && compositionTotal(this.composition) !== 100)) {
+    if (this.form.invalid || this.material.invalid || this.composition.invalid || (this.composition.length > 0 && compositionTotal(this.composition) !== 100)) {
       this.form.markAllAsTouched();
+      this.material.markAllAsTouched();
       this.composition.markAllAsTouched();
+      if (this.material.invalid) {
+        this.more.set(true);
+      }
 
       return;
     }
@@ -345,7 +351,7 @@ export class CreateLotDialog {
     try {
       const lot = await firstValueFrom(this.api.post<Lot>('lots', {
         composition: this.composition.length > 0 ? compositionValue(this.composition) : null,
-        ...value, ulid: this.lotUlid, net_weight_kg: value.net_weight_kg ? decimal(value.net_weight_kg) : null,
+        ...value, ...(this.session.uses('production') ? lotMaterialValue(this.material, this.session.can('production.finance.view')) : {}), ulid: this.lotUlid, net_weight_kg: value.net_weight_kg ? decimal(value.net_weight_kg) : null,
         weight_estimated: value.net_weight_kg ? value.weight_estimated : false,
         package_count: this.packaging() && value.package_count ? Number(value.package_count) : null,
         quantity: unit ? decimal(value.quantity) : null, unit, grammage_gsm: value.grammage_gsm ? decimal(value.grammage_gsm) : null, notes: value.notes || null,
@@ -361,13 +367,14 @@ export class CreateLotDialog {
         this.created.update((count) => count + 1);
         this.lotUlid = ulid();
         this.form.patchValue({ net_weight_kg: '', quantity: '', package_count: '', notes: '', weight_estimated: false });
+        this.material.patchValue({ material_quantity: '' });
         this.form.markAsUntouched();
         this.composition.clear();
       } else {
         this.ref.close(lot);
       }
     } catch (error) {
-      if (!this.toast.applyValidation(this.form, error)) {
+      if (!this.toast.applyValidation(this.form, error) && !this.toast.applyValidation(this.material, error)) {
         this.toast.error(error);
       }
     } finally {
@@ -385,7 +392,7 @@ export interface LotActionData {
  * always know the OF. Left empty, the stage is deduced from the zone and the material from the OF.
  */
 @Component({
-  imports: [...DIALOG, LocalizedPipe, ButtonDirective, ...FIELD, ...SELECT, ...DIALOG_PARTS],
+  imports: [...DIALOG, LocalizedPipe, ButtonDirective, ...FIELD, ...SELECT, ...DIALOG_PARTS, LotMaterialComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -405,12 +412,8 @@ export interface LotActionData {
               @for (step of steps(); track step.code) { <dw-option [value]="step.code" [label]="step.name | dwLocalized" /> }
             </dw-select>
           </dw-field>
-          <dw-field [label]="t('lots.rawMaterial')">
-            <dw-select formControlName="raw_material">
-              <dw-option [value]="null" [label]="t('lots.materialOfOrder')" />
-              @for (material of materials(); track material.ulid) { <dw-option [value]="material.ulid" [label]="material.reference + ' — ' + material.name" /> }
-            </dw-select>
-          </dw-field>
+          <h3 class="dw-h3 part">{{ t('lots.materialPart') }}</h3>
+          <dw-lot-material [form]="material" [preferred]="materialUlids()" [fallback]="!!chosen().production_order" />
         </div>
         <div class="dw-dialog-foot">
           <button pButton type="button" severity="secondary" outlined dwDialogClose>{{ t('common.cancel') }}</button>
@@ -419,10 +422,13 @@ export interface LotActionData {
       </form>
     </ng-container>
   `,
-  styles: '.dw-dialog-body { display: grid; gap: var(--dw-3); inline-size: min(480px, 86vw); } .dw-muted { margin: 0; font-size: 13px; }',
+  styles: `.dw-dialog-body { display: grid; grid-template-columns: 1fr 1fr; gap: var(--dw-3); inline-size: min(560px, 88vw); }
+    .dw-dialog-body > :not(dw-lot-material) { grid-column: 1 / -1; }
+    .dw-muted { margin: 0; font-size: 13px; } .part { margin: 6px 0 -4px; }`,
 })
 export class LotOriginDialog {
   protected readonly data = dialogData<LotActionData>();
+  private readonly session = inject(Session);
   private readonly api = inject(Api);
   private readonly toast = inject(Toast);
   private readonly ref = inject(DialogRef);
@@ -434,9 +440,13 @@ export class LotOriginDialog {
   protected readonly form = inject(FormBuilder).group({
     production_order: [this.origin?.production_order?.ulid ?? null],
     production_step: [this.origin?.step?.code ?? null],
-    raw_material: [this.origin?.raw_material?.ulid ?? null],
   });
-  private readonly chosen = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
+  protected readonly material = lotMaterialForm({
+    raw_material: this.origin?.raw_material?.ulid, raw_material_batch: this.origin?.batch?.ulid,
+    material_quantity: this.data.lot.material_quantity?.quantity, material_unit: this.data.lot.material_quantity?.unit,
+    material_unit_price: this.data.lot.material_cost?.unit_price,
+  });
+  protected readonly chosen = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
   /** The open orders, and the one the lot already names even if it is finished since. */
   protected readonly orders = computed(() => {
     const current = this.origin?.production_order;
@@ -445,17 +455,18 @@ export class LotOriginDialog {
     return current && !open.some((order) => order.ulid === current.ulid)
       ? [{ ulid: current.ulid, order_number: current.order_number, article: this.origin?.article ?? { reference: '', name: '' }, steps: [], materials: [] } as OpenOrder, ...open] : open;
   });
-  protected readonly materials = computed(() => {
-    const ofOrder = this.openOrders().find((order) => order.ulid === this.chosen().production_order)?.materials ?? [];
-    const current = this.origin?.raw_material;
-
-    return current && !ofOrder.some((material) => material.ulid === current.ulid) ? [current, ...ofOrder] : ofOrder;
-  });
+  protected readonly materialUlids = computed(() => (this.openOrders().find((order) => order.ulid === this.chosen().production_order)?.materials ?? []).map((material) => material.ulid));
 
   protected async submit(): Promise<void> {
+    if (this.material.invalid) {
+      this.material.markAllAsTouched();
+
+      return;
+    }
     this.busy.set(true);
     try {
-      this.ref.close(await firstValueFrom(this.api.put<Lot>(`lots/${this.data.lot.ulid}/origin`, this.form.getRawValue())));
+      this.ref.close(await firstValueFrom(this.api.put<Lot>(`lots/${this.data.lot.ulid}/origin`,
+        { ...this.form.getRawValue(), ...lotMaterialValue(this.material, this.session.can('production.finance.view')) })));
       this.toast.success('common.saved');
     } catch (error) {
       this.toast.error(error);

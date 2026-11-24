@@ -37,6 +37,11 @@ final readonly class CreateWasteLotData
         public ?string $productionStep = null,
         public ?string $rawMaterial = null,
         public ?string $rawMaterialBatch = null,
+        // How much of that material the lot is, in which of its units (m, kg, piece), and a price per unit typed by
+        // someone who may see production costs (null: the batches price it).
+        public ?string $materialQuantity = null,
+        public ?string $materialUnit = null,
+        public ?string $materialUnitPrice = null,
         // The weight given is a guess of the person, not a reading of a scale.
         public bool $weightEstimated = false,
         // How many packages (bags, bales…) the lot is made of; null = not said, one is assumed and marked as a default.

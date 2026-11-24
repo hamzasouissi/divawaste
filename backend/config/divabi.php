@@ -65,13 +65,18 @@ return [
                 'cost_currency_code' => ['fr' => 'Devise du coût', 'en' => 'Cost currency'],
                 'scrap_note' => ['fr' => 'Précision sur le rebut', 'en' => 'Scrap note'],
                 'cost_basis' => ['fr' => 'Prix établi', 'en' => 'Price basis'],
+                'material_quantity' => ['fr' => 'Quantité de matière', 'en' => 'Material quantity'],
+                'material_unit_price' => ['fr' => 'Prix unitaire saisi', 'en' => 'Unit price entered'],
+                'material_unit_cost' => ['fr' => 'Coût unitaire de la matière', 'en' => 'Material unit cost'],
             ],
             // The cost of the material is a production cost: only for those who may see them.
-            'column_permissions' => ['material_cost_per_kg' => 'production.finance.view', 'material_value' => 'production.finance.view'],
+            'column_permissions' => ['material_cost_per_kg' => 'production.finance.view', 'material_value' => 'production.finance.view',
+                'material_unit_price' => 'production.finance.view', 'material_unit_cost' => 'production.finance.view'],
             'relations' => [
                 'raw_material_batch' => ['fr' => 'Lot matière', 'en' => 'Material batch'],
                 'cost_batch' => ['fr' => 'Lot matière du prix', 'en' => 'Pricing batch'],
                 'scrap_reason' => ['fr' => 'Motif de rebut', 'en' => 'Scrap reason'],
+                'material_unit' => ['fr' => 'Unité de la matière', 'en' => 'Material unit'],
             ]],
         // The company's scrap reasons: lots are counted, weighed and valued per reason.
         'scrap_reasons' => ['permission' => 'lots.view', 'label' => ['fr' => 'Motifs de rebut', 'en' => 'Scrap reasons'], 'display' => 'label',

@@ -1069,7 +1069,7 @@
     "productionOrderHint": "Facultatif. L'étape est déduite de la zone, la matière première de l'OF.",
     "rawMaterial": "Matière première",
     "materialOfOrder": "Celle de l'OF",
-    "editOrigin": "Origine",
+    "editOrigin": "Origine et matière",
     "originHint": "D'où vient ce lot en production. Laissez vide ce que vous ne savez pas : l'étape est déduite de la zone, la matière première de l'OF.",
     "stepOfZone": "Celle de la zone",
     "quantityIn": "Quantité ({{unit}})",
@@ -1185,13 +1185,29 @@
     "costBasis": {
       "lot": "d’après le lot matière",
       "consumption": "d’après le lot consommé par l’OF",
-      "latest": "d’après le dernier lot reçu"
+      "latest": "d’après le dernier lot reçu",
+      "entered": "prix saisi sur le lot"
     },
     "scrapNote": "Précision",
     "scrapNoReason": "Aucun motif",
     "scrapPick": "Choisir un motif",
     "scrapManage": "Gérer les motifs",
-    "scrapNoneYet": "La société n’a pas encore de motif de rebut."
+    "scrapNoneYet": "La société n’a pas encore de motif de rebut.",
+    "materialPart": "Matière d’origine",
+    "materialPick": "Choisir une matière première",
+    "noMaterial": "Aucune matière",
+    "materialOfOrderHint": "★ : les matières de l’OF choisi.",
+    "materialBatch": "Lot matière",
+    "batchLatest": "Le dernier lot reçu",
+    "materialQuantity": "Quantité de matière",
+    "materialQuantityPh": "ex. 2,156",
+    "materialQuantityHint": "Ce que représente ce déchet de la matière, comme sur un rapport de rebut.",
+    "materialUnit": "Unité",
+    "unitOfMaterial": "Celle de la matière ({{unit}})",
+    "materialUnitPrice": "Prix unitaire (par {{unit}})",
+    "materialPriceFromBatch": "Vide : {{price}} par {{unit}}, le prix du lot matière.",
+    "materialPriceNone": "Aucun prix de lot matière connu : saisissez-le pour valoriser ce déchet.",
+    "materialTotal": "Coût total :"
   },
   "stock": {
     "title": "Stock de déchets",

@@ -10,7 +10,7 @@ import { Api, openBlob } from '../../core/api/api';
 import { Lot, LotDetailMeta, LotEvent } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { Toast } from '../../core/feedback/toast';
-import { CodePipe, DatePipe, KgPipe, LocalizedPipe, LotMeasurePipe, MoneyPipe, TermPipe } from '../../core/format/pipes';
+import { CodePipe, DatePipe, KgPipe, LocalizedPipe, LotMeasurePipe, MoneyPipe, NumberPipe, TermPipe } from '../../core/format/pipes';
 import { PageHeaderComponent, StatusComponent } from '../../ui/page';
 import { StateComponent } from '../../ui/state';
 import { LotActionData, LotCompositionDialog, LotOriginDialog, LotPackagesDialog, ScrapLotDialog, SplitLotDialog, StoreLotDialog, WeighLotDialog } from './lot-dialogs';
@@ -30,7 +30,7 @@ type LotAction = 'weigh' | 'pickup' | 'print' | 'store' | 'split' | 'sell' | 'or
  * where it came from and what it became (M2-06), and which pickup took it.
  */
 @Component({
-  imports: [...COLOR, TermPipe, CodePipe, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LocalizedPipe, LotMeasurePipe, MoneyPipe, IconComponent, ButtonDirective, MenuComponent, Tooltip, StepsComponent, CustomViewsSlotComponent, ScrapReasonComponent],
+  imports: [...COLOR, TermPipe, CodePipe, RouterLink, TranslocoDirective, PageHeaderComponent, StatusComponent, StateComponent, DatePipe, KgPipe, LocalizedPipe, LotMeasurePipe, MoneyPipe, NumberPipe, IconComponent, ButtonDirective, MenuComponent, Tooltip, StepsComponent, CustomViewsSlotComponent, ScrapReasonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
@@ -126,9 +126,14 @@ type LotAction = 'weigh' | 'pickup' | 'print' | 'store' | 'split' | 'sell' | 'or
                       <div><dt>{{ t('production.orders.one') }}</dt><dd class="dw-mono">{{ o.customer_order ?? '—' }}</dd></div>
                       <div><dt>{{ t('lots.rawMaterial') }}</dt><dd>{{ o.raw_material ? o.raw_material.reference + ' — ' + o.raw_material.name : '—' }} @if (o.batch) { <span class="dw-faint">· {{ t('production.materials.batchNumber') }} {{ o.batch.batch_number }}</span> }</dd></div>
                       <div><dt>{{ t('production.suppliers.one') }}</dt><dd>{{ o.supplier ?? '—' }}</dd></div>
+                      @if (l.material_quantity; as q) {
+                        <div><dt>{{ t('lots.materialQuantity') }}</dt><dd>{{ q.quantity | dwNumber: 4 }} {{ q.unit ? t('units.' + q.unit, { count: +q.quantity }) : '' }}</dd></div>
+                      }
                       @if (l.material_cost; as c) {
                         <div><dt>{{ t('lots.materialCost') }}</dt><dd>
-                          @if (c.per_kg) { {{ c.per_kg | dwMoney: c.currency }} / kg
+                          @if (c.unit_cost || c.per_kg) {
+                            @if (c.unit_cost && c.unit) { {{ c.unit_cost | dwMoney: c.currency }} / {{ t('units.' + c.unit, { count: 1 }) }} }
+                            @if (c.per_kg && c.unit !== 'kg') { <span [class.dw-faint]="!!c.unit_cost">@if (c.unit_cost && c.unit) { · }{{ c.per_kg | dwMoney: c.currency }} / kg</span> }
                             <span class="dw-faint">· {{ t('lots.costBasis.' + c.basis) }}@if (c.batch) { {{ c.batch.batch_number }} }</span>
                           } @else { <span class="dw-faint">{{ t('lots.costUnknown') }}</span> }
                         </dd></div>
