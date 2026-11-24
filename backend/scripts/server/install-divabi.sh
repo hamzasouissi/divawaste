@@ -185,16 +185,46 @@ for _ in $(seq 1 20); do curl -fs "http://127.0.0.1:$PORT/divabi/health" >/dev/n
 curl -fs "http://127.0.0.1:$PORT/divabi/health" >/dev/null || { journalctl -u divabi -n 30 --no-pager; echo "DivaBI did not start."; exit 1; }
 
 say "10/12 nginx: /divabi/ to DivaBI"
-if ! grep -q "location ^~ /divabi/" "$SITE"; then
-  cp "$SITE" "/root/nginx-site.before-divabi.conf"
-  sed -i "0,/client_max_body_size[^;]*;/s||&\n\n    # Custom views: DivaBI, a separate service (install-divabi.sh), on the same origin as the application.\n    location ^~ /divabi/ {\n        proxy_pass http://127.0.0.1:$PORT;\n        proxy_set_header Host \$host;\n        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto \$scheme;\n        proxy_read_timeout 60s;\n    }|" "$SITE"
+# Every site that serves the application gets it (the demo's port and, say, a domain name with its certificate, which
+# often has a file of its own): the location goes in before each `location / {` of those files.
+SITES=$(for file in /etc/nginx/sites-enabled/*; do if [ -e "$file" ] && grep -q "$APP" "$(readlink -f "$file")"; then readlink -f "$file"; fi; done | sort -u)
+[ -n "$SITES" ] || { echo "No nginx site serving $APP in /etc/nginx/sites-enabled."; exit 1; }
+CHANGED=""
+for file in $SITES; do
+  if grep -q "location ^~ /divabi/" "$file"; then
+    echo "$file: already there."
+    continue
+  fi
+  if ! grep -qE '^\s*location\s+/\s*\{' "$file"; then
+    echo "$file: no 'location / {' to put the route before: add it by hand (see backend/docs/OPERATIONS.md)."
+    continue
+  fi
+  cp "$file" "/root/$(basename "$file").before-divabi.conf"
+  awk -v port="$PORT" '
+    /^[ \t]*location[ \t]+\/[ \t]*\{/ {
+      match($0, /^[ \t]*/); pad = substr($0, 1, RLENGTH)
+      print pad "# Custom views: DivaBI, a separate service (install-divabi.sh), on the same origin as the application."
+      print pad "location ^~ /divabi/ {"
+      print pad "    proxy_pass http://127.0.0.1:" port ";"
+      print pad "    proxy_set_header Host $host;"
+      print pad "    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;"
+      print pad "    proxy_set_header X-Forwarded-Proto $scheme;"
+      print pad "    proxy_read_timeout 60s;"
+      print pad "}"
+      print ""
+    }
+    { print }' "/root/$(basename "$file").before-divabi.conf" > "$file"
+  CHANGED="$CHANGED $file"
+  echo "$file: route added."
+done
+if [ -n "$CHANGED" ]; then
   if nginx -t; then
     systemctl reload nginx
   else
-    echo "nginx refused the new configuration: the previous one is put back."; cp /root/nginx-site.before-divabi.conf "$SITE"; nginx -t && systemctl reload nginx; exit 1
+    echo "nginx refused the new configuration: the previous one is put back."
+    for file in $CHANGED; do cp "/root/$(basename "$file").before-divabi.conf" "$file"; done
+    nginx -t && systemctl reload nginx; exit 1
   fi
-else
-  echo "Already there."
 fi
 
 say "11/12 DivaWaste caches (the new key)"
@@ -208,6 +238,11 @@ printf 'DivaBI  /divabi/health (direct)      : '; curl -s -o /dev/null -w '%{htt
 printf 'DivaBI  /divabi/static/divabi.js     : '; curl -s -o /dev/null -w '%{http_code}\n' "http://127.0.0.1:$SITE_PORT/divabi/static/divabi.js"
 printf 'API     /api/v1/custom-views/session : '; curl -s -o /dev/null -w '%{http_code} (401 = asks for a session, as it should)\n' -H 'Accept: application/json' "http://127.0.0.1:$SITE_PORT/api/v1/custom-views/session"
 printf 'Key configured on the API side       : '; php artisan tinker --execute='echo App\Modules\CustomViews\Support\DivaBiToken::configured() ? "yes" : "NO";'; echo
+# Each domain name of those sites, asked on this server (not through a CDN in front of it): DivaBI's answer is JSON.
+for name in $({ grep -hoE 'server_name[^;]+' $SITES || true; } | sed 's/server_name//' | tr ' ' '\n' | { grep -E '^[a-z0-9.-]+\.[a-z]+$' || true; } | sort -u); do
+  printf 'DivaBI  https://%s/divabi/health : ' "$name"
+  curl -sk -o /dev/null -m 10 -w '%{http_code} %{content_type}\n' --resolve "$name:443:127.0.0.1" "https://$name/divabi/health" || echo "no answer on 443"
+done
 echo
 echo "Done. Custom views: menu « Vues personnalisées » (client administrators and environment managers build them;"
 echo "management viewers open them). Logs: journalctl -u divabi -f"
