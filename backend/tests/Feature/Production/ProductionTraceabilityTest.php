@@ -93,9 +93,9 @@ class ProductionTraceabilityTest extends TestCase
         [$l1, $l2] = $this->receive();
 
         // 2. Two deliveries of the same material, from two suppliers, at two prices.
-        $this->assertSame(['Supplier A', '10.0000', '1000.000', '10.0000', '1000.000', $this->company->currency_code],
+        $this->assertSame(['Supplier A', '10.000000', '1000.000', '10.0000', '1000.000', $this->company->currency_code],
             [$l1['supplier']['name'], $l1['unit_price'], $l1['total_amount'], $l1['unit_cost'], $l1['purchase_value'], $l1['currency_code']]);
-        $this->assertSame(['Supplier B', 'B-778', '12.0000', '600.000', '13.0000', '650.000'],
+        $this->assertSame(['Supplier B', 'B-778', '12.000000', '600.000', '13.0000', '650.000'],
             [$l2['supplier']['name'], $l2['supplier_batch_reference'], $l2['unit_price'], $l2['total_amount'], $l2['unit_cost'], $l2['purchase_value']]);
 
         // A total that contradicts quantity × price is refused, not silently replaced.
@@ -332,7 +332,7 @@ class ProductionTraceabilityTest extends TestCase
         $this->assertSame([5, 2, 0, ['suppliers' => 1], 3], [$done['total'], $done['created'], $done['updated'], $done['also_created'], count($done['errors'])]);
         $rows = DB::table('raw_material_batches as b')->leftJoin('production_suppliers as s', 's.id', '=', 'b.production_supplier_id')->orderBy('b.batch_number')
             ->get(['b.batch_number', 's.name', 'b.unit_price', 'b.total_amount', 'b.currency_code', 'b.import_source'])->map(fn ($row) => array_values((array) $row))->all();
-        $this->assertSame([['L1', 'Supplier A', '10.0000', '1000.000', $this->company->currency_code, 'import'], ['L2', 'Supplier C', '12.0000', '600.000', $this->company->currency_code, 'import']], $rows);
+        $this->assertSame([['L1', 'Supplier A', '10.000000', '1000.000', $this->company->currency_code, 'import'], ['L2', 'Supplier C', '12.000000', '600.000', $this->company->currency_code, 'import']], $rows);
         // The same file again: nothing changes, nothing is created twice.
         $again = $run('received_lots', $lots, $mapping);
         $this->assertSame([0, 0, 2, []], [$again['created'], $again['updated'], $again['unchanged'], $again['also_created']]);
@@ -423,7 +423,7 @@ class ProductionTraceabilityTest extends TestCase
         $this->client($viewer)->putJson("/api/v1/production/batches/{$l1['ulid']}", ['batch_number' => 'L1', 'quantity' => '100', 'unit_price' => '1'])->assertOk();
         $this->client($viewer)->putJson("/api/v1/production/orders/{$this->r['order']['ulid']}", ['order_number' => 'CMD-1', 'client' => $this->r['client']['ulid'],
             'lines' => [['article' => $this->r['article']['ulid'], 'quantity' => 1000, 'unit_price' => '1']]])->assertOk();
-        $this->assertSame(['10.0000', '5.0000', '500.000'], [DB::table('raw_material_batches')->where('batch_number', 'L1')->value('unit_price'),
+        $this->assertSame(['10.000000', '5.0000', '500.000'], [DB::table('raw_material_batches')->where('batch_number', 'L1')->value('unit_price'),
             DB::table('customer_order_lines')->where('company_id', $this->company->id)->value('unit_price'), DB::table('customer_orders')->where('company_id', $this->company->id)->value('discount_amount')]);
         $this->client($viewer)->post('/api/v1/production/imports/run', ['target' => 'invoices', 'file' => UploadedFile::fake()->createWithContent('i.csv', "N,C,M\nFV-1,CMD-1,10\n"),
             'mapping' => ['number' => 0, 'customer_order' => 1, 'amount' => 2]], ['Accept' => 'application/json'])->assertForbidden();

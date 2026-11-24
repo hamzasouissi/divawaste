@@ -102,7 +102,8 @@ export class ReceivedLotDialog {
     supplier_batch_reference: [this.batch?.supplier_batch_reference ?? ''],
     quantity: [this.batch?.quantity ? String(+this.batch.quantity) : '', DECIMAL],
     delivery_note: [this.batch?.delivery_note ?? ''],
-    unit_price: [this.batch?.unit_price ? String(+this.batch.unit_price) : '', DECIMAL],
+    // A price per unit to the sixth decimal (the API keeps them all).
+    unit_price: [this.batch?.unit_price ? String(+this.batch.unit_price) : '', Validators.pattern(/^\d+([.,]\d{1,6})?$/)],
     total_amount: [this.batch?.total_amount ? String(+this.batch.total_amount) : '', AMOUNT],
     delivery_cost: [this.batch?.delivery_cost ? String(+this.batch.delivery_cost) : '', AMOUNT],
     currency_code: [this.batch?.currency_code ?? ''],
@@ -167,7 +168,7 @@ export class ReceivedLotDialog {
             <dw-kpi [label]="t('production.material.unallocated')" [value]="(m.summary?.unallocated | dwNumber: 1) + ' ' + m.unit" [hint]="t('production.material.unallocatedHint')"
               [tone]="+(m.summary?.unallocated ?? 0) > 0 ? 'warning' : 'neutral'" />
             @if (money) {
-              <dw-kpi [label]="t('production.material.averagePrice', { unit: m.unit })" [value]="m.average_unit_cost ? (m.average_unit_cost | dwMoney: currency) : t('production.unknown')"
+              <dw-kpi [label]="t('production.material.averagePrice', { unit: m.unit })" [value]="m.average_unit_cost ? (m.average_unit_cost | dwMoney: currency : true) : t('production.unknown')"
                 [hint]="(m.summary?.unpriced_lots ?? 0) > 0 ? t('production.material.unpriced', { count: m.summary?.unpriced_lots }) : t('production.material.purchased', { amount: (m.summary?.purchase_value | dwMoney: currency) })"
                 [tone]="(m.summary?.unpriced_lots ?? 0) > 0 ? 'warning' : 'neutral'" />
             } @else {
@@ -231,7 +232,7 @@ export class ReceivedLotDialog {
                               <td class="num">{{ lot.quantity === null ? '—' : (lot.quantity | dwNumber: 1) + ' ' + m.unit }}</td>
                               <td class="num" [class.over]="lot.over_consumed" [title]="lot.over_consumed ? t('production.received.overConsumed') : ''">{{ lot.consumed | dwNumber: 1 }} {{ m.unit }}@if (lot.over_consumed) { <dw-icon class="warn">warning</dw-icon> }</td>
                               @if (money) {
-                                <td class="num">{{ lot.unit_cost === null ? t('production.unknown') : (lot.unit_cost | dwMoney: lot.currency_code) }}</td>
+                                <td class="num">{{ lot.unit_cost === null ? t('production.unknown') : (lot.unit_cost | dwMoney: lot.currency_code : true) }}</td>
                                 <td class="num">{{ lot.purchase_value | dwMoney: lot.currency_code }}</td>
                                 <td class="num">{{ lot.consumed_value | dwMoney: lot.currency_code }}</td>
                               }
@@ -285,13 +286,13 @@ export class ReceivedLotDialog {
                             @for (lot of priced(); track lot.ulid) {
                               <tr>
                                 <td>{{ lot.received_on | dwDate }}</td><td>{{ lot.supplier?.name ?? '—' }}</td><td class="dw-mono">{{ lot.batch_number }}</td>
-                                <td class="num">{{ lot.unit_price | dwMoney: lot.currency_code }}</td>
-                                <td class="num">{{ lot.unit_cost | dwMoney: lot.currency_code }}</td>
+                                <td class="num">{{ lot.unit_price | dwMoney: lot.currency_code : true }}</td>
+                                <td class="num">{{ lot.unit_cost | dwMoney: lot.currency_code : true }}</td>
                                 <td class="num" [class.over]="gap(lot) > 0" [class.under]="gap(lot) < 0">{{ gap(lot) > 0 ? '+' : '' }}{{ gap(lot) | dwNumber: 1 }} %</td>
                               </tr>
                             }
                           </tbody>
-                          <tfoot><tr><td colspan="4">{{ t('production.material.weightedAverage') }}</td><td class="num">{{ m.average_unit_cost | dwMoney: currency }}</td><td></td></tr></tfoot>
+                          <tfoot><tr><td colspan="4">{{ t('production.material.weightedAverage') }}</td><td class="num">{{ m.average_unit_cost | dwMoney: currency : true }}</td><td></td></tr></tfoot>
                         </table>
                       </div>
                     }

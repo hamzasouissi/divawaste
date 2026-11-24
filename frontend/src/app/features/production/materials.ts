@@ -631,7 +631,7 @@ export class MaterialsPage {
     { key: 'name', header: 'production.designation', value: (m) => (m.name === m.reference ? '' : m.name), wrap: true, hideBelow: 1200 },
     { key: 'supplier', header: 'production.suppliers.one', value: (m) => m.supplier?.name ?? '—', hideBelow: 900 },
     { key: 'kind', header: 'production.materials.kind', hideBelow: 1000 },
-    { key: 'unit', header: 'production.materials.unit', value: (m) => ({ piece: 'pc' } as Record<string, string>)[m.unit] ?? m.unit, width: '80px', hideBelow: 900 },
+    { key: 'unit', header: 'production.materials.unit', value: (m) => ({ piece: 'pc', m2: 'm²', ft2: 'ft²', in2: 'in²', cm2: 'cm²' } as Record<string, string>)[m.unit] ?? m.unit, width: '80px', hideBelow: 900 },
     { key: 'composition', header: 'lots.composition', hideBelow: 1100 },
     { key: 'color', header: 'lots.color', hideBelow: 1100 },
     { key: 'batches', header: 'production.materials.batches', align: 'end', hideBelow: 1100 },

@@ -132,7 +132,7 @@ type LotAction = 'weigh' | 'pickup' | 'print' | 'store' | 'split' | 'sell' | 'or
                       @if (l.material_cost; as c) {
                         <div><dt>{{ t('lots.materialCost') }}</dt><dd>
                           @if (c.unit_cost || c.per_kg) {
-                            @if (c.unit_cost && c.unit) { {{ c.unit_cost | dwMoney: c.currency }} / {{ t('units.' + c.unit, { count: 1 }) }} }
+                            @if (c.unit_cost && c.unit) { {{ c.unit_cost | dwMoney: c.currency : true }} / {{ t('units.' + c.unit, { count: 1 }) }} }
                             @if (c.per_kg && c.unit !== 'kg') { <span [class.dw-faint]="!!c.unit_cost">@if (c.unit_cost && c.unit) { · }{{ c.per_kg | dwMoney: c.currency }} / kg</span> }
                             <span class="dw-faint">· {{ t('lots.costBasis.' + c.basis) }}@if (c.batch) { {{ c.batch.batch_number }} }</span>
                           } @else { <span class="dw-faint">{{ t('lots.costUnknown') }}</span> }

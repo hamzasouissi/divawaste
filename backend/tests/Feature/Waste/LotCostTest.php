@@ -273,4 +273,44 @@ class LotCostTest extends TestCase
         $this->assertSame(['2.5000', '7.5000'], array_map(fn ($part) => $part['material_quantity']['quantity'], $parts));
         $this->assertSame(['8.250', '24.750'], array_map(fn ($part) => $part['material_cost']['value'], $parts));
     }
+
+    public function test_a_material_counted_by_area_is_costed_in_its_unit_or_another_area(): void
+    {
+        $film = $this->tenant()->runAs($this->company, function () {
+            $film = RawMaterial::query()->create(['reference' => '10000-002', 'name' => 'Film adhésif', 'unit_id' => DB::table('units')->where('code', 'ft2')->value('id')]);
+            // As an import records a price of 1.84587 $ the square foot for one: its total has three decimals.
+            RawMaterialBatch::query()->create(['raw_material_id' => $film->id, 'batch_number' => 'COUT-STD', 'quantity' => '1', 'received_on' => '2026-01-01',
+                'unit_price' => '1.84587', 'total_amount' => '1.845', 'currency_code' => 'USD']);
+
+            return $film;
+        });
+
+        $inFeet = $this->lot(['raw_material' => $film->ulid, 'raw_material_batch' => null, 'net_weight_kg' => null, 'material_quantity' => '0.5']);
+        $inMetres = $this->lot(['raw_material' => $film->ulid, 'raw_material_batch' => null, 'net_weight_kg' => null, 'material_quantity' => '0.1', 'material_unit' => 'm2']);
+
+        $this->assertSame(['1.84587', '0.922', 'ft2', 'USD'], [$inFeet['material_cost']['unit_cost'], $inFeet['material_cost']['value'], $inFeet['material_cost']['unit'], $inFeet['material_cost']['currency']]);
+        // A square metre is 10.7639104 square feet.
+        $this->assertSame(['19.86877', '1.986', 'm2'], [$inMetres['material_cost']['unit_cost'], $inMetres['material_cost']['value'], $inMetres['material_cost']['unit']]);
+    }
+
+    public function test_a_unit_price_keeps_its_decimals_when_the_total_of_the_batch_rounds_it(): void
+    {
+        $label = $this->tenant()->runAs($this->company, function () {
+            $label = RawMaterial::query()->create(['reference' => '13-2562', 'name' => 'Étiquette', 'unit_id' => DB::table('units')->where('code', 'piece')->value('id')]);
+            RawMaterialBatch::query()->create(['raw_material_id' => $label->id, 'batch_number' => 'COUT-STD', 'quantity' => '1', 'received_on' => '2026-01-01',
+                'unit_price' => '0.01751', 'total_amount' => '0.017', 'currency_code' => 'USD']);
+
+            return $label;
+        });
+
+        $lot = $this->lot(['raw_material' => $label->ulid, 'raw_material_batch' => null, 'net_weight_kg' => null, 'material_quantity' => '200']);
+
+        $this->assertSame(['0.01751', '3.502'], [$lot['material_cost']['unit_cost'], $lot['material_cost']['value']]);
+    }
+
+    public function test_a_waste_is_not_counted_by_area(): void
+    {
+        $this->withToken($this->token)->postJson('/api/v1/lots', ['site' => $this->site->ulid, 'zone' => $this->zone, 'waste_type' => $this->type, 'quantity' => '3', 'unit' => 'm2'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['unit']);
+    }
 }

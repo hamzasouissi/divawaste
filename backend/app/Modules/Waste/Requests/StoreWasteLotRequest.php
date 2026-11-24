@@ -59,7 +59,7 @@ class StoreWasteLotRequest extends FormRequest
             // One lot may be several packages. Without a packaging type (loose waste) there is no count.
             'package_count' => ['nullable', 'integer', 'between:1,100000'],
             'quantity' => ['nullable', 'decimal:0,3', 'gt:0', 'required_with:unit'],
-            'unit' => ['nullable', 'string', Rule::exists('units', 'code')->whereNot('dimension', 'length')],
+            'unit' => ['nullable', 'string', Rule::exists('units', 'code')->whereNotIn('dimension', ['length', 'area'])],
             'color_family' => ['nullable', 'string', Colors::rule(app(TenantContext::class)->companyId())],
             'color_label' => ['nullable', 'string', 'max:100'],
             'grammage_gsm' => ['nullable', 'decimal:0,2', 'gt:0'],

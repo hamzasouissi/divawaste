@@ -43,6 +43,14 @@ describe('format pipes', () => {
     expect(create(MoneyPipe).transform(null, 'TND')).toBe('—');
   });
 
+  it('shows a price per unit of a material to its fifth decimal, an amount to the decimals of its currency', () => {
+    const money = create(MoneyPipe);
+
+    expect(money.transform('0.01751', 'USD')).toMatch(/0,02/);
+    expect(money.transform('0.01751', 'USD', true)).toMatch(/0,01751/);
+    expect(money.transform('10', 'USD', true)).toMatch(/10,00\s/);
+  });
+
   it('keeps a bare date on its calendar day and uses a 24-hour clock', () => {
     const date = create(DatePipe);
 

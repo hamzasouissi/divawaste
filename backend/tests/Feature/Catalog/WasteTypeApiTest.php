@@ -118,7 +118,7 @@ class WasteTypeApiTest extends TestCase
         $this->expectException(QueryException::class);
         DB::table('waste_types')->insert([
             'ulid' => '01JC2Z8M4V7H3K9P2RQW5X6Y8Z', 'company_id' => $this->company->id, 'code' => 'DUP', 'name' => 'Dup',
-            'waste_family_id' => DB::table('waste_families')->value('id'), 'default_unit_id' => DB::table('units')->value('id'), 'activated_at' => now(),
+            'waste_family_id' => DB::table('waste_families')->value('id'), 'default_unit_id' => DB::table('units')->where('code', 'kg')->value('id'), 'activated_at' => now(),
         ]);
     }
 

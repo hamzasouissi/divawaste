@@ -77,6 +77,11 @@ class ReferenceDataSeeder extends Seeder
             ['code' => 'piece', 'name' => $this->t('Pièce', 'Piece'), 'symbol' => 'pc', 'dimension' => 'count', 'factor_to_base' => '1', 'is_base' => true],
             // Raw materials (fabric) are counted in metres; waste never is.
             ['code' => 'm', 'name' => $this->t('Mètre', 'Metre'), 'symbol' => 'm', 'dimension' => 'length', 'factor_to_base' => '1', 'is_base' => true],
+            // Raw materials counted by area (foam sheets, adhesive films); waste never is either.
+            ['code' => 'm2', 'name' => $this->t('Mètre carré', 'Square metre'), 'symbol' => 'm²', 'dimension' => 'area', 'factor_to_base' => '1', 'is_base' => true],
+            ['code' => 'ft2', 'name' => $this->t('Pied carré', 'Square foot'), 'symbol' => 'ft²', 'dimension' => 'area', 'factor_to_base' => '0.09290304', 'is_base' => false],
+            ['code' => 'in2', 'name' => $this->t('Pouce carré', 'Square inch'), 'symbol' => 'in²', 'dimension' => 'area', 'factor_to_base' => '0.00064516', 'is_base' => false],
+            ['code' => 'cm2', 'name' => $this->t('Centimètre carré', 'Square centimetre'), 'symbol' => 'cm²', 'dimension' => 'area', 'factor_to_base' => '0.0001', 'is_base' => false],
         ]);
 
         $this->upsert('waste_families', 'code', $this->vocabulary([

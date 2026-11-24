@@ -66,7 +66,7 @@ final class ProductionFinance
         }
 
         return [
-            'unit_price' => $unitPrice ?? ($hasQuantity && $total !== null ? bcdiv($total, $quantity, 4) : null),
+            'unit_price' => $unitPrice ?? ($hasQuantity && $total !== null ? bcdiv($total, $quantity, 6) : null),
             'total_amount' => $total ?? ($hasQuantity && $unitPrice !== null ? bcmul($quantity, $unitPrice, 3) : null),
         ];
     }

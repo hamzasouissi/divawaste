@@ -21,8 +21,22 @@ use Illuminate\Support\Facades\DB;
  */
 final class ProductionData
 {
-    /** How a raw material is counted when consumed. */
-    public const MATERIAL_UNITS = ['m', 'kg', 'piece'];
+    /** How a raw material is counted when consumed: by length, weight, piece, area or volume. */
+    public const MATERIAL_UNITS = ['m', 'kg', 'piece', 'm2', 'ft2', 'in2', 'cm2', 'l'];
+
+    /** The units of an area, and how many square metres one of each is. */
+    public const AREA_UNITS = ['m2' => '1', 'ft2' => '0.09290304', 'in2' => '0.00064516', 'cm2' => '0.0001'];
+
+    /** How many `$to` one `$from` is, when both measure the same thing (one ft² is 0.09290304 m²); null otherwise. */
+    public static function conversion(?string $from, ?string $to): ?string
+    {
+        return match (true) {
+            $from === null || $to === null => null,
+            $from === $to => '1',
+            isset(self::AREA_UNITS[$from], self::AREA_UNITS[$to]) => bcdiv(self::AREA_UNITS[$from], self::AREA_UNITS[$to], 10),
+            default => null,
+        };
+    }
 
     public const EXPENSE_CATEGORIES = ['subcontracting', 'external_service', 'purchase', 'transport', 'labour', 'other'];
 

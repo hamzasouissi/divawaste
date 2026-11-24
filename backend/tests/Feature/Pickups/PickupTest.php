@@ -143,7 +143,7 @@ class PickupTest extends TestCase
         return $this->tenant()->runAs($this->industrial, function () use ($kg) {
             $zone = Zone::query()->firstOrCreate(['code' => 'AIRE'], ['site_id' => $this->site->id, 'zone_type_id' => DB::table('zone_types')->value('id'), 'name' => 'Aire']);
             $type = WasteType::query()->firstOrCreate(['code' => 'CHUTES'], ['name' => 'Chutes', 'waste_family_id' => DB::table('waste_families')->value('id'),
-                'default_unit_id' => DB::table('units')->value('id'), 'activated_at' => now()]);
+                'default_unit_id' => DB::table('units')->where('code', 'kg')->value('id'), 'activated_at' => now()]);
 
             return app(CreateWasteLot::class)->handle(new CreateWasteLotData(
                 $this->site->ulid, $zone->ulid, $type->ulid, $kg), $this->manager)->ulid;

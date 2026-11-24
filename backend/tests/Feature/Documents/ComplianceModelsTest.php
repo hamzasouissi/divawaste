@@ -69,7 +69,7 @@ class ComplianceModelsTest extends TestCase
             'name' => 'Chutes',
             'waste_family_id' => DB::table('waste_families')->value('id'),
             'regulatory_waste_code_id' => $regulatoryCodeId,
-            'default_unit_id' => DB::table('units')->value('id'),
+            'default_unit_id' => DB::table('units')->where('code', 'kg')->value('id'),
             'is_hazardous' => true,
             'activated_at' => now(),
             'default_composition' => [['material' => 'CO', 'pct' => 100]],

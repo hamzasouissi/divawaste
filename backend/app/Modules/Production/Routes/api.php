@@ -282,7 +282,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('production')->group(funct
             'supplier_batch_reference' => ['nullable', 'string', 'max:80'],
             'received_on' => ['nullable', 'date'],
             'quantity' => ['nullable', 'decimal:0,3', 'gt:0'],
-            'unit_price' => ['nullable', 'decimal:0,4', 'gte:0'],
+            'unit_price' => ['nullable', 'decimal:0,6', 'gte:0'],
             'total_amount' => ['nullable', 'decimal:0,3', 'gte:0'],
             'delivery_cost' => ['nullable', 'decimal:0,3', 'gte:0'],
             'currency_code' => $currencyRule,

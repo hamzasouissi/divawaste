@@ -43,7 +43,7 @@ class WasteLotTest extends TestCase
         [$this->zone, $this->type] = $this->tenant()->runAs($this->company, fn () => [
             Zone::query()->create(['site_id' => $this->site->id, 'zone_type_id' => DB::table('zone_types')->value('id'), 'code' => 'COUPE', 'name' => 'Coupe']),
             WasteType::query()->create(['code' => 'CHUTES', 'name' => 'Chutes', 'waste_family_id' => DB::table('waste_families')->value('id'),
-                'default_unit_id' => DB::table('units')->value('id'), 'activated_at' => now(), 'is_hazardous' => false,
+                'default_unit_id' => DB::table('units')->where('code', 'kg')->value('id'), 'activated_at' => now(), 'is_hazardous' => false,
                 'default_composition' => [['material' => 'CO', 'pct' => '100.00']]]),
         ]);
         $this->operator = $this->makeMember($this->company, ['workshop_operator' => $this->site]);

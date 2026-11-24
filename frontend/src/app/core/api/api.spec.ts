@@ -1,6 +1,10 @@
-import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpErrorResponse, HttpHeaders, provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { firstValueFrom } from 'rxjs';
 
-import { ApiError, toParams } from './api';
+import { Api, ApiError, toParams } from './api';
 
 describe('toParams', () => {
   it('flattens filters the way the API reads them', () => {
@@ -51,5 +55,22 @@ describe('ApiError', () => {
     const error = ApiError.from(new HttpErrorResponse({ status: 500, headers: new HttpHeaders({ 'X-Request-Id': 'REQ-9' }) }));
     expect(error.code).toBe('SERVER_ERROR');
     expect(error.requestId).toBe('REQ-9');
+  });
+});
+
+describe('Api.all', () => {
+  it('reads every page of a list, 200 rows at a time', async () => {
+    TestBed.configureTestingModule({ providers: [provideZonelessChangeDetection(), provideHttpClient(), provideHttpClientTesting()] });
+    const http = TestBed.inject(HttpTestingController);
+    const rows = firstValueFrom(TestBed.inject(Api).all<number>('production/materials', { with_inactive: true }));
+    const page = (number: number, data: number[]) => http.expectOne((request) => request.url === '/api/v1/production/materials' && request.params.get('page') === String(number)
+      && request.params.get('per_page') === '200' && request.params.get('with_inactive') === '1').flush({ data, meta: { current_page: number, last_page: 3, per_page: 200, total: 5 } });
+
+    page(1, [1, 2]);
+    page(2, [3, 4]);
+    page(3, [5]);
+
+    expect(await rows).toEqual([1, 2, 3, 4, 5]);
+    http.verify();
   });
 });

@@ -3940,7 +3940,11 @@
     "piece": "pieces",
     "piece_one": "piece",
     "package": "packages",
-    "m": "m"
+    "m": "m",
+    "m2": "m²",
+    "ft2": "ft²",
+    "in2": "in²",
+    "cm2": "cm²"
   },
   "tolerance": {
     "title": "Gaps at reception",

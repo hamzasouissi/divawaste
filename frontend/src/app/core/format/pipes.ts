@@ -118,18 +118,21 @@ export class NumberPipe implements PipeTransform {
   }
 }
 
-/** Money keeps the three decimals of the dinar; the currency comes from the company. */
+/**
+ * Money keeps the three decimals of the dinar; the currency comes from the company. `precise`: a price per unit of a
+ * material, shown to its fifth decimal when it has them (a label at 0.01751 $ is not 0.02 $).
+ */
 @Pipe({ name: 'dwMoney' })
 export class MoneyPipe implements PipeTransform {
   private readonly locale = inject(Locale);
 
-  transform(value: Numeric, currency: string | null | undefined): string {
+  transform(value: Numeric, currency: string | null | undefined, precise = false): string {
     const amount = toNumber(value);
     if (amount === null) {
       return EMPTY;
     }
 
-    return new Intl.NumberFormat(this.locale.intl, { style: 'currency', currency: currency ?? 'TND' }).format(amount);
+    return new Intl.NumberFormat(this.locale.intl, { style: 'currency', currency: currency ?? 'TND', ...(precise ? { maximumFractionDigits: 5 } : {}) }).format(amount);
   }
 }
 

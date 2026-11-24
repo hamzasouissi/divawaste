@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, Subject, map, tap } from 'rxjs';
+import { Observable, Subject, forkJoin, map, of, switchMap, tap } from 'rxjs';
 
 export interface PageMeta {
   current_page: number;
@@ -97,6 +97,14 @@ export class Api {
   /** Lists: keeps `meta` (pagination) and any extra top-level keys next to `data`. */
   list<T, Extra = unknown>(path: string, query?: Query): Observable<Page<T> & Extra> {
     return this.http.get<Page<T> & Extra>(this.url(path), { params: toParams(query) });
+  }
+
+  /** Every row of a list, page after page (the API gives at most 200 a page): for a choice among all of them. */
+  all<T>(path: string, query: Query = {}): Observable<T[]> {
+    const page = (number: number) => this.list<T>(path, { ...query, per_page: 200, page: number });
+
+    return page(1).pipe(switchMap((first) => first.meta.last_page <= 1 ? of(first.data)
+      : forkJoin(Array.from({ length: first.meta.last_page - 1 }, (_, i) => page(i + 2))).pipe(map((rest) => [...first.data, ...rest.flatMap((next) => next.data)]))));
   }
 
   /** Whole response body, for the few endpoints that return more than `data`. */

@@ -4,6 +4,7 @@ namespace App\Modules\Waste\Support;
 
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Production\Support\CuttingWaste;
+use App\Modules\Production\Support\ProductionData;
 use App\Modules\Tenancy\TenantContext;
 use App\Modules\Waste\Models\WasteLot;
 use Illuminate\Database\Query\Builder;
@@ -58,7 +59,11 @@ final class LotCost
         $materialUnit = $material === null ? null : $codes->code('units', $material->unit_id === null ? null : (int) $material->unit_id);
         // The unit of the lot's quantity and of a typed price: the one given, else the material's own.
         $unit = $codes->code('units', $int($lot->material_unit_id ?? null)) ?? $materialUnit;
-        $kgPerUnit = $unit === null ? null : self::positive(CuttingWaste::kilograms('1', $unit, $material?->width_cm, $material?->grammage_gsm, $material?->unit_weight_kg));
+        // One unit of the lot's quantity in units of the material, when both measure the same thing (ft² of a material in m²).
+        $conversion = ProductionData::conversion($unit, $materialUnit);
+        $kgPerUnit = $unit === null ? null : self::positive($conversion !== null
+            ? CuttingWaste::kilograms($conversion, $materialUnit, $material?->width_cm, $material?->grammage_gsm, $material?->unit_weight_kg)
+            : CuttingWaste::kilograms('1', $unit, $material?->width_cm, $material?->grammage_gsm, $material?->unit_weight_kg));
 
         if ($typed !== null) {
             $value = match (true) {
@@ -89,9 +94,12 @@ final class LotCost
             return self::NONE;
         }
         $perKg = self::perKg($batch);
-        // Per unit of the lot's quantity: the batch's own unit as it is, another one through the kilograms.
+        $own = self::perUnit($batch);
+        // Per unit of the lot's quantity: the batch's own unit as it is, another of the same kind by its size, any other
+        // through the kilograms.
         $perUnit = match (true) {
-            $unit === null || $unit === $materialUnit => self::perUnit($batch),
+            $unit === null || $unit === $materialUnit => $own,
+            $conversion !== null && $own !== null => bcmul($own, $conversion, 5),
             $perKg !== null && $kgPerUnit !== null => bcmul($perKg, $kgPerUnit, 5),
             default => null,
         };
@@ -148,11 +156,11 @@ final class LotCost
         if ($batch->quantity === null || bccomp((string) $batch->quantity, '0', 3) <= 0) {
             return null;
         }
-        $amount = $batch->total_amount ?? ($batch->unit_price === null ? null : bcmul((string) $batch->unit_price, (string) $batch->quantity, 6));
+        $amount = self::amount($batch);
         if ($amount === null) {
             return null;
         }
-        $amount = bcadd((string) $amount, (string) ($batch->delivery_cost ?? '0'), 6);
+        $amount = bcadd($amount, (string) ($batch->delivery_cost ?? '0'), 8);
         $unit = app(ReferenceCodes::class)->code('units', $batch->unit_id === null ? null : (int) $batch->unit_id);
         $kilograms = CuttingWaste::kilograms((string) $batch->quantity, $unit, $batch->width_cm, $batch->grammage_gsm, $batch->unit_weight_kg);
         if ($kilograms === null || bccomp($kilograms, '0', 8) <= 0) {
@@ -168,9 +176,24 @@ final class LotCost
         if ($batch->quantity === null || bccomp((string) $batch->quantity, '0', 3) <= 0) {
             return null;
         }
-        $amount = $batch->total_amount ?? ($batch->unit_price === null ? null : bcmul((string) $batch->unit_price, (string) $batch->quantity, 6));
+        $amount = self::amount($batch);
 
-        return $amount === null ? null : bcdiv(bcadd((string) $amount, (string) ($batch->delivery_cost ?? '0'), 6), (string) $batch->quantity, 5);
+        return $amount === null ? null : bcdiv(bcadd($amount, (string) ($batch->delivery_cost ?? '0'), 8), (string) $batch->quantity, 5);
+    }
+
+    /**
+     * What the batch was bought for, delivery aside: its unit price × its quantity when that is its total to the
+     * total's last decimal (a piece at 0.01751 is not 0.017 because its total has three decimals), else its total.
+     */
+    private static function amount(object $batch): ?string
+    {
+        $exact = $batch->unit_price === null ? null : bcmul((string) $batch->unit_price, (string) $batch->quantity, 8);
+        if ($batch->total_amount === null || $exact === null) {
+            return $exact ?? ($batch->total_amount === null ? null : (string) $batch->total_amount);
+        }
+        $gap = bcsub($exact, (string) $batch->total_amount, 8);
+
+        return bccomp($gap, '-0.001', 8) > 0 && bccomp($gap, '0.001', 8) < 0 ? $exact : (string) $batch->total_amount;
     }
 
     private static function positive(?string $number): ?string

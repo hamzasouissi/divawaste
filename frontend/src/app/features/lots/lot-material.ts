@@ -13,7 +13,15 @@ import { SELECT } from '../../ui/select';
 import { RawMaterial } from '../production/production-data';
 
 /** The units a quantity of raw material is counted in (the API accepts the same). */
-export const MATERIAL_UNITS = ['m', 'kg', 'piece'] as const;
+export const MATERIAL_UNITS = ['m', 'kg', 'piece', 'm2', 'ft2', 'in2', 'cm2', 'l'] as const;
+/** Units of an area: one converts to another by its size. */
+const AREA_UNITS = ['m2', 'ft2', 'in2', 'cm2'];
+
+/** The units a lot of this material may be counted in: its own (any area, for an area), kilograms and pieces. */
+export function unitsFor(unit: string | null | undefined): string[] {
+  if (!unit || ['m', 'kg', 'piece'].includes(unit)) return ['m', 'kg', 'piece'];
+  return [...(AREA_UNITS.includes(unit) ? AREA_UNITS : [unit]), 'kg', 'piece'];
+}
 const QUANTITY = [Validators.min(0), Validators.pattern(/^\d+([.,]\d{1,4})?$/)];
 const PRICE = [Validators.min(0), Validators.pattern(/^\d+([.,]\d{1,5})?$/)];
 
@@ -104,14 +112,14 @@ function trimZeros(value: string): string {
         <dw-field [label]="t('lots.materialUnit')">
           <dw-select formControlName="material_unit">
             <dw-option [value]="null" [label]="t('lots.unitOfMaterial', { unit: t('units.' + material.unit, { count: 2 }) })" />
-            @for (unit of units; track unit) { <dw-option [value]="unit" [label]="t('units.' + unit, { count: 2 })" /> }
+            @for (unit of units(); track unit) { <dw-option [value]="unit" [label]="t('units.' + unit, { count: 2 })" /> }
           </dw-select>
         </dw-field>
         @if (priced()) {
           <dw-field class="dw-span-2" [label]="t('lots.materialUnitPrice', { unit: t('units.' + unit(), { count: 1 }) })">
-            <input pInputText formControlName="material_unit_price" inputmode="decimal" [placeholder]="suggested() ? (suggested()! | dwMoney: currency()) : ''" />
+            <input pInputText formControlName="material_unit_price" inputmode="decimal" [placeholder]="suggested() ? (suggested()! | dwMoney: currency() : true) : ''" />
             <small dwHint>
-              @if (suggested(); as price) { {{ t('lots.materialPriceFromBatch', { price: (price | dwMoney: currency()), unit: t('units.' + material.unit, { count: 1 }) }) }} }
+              @if (suggested(); as price) { {{ t('lots.materialPriceFromBatch', { price: (price | dwMoney: currency() : true), unit: t('units.' + material.unit, { count: 1 }) }) }} }
               @else { {{ t('lots.materialPriceNone') }} }
             </small>
           </dw-field>
@@ -133,12 +141,11 @@ export class LotMaterialComponent {
   readonly preferred = input<string[]>([]);
   /** Left empty, the lot takes the material of its OF (when it has only one). */
   readonly fallback = input(false);
-  protected readonly units = MATERIAL_UNITS;
   protected readonly priced = computed(() => this.session.can('production.finance.view'));
 
   /** The company's raw materials, with their batches (and prices, for who may see them). */
   private readonly materials = toSignal(
-    this.api.list<RawMaterial>('production/materials', { per_page: 200, with_inactive: true }).pipe(map((page) => page.data), catchError(() => of([] as RawMaterial[]))),
+    this.api.all<RawMaterial>('production/materials', { with_inactive: true }).pipe(catchError(() => of([] as RawMaterial[]))),
     { initialValue: [] as RawMaterial[] },
   );
   protected readonly choices = computed(() => {
@@ -153,6 +160,7 @@ export class LotMaterialComponent {
   );
   protected readonly chosen = computed(() => this.materials().find((material) => material.ulid === this.value()?.raw_material) ?? null);
   protected readonly unit = computed(() => this.value()?.material_unit ?? this.chosen()?.unit ?? 'kg');
+  protected readonly units = computed(() => unitsFor(this.chosen()?.unit));
   private readonly batch = computed(() => {
     const material = this.chosen();
     const ulid = this.value()?.raw_material_batch;

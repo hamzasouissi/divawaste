@@ -168,13 +168,16 @@ final class CuttingWaste
     }
 
     /**
-     * What a quantity of a raw material weighs: metres with laize and grammage, kilograms as they are, pieces with the
-     * weight of one piece; null when it cannot be known.
+     * What a quantity of a raw material weighs: metres with laize and grammage, an area with its grammage, kilograms as
+     * they are, pieces (or litres, or an area without grammage) with the weight of one; null when it cannot be known.
      */
     public static function kilograms(string $quantity, ?string $unit, mixed $widthCm, mixed $grammageGsm, mixed $unitWeightKg): ?string
     {
+        $area = ProductionData::AREA_UNITS[$unit ?? ''] ?? null;
+
         return match (true) {
             $unit === 'm' && $widthCm !== null && $grammageGsm !== null => bcdiv(bcmul(bcmul($quantity, (string) $widthCm, 8), (string) $grammageGsm, 8), '100000', 8),
+            $area !== null && $grammageGsm !== null => bcdiv(bcmul(bcmul($quantity, $area, 12), (string) $grammageGsm, 12), '1000', 8),
             $unit === 'kg' => bcadd($quantity, '0', 8),
             $unit !== 'm' && $unitWeightKg !== null => bcmul($quantity, (string) $unitWeightKg, 8),
             default => null,

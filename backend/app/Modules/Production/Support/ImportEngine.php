@@ -234,7 +234,12 @@ final class ImportEngine
         'packaging' => 'packaging', 'chimique' => 'chemical', 'produitchimique' => 'chemical', 'produitschimiques' => 'chemical', 'chemical' => 'chemical', 'autre' => 'other', 'other' => 'other'];
 
     private const UNITS = ['m' => 'm', 'metre' => 'm', 'metres' => 'm', 'meter' => 'm', 'ml' => 'm', 'kg' => 'kg', 'kilo' => 'kg', 'kilogramme' => 'kg', 'kilogram' => 'kg',
-        'piece' => 'piece', 'pieces' => 'piece', 'pc' => 'piece', 'pcs' => 'piece', 'u' => 'piece', 'unite' => 'piece', 'unit' => 'piece'];
+        'piece' => 'piece', 'pieces' => 'piece', 'pc' => 'piece', 'pcs' => 'piece', 'u' => 'piece', 'unite' => 'piece', 'unit' => 'piece',
+        'm2' => 'm2', 'metrecarre' => 'm2', 'metrescarres' => 'm2', 'squaremeter' => 'm2', 'squaremeters' => 'm2', 'squaremetre' => 'm2', 'sqm' => 'm2',
+        'ft2' => 'ft2', 'piedcarre' => 'ft2', 'piedscarres' => 'ft2', 'squarefeet' => 'ft2', 'squarefoot' => 'ft2', 'sqft' => 'ft2',
+        'in2' => 'in2', 'poucecarre' => 'in2', 'poucescarres' => 'in2', 'squareinch' => 'in2', 'squareinches' => 'in2', 'sqin' => 'in2',
+        'cm2' => 'cm2', 'centimetrecarre' => 'cm2', 'centimetrescarres' => 'cm2', 'squarecentimeter' => 'cm2', 'squarecentimetre' => 'cm2',
+        'l' => 'l', 'litre' => 'l', 'litres' => 'l', 'liter' => 'l', 'liters' => 'l', 'lt' => 'l'];
 
     /**
      * The first sheet of the file: its headings and its lines.
@@ -743,7 +748,7 @@ final class ImportEngine
             return true;
         }
         $changes = array_filter($values, fn ($value, string $column) => is_numeric($value) && is_numeric($row[$column] ?? null)
-            ? bccomp((string) $value, (string) $row[$column], 4) !== 0 : (string) $value !== (string) ($row[$column] ?? ''), ARRAY_FILTER_USE_BOTH);
+            ? bccomp((string) $value, (string) $row[$column], 6) !== 0 : (string) $value !== (string) ($row[$column] ?? ''), ARRAY_FILTER_USE_BOTH);
         if ($changes === []) {
             return false;
         }
@@ -900,7 +905,7 @@ final class ImportEngine
 
         return match ($type) {
             'integer' => preg_match('/^\d+([.,]0+)?$/', $number = preg_replace('/[\s\x{00A0}\x{202F}]/u', '', $text) ?? '') ? (int) $number : throw new RuntimeException($label()),
-            'decimal' => is_numeric($number = str_replace(',', '.', preg_replace('/[\s\x{00A0}\x{202F}]/u', '', $text) ?? '')) && (float) $number >= 0 ? (string) round((float) $number, 4) : throw new RuntimeException($label()),
+            'decimal' => is_numeric($number = str_replace(',', '.', preg_replace('/[\s\x{00A0}\x{202F}]/u', '', $text) ?? '')) && (float) $number >= 0 ? (string) round((float) $number, 6) : throw new RuntimeException($label()),
             'date' => $this->date($cell, $text) ?? throw new RuntimeException($label()),
             default => mb_substr($text, 0, 191),
         };

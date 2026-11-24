@@ -60,4 +60,24 @@ class ImportSuppliersAndDollarsTest extends TestCase
         $this->assertSame([1, []], [$done['created'], $done['errors']]);
         $this->assertSame('USD', DB::table('raw_material_batches')->where('batch_number', 'COUT-STD')->value('currency_code'));
     }
+
+    public function test_materials_counted_by_area_or_in_litres_keep_their_unit(): void
+    {
+        $done = $this->import('materials', "Référence,Désignation,Unité\n10000-002,BX TERPOLYMER,Square Feet\n14-0595,SPUNLACE,Square Meter\n10060-001,FOAM OLETEX,Square Inch\n50020,SOLUTION,Liter\n",
+            ['reference' => 0, 'name' => 1, 'unit' => 2]);
+
+        $this->assertSame([4, []], [$done['created'], $done['errors']]);
+        $this->assertSame(['10000-002' => 'ft2', '10060-001' => 'in2', '14-0595' => 'm2', '50020' => 'l'], DB::table('raw_materials as m')->join('units as u', 'u.id', '=', 'm.unit_id')
+            ->where('m.company_id', $this->company->id)->orderBy('m.reference')->pluck('u.code', 'm.reference')->all());
+    }
+
+    public function test_a_batch_price_keeps_six_decimals(): void
+    {
+        $this->import('materials', "Référence,Désignation,Unité\n10002 YDS,UBL STRETCH,m\n", ['reference' => 0, 'name' => 1, 'unit' => 2]);
+
+        $this->import('received_lots', "Matière,Lot,Date,Quantité,PU,Devise\n10002 YDS,COUT-STD,01/01/2026,1,10.869215,USD\n",
+            ['material' => 0, 'batch_number' => 1, 'received_on' => 2, 'batch_quantity' => 3, 'unit_price' => 4, 'currency' => 5]);
+
+        $this->assertSame('10.869215', (string) DB::table('raw_material_batches')->where('batch_number', 'COUT-STD')->value('unit_price'));
+    }
 }

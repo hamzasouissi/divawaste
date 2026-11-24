@@ -351,7 +351,7 @@ class CertificateUploadTest extends TestCase
                     [
                         'name' => 'Chutes',
                         'waste_family_id' => DB::table('waste_families')->value('id'),
-                        'default_unit_id' => DB::table('units')->value('id'),
+                        'default_unit_id' => DB::table('units')->where('code', 'kg')->value('id'),
                         'activated_at' => now(),
                     ]
                 );

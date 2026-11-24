@@ -10,6 +10,7 @@ use App\Modules\Catalog\Support\Colors;
 use App\Modules\Common\Exceptions\BusinessRuleViolation;
 use App\Modules\Common\Support\ReferenceCodes;
 use App\Modules\Identity\Authorization\AccessResolver;
+use App\Modules\Production\Support\ProductionData;
 use App\Modules\Sites\Support\StockQuery;
 use App\Modules\Tenancy\Models\Company;
 use App\Modules\Tenancy\Rules\TenantExists;
@@ -54,9 +55,10 @@ Route::middleware(['auth:sanctum', 'tenant:active,pending_approval'])->group(fun
         return response()->json(['data' => [
             'zone_types' => $ofIndustry('zone_types', ['code', 'name', 'is_waste_storage'], ['is_waste_storage']),
             'packaging_types' => $active('packaging_types', ['code', 'name', 'default_tare_kg']),
-            // Units a waste is counted in. Metres are for raw materials only.
-            'units' => $localized(DB::table('units')->where('dimension', '!=', 'length')->orderBy('id')->get(['code', 'name', 'symbol', 'dimension'])),
-            'material_units' => $localized(DB::table('units')->whereIn('code', ['m', 'kg', 'piece'])->orderByRaw("FIELD(code, 'm', 'kg', 'piece')")->get(['code', 'name', 'symbol'])),
+            // Units a waste is counted in. Metres and areas are for raw materials only.
+            'units' => $localized(DB::table('units')->whereNotIn('dimension', ['length', 'area'])->orderBy('id')->get(['code', 'name', 'symbol', 'dimension'])),
+            'material_units' => $localized(DB::table('units')->whereIn('code', ProductionData::MATERIAL_UNITS)->get(['code', 'name', 'symbol', 'dimension'])
+                ->sortBy(fn ($unit) => array_search($unit->code, ProductionData::MATERIAL_UNITS, true))->values()),
             'waste_families' => $ofIndustry('waste_families', ['code', 'name', 'is_textile'], ['is_textile']),
             // The shared names of waste types: what a provider names when a requirement is about one type, not a family.
             'waste_catalog_items' => $localized(DB::table('waste_catalog_items as i')->join('waste_families as f', 'f.id', '=', 'i.waste_family_id')
@@ -137,7 +139,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () use ($localized
             'name' => ['required', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:1000'],
             'requires_authorization' => ['sometimes', 'boolean'],
-            'unit' => ['required', 'string', Rule::exists('units', 'code')->whereNot('dimension', 'length')],
+            'unit' => ['required', 'string', Rule::exists('units', 'code')->whereNotIn('dimension', ['length', 'area'])],
             'measurement_method' => ['sometimes', Rule::in(WasteType::METHODS)],
             'packaging_type' => ['nullable', 'string', $reference('packaging_types')],
             'color_family' => ['nullable', 'string', Colors::rule($wasteType->company_id)],

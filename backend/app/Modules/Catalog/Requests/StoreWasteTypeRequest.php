@@ -38,7 +38,7 @@ class StoreWasteTypeRequest extends FormRequest
             'regulatory_code' => ['nullable', 'string', Rule::exists('regulatory_waste_codes', 'code')->where('code_system', $codeSystem)->where('is_selectable', true)],
             'is_hazardous' => ['sometimes', 'boolean'],
             'requires_authorization' => ['sometimes', 'boolean'],
-            'unit' => ['nullable', 'string', Rule::exists('units', 'code')->whereNot('dimension', 'length')],
+            'unit' => ['nullable', 'string', Rule::exists('units', 'code')->whereNotIn('dimension', ['length', 'area'])],
             'measurement_method' => ['nullable', Rule::in(WasteType::METHODS)],
             'packaging_type' => ['nullable', 'string', $reference('packaging_types')],
             'color_family' => ['nullable', 'string', Colors::rule($companyId)],
