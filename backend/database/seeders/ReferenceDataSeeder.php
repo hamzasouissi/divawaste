@@ -22,6 +22,7 @@ class ReferenceDataSeeder extends Seeder
             ['code' => 'TND', 'name' => $this->t('Dinar tunisien', 'Tunisian dinar'), 'minor_unit' => 3, 'symbol' => 'DT'],
             ['code' => 'MAD', 'name' => $this->t('Dirham marocain', 'Moroccan dirham'), 'minor_unit' => 2, 'symbol' => 'DH'],
             ['code' => 'EUR', 'name' => $this->t('Euro', 'Euro'), 'minor_unit' => 2, 'symbol' => '€'],
+            ['code' => 'USD', 'name' => $this->t('Dollar américain', 'US dollar'), 'minor_unit' => 2, 'symbol' => '$'],
         ]);
 
         $this->upsert('countries', 'iso2', [

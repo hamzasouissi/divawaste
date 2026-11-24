@@ -17,7 +17,7 @@ class ReferenceDataTest extends TestCase
         $this->seed(ReferenceDataSeeder::class);
         $this->seed(ReferenceDataSeeder::class);
 
-        $this->assertSame(3, DB::table('currencies')->count());
+        $this->assertSame(4, DB::table('currencies')->count());
         $this->assertSame(4, DB::table('countries')->count());
         $this->assertSame(14, DB::table('waste_catalog_items')->whereJsonContains('industries', 'textile')->count()
             + DB::table('waste_catalog_items')->whereIn('code', ['cardboard', 'plastic_films_bags', 'etp_sludge', 'oils', 'metals'])->count(), 'M1-03 default types');

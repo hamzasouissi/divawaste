@@ -753,16 +753,19 @@ final class ImportEngine
     }
 
     /**
-     * A client or a supplier named by its code or its name; created when it is not known.
+     * A client or a supplier named by its code or its name; created when it is not known. A name written another way
+     * ("PRINTING +" for "PRINTING+") gives the same code: it is that one, not a second one refused for its code.
      *
      * @param  class-string<ProductionClient|ProductionSupplier>  $model
      * @param  array<string, int>  $also
      */
     private function party(string $model, string $value, string $kind, array &$also): int
     {
-        $id = $model::query()->where('code', $value)->orWhere('name', $value)->value('id');
+        $code = $this->codeFrom($value);
+        $id = $model::query()->where('code', $value)->orWhere('name', $value)->value('id')
+            ?? $model::query()->where('code', $code)->value('id');
         if ($id === null) {
-            $id = $model::query()->create(['code' => $this->codeFrom($value), 'name' => $value])->getKey();
+            $id = $model::query()->create(['code' => $code, 'name' => $value])->getKey();
             $also[$kind] = ($also[$kind] ?? 0) + 1;
         }
 
