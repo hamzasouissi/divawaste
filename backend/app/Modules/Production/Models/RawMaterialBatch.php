@@ -23,7 +23,7 @@ class RawMaterialBatch extends Model
 
     protected function casts(): array
     {
-        return ['received_on' => 'date', 'quantity' => 'decimal:3', 'unit_price' => 'decimal:4', 'total_amount' => 'decimal:3', 'delivery_cost' => 'decimal:3', 'tax_rate_pct' => 'decimal:2'];
+        return ['received_on' => 'date', 'quantity' => 'decimal:3', 'unit_price' => 'decimal:6', 'total_amount' => 'decimal:3', 'delivery_cost' => 'decimal:3', 'tax_rate_pct' => 'decimal:2'];
     }
 
     protected static function booted(): void

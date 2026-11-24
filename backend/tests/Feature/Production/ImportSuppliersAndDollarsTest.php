@@ -80,4 +80,15 @@ class ImportSuppliersAndDollarsTest extends TestCase
 
         $this->assertSame('10.869215', (string) DB::table('raw_material_batches')->where('batch_number', 'COUT-STD')->value('unit_price'));
     }
+
+    public function test_a_batch_priced_to_four_decimals_takes_the_six_of_a_new_file(): void
+    {
+        $this->import('materials', "Référence,Désignation,Unité\n13-2562,LABEL,piece\n", ['reference' => 0, 'name' => 1, 'unit' => 2]);
+        $mapping = ['material' => 0, 'batch_number' => 1, 'received_on' => 2, 'batch_quantity' => 3, 'unit_price' => 4, 'currency' => 5];
+        $this->import('received_lots', "Matière,Lot,Date,Quantité,PU,Devise\n13-2562,COUT-STD,01/01/2026,1,0.0175,USD\n", $mapping);
+
+        $done = $this->import('received_lots', "Matière,Lot,Date,Quantité,PU,Devise\n13-2562,COUT-STD,01/01/2026,1,0.01751,USD\n", $mapping);
+
+        $this->assertSame([1, '0.017510'], [$done['updated'], (string) DB::table('raw_material_batches')->where('batch_number', 'COUT-STD')->value('unit_price')]);
+    }
 }
